@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>О компании — МАТКАСЫМ</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    .about-hero { background: linear-gradient(135deg,#0058A3,#003E7E); color:#fff; padding:80px 0; text-align:center; }
+    .about-hero h1 { font-size:48px; font-weight:800; margin-bottom:16px; }
+    .about-hero p { font-size:18px; opacity:.85; max-width:600px; margin:0 auto; }
+    .about-content { padding:64px 0; }
+    .about-grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center; margin-bottom:64px; }
+    .about-grid h2 { font-size:32px; font-weight:800; margin-bottom:16px; }
+    .about-grid p { color:var(--gray-600); line-height:1.8; margin-bottom:16px; }
+    .about-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:32px; background:var(--gray-50); padding:48px; border-radius:16px; margin-bottom:64px; text-align:center; }
+    .stat h3 { font-size:40px; font-weight:800; color:var(--blue); }
+    .stat p { font-size:14px; color:var(--gray-600); margin-top:6px; }
+    .values { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; }
+    .value-card { background:var(--white); border:1px solid var(--gray-200); border-radius:var(--radius); padding:32px; text-align:center; }
+    .value-card__icon { font-size:40px; margin-bottom:16px; }
+    .value-card h4 { font-size:18px; font-weight:700; margin-bottom:10px; }
+    .value-card p { font-size:14px; color:var(--gray-600); line-height:1.6; }
+    @media(max-width:768px){ .about-grid,.about-stats,.values{grid-template-columns:1fr} .about-hero h1{font-size:32px} }
+  </style>
+</head>
+<body>
+  <div class="topbar"><span>Бесплатная доставка от 50 000 ₸ · Пн–Пт 9:00–18:00</span></div>
+  <header class="header" id="header">
+    <div class="header__inner">
+      <a href="../index.html" class="header__logo"><svg width="120" height="40" viewBox="0 0 120 40"><rect width="120" height="40" rx="4" fill="#0058A3"/><text x="60" y="27" text-anchor="middle" fill="#FFDB00" font-family="sans-serif" font-weight="700" font-size="14" letter-spacing="2">МАТКАСЫМ</text></svg></a>
+      <nav class="header__actions" style="margin-left:auto">
+        <a href="cart.html" class="header__action header__cart"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><span>Корзина</span><span class="cart-badge" id="cartBadge">0</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="about-hero">
+    <div class="container">
+      <h1>О компании МАТКАСЫМ</h1>
+      <p>Мы создаём качественную мебель и товары для дома, делая каждое пространство уютным и функциональным</p>
+    </div>
+  </div>
+
+  <main class="about-content">
+    <div class="container">
+      <div class="about-grid">
+        <div>
+          <h2>Наша история</h2>
+          <p>МАТКАСЫМ — казахстанский бренд мебели и товаров для дома, основанный с целью сделать качественный интерьер доступным для каждой семьи.</p>
+          <p>Мы верим, что красивый и функциональный дом — это не роскошь, а необходимость. Наша миссия: предоставлять широкий ассортимент товаров по честным ценам с доставкой по всему Казахстану.</p>
+          <p>Каждый товар в нашем каталоге тщательно отобран по критериям качества, дизайна и практичности.</p>
+        </div>
+        <div style="background:var(--gray-50);border-radius:16px;height:320px;display:flex;align-items:center;justify-content:center;font-size:80px">🏠</div>
+      </div>
+
+      <div class="about-stats">
+        <div class="stat"><h3>50 000+</h3><p>Довольных клиентов</p></div>
+        <div class="stat"><h3>1 200+</h3><p>Товаров в каталоге</p></div>
+        <div class="stat"><h3>16</h3><p>Городов доставки</p></div>
+        <div class="stat"><h3>5 лет</h3><p>На рынке Казахстана</p></div>
+      </div>
+
+      <h2 style="text-align:center;margin-bottom:32px">Наши ценности</h2>
+      <div class="values">
+        <div class="value-card"><div class="value-card__icon">✨</div><h4>Качество</h4><p>Каждый товар проходит строгий контроль качества перед попаданием в каталог</p></div>
+        <div class="value-card"><div class="value-card__icon">💰</div><h4>Доступность</h4><p>Честные цены без скрытых наценок. Рассрочка и акции для каждого покупателя</p></div>
+        <div class="value-card"><div class="value-card__icon">🤝</div><h4>Забота</h4><p>Профессиональная служба поддержки, доставка и сборка мебели под ключ</p></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer"><div class="footer__bottom" style="border-top:none;padding:24px 0"><div class="container"><p style="font-size:13px;color:#888;text-align:center">© 2026 МАТКАСЫМ. Все права защищены.</p></div></div></footer>
+  <script src="../js/products-data.js"></script>
+  <script src="../js/cart.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+.img-uploader__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.img-uploader__item {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1.5px solid var(--gray-200);
+}
+.img-uploader__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.img-uploader__main-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.img-uploader__actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.img-uploader__item:hover .img-uploader__actions { opacity: 1; }
+
+.img-uploader__actions button {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+}
+.img-uploader__actions button:hover { background: var(--red); }
+
+.img-uploader__item.deleting { opacity: .5; pointer-events: none; }
+.img-uploader__spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.6);
+}
+.img-uploader__spinner::after {
+  content: '';
+  width: 20px; height: 20px;
+  border: 2px solid var(--gray-300);
+  border-top-color: var(--red);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+
+.img-uploader__add {
+  width: 110px;
+  height: 110px;
+  border-radius: var(--radius);
+  border: 2px dashed var(--gray-300);
+  background: var(--gray-50);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  font-family: inherit;
+  color: var(--slate);
+}
+.img-uploader__add:hover {
+  border-color: var(--red);
+  background: #fff;
+  color: var(--red);
+}
+.img-uploader__add span:first-child {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 300;
+}
+.img-uploader__add span:last-child {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.img-uploader__hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--slate);
+}

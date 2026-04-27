@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>МАТКАСЫМ — Мебель и товары для дома</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/home.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <span>Бесплатная доставка от 50 000 ₸ · Пн–Пт 9:00–18:00</span>
+  </div>
+
+  <!-- HEADER -->
+  <header class="header" id="header">
+    <div class="header__inner">
+      <!-- Hamburger -->
+      <button class="header__burger" id="burgerBtn" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
+
+      <!-- Logo -->
+      <a href="index.html" class="header__logo">
+        <svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="120" height="40" rx="4" fill="#0058A3"/>
+          <text x="60" y="27" text-anchor="middle" fill="#FFDB00" font-family="Noto Sans, sans-serif" font-weight="700" font-size="14" letter-spacing="2">МАТКАСЫМ</text>
+        </svg>
+      </a>
+
+      <!-- Search -->
+      <div class="header__search">
+        <form class="search-form" action="pages/catalog.html" method="get">
+          <input type="text" name="q" placeholder="Найдите мебель и товары для дома" />
+          <button type="submit" aria-label="Поиск">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- Actions -->
+      <nav class="header__actions">
+        <a href="pages/account.html" class="header__action" title="Войти">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>Войти</span>
+        </a>
+        <a href="pages/favorites.html" class="header__action" title="Избранное">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span>Избранное</span>
+        </a>
+        <a href="pages/cart.html" class="header__action header__cart" title="Корзина">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+          </svg>
+          <span>Корзина</span>
+          <span class="cart-badge" id="cartBadge">0</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- MAIN NAV -->
+    <nav class="main-nav" id="mainNav">
+      <ul class="main-nav__list">
+        <li><a href="pages/catalog.html?cat=living">Гостиная</a></li>
+        <li><a href="pages/catalog.html?cat=bedroom">Спальня</a></li>
+        <li><a href="pages/catalog.html?cat=kitchen">Кухня</a></li>
+        <li><a href="pages/catalog.html?cat=bathroom">Ванная</a></li>
+        <li><a href="pages/catalog.html?cat=kids">Детская</a></li>
+        <li><a href="pages/catalog.html?cat=office">Кабинет</a></li>
+        <li><a href="pages/catalog.html?cat=storage">Хранение</a></li>
+        <li><a href="pages/catalog.html?cat=decor">Декор</a></li>
+        <li><a href="pages/catalog.html?cat=sale" class="nav-sale">Акции</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- MOBILE MENU -->
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-menu__close" id="mobileClose">✕</button>
+    <ul>
+      <li><a href="pages/catalog.html?cat=living">Гостиная</a></li>
+      <li><a href="pages/catalog.html?cat=bedroom">Спальня</a></li>
+      <li><a href="pages/catalog.html?cat=kitchen">Кухня</a></li>
+      <li><a href="pages/catalog.html?cat=bathroom">Ванная</a></li>
+      <li><a href="pages/catalog.html?cat=kids">Детская</a></li>
+      <li><a href="pages/catalog.html?cat=office">Кабинет</a></li>
+      <li><a href="pages/catalog.html?cat=storage">Хранение</a></li>
+      <li><a href="pages/catalog.html?cat=decor">Декор</a></li>
+      <li><a href="pages/catalog.html?cat=sale" class="nav-sale">Акции</a></li>
+    </ul>
+  </div>
+  <div class="overlay" id="overlay"></div>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero__slide active" style="background: linear-gradient(135deg, #0058A3 0%, #003E7E 100%);">
+        <div class="hero__content">
+          <span class="hero__tag">Новая коллекция 2026</span>
+          <h1 class="hero__title">Дом, который<br>вдохновляет</h1>
+          <p class="hero__sub">Качественная мебель для каждого пространства по доступным ценам</p>
+          <a href="pages/catalog.html" class="btn btn--yellow">Смотреть каталог</a>
+        </div>
+        <div class="hero__visual">
+          <div class="hero__room-placeholder">
+            <svg viewBox="0 0 500 380" xmlns="http://www.w3.org/2000/svg">
+              <!-- Room illustration -->
+              <rect x="0" y="0" width="500" height="380" fill="#E8F4FD"/>
+              <!-- Floor -->
+              <rect x="0" y="280" width="500" height="100" fill="#D4A96A"/>
+              <!-- Wall -->
+              <rect x="0" y="0" width="500" height="280" fill="#F5EFE6"/>
+              <!-- Sofa -->
+              <rect x="80" y="200" width="250" height="80" rx="8" fill="#0058A3"/>
+              <rect x="80" y="190" width="250" height="30" rx="6" fill="#003E7E"/>
+              <rect x="80" y="200" width="35" height="80" rx="6" fill="#003E7E"/>
+              <rect x="295" y="200" width="35" height="80" rx="6" fill="#003E7E"/>
+              <!-- Cushions -->
+              <rect x="100" y="205" width="65" height="55" rx="5" fill="#FFDB00"/>
+              <rect x="175" y="205" width="65" height="55" rx="5" fill="#FFDB00" opacity="0.8"/>
+              <rect x="250" y="205" width="65" height="55" rx="5" fill="#FFDB00"/>
+              <!-- Table -->
+              <rect x="170" y="265" width="120" height="15" rx="3" fill="#8B6F47"/>
+              <rect x="185" y="278" width="8" height="15" fill="#6B5237"/>
+              <rect x="267" y="278" width="8" height="15" fill="#6B5237"/>
+              <!-- Lamp -->
+              <rect x="370" y="80" width="8" height="160" fill="#8B6F47"/>
+              <polygon points="350,80 398,80 385,40 363,40" fill="#FFDB00"/>
+              <!-- Plant -->
+              <rect x="40" y="240" width="20" height="40" rx="3" fill="#8B6F47"/>
+              <ellipse cx="50" cy="235" rx="25" ry="20" fill="#4CAF50"/>
+              <ellipse cx="38" cy="250" rx="15" ry="12" fill="#45A049"/>
+              <ellipse cx="62" cy="250" rx="15" ry="12" fill="#45A049"/>
+              <!-- Picture on wall -->
+              <rect x="200" y="60" width="100" height="70" rx="4" fill="#0058A3" opacity="0.3"/>
+              <rect x="205" y="65" width="90" height="60" rx="2" fill="#0058A3" opacity="0.5"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CATEGORIES GRID -->
+    <section class="section categories">
+      <div class="container">
+        <h2 class="section__title">Категории</h2>
+        <div class="categories__grid">
+          <a href="pages/catalog.html?cat=living" class="category-card" style="--bg:#0058A3">
+            <div class="category-card__icon">🛋️</div>
+            <span>Гостиная</span>
+          </a>
+          <a href="pages/catalog.html?cat=bedroom" class="category-card" style="--bg:#003E7E">
+            <div class="category-card__icon">🛏️</div>
+            <span>Спальня</span>
+          </a>
+          <a href="pages/catalog.html?cat=kitchen" class="category-card" style="--bg:#E8A000">
+            <div class="category-card__icon">🍽️</div>
+            <span>Кухня</span>
+          </a>
+          <a href="pages/catalog.html?cat=storage" class="category-card" style="--bg:#5A8A3C">
+            <div class="category-card__icon">🗄️</div>
+            <span>Хранение</span>
+          </a>
+          <a href="pages/catalog.html?cat=kids" class="category-card" style="--bg:#D4374E">
+            <div class="category-card__icon">🧸</div>
+            <span>Детская</span>
+          </a>
+          <a href="pages/catalog.html?cat=office" class="category-card" style="--bg:#555">
+            <div class="category-card__icon">💼</div>
+            <span>Кабинет</span>
+          </a>
+          <a href="pages/catalog.html?cat=decor" class="category-card" style="--bg:#7B4F9E">
+            <div class="category-card__icon">🖼️</div>
+            <span>Декор</span>
+          </a>
+          <a href="pages/catalog.html?cat=bathroom" class="category-card" style="--bg:#1A8FA0">
+            <div class="category-card__icon">🚿</div>
+            <span>Ванная</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROMO BANNER -->
+    <section class="promo-banner">
+      <div class="promo-banner__inner">
+        <div class="promo-banner__text">
+          <span class="promo-banner__label">Специальное предложение</span>
+          <h2>До <span class="promo-highlight">-40%</span> на диваны</h2>
+          <p>Только до конца месяца — обновите гостиную с выгодой</p>
+          <a href="pages/catalog.html?cat=sale" class="btn btn--white">Смотреть акции</a>
+        </div>
+        <div class="promo-banner__img">
+          <svg viewBox="0 0 400 280" xmlns="http://www.w3.org/2000/svg" width="400" height="280">
+            <rect x="0" y="0" width="400" height="280" fill="#003E7E" rx="12"/>
+            <rect x="50" y="150" width="300" height="100" rx="10" fill="#FFDB00"/>
+            <rect x="50" y="140" width="300" height="35" rx="8" fill="#E8C800"/>
+            <rect x="50" y="150" width="40" height="100" rx="8" fill="#E8C800"/>
+            <rect x="310" y="150" width="40" height="100" rx="8" fill="#E8C800"/>
+            <rect x="100" y="155" width="80" height="70" rx="6" fill="#fff" opacity="0.3"/>
+            <rect x="190" y="155" width="80" height="70" rx="6" fill="#fff" opacity="0.3"/>
+            <rect x="280" y="155" width="30" height="70" rx="6" fill="#fff" opacity="0.2"/>
+            <text x="200" y="90" text-anchor="middle" fill="#FFDB00" font-family="sans-serif" font-weight="700" font-size="52">-40%</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURED PRODUCTS -->
+    <section class="section">
+      <div class="container">
+        <div class="section__head">
+          <h2 class="section__title">Популярные товары</h2>
+          <a href="pages/catalog.html" class="section__link">Все товары →</a>
+        </div>
+        <div class="products-grid" id="featuredProducts"></div>
+      </div>
+    </section>
+
+    <!-- INSPIRATION BANNER -->
+    <section class="inspiration">
+      <div class="inspiration__card">
+        <div class="inspiration__text">
+          <h3>Вдохновение для вашего дома</h3>
+          <p>Идеи интерьера, советы по обустройству и стильные решения от наших дизайнеров</p>
+          <a href="pages/inspiration.html" class="btn btn--outline">Читать статьи</a>
+        </div>
+        <div class="inspiration__visual">
+          <svg viewBox="0 0 460 320" xmlns="http://www.w3.org/2000/svg">
+            <rect width="460" height="320" fill="#F5EFE6" rx="12"/>
+            <!-- Bookshelf -->
+            <rect x="30" y="40" width="15" height="240" fill="#8B6F47"/>
+            <rect x="30" y="40" width="200" height="15" fill="#8B6F47"/>
+            <rect x="30" y="120" width="200" height="10" fill="#8B6F47"/>
+            <rect x="30" y="200" width="200" height="10" fill="#8B6F47"/>
+            <rect x="215" y="40" width="15" height="240" fill="#8B6F47"/>
+            <!-- Books -->
+            <rect x="40" y="50" width="18" height="65" fill="#0058A3"/>
+            <rect x="60" y="55" width="14" height="60" fill="#D4374E"/>
+            <rect x="76" y="52" width="20" height="63" fill="#FFDB00"/>
+            <rect x="98" y="58" width="16" height="57" fill="#5A8A3C"/>
+            <rect x="116" y="53" width="12" height="62" fill="#7B4F9E"/>
+            <rect x="40" y="135" width="16" height="55" fill="#E8A000"/>
+            <rect x="58" y="138" width="20" height="52" fill="#0058A3"/>
+            <rect x="80" y="133" width="14" height="57" fill="#D4374E"/>
+            <!-- Desk -->
+            <rect x="260" y="200" width="180" height="15" rx="3" fill="#8B6F47"/>
+            <rect x="275" y="213" width="12" height="60" fill="#6B5237"/>
+            <rect x="413" y="213" width="12" height="60" fill="#6B5237"/>
+            <!-- Monitor -->
+            <rect x="300" y="130" width="100" height="68" rx="4" fill="#333"/>
+            <rect x="305" y="135" width="90" height="58" rx="2" fill="#0058A3"/>
+            <rect x="345" y="198" width="20" height="6" fill="#555"/>
+            <!-- Plant on desk -->
+            <rect x="390" y="175" width="12" height="28" rx="3" fill="#8B6F47"/>
+            <ellipse cx="396" cy="168" rx="18" ry="14" fill="#4CAF50"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW ARRIVALS -->
+    <section class="section">
+      <div class="container">
+        <div class="section__head">
+          <h2 class="section__title">Новинки</h2>
+          <a href="pages/catalog.html?sort=new" class="section__link">Смотреть все →</a>
+        </div>
+        <div class="products-grid" id="newProducts"></div>
+      </div>
+    </section>
+
+    <!-- SERVICE BLOCKS -->
+    <section class="services">
+      <div class="container">
+        <div class="services__grid">
+          <div class="service-item">
+            <div class="service-item__icon">🚚</div>
+            <h4>Доставка по всему Казахстану</h4>
+            <p>Привезём заказ прямо к вашей двери в любой город страны</p>
+          </div>
+          <div class="service-item">
+            <div class="service-item__icon">🔧</div>
+            <h4>Сборка мебели</h4>
+            <p>Профессиональные мастера соберут мебель за вас</p>
+          </div>
+          <div class="service-item">
+            <div class="service-item__icon">↩️</div>
+            <h4>Возврат в течение 30 дней</h4>
+            <p>Не подошло — вернём деньги без вопросов</p>
+          </div>
+          <div class="service-item">
+            <div class="service-item__icon">💳</div>
+            <h4>Рассрочка 0%</h4>
+            <p>Покупайте сейчас, платите удобными частями</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer__top">
+      <div class="container footer__grid">
+        <div class="footer__col footer__col--brand">
+          <a href="index.html" class="footer__logo">
+            <svg width="130" height="44" viewBox="0 0 130 44" fill="none">
+              <rect width="130" height="44" rx="4" fill="#0058A3"/>
+              <text x="65" y="29" text-anchor="middle" fill="#FFDB00" font-family="Noto Sans,sans-serif" font-weight="700" font-size="15" letter-spacing="2">МАТКАСЫМ</text>
+            </svg>
+          </a>
+          <p>Мебель и товары для дома с доставкой по Казахстану. Качество по доступным ценам.</p>
+          <div class="footer__social">
+            <a href="#" aria-label="Instagram">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            </a>
+            <a href="#" aria-label="YouTube">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            </a>
+            <a href="#" aria-label="Telegram">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="footer__col">
+          <h5>Каталог</h5>
+          <ul>
+            <li><a href="pages/catalog.html?cat=living">Гостиная</a></li>
+            <li><a href="pages/catalog.html?cat=bedroom">Спальня</a></li>
+            <li><a href="pages/catalog.html?cat=kitchen">Кухня</a></li>
+            <li><a href="pages/catalog.html?cat=bathroom">Ванная</a></li>
+            <li><a href="pages/catalog.html?cat=kids">Детская</a></li>
+            <li><a href="pages/catalog.html?cat=office">Кабинет</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h5>Покупателям</h5>
+          <ul>
+            <li><a href="pages/delivery.html">Доставка и оплата</a></li>
+            <li><a href="pages/assembly.html">Сборка мебели</a></li>
+            <li><a href="pages/return.html">Возврат товара</a></li>
+            <li><a href="pages/warranty.html">Гарантия</a></li>
+            <li><a href="pages/faq.html">Частые вопросы</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h5>О компании</h5>
+          <ul>
+            <li><a href="pages/about.html">О нас</a></li>
+            <li><a href="pages/careers.html">Вакансии</a></li>
+            <li><a href="pages/contacts.html">Контакты</a></li>
+            <li><a href="pages/blog.html">Блог</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h5>Контакты</h5>
+          <ul class="footer__contacts">
+            <li>📞 <a href="tel:+77001234567">+7 700 123-45-67</a></li>
+            <li>✉️ <a href="mailto:info@matkasym.kz">info@matkasym.kz</a></li>
+            <li>📍 г. Алматы, ул. Абая 100</li>
+            <li>🕐 Пн–Пт: 9:00 – 18:00</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>© 2026 МАТКАСЫМ. Все права защищены.</p>
+        <div class="footer__legal">
+          <a href="#">Политика конфиденциальности</a>
+          <a href="#">Условия использования</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/products-data.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/home.js"></script>
+</body>
+</html>

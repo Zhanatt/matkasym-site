@@ -1,0 +1,58 @@
+/* CATALOG PAGE */
+.catalog-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 32px;
+  padding: 24px 0 64px;
+  align-items: start;
+}
+
+.catalog-sidebar {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 24px;
+  position: sticky;
+  top: 80px;
+}
+.catalog-sidebar h3 {
+  font-size: 18px; font-weight: 700; margin-bottom: 20px;
+  padding-bottom: 12px; border-bottom: 2px solid var(--gray-100);
+}
+.filter-group { margin-bottom: 24px; }
+.filter-group h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--gray-600); text-transform: uppercase; letter-spacing: .5px; }
+.filter-list li { margin-bottom: 8px; }
+.filter-list label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: var(--gray-900); }
+.filter-list input { accent-color: var(--blue); width: 16px; height: 16px; }
+
+.price-range { display: flex; align-items: center; gap: 8px; }
+.price-range input {
+  flex: 1; border: 1px solid var(--gray-200); border-radius: 6px;
+  padding: 8px 10px; font-size: 14px; outline: none; font-family: var(--font);
+}
+.price-range input:focus { border-color: var(--blue); }
+.price-range span { color: var(--gray-400); flex-shrink: 0; }
+
+.catalog-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+}
+#resultsCount { font-size: 14px; color: var(--gray-600); }
+.catalog-sort { display: flex; align-items: center; gap: 8px; }
+.catalog-sort label { font-size: 14px; color: var(--gray-600); }
+.catalog-sort select {
+  border: 1px solid var(--gray-200); border-radius: 6px;
+  padding: 8px 12px; font-size: 14px; outline: none;
+  font-family: var(--font); cursor: pointer;
+}
+.catalog-sort select:focus { border-color: var(--blue); }
+
+.empty-state { text-align: center; padding: 80px 24px; }
+.empty-state__icon { font-size: 64px; margin-bottom: 16px; }
+.empty-state h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.empty-state p { color: var(--gray-600); margin-bottom: 24px; }
+
+@media (max-width: 900px) {
+  .catalog-layout { grid-template-columns: 1fr; }
+  .catalog-sidebar { position: static; }
+}

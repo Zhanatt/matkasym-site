@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Каталог — МАТКАСЫМ</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/catalog.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <div class="topbar"><span>Бесплатная доставка от 50 000 ₸ · Пн–Пт 9:00–18:00</span></div>
+
+  <header class="header" id="header">
+    <div class="header__inner">
+      <button class="header__burger" id="burgerBtn"><span></span><span></span><span></span></button>
+      <a href="../index.html" class="header__logo">
+        <svg width="120" height="40" viewBox="0 0 120 40"><rect width="120" height="40" rx="4" fill="#0058A3"/><text x="60" y="27" text-anchor="middle" fill="#FFDB00" font-family="Noto Sans,sans-serif" font-weight="700" font-size="14" letter-spacing="2">МАТКАСЫМ</text></svg>
+      </a>
+      <div class="header__search">
+        <form class="search-form">
+          <input type="text" id="searchInput" placeholder="Найдите мебель и товары для дома" />
+          <button type="submit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+        </form>
+      </div>
+      <nav class="header__actions">
+        <a href="account.html" class="header__action"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Войти</span></a>
+        <a href="favorites.html" class="header__action"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>Избранное</span></a>
+        <a href="cart.html" class="header__action header__cart"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><span>Корзина</span><span class="cart-badge" id="cartBadge">0</span></a>
+      </nav>
+    </div>
+    <nav class="main-nav" id="mainNav">
+      <ul class="main-nav__list">
+        <li><a href="catalog.html?cat=living">Гостиная</a></li>
+        <li><a href="catalog.html?cat=bedroom">Спальня</a></li>
+        <li><a href="catalog.html?cat=kitchen">Кухня</a></li>
+        <li><a href="catalog.html?cat=bathroom">Ванная</a></li>
+        <li><a href="catalog.html?cat=kids">Детская</a></li>
+        <li><a href="catalog.html?cat=office">Кабинет</a></li>
+        <li><a href="catalog.html?cat=storage">Хранение</a></li>
+        <li><a href="catalog.html?cat=decor">Декор</a></li>
+        <li><a href="catalog.html?cat=sale" class="nav-sale">Акции</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-menu__close" id="mobileClose">✕</button>
+    <ul>
+      <li><a href="catalog.html?cat=living">Гостиная</a></li>
+      <li><a href="catalog.html?cat=bedroom">Спальня</a></li>
+      <li><a href="catalog.html?cat=kitchen">Кухня</a></li>
+      <li><a href="catalog.html?cat=kids">Детская</a></li>
+      <li><a href="catalog.html?cat=office">Кабинет</a></li>
+      <li><a href="catalog.html?cat=storage">Хранение</a></li>
+      <li><a href="catalog.html?cat=decor">Декор</a></li>
+    </ul>
+  </div>
+  <div class="overlay" id="overlay"></div>
+
+  <main>
+    <div class="container">
+      <nav class="breadcrumb"><ul><li><a href="../index.html">Главная</a></li><li id="breadCrumbCat">Каталог</li></ul></nav>
+
+      <div class="catalog-layout">
+        <!-- SIDEBAR -->
+        <aside class="catalog-sidebar">
+          <h3>Фильтры</h3>
+
+          <div class="filter-group">
+            <h4>Категории</h4>
+            <ul class="filter-list">
+              <li><label><input type="radio" name="cat" value=""> Все товары</label></li>
+              <li><label><input type="radio" name="cat" value="living"> Гостиная</label></li>
+              <li><label><input type="radio" name="cat" value="bedroom"> Спальня</label></li>
+              <li><label><input type="radio" name="cat" value="kitchen"> Кухня</label></li>
+              <li><label><input type="radio" name="cat" value="bathroom"> Ванная</label></li>
+              <li><label><input type="radio" name="cat" value="kids"> Детская</label></li>
+              <li><label><input type="radio" name="cat" value="office"> Кабинет</label></li>
+              <li><label><input type="radio" name="cat" value="storage"> Хранение</label></li>
+              <li><label><input type="radio" name="cat" value="decor"> Декор</label></li>
+            </ul>
+          </div>
+
+          <div class="filter-group">
+            <h4>Цена (₸)</h4>
+            <div class="price-range">
+              <input type="number" id="priceMin" placeholder="от" min="0" />
+              <span>—</span>
+              <input type="number" id="priceMax" placeholder="до" min="0" />
+            </div>
+            <button class="btn btn--blue btn--sm" id="applyPrice" style="margin-top:10px;width:100%">Применить</button>
+          </div>
+
+          <div class="filter-group">
+            <h4>Специальные</h4>
+            <ul class="filter-list">
+              <li><label><input type="checkbox" name="tag" value="sale"> Только акции</label></li>
+              <li><label><input type="checkbox" name="tag" value="new"> Только новинки</label></li>
+            </ul>
+          </div>
+
+          <button class="btn btn--outline btn--sm" id="resetFilters" style="width:100%;margin-top:8px">Сбросить фильтры</button>
+        </aside>
+
+        <!-- MAIN -->
+        <div class="catalog-main">
+          <div class="catalog-toolbar">
+            <span id="resultsCount">Загрузка...</span>
+            <div class="catalog-sort">
+              <label>Сортировка:</label>
+              <select id="sortSelect">
+                <option value="default">По умолчанию</option>
+                <option value="price-asc">Цена: по возрастанию</option>
+                <option value="price-desc">Цена: по убыванию</option>
+                <option value="name">По названию</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="products-grid" id="catalogGrid"></div>
+
+          <div id="emptyState" class="empty-state" style="display:none">
+            <div class="empty-state__icon">🔍</div>
+            <h3>Товары не найдены</h3>
+            <p>Попробуйте изменить фильтры или поисковый запрос</p>
+            <button class="btn btn--blue" onclick="resetFilters()">Сбросить фильтры</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__bottom" style="border-top:none;padding:24px 0">
+      <div class="container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <a href="../index.html"><svg width="100" height="34" viewBox="0 0 120 40"><rect width="120" height="40" rx="4" fill="#0058A3"/><text x="60" y="27" text-anchor="middle" fill="#FFDB00" font-family="sans-serif" font-weight="700" font-size="14" letter-spacing="2">МАТКАСЫМ</text></svg></a>
+        <p style="font-size:13px;color:#888">© 2026 МАТКАСЫМ. Все права защищены.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/products-data.js"></script>
+  <script src="../js/cart.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/catalog.js"></script>
+</body>
+</html>

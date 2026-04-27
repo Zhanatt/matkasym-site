@@ -1,0 +1,95 @@
+.catalog-page { padding-bottom: 64px; }
+
+.catalog-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 24px 0 20px;
+}
+
+.page-title .total-count {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--gray-400);
+  margin-left: 10px;
+}
+
+.catalog-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  padding: 10px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  width: 240px;
+}
+.search-input:focus { border-color: var(--blue); }
+
+.catalog-controls select {
+  padding: 10px 14px;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+
+.catalog-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.sidebar h3 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--gray-400);
+  margin-bottom: 12px;
+}
+
+.cat-list { list-style: none; }
+.cat-list li { margin-bottom: 2px; }
+.cat-list button {
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  background: none;
+  color: var(--gray-700);
+  transition: background .12s;
+}
+.cat-list button:hover { background: var(--gray-100); }
+.cat-list button.active { background: var(--blue); color: #fff; font-weight: 700; }
+
+@media (max-width: 768px) {
+  .catalog-layout { grid-template-columns: 1fr; }
+  .sidebar { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sidebar h3 { display: none; }
+  .cat-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cat-list li { margin: 0; }
+  .cat-list button { padding: 7px 14px; border: 1px solid var(--gray-200); }
+  .cat-list button.active { border-color: var(--blue); }
+  .catalog-top { gap: 12px; }
+  .catalog-controls { width: 100%; }
+  .search-input { width: 100%; flex: 1; }
+}
+
+@media (max-width: 480px) {
+  .catalog-top { flex-direction: column; align-items: stretch; }
+  .catalog-controls { flex-direction: column; }
+  .catalog-controls select { width: 100%; }
+}

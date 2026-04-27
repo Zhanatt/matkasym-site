@@ -1,0 +1,130 @@
+/* ── Hero ───────────────────────────────────── */
+.brand-hero {
+  background: var(--black);
+  color: #fff;
+  padding: 64px 0 56px;
+}
+.brand-hero-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+.brand-hero-accent {
+  width: 5px;
+  min-height: 120px;
+  border-radius: 3px;
+  background: var(--brand-color, var(--red));
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.brand-hero-logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+  margin-bottom: 18px;
+}
+.brand-hero-tagline {
+  font-size: 17px;
+  color: rgba(255,255,255,.5);
+  font-style: italic;
+  margin-bottom: 12px;
+}
+.brand-hero-desc {
+  font-size: 15px;
+  color: rgba(255,255,255,.65);
+  line-height: 1.7;
+  max-width: 520px;
+}
+
+/* ── Section title ──────────────────────────── */
+.brand-sets-title {
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--black);
+  margin-bottom: 36px;
+}
+
+/* ── Sets grid ──────────────────────────────── */
+.brand-sets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 32px;
+}
+
+/* ── Set card ───────────────────────────────── */
+.set-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--gray-200);
+  transition: box-shadow .2s, transform .2s;
+  background: #fff;
+}
+.set-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-3px);
+}
+
+.set-card__img-wrap {
+  display: block;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: var(--gray-50);
+}
+.set-card__img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .4s;
+}
+.set-card:hover .set-card__img-wrap img {
+  transform: scale(1.04);
+}
+
+.set-card__placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-100);
+}
+.set-card__placeholder span {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--gray-300);
+}
+
+.set-card__body {
+  padding: 20px 24px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.set-card__name {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--black);
+  margin-bottom: 4px;
+}
+.set-card__name-ru {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--slate);
+}
+
+/* ── Responsive ─────────────────────────────── */
+@media (max-width: 768px) {
+  .brand-hero { padding: 48px 0 40px; }
+  .brand-hero-inner { gap: 16px; }
+  .brand-hero-accent { min-height: 80px; }
+  .brand-sets-grid { grid-template-columns: 1fr; }
+  .set-card__body { flex-direction: column; align-items: flex-start; }
+  .set-card__body .btn { width: 100%; }
+}

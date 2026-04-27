@@ -1,0 +1,236 @@
+/* ── Hero ─────────────────────────────────────── */
+.home-hero {
+  background: var(--black);
+  color: #fff;
+  padding: 80px 0 72px;
+  overflow: hidden;
+}
+.home-hero-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.home-hero-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin-bottom: 20px;
+}
+
+.home-hero-title {
+  font-size: 64px;
+  font-weight: 900;
+  line-height: 1.05;
+  margin-bottom: 20px;
+  color: #fff;
+}
+.home-hero-title span { color: var(--red); }
+
+.home-hero-sub {
+  font-size: 18px;
+  color: rgba(255,255,255,.55);
+  margin-bottom: 36px;
+}
+
+.home-hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.home-hero-badge {
+  opacity: .12;
+  flex-shrink: 0;
+}
+.home-hero-badge img {
+  height: 260px;
+  width: auto;
+}
+
+/* ── Brands grid ──────────────────────────────── */
+.brands-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.brand-card {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: box-shadow .2s, transform .2s;
+  display: flex;
+  flex-direction: column;
+}
+.brand-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-3px);
+}
+
+.brand-card__accent {
+  height: 6px;
+}
+
+.brand-card__body {
+  padding: 28px 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-card__logo {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 16px;
+}
+
+.brand-card__desc {
+  font-size: 14px;
+  color: var(--dark);
+  line-height: 1.6;
+  flex: 1;
+  margin-bottom: 20px;
+}
+
+.brand-card__link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red);
+}
+.brand-card:hover .brand-card__link { text-decoration: underline; }
+
+/* ── Feature (TAZA KIYM) ──────────────────────── */
+.home-feature {
+  background: var(--warm);
+  padding: 80px 0;
+}
+.home-feature-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+.home-feature-desc {
+  font-size: 16px;
+  color: var(--dark);
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.home-feature-sets {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.set-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid var(--warm-dark);
+  transition: border-color .15s, box-shadow .15s;
+}
+.set-chip:hover {
+  border-color: var(--red);
+  box-shadow: var(--shadow-sm);
+}
+.set-chip strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--black);
+  min-width: 120px;
+}
+.set-chip span {
+  font-size: 13px;
+  color: var(--dark);
+}
+
+.home-feature-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-feature-placeholder {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--warm-mid);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.home-feature-placeholder p {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--warm-dark);
+  letter-spacing: 2px;
+}
+
+/* ── CTA strip ────────────────────────────────── */
+.home-cta {
+  background: var(--black);
+  color: #fff;
+  padding: 52px 0;
+}
+.home-cta-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.home-cta h2 {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.home-cta p {
+  font-size: 15px;
+  color: rgba(255,255,255,.55);
+}
+.home-cta-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ───────────────────────────────── */
+@media (max-width: 1024px) {
+  .home-hero-title { font-size: 48px; }
+  .home-feature-inner { grid-template-columns: 1fr; gap: 40px; }
+  .home-feature-visual { display: none; }
+}
+
+@media (max-width: 768px) {
+  .home-hero { padding: 56px 0; }
+  .home-hero-title { font-size: 38px; }
+  .home-hero-badge { display: none; }
+  .brands-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+  .home-cta-inner { flex-direction: column; text-align: center; }
+  .home-cta-actions { justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .home-hero { padding: 40px 0; }
+  .home-hero-title { font-size: 28px; }
+  .home-hero-sub { font-size: 15px; margin-bottom: 24px; }
+  .home-hero-label { margin-bottom: 12px; }
+  .brands-grid { grid-template-columns: 1fr; }
+  .brand-card__body { padding: 20px 16px; }
+  .home-cta { padding: 40px 0; }
+  .home-cta h2 { font-size: 18px; }
+  .home-feature { padding: 48px 0; }
+}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Избранное — МАТКАСЫМ</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="topbar"><span>Бесплатная доставка от 50 000 ₸</span></div>
+  <header class="header" id="header">
+    <div class="header__inner">
+      <a href="../index.html" class="header__logo"><svg width="120" height="40" viewBox="0 0 120 40"><rect width="120" height="40" rx="4" fill="#0058A3"/><text x="60" y="27" text-anchor="middle" fill="#FFDB00" font-family="sans-serif" font-weight="700" font-size="14" letter-spacing="2">МАТКАСЫМ</text></svg></a>
+      <nav class="header__actions" style="margin-left:auto">
+        <a href="cart.html" class="header__action header__cart"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><span>Корзина</span><span class="cart-badge" id="cartBadge">0</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <nav class="breadcrumb"><ul><li><a href="../index.html">Главная</a></li><li>Избранное</li></ul></nav>
+      <h1 style="font-size:32px;font-weight:800;margin:16px 0 32px">Избранное</h1>
+      <div id="favsGrid" class="products-grid"></div>
+      <div id="favsEmpty" style="display:none;text-align:center;padding:80px 24px">
+        <div style="font-size:72px;margin-bottom:20px">♡</div>
+        <h2 style="font-size:26px;font-weight:700;margin-bottom:12px">Список избранного пуст</h2>
+        <p style="color:var(--gray-600);margin-bottom:28px">Добавляйте понравившиеся товары, нажимая на ♡</p>
+        <a href="catalog.html" class="btn btn--blue">Перейти в каталог</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer"><div class="footer__bottom" style="border-top:none;padding:24px 0"><div class="container"><p style="font-size:13px;color:#888;text-align:center">© 2026 МАТКАСЫМ. Все права защищены.</p></div></div></footer>
+  <script src="../js/products-data.js"></script>
+  <script src="../js/cart.js"></script>
+  <script src="../js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const favIds = JSON.parse(localStorage.getItem('matkasym_favs') || '[]');
+      const grid = document.getElementById('favsGrid');
+      const empty = document.getElementById('favsEmpty');
+      const favProducts = PRODUCTS.filter(p => favIds.includes(p.id));
+      if (favProducts.length === 0) {
+        grid.style.display = 'none';
+        empty.style.display = 'block';
+      } else {
+        renderProducts(grid, favProducts);
+      }
+    });
+  </script>
+</body>
+</html>

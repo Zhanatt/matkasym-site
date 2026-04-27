@@ -1,0 +1,271 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ── Official MATKASYM brand colors (BrandBook 2024) ── */
+  --red:        #e10523;   /* accent — NOT used as fill */
+  --red-dark:   #b8001b;
+  --slate:      #7d96a0;   /* metallic gray — main fill/secondary */
+  --slate-light:#a8bec7;
+  --black:      #000000;   /* headings */
+  --dark:       #4d4d4d;   /* body text */
+  --warm:       #f5ede0;   /* warm pastel sections */
+  --warm-mid:   #e8d5bb;
+  --warm-dark:  #c4a882;
+
+  /* ── UI ── */
+  --white:      #ffffff;
+  --gray-50:    #fafafa;
+  --gray-100:   #f4f4f4;
+  --gray-200:   #e8e8e8;
+  --gray-300:   #d0d0d0;
+  --gray-500:   #999999;
+  --green:      #2d7a3a;
+
+  --radius:     6px;
+  --radius-lg:  12px;
+  --shadow-sm:  0 1px 4px rgba(0,0,0,.08);
+  --shadow:     0 4px 20px rgba(0,0,0,.10);
+  --shadow-lg:  0 8px 40px rgba(0,0,0,.14);
+  --container:  1240px;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--dark);
+  background: var(--white);
+  line-height: 1.55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+main { flex: 1; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+button { cursor: pointer; font-family: inherit; border: none; background: none; }
+ul, ol { list-style: none; }
+
+.container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ─── Buttons ────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.btn-primary {
+  background: var(--red);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--red-dark); }
+
+.btn-dark {
+  background: var(--black);
+  color: #fff;
+}
+.btn-dark:hover { background: #222; }
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--red);
+  color: var(--red);
+}
+.btn-outline:hover { background: var(--red); color: #fff; }
+
+.btn-outline-dark {
+  background: transparent;
+  border: 2px solid var(--black);
+  color: var(--black);
+}
+.btn-outline-dark:hover { background: var(--black); color: #fff; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--dark);
+  padding: 8px 14px;
+}
+.btn-ghost:hover { background: var(--gray-100); }
+
+.btn-slate {
+  background: var(--slate);
+  color: #fff;
+}
+.btn-slate:hover { background: var(--slate-light); }
+
+.btn-full { width: 100%; }
+.btn-sm { padding: 8px 18px; font-size: 13px; }
+.btn-lg { padding: 16px 40px; font-size: 16px; }
+
+/* ─── Forms ──────────────────────────────────── */
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 13px; font-weight: 700; color: var(--black); letter-spacing: .2px; }
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 12px 16px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--black);
+  transition: border-color .15s;
+  outline: none;
+  background: var(--white);
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus { border-color: var(--slate); }
+.form-error { color: var(--red); font-size: 12px; font-weight: 500; }
+
+/* ─── Badges ─────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+.badge-new  { background: var(--red);   color: #fff; }
+.badge-sale { background: var(--black); color: #fff; }
+.badge-vip  { background: var(--slate); color: #fff; }
+
+/* ─── Section utilities ───────────────────────── */
+.section { padding: 72px 0; }
+.section-sm { padding: 48px 0; }
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 10px;
+}
+.section-title {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--black);
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+.section-sub {
+  font-size: 16px;
+  color: var(--gray-500);
+  margin-bottom: 40px;
+}
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 36px;
+  gap: 16px;
+}
+
+/* ─── Product grid ────────────────────────────── */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 600px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .section  { padding: 48px 0; }
+  .section-sm { padding: 32px 0; }
+  .section-title { font-size: 24px; }
+  .page-title { font-size: 22px; }
+  .container { padding: 0 16px; }
+}
+
+/* ─── Divider ─────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--gray-200);
+  margin: 0;
+}
+
+/* ─── Spinner ─────────────────────────────────── */
+.spinner-wrap {
+  display: flex; align-items: center; justify-content: center;
+  padding: 80px 0;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--red);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Empty state ─────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+}
+.empty-state h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; color: var(--black); }
+.empty-state p  { color: var(--gray-500); }
+
+/* ─── Page title ──────────────────────────────── */
+.page-title {
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--black);
+  margin: 28px 0 24px;
+}
+
+/* ─── Tag chip ────────────────────────────────── */
+.tag {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--gray-100);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--dark);
+}
+
+/* ─── Qty control (shared) ────────────────────── */
+.qty-control {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.qty-control button {
+  width: 40px; height: 44px;
+  font-size: 20px;
+  color: var(--black);
+  background: none;
+  border: none;
+}
+.qty-control button:hover { background: var(--gray-100); }
+.qty-control span {
+  min-width: 40px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+}
