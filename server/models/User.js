@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
   isPending:  { type: Boolean, default: false },
   resetPasswordToken:   { type: String },
   resetPasswordExpires: { type: Date },
+  lastSeen: { type: Date, default: null },
 }, { timestamps: true });
 
 // Hash password before save

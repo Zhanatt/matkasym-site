@@ -1,11 +1,12 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { getMe } from '../api';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { getMe, heartbeat } from '../api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
+  const hbRef = useRef(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -15,6 +16,14 @@ export function AuthProvider({ children }) {
       .catch(() => localStorage.removeItem('token'))
       .finally(() => setLoading(false));
   }, []);
+
+  // Heartbeat every 60s when logged in
+  useEffect(() => {
+    if (!user) { clearInterval(hbRef.current); return; }
+    heartbeat().catch(() => {});
+    hbRef.current = setInterval(() => heartbeat().catch(() => {}), 60_000);
+    return () => clearInterval(hbRef.current);
+  }, [!!user]);
 
   const saveLogin = (token, userData) => {
     localStorage.setItem('token', token);

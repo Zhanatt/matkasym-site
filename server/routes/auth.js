@@ -169,6 +169,12 @@ router.get('/me', protect, (req, res) => {
   res.json({ user: req.user });
 });
 
+// POST /api/auth/heartbeat — update lastSeen
+router.post('/heartbeat', protect, async (req, res) => {
+  await User.findByIdAndUpdate(req.user._id, { lastSeen: new Date() });
+  res.json({ ok: true });
+});
+
 // PATCH /api/auth/me
 router.patch('/me', protect, async (req, res) => {
   try {
