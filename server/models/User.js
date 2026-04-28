@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
     apt:     { type: String, default: '' },
   },
   favorites:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-  role:       { type: String, enum: ['user','admin','pending'], default: 'user' },
+  role:       { type: String, enum: ['user','owner','admin','editor','viewer','banned'], default: 'user' },
   isPending:  { type: Boolean, default: false },
   resetPasswordToken:   { type: String },
   resetPasswordExpires: { type: Date },

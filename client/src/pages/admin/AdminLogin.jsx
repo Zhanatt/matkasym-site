@@ -22,7 +22,10 @@ export default function AdminLogin() {
     setLoading(true); setError('');
     try {
       const res = await apiLogin({ email: form.email, password: form.password });
-      if (res.data.user.role !== 'admin')
+      const role = res.data.user.role;
+      if (role === 'banned')
+        return setError('Ваш доступ к Продакт матрице запрещён.');
+      if (!['owner','admin','editor','viewer'].includes(role))
         return setError('У вас нет доступа к Продакт матрице.');
       saveLogin(res.data.token, res.data.user);
       navigate('/admin');

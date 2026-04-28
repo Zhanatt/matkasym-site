@@ -3,12 +3,12 @@ import { NavLink, Outlet, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './Admin.css';
 
-const NAV = [
-  { to: '/admin',          label: 'Дашборд',      icon: '◻', end: true },
-  { to: '/admin/products', label: 'Товары',       icon: '📦' },
-  { to: '/admin/map',      label: 'Product Map',  icon: '🗺' },
-  { to: '/admin/users',    label: 'Пользователи', icon: '👥' },
-  { to: '/admin/brands',   label: 'Бренды',       icon: '🏷' },
+const NAV_ALL = [
+  { to: '/admin',          label: 'Дашборд',      icon: '◻', end: true, roles: ['owner','admin','editor','viewer'] },
+  { to: '/admin/products', label: 'Товары',       icon: '📦', roles: ['owner','admin','editor','viewer'] },
+  { to: '/admin/map',      label: 'Product Map',  icon: '🗺', roles: ['owner','admin','editor','viewer'] },
+  { to: '/admin/users',    label: 'Пользователи', icon: '👥', roles: ['owner','admin'] },
+  { to: '/admin/brands',   label: 'Бренды',       icon: '🏷', roles: ['owner','admin','editor'] },
 ];
 
 export default function AdminLayout() {
@@ -16,7 +16,8 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  if (!user || user.role !== 'admin') {
+  const ALLOWED = ['owner', 'admin', 'editor', 'viewer'];
+  if (!user || !ALLOWED.includes(user.role)) {
     return <Navigate to="/admin/login" replace />;
   }
 
@@ -44,7 +45,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="admin-nav">
-          {NAV.map(n => (
+          {NAV_ALL.filter(n => n.roles.includes(user.role)).map(n => (
             <NavLink
               key={n.to}
               to={n.to}

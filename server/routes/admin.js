@@ -3,10 +3,10 @@ const Product    = require('../models/Product');
 const Brand      = require('../models/Brand');
 const User       = require('../models/User');
 const cloudinary = require('../lib/cloudinary');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, editor, viewer } = require('../middleware/auth');
 
-// All admin routes require auth + admin role
-router.use(protect, admin);
+// All admin routes require valid JWT + at least viewer role
+router.use(protect, viewer);
 
 // ── Dashboard stats ──────────────────────────────
 router.get('/stats', async (req, res) => {
@@ -25,7 +25,6 @@ router.get('/stats', async (req, res) => {
 
 // ── Products ─────────────────────────────────────
 
-// GET /api/admin/products?page=1&limit=20&search=&brand=&set=
 router.get('/products', async (req, res) => {
   try {
     const { page = 1, limit = 20, search = '', brand, set, inStock } = req.query;
@@ -40,10 +39,7 @@ router.get('/products', async (req, res) => {
     if (inStock !== undefined) filter.inStock = inStock === 'true';
 
     const [products, total] = await Promise.all([
-      Product.find(filter)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(Number(limit)),
+      Product.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(Number(limit)),
       Product.countDocuments(filter),
     ]);
     res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });
@@ -52,8 +48,6 @@ router.get('/products', async (req, res) => {
   }
 });
 
-// GET /api/admin/products/facets?brand=&set=&category=
-// Returns distinct sets and categories that actually exist in products
 router.get('/products/facets', async (req, res) => {
   try {
     const { brand, set, category, search } = req.query;
@@ -66,30 +60,18 @@ router.get('/products/facets', async (req, res) => {
       { fullName: new RegExp(search, 'i') },
       { sku: new RegExp(search, 'i') },
     ];
-
-    // Distinct sets when brand (+ optionally category) selected
-    const filterForSets = { ...base };
-    delete filterForSets.set;
-
-    // Distinct categories when brand (+ optionally set) selected
-    const filterForCats = { ...base };
-    delete filterForCats.category;
-
+    const filterForSets = { ...base }; delete filterForSets.set;
+    const filterForCats = { ...base }; delete filterForCats.category;
     const [sets, categories] = await Promise.all([
       Product.distinct('set', filterForSets),
       Product.distinct('category', filterForCats),
     ]);
-
-    res.json({
-      sets:       sets.filter(Boolean).sort(),
-      categories: categories.filter(Boolean).sort(),
-    });
+    res.json({ sets: sets.filter(Boolean).sort(), categories: categories.filter(Boolean).sort() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// GET /api/admin/products/:id
 router.get('/products/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -100,129 +82,88 @@ router.get('/products/:id', async (req, res) => {
   }
 });
 
-// POST /api/admin/products
-router.post('/products', async (req, res) => {
-  try {
-    const product = await Product.create(req.body);
-    res.status(201).json(product);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
+// Editor+ required for mutations
+router.post('/products',       editor, async (req, res) => {
+  try { res.status(201).json(await Product.create(req.body)); }
+  catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// PATCH /api/admin/products/:id
-router.patch('/products/:id', async (req, res) => {
+router.patch('/products/:id',  editor, async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id, req.body, { new: true, runValidators: true }
-    );
-    if (!product) return res.status(404).json({ error: 'Не найден' });
-    res.json(product);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
+    const p = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!p) return res.status(404).json({ error: 'Не найден' });
+    res.json(p);
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// DELETE /api/admin/products/:id
-router.delete('/products/:id', async (req, res) => {
-  try {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+router.delete('/products/:id', editor, async (req, res) => {
+  try { await Product.findByIdAndDelete(req.params.id); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── Cloudinary ───────────────────────────────────
-
-// DELETE /api/admin/images  { url: "https://res.cloudinary.com/..." }
-router.delete('/images', async (req, res) => {
+router.delete('/images', editor, async (req, res) => {
   try {
     const { url } = req.body;
-    if (!url || !url.includes('cloudinary.com')) {
+    if (!url || !url.includes('cloudinary.com'))
       return res.status(400).json({ error: 'Не Cloudinary URL' });
-    }
-
-    // Extract public_id from URL
-    // e.g. .../upload/v1234/folder/filename.jpg  →  folder/filename
     const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(\.[^.]+)?$/);
     if (!match) return res.status(400).json({ error: 'Не удалось извлечь public_id' });
-
-    const publicId = match[1];
-    const result   = await cloudinary.uploader.destroy(publicId);
-
-    res.json({ ok: true, result });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    res.json({ ok: true, result: await cloudinary.uploader.destroy(match[1]) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Brands / Sets ────────────────────────────────
-
-// GET /api/admin/brands
+// ── Brands ───────────────────────────────────────
 router.get('/brands', async (req, res) => {
-  try {
-    const brands = await Brand.find().sort('order');
-    res.json(brands);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  try { res.json(await Brand.find().sort('order')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PATCH /api/admin/brands/:key
-router.patch('/brands/:key', async (req, res) => {
+router.patch('/brands/:key', editor, async (req, res) => {
   try {
-    const brand = await Brand.findOneAndUpdate(
-      { key: req.params.key }, req.body, { new: true, runValidators: true }
-    );
+    const brand = await Brand.findOneAndUpdate({ key: req.params.key }, req.body, { new: true, runValidators: true });
     if (!brand) return res.status(404).json({ error: 'Не найден' });
     res.json(brand);
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// ── Users ────────────────────────────────────────────
-
-// GET /api/admin/users
-router.get('/users', async (req, res) => {
+// ── Users (admin+ only) ──────────────────────────
+router.get('/users', admin, async (req, res) => {
   try {
-    const users = await User.find({})
-      .select('-password -resetPasswordToken -resetPasswordExpires')
-      .sort({ createdAt: -1 });
-    res.json(users);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+    res.json(await User.find({}).select('-password -resetPasswordToken -resetPasswordExpires').sort({ createdAt: -1 }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PATCH /api/admin/users/:id  — change role or isPending
-router.patch('/users/:id', async (req, res) => {
+router.patch('/users/:id', admin, async (req, res) => {
   try {
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ error: 'Не найден' });
+    // Nobody can change owner's role
+    if (target.role === 'owner')
+      return res.status(403).json({ error: 'Нельзя изменить роль владельца' });
+    // Only owner can assign owner role
+    if (req.body.role === 'owner' && req.user.role !== 'owner')
+      return res.status(403).json({ error: 'Только владелец может назначить другого владельца' });
     const { role, isPending } = req.body;
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { ...(role !== undefined && { role }), ...(isPending !== undefined && { isPending }) },
       { new: true }
     ).select('-password');
-    if (!user) return res.status(404).json({ error: 'Не найден' });
     res.json(user);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// DELETE /api/admin/users/:id
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/:id', admin, async (req, res) => {
   try {
-    // Prevent deleting yourself
     if (req.params.id === req.user._id.toString())
       return res.status(400).json({ error: 'Нельзя удалить себя' });
+    const target = await User.findById(req.params.id);
+    if (target?.role === 'owner')
+      return res.status(403).json({ error: 'Нельзя удалить владельца' });
     await User.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

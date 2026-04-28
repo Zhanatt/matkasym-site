@@ -21,9 +21,13 @@ function timeAgo(date) {
 }
 
 const AVATAR_COLORS = {
-  admin: '#2d7a3a',
-  user:  '#1a6fb5',
-  pending: '#c47a00',
+  owner:  '#000',
+  admin:  '#2d7a3a',
+  editor: '#7b3fa0',
+  viewer: '#1a6fb5',
+  banned: '#c0392b',
+  user:   '#888',
+  pending:'#c47a00',
 };
 
 export default function AdminUsers() {
@@ -132,27 +136,32 @@ export default function AdminUsers() {
           >
             ✓ Одобрить доступ
           </button>
+        ) : u.role === 'owner' ? (
+          <div style={{
+            padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+            background: '#000', color: '#fff', minWidth: 140, textAlign: 'center',
+          }}>
+            👑 Владелец
+          </div>
         ) : (
           <select
             value={u.role}
             disabled={isSelf || saving === u._id}
             onChange={e => handleRoleChange(u, e.target.value)}
             style={{
-              padding: '7px 12px',
-              borderRadius: 8,
+              padding: '7px 12px', borderRadius: 8,
               border: '1.5px solid var(--gray-200)',
-              fontSize: 13,
-              fontWeight: 700,
-              fontFamily: 'inherit',
+              fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
               cursor: isSelf ? 'not-allowed' : 'pointer',
               background: '#fff',
-              color: u.role === 'admin' ? '#2d7a3a' : '#1a6fb5',
-              outline: 'none',
-              minWidth: 140,
+              color: AVATAR_COLORS[u.role] || '#333',
+              outline: 'none', minWidth: 160,
             }}
           >
-            <option value="admin">👑 Администратор</option>
-            <option value="user">👤 Пользователь</option>
+            <option value="admin">🛡️ Администратор</option>
+            <option value="editor">✏️ Редактор</option>
+            <option value="viewer">👁️ Просмотр</option>
+            <option value="banned">🚫 Запретить доступ</option>
           </select>
         )}
 
