@@ -4,9 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import './Admin.css';
 
 const NAV = [
-  { to: '/admin',          label: 'Дашборд',  icon: '◻', end: true },
-  { to: '/admin/products', label: 'Товары',   icon: '📦' },
-  { to: '/admin/brands',   label: 'Бренды',   icon: '🏷' },
+  { to: '/admin',          label: 'Дашборд',      icon: '◻', end: true },
+  { to: '/admin/products', label: 'Товары',       icon: '📦' },
+  { to: '/admin/map',      label: 'Product Map',  icon: '🗺' },
+  { to: '/admin/brands',   label: 'Бренды',       icon: '🏷' },
 ];
 
 export default function AdminLayout() {

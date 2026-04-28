@@ -7,6 +7,7 @@ import AdminResetPassword from './pages/admin/AdminResetPassword';
 import AdminDashboard     from './pages/admin/AdminDashboard';
 import AdminProducts      from './pages/admin/AdminProducts';
 import AdminProductForm   from './pages/admin/AdminProductForm';
+import AdminProductMap    from './pages/admin/AdminProductMap';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -32,6 +33,7 @@ export default function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/:id" element={<AdminProductForm />} />
+          <Route path="map" element={<AdminProductMap />} />
         </Route>
       </Routes>
     );
