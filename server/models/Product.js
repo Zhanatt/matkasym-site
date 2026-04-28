@@ -16,10 +16,10 @@ const productSchema = new mongoose.Schema({
   category: { type: String, required: true, default: 'other' },
 
   // Pricing
-  price:          { type: Number, required: true, min: 0 },
-  priceWholesale: { type: Number, default: 0 },
-  priceDealer:    { type: Number, default: 0 },
-  oldPrice:       { type: Number, default: null },
+  priceCost:      { type: Number, default: 0 },   // Себестоимость
+  priceWholesale: { type: Number, default: 0 },   // Оптовая цена
+  priceDealer:    { type: Number, default: 0 },   // Дилерская цена
+  price:          { type: Number, required: true, min: 0 }, // Розничная цена (на сайте)
 
   // Dimensions
   dimensions: { type: String, default: '' },  // e.g. "134x55x108 см"

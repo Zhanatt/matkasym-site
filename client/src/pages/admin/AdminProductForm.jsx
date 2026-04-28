@@ -20,7 +20,7 @@ const EMPTY = {
   category: '',
   dimensions: '',
   specs: [],
-  price: '', oldPrice: '', priceWholesale: '', priceDealer: '',
+  priceCost: '', priceWholesale: '', priceDealer: '', price: '',
   description: '',
   images: [],
   inStock: true, isNew: false, stock: 50,
@@ -57,7 +57,7 @@ export default function AdminProductForm() {
     adminGetProduct(id)
       .then(r => {
         const p = r.data;
-        setForm({ ...p, images: p.images || [], specs: p.specs || [], oldPrice: p.oldPrice ?? '', dimensions: p.dimensions || '' });
+        setForm({ ...p, images: p.images || [], specs: p.specs || [], priceCost: p.priceCost ?? '', priceWholesale: p.priceWholesale ?? '', priceDealer: p.priceDealer ?? '', dimensions: p.dimensions || '' });
       })
       .finally(() => setLoading(false));
   }, [id, isNew]);
@@ -124,10 +124,10 @@ export default function AdminProductForm() {
     try {
       const payload = {
         ...form,
-        price:          Number(form.price),
-        oldPrice:       form.oldPrice ? Number(form.oldPrice) : null,
+        priceCost:      Number(form.priceCost) || 0,
         priceWholesale: Number(form.priceWholesale) || 0,
         priceDealer:    Number(form.priceDealer) || 0,
+        price:          Number(form.price),
         stock:          Number(form.stock) || 0,
       };
       if (isNew) await adminCreateProduct(payload);
@@ -280,23 +280,23 @@ export default function AdminProductForm() {
 
           <div className="admin-form-row">
             <div className="admin-form-group">
-              <label>Цена *</label>
-              <input required type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="15000" />
+              <label>Себестоимость</label>
+              <input type="number" min="0" value={form.priceCost} onChange={e => set('priceCost', e.target.value)} placeholder="0" />
             </div>
             <div className="admin-form-group">
-              <label>Старая цена</label>
-              <input type="number" min="0" value={form.oldPrice} onChange={e => set('oldPrice', e.target.value)} placeholder="18000" />
+              <label>Оптовая цена</label>
+              <input type="number" min="0" value={form.priceWholesale} onChange={e => set('priceWholesale', e.target.value)} placeholder="0" />
             </div>
           </div>
 
           <div className="admin-form-row">
             <div className="admin-form-group">
-              <label>Оптовая цена</label>
-              <input type="number" min="0" value={form.priceWholesale} onChange={e => set('priceWholesale', e.target.value)} />
+              <label>Дилерская цена</label>
+              <input type="number" min="0" value={form.priceDealer} onChange={e => set('priceDealer', e.target.value)} placeholder="0" />
             </div>
             <div className="admin-form-group">
-              <label>Дилерская цена</label>
-              <input type="number" min="0" value={form.priceDealer} onChange={e => set('priceDealer', e.target.value)} />
+              <label>Розничная цена * <span style={{ color: 'var(--slate)', fontWeight: 400, fontSize: 11 }}>(на сайте)</span></label>
+              <input required type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="15000" />
             </div>
           </div>
 
