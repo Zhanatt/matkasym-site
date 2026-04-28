@@ -11,8 +11,9 @@ const userSchema = new mongoose.Schema({
     street:  { type: String, default: '' },
     apt:     { type: String, default: '' },
   },
-  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-  role:      { type: String, enum: ['user','admin'], default: 'user' },
+  favorites:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+  role:       { type: String, enum: ['user','admin','pending'], default: 'user' },
+  isPending:  { type: Boolean, default: false },
 }, { timestamps: true });
 
 // Hash password before save

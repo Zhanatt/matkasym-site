@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './Admin.css';
 
@@ -15,12 +15,7 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (!user || user.role !== 'admin') {
-    return (
-      <div className="admin-forbidden">
-        <h2>Доступ запрещён</h2>
-        <p>Эта страница только для администраторов</p>
-      </div>
-    );
+    return <Navigate to="/admin/login" replace />;
   }
 
   const close = () => setSidebarOpen(false);

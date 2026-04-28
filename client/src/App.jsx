@@ -2,6 +2,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import Header           from './components/Header';
 import Footer           from './components/Footer';
 import AdminLayout      from './pages/admin/AdminLayout';
+import AdminLogin       from './pages/admin/AdminLogin';
 import AdminDashboard   from './pages/admin/AdminDashboard';
 import AdminProducts    from './pages/admin/AdminProducts';
 import AdminProductForm from './pages/admin/AdminProductForm';
@@ -24,6 +25,7 @@ export default function App() {
   if (isAdmin) {
     return (
       <Routes>
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
