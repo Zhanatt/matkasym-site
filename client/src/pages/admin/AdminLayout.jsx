@@ -7,6 +7,7 @@ const NAV = [
   { to: '/admin',          label: 'Дашборд',      icon: '◻', end: true },
   { to: '/admin/products', label: 'Товары',       icon: '📦' },
   { to: '/admin/map',      label: 'Product Map',  icon: '🗺' },
+  { to: '/admin/users',    label: 'Пользователи', icon: '👥' },
   { to: '/admin/brands',   label: 'Бренды',       icon: '🏷' },
 ];
 

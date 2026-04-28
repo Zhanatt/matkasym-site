@@ -182,4 +182,47 @@ router.patch('/brands/:key', async (req, res) => {
   }
 });
 
+// ── Users ────────────────────────────────────────────
+
+// GET /api/admin/users
+router.get('/users', async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select('-password -resetPasswordToken -resetPasswordExpires')
+      .sort({ createdAt: -1 });
+    res.json(users);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/admin/users/:id  — change role or isPending
+router.patch('/users/:id', async (req, res) => {
+  try {
+    const { role, isPending } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { ...(role !== undefined && { role }), ...(isPending !== undefined && { isPending }) },
+      { new: true }
+    ).select('-password');
+    if (!user) return res.status(404).json({ error: 'Не найден' });
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/users/:id
+router.delete('/users/:id', async (req, res) => {
+  try {
+    // Prevent deleting yourself
+    if (req.params.id === req.user._id.toString())
+      return res.status(400).json({ error: 'Нельзя удалить себя' });
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
