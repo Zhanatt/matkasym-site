@@ -80,7 +80,7 @@ export default function AdminUsers() {
     const isSelf = u._id === me?._id;
 
     return (
-      <div key={u._id} style={{
+      <div key={u._id} className="admin-user-card" style={{
         background: '#fff',
         border: u.isPending ? '1.5px solid #f0c060' : '1px solid var(--gray-200)',
         borderRadius: 10,
@@ -121,58 +121,59 @@ export default function AdminUsers() {
         </div>
 
         {/* Last seen */}
-        <div style={{ fontSize: 12, color: 'var(--slate)', minWidth: 90, textAlign: 'center' }}>
+        <div className="admin-user-meta" style={{ fontSize: 12, color: 'var(--slate)', minWidth: 90, textAlign: 'center' }}>
           {online ? <span style={{ color: '#2d7a3a', fontWeight: 600 }}>сейчас</span> : timeAgo(u.lastSeen || u.updatedAt)}
         </div>
 
-        {/* Role selector */}
-        {u.isPending ? (
-          <button
-            className="btn btn-sm"
-            style={{ background: '#2d7a3a', color: '#fff', border: 'none', fontSize: 13, padding: '8px 16px' }}
-            onClick={() => handleApprove(u)}
-            disabled={saving === u._id}
-          >
-            ✓ Одобрить доступ
-          </button>
-        ) : u.role === 'owner' ? (
-          <div style={{
-            padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-            background: '#000', color: '#fff', minWidth: 140, textAlign: 'center',
-          }}>
-            👑 Владелец
-          </div>
-        ) : (
-          <select
-            value={u.role}
-            disabled={isSelf || saving === u._id}
-            onChange={e => handleRoleChange(u, e.target.value)}
-            style={{
-              padding: '7px 12px', borderRadius: 8,
-              border: '1.5px solid var(--gray-200)',
-              fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
-              cursor: isSelf ? 'not-allowed' : 'pointer',
-              background: '#fff',
-              color: AVATAR_COLORS[u.role] || '#333',
-              outline: 'none', minWidth: 160,
-            }}
-          >
-            <option value="editor">✏️ Редактор</option>
-            <option value="viewer">👁️ Просмотр</option>
-            <option value="banned">🚫 Запретить доступ</option>
-          </select>
-        )}
+        {/* Role + Delete actions */}
+        <div className="admin-user-actions">
+          {u.isPending ? (
+            <button
+              className="btn btn-sm"
+              style={{ background: '#2d7a3a', color: '#fff', border: 'none', fontSize: 13, padding: '8px 16px' }}
+              onClick={() => handleApprove(u)}
+              disabled={saving === u._id}
+            >
+              ✓ Одобрить доступ
+            </button>
+          ) : u.role === 'owner' ? (
+            <div style={{
+              padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              background: '#000', color: '#fff', minWidth: 140, textAlign: 'center',
+            }}>
+              👑 Владелец
+            </div>
+          ) : (
+            <select
+              value={u.role}
+              disabled={isSelf || saving === u._id}
+              onChange={e => handleRoleChange(u, e.target.value)}
+              style={{
+                padding: '7px 12px', borderRadius: 8,
+                border: '1.5px solid var(--gray-200)',
+                fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                cursor: isSelf ? 'not-allowed' : 'pointer',
+                background: '#fff',
+                color: AVATAR_COLORS[u.role] || '#333',
+                outline: 'none', minWidth: 160,
+              }}
+            >
+              <option value="editor">✏️ Редактор</option>
+              <option value="viewer">👁️ Просмотр</option>
+              <option value="banned">🚫 Запретить доступ</option>
+            </select>
+          )}
 
-        {/* Delete */}
-        {!isSelf && (
-          <button
-            className="btn btn-sm"
-            style={{ background: '#fde8e8', color: '#c0392b', border: 'none', fontSize: 13, padding: '8px 14px' }}
-            onClick={() => setConfirm(u)}
-          >
-            Удалить
-          </button>
-        )}
+          {!isSelf && (
+            <button
+              className="btn btn-sm"
+              style={{ background: '#fde8e8', color: '#c0392b', border: 'none', fontSize: 13, padding: '8px 14px' }}
+              onClick={() => setConfirm(u)}
+            >
+              Удалить
+            </button>
+          )}
+        </div>
       </div>
     );
   };

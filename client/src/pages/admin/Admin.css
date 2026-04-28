@@ -19,11 +19,12 @@
 }
 
 .admin-sidebar-logo {
-  padding: 20px 20px 16px;
+  padding: 18px 20px 16px;
   border-bottom: 1px solid rgba(255,255,255,.08);
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 .admin-sidebar-logo img {
   height: 28px;
@@ -32,13 +33,14 @@
 .admin-sidebar-tag {
   font-size: 9px;
   font-weight: 800;
-  letter-spacing: .5px;
+  letter-spacing: .8px;
   text-transform: uppercase;
   background: var(--red);
   color: #fff;
-  padding: 3px 7px;
+  padding: 3px 8px;
   border-radius: 4px;
   white-space: nowrap;
+  align-self: flex-start;
 }
 
 .admin-nav {
@@ -489,13 +491,25 @@ table.admin-table {
     grid-template-columns: 1fr;
   }
 
-  /* Toolbar wraps */
+  /* Toolbar → 2-col grid on mobile */
   .admin-toolbar {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
     padding: 12px 16px;
   }
-  .admin-search { min-width: 0; }
+  .admin-search {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .admin-select {
+    min-width: 0;
+    width: 100%;
+  }
+  .admin-toolbar-groupby {
+    grid-column: 1 / -1;
+    margin-left: 0 !important;
+  }
 
   /* Table → card layout */
   table.admin-table,
@@ -524,6 +538,11 @@ table.admin-table {
     gap: 8px;
     font-size: 13px;
   }
+  /* Product cards: reserve space for absolute image */
+  .admin-table tr:not(.admin-table-group-row) {
+    padding-right: 76px;
+  }
+
   /* First td = image → absolute top-right */
   .admin-table td:first-child {
     position: absolute;
@@ -552,6 +571,27 @@ table.admin-table {
 
   /* Pagination */
   .admin-pagination { flex-direction: column; gap: 8px; text-align: center; }
+
+  /* User cards */
+  .admin-user-card {
+    align-items: flex-start !important;
+  }
+  .admin-user-meta {
+    width: 100%;
+    text-align: left !important;
+    min-width: 0 !important;
+    padding: 2px 0;
+  }
+  .admin-user-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+  .admin-user-actions > * {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+  }
 }
 
 @media (max-width: 480px) {

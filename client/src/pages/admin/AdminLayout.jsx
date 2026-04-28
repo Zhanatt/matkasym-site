@@ -32,7 +32,7 @@ export default function AdminLayout() {
           <span /><span /><span />
         </button>
         <img src="/logos/logo-main.png" alt="MATKASYM" style={{ height: 26 }} />
-        <span className="admin-sidebar-tag" style={{ fontSize: 8 }}>Продакт матрица</span>
+        <span className="admin-sidebar-tag" style={{ fontSize: 8 }}>Product Matrix</span>
       </div>
 
       {/* Overlay */}
@@ -41,7 +41,7 @@ export default function AdminLayout() {
       <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="admin-sidebar-logo">
           <img src="/logos/logo-main.png" alt="MATKASYM" />
-          <span className="admin-sidebar-tag">Продакт матрица</span>
+          <span className="admin-sidebar-tag">Product Matrix</span>
         </div>
 
         <nav className="admin-nav">

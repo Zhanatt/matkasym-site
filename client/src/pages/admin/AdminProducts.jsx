@@ -171,7 +171,7 @@ export default function AdminProducts() {
             {STOCK_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--slate)', cursor: 'pointer', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+          <label className="admin-toolbar-groupby" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--slate)', cursor: 'pointer', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={groupBySet} onChange={e => setGroupBySet(e.target.checked)} />
             По сетам
           </label>
