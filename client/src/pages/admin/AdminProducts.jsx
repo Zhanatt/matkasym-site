@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { adminGetProducts, adminDeleteProduct, adminGetFacets } from '../../api/index';
 import { cloudinaryOpt } from '../../utils/drive';
@@ -97,22 +97,26 @@ export default function AdminProducts() {
     load();
   };
 
-  // Group by set
-  const grouped = groupBySet
-    ? products.reduce((acc, p) => {
-        const key = p.set || '__none__';
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(p);
-        return acc;
-      }, {})
-    : { __all__: products };
+  // Group by set (memoized)
+  const grouped = useMemo(() =>
+    groupBySet
+      ? products.reduce((acc, p) => {
+          const key = p.set || '__none__';
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(p);
+          return acc;
+        }, {})
+      : { __all__: products }
+  , [products, groupBySet]);
 
-  const groupKeys = Object.keys(grouped).sort((a, b) => {
-    if (a === '__none__') return 1;
-    if (b === '__none__') return -1;
-    if (a === '__all__')  return 0;
-    return a.localeCompare(b);
-  });
+  const groupKeys = useMemo(() =>
+    Object.keys(grouped).sort((a, b) => {
+      if (a === '__none__') return 1;
+      if (b === '__none__') return -1;
+      if (a === '__all__')  return 0;
+      return a.localeCompare(b);
+    })
+  , [grouped]);
 
   return (
     <div>

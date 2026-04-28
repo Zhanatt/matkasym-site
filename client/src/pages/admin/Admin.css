@@ -1,3 +1,17 @@
+/* ── Keyframes ──────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
 /* ── Shell ──────────────────────────────────────── */
 .admin-shell {
   display: flex;
@@ -60,10 +74,10 @@
   font-size: 14px;
   font-weight: 600;
   color: rgba(255,255,255,.55);
-  transition: background .15s, color .15s;
+  transition: background .2s, color .2s, transform .15s;
   text-decoration: none;
 }
-.admin-nav-link:hover { background: rgba(255,255,255,.07); color: #fff; }
+.admin-nav-link:hover { background: rgba(255,255,255,.07); color: #fff; transform: translateX(3px); }
 .admin-nav-link.active { background: rgba(255,255,255,.12); color: #fff; }
 .admin-nav-icon { font-size: 16px; width: 20px; text-align: center; }
 
@@ -123,7 +137,17 @@
   border-radius: var(--radius-lg);
   padding: 20px 24px;
   border: 1px solid var(--gray-200);
+  animation: fadeInUp .35s ease both;
+  transition: box-shadow .22s, transform .22s;
 }
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,0,0,.08);
+}
+.admin-stats .admin-stat-card:nth-child(1) { animation-delay: .04s; }
+.admin-stats .admin-stat-card:nth-child(2) { animation-delay: .09s; }
+.admin-stats .admin-stat-card:nth-child(3) { animation-delay: .14s; }
+.admin-stats .admin-stat-card:nth-child(4) { animation-delay: .19s; }
 .admin-stat-card__label {
   font-size: 12px;
   font-weight: 700;
@@ -162,9 +186,12 @@
   font-size: 14px;
   font-family: inherit;
   outline: none;
-  transition: border-color .15s;
+  transition: border-color .2s, box-shadow .2s;
 }
-.admin-search:focus { border-color: var(--slate); }
+.admin-search:focus {
+  border-color: var(--slate);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.05);
+}
 
 .admin-select {
   padding: 9px 12px;
@@ -176,8 +203,12 @@
   background: #fff;
   color: var(--dark);
   cursor: pointer;
+  transition: border-color .2s, box-shadow .2s;
 }
-.admin-select:focus { border-color: var(--slate); }
+.admin-select:focus {
+  border-color: var(--slate);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.05);
+}
 
 table.admin-table {
   width: 100%;
@@ -267,9 +298,13 @@ table.admin-table {
   border: none;
   cursor: pointer;
   font-family: inherit;
-  transition: background .15s;
+  transition: background .15s, transform .12s, box-shadow .15s;
 }
-.admin-btn-edit:hover { background: var(--gray-200); }
+.admin-btn-edit:hover {
+  background: var(--gray-200);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,.08);
+}
 .admin-btn-delete {
   padding: 6px 14px;
   border-radius: var(--radius);
@@ -280,9 +315,28 @@ table.admin-table {
   border: none;
   cursor: pointer;
   font-family: inherit;
-  transition: background .15s;
+  transition: background .15s, transform .12s, box-shadow .15s;
 }
-.admin-btn-delete:hover { background: #f5c6c6; }
+.admin-btn-delete:hover {
+  background: #f5c6c6;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(192,57,43,.15);
+}
+
+/* ── User cards ─────────────────────────────────── */
+.admin-user-card {
+  transition: box-shadow .22s, transform .22s !important;
+}
+.admin-user-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,.08) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ── Table rows ─────────────────────────────────── */
+.admin-table tbody tr {
+  transition: background .15s;
+  animation: fadeIn .22s ease both;
+}
 
 /* ── Pagination ─────────────────────────────────── */
 .admin-pagination {
@@ -310,6 +364,11 @@ table.admin-table {
 .admin-pagination-btn:hover { border-color: var(--black); }
 .admin-pagination-btn:disabled { opacity: .4; cursor: not-allowed; }
 
+/* ── Page transition wrapper ────────────────────── */
+.admin-page {
+  animation: fadeInUp .28s cubic-bezier(.2,.8,.4,1) both;
+}
+
 /* ── Modal / Form ───────────────────────────────── */
 .admin-modal-overlay {
   position: fixed;
@@ -319,6 +378,7 @@ table.admin-table {
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
+  animation: fadeIn .2s ease both;
 }
 .admin-modal {
   background: #fff;
@@ -330,7 +390,7 @@ table.admin-table {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  animation: slideIn .2s ease;
+  animation: slideIn .25s cubic-bezier(.2,.8,.4,1) both;
 }
 @keyframes slideIn {
   from { transform: translateX(100%); }

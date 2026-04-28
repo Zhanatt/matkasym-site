@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate, Navigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './Admin.css';
 
@@ -14,6 +14,7 @@ const NAV_ALL = [
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const ALLOWED = ['owner', 'editor', 'viewer'];
@@ -68,7 +69,9 @@ export default function AdminLayout() {
       </aside>
 
       <main className="admin-main">
-        <Outlet />
+        <div key={location.pathname} className="admin-page">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

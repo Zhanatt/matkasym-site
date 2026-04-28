@@ -15,6 +15,11 @@
   max-width: 400px;
   overflow: hidden;
   box-shadow: var(--shadow);
+  animation: loginCardIn .4s cubic-bezier(.2,.8,.4,1) both;
+}
+@keyframes loginCardIn {
+  from { opacity: 0; transform: translateY(24px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .admin-login-header {
