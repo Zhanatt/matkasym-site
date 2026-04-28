@@ -5,7 +5,7 @@ import { login as apiLogin, register as apiRegister, forgotPassword as apiForgot
 import './AdminLogin.css';
 
 export default function AdminLogin() {
-  const { login } = useAuth();
+  const { saveLogin } = useAuth();
   const navigate  = useNavigate();
   const [tab, setTab]         = useState('login'); // 'login' | 'register' | 'forgot'
   const [form, setForm]       = useState({ name: '', email: '', password: '' });
@@ -24,7 +24,7 @@ export default function AdminLogin() {
       const res = await apiLogin({ email: form.email, password: form.password });
       if (res.data.user.role !== 'admin')
         return setError('У вас нет доступа к Продакт матрице.');
-      login(res.data.token, res.data.user);
+      saveLogin(res.data.token, res.data.user);
       navigate('/admin');
     } catch (err) {
       setError(err.response?.data?.message || 'Ошибка входа');

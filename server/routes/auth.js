@@ -41,8 +41,14 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Введите email и пароль' });
 
     const user = await User.findOne({ email });
-    if (!user || !(await user.comparePassword(password)))
+    console.log('[LOGIN] email:', email, '| found:', !!user);
+    if (user) {
+      const match = await user.comparePassword(password);
+      console.log('[LOGIN] passwordMatch:', match, '| isPending:', user.isPending, '| role:', user.role);
+      if (!match) return res.status(401).json({ message: 'Неверный email или пароль' });
+    } else {
       return res.status(401).json({ message: 'Неверный email или пароль' });
+    }
 
     if (user.isPending)
       return res.status(403).json({ message: 'Ваш аккаунт ожидает подтверждения администратора.' });
