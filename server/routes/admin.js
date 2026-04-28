@@ -11,13 +11,17 @@ router.use(protect, viewer);
 // ── Dashboard stats ──────────────────────────────
 router.get('/stats', async (req, res) => {
   try {
-    const [products, outOfStock, brands, users] = await Promise.all([
+    const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
+    const adminRoles = ['owner', 'editor', 'viewer', 'banned'];
+    const [products, outOfStock, brands, users, usersOnline, pending] = await Promise.all([
       Product.countDocuments(),
       Product.countDocuments({ inStock: false }),
       Brand.countDocuments(),
-      User.countDocuments({ role: 'user' }),
+      User.countDocuments({ role: { $in: adminRoles } }),
+      User.countDocuments({ role: { $in: adminRoles }, lastSeen: { $gte: onlineThreshold } }),
+      User.countDocuments({ isPending: true }),
     ]);
-    res.json({ products, outOfStock, brands, users });
+    res.json({ products, outOfStock, brands, users, usersOnline, pending });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
