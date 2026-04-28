@@ -22,7 +22,6 @@ function timeAgo(date) {
 
 const AVATAR_COLORS = {
   owner:  '#000',
-  admin:  '#2d7a3a',
   editor: '#7b3fa0',
   viewer: '#1a6fb5',
   banned: '#c0392b',
@@ -158,7 +157,6 @@ export default function AdminUsers() {
               outline: 'none', minWidth: 160,
             }}
           >
-            <option value="admin">🛡️ Администратор</option>
             <option value="editor">✏️ Редактор</option>
             <option value="viewer">👁️ Просмотр</option>
             <option value="banned">🚫 Запретить доступ</option>

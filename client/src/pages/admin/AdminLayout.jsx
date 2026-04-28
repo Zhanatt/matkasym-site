@@ -4,11 +4,11 @@ import { useAuth } from '../../context/AuthContext';
 import './Admin.css';
 
 const NAV_ALL = [
-  { to: '/admin',          label: 'Дашборд',      icon: '◻', end: true, roles: ['owner','admin','editor','viewer'] },
-  { to: '/admin/products', label: 'Товары',       icon: '📦', roles: ['owner','admin','editor','viewer'] },
-  { to: '/admin/map',      label: 'Product Map',  icon: '🗺', roles: ['owner','admin','editor','viewer'] },
-  { to: '/admin/users',    label: 'Пользователи', icon: '👥', roles: ['owner','admin'] },
-  { to: '/admin/brands',   label: 'Бренды',       icon: '🏷', roles: ['owner','admin','editor'] },
+  { to: '/admin',          label: 'Дашборд',      icon: '◻', end: true, roles: ['owner','editor','viewer'] },
+  { to: '/admin/products', label: 'Товары',       icon: '📦', roles: ['owner','editor','viewer'] },
+  { to: '/admin/map',      label: 'Product Map',  icon: '🗺', roles: ['owner','editor','viewer'] },
+  { to: '/admin/users',    label: 'Пользователи', icon: '👥', roles: ['owner'] },
+  { to: '/admin/brands',   label: 'Бренды',       icon: '🏷', roles: ['owner','editor'] },
 ];
 
 export default function AdminLayout() {
@@ -16,7 +16,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const ALLOWED = ['owner', 'admin', 'editor', 'viewer'];
+  const ALLOWED = ['owner', 'editor', 'viewer'];
   if (!user || !ALLOWED.includes(user.role)) {
     return <Navigate to="/admin/login" replace />;
   }

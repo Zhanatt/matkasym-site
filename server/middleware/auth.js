@@ -18,25 +18,25 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// owner + admin only (user management, sensitive ops)
+// owner only (user management, sensitive ops)
 exports.admin = (req, res, next) => {
-  if (!['owner', 'admin'].includes(req.user?.role)) {
+  if (req.user?.role !== 'owner') {
     return res.status(403).json({ message: 'Доступ запрещён' });
   }
   next();
 };
 
-// owner + admin + editor (can create/edit/delete products & brands)
+// owner + editor (can create/edit/delete products & brands)
 exports.editor = (req, res, next) => {
-  if (!['owner', 'admin', 'editor'].includes(req.user?.role)) {
+  if (!['owner', 'editor'].includes(req.user?.role)) {
     return res.status(403).json({ message: 'Нет прав для редактирования' });
   }
   next();
 };
 
-// owner + admin + editor + viewer (read-only access to admin panel)
+// owner + editor + viewer (read-only access to admin panel)
 exports.viewer = (req, res, next) => {
-  if (!['owner', 'admin', 'editor', 'viewer'].includes(req.user?.role)) {
+  if (!['owner', 'editor', 'viewer'].includes(req.user?.role)) {
     return res.status(403).json({ message: 'Доступ запрещён' });
   }
   next();
