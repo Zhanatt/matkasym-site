@@ -12,12 +12,21 @@ const NAV_ALL = [
 ];
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const ALLOWED = ['owner', 'editor', 'viewer'];
+
+  // Ждём пока AuthContext проверит токен в localStorage
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7f8fa' }}>
+      <div style={{ width: 32, height: 32, border: '3px solid #e0e0e0', borderTopColor: '#000', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+
   if (!user || !ALLOWED.includes(user.role)) {
     return <Navigate to="/admin/login" replace />;
   }
