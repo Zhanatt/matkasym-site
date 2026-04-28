@@ -7,6 +7,10 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { adminGetProducts } from '../../api/index';
+import { CATEGORIES } from '../../config/categorySpecs';
+
+const categoryLabel = (value) =>
+  CATEGORIES.find(c => c.value === value)?.label || value || '—';
 
 /* ── Custom node components ─────────────────────────── */
 
@@ -73,7 +77,7 @@ function ProductNode({ data, selected }) {
         <div style={{ fontWeight: 700, fontSize: 12, color: '#000', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 175 }}>
           {data.name}
         </div>
-        <div style={{ fontSize: 11, color: '#7d96a0', marginTop: 2 }}>{data.category}</div>
+        <div style={{ fontSize: 11, color: '#7d96a0', marginTop: 2 }}>{categoryLabel(data.category)}</div>
         {data.price > 0 && (
           <div style={{ fontSize: 11, color: '#e10523', fontWeight: 700, marginTop: 1 }}>
             {data.price.toLocaleString()} сом
