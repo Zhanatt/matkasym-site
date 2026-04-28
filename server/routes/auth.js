@@ -2,7 +2,8 @@ const router  = require('express').Router();
 const jwt     = require('jsonwebtoken');
 const User    = require('../models/User');
 const { protect } = require('../middleware/auth');
-const { sendApprovalRequest, sendApproved, sendRejected } = require('../lib/mailer');
+const crypto  = require('crypto');
+const { sendApprovalRequest, sendApproved, sendRejected, sendPasswordReset } = require('../lib/mailer');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -100,6 +101,66 @@ router.get('/reject/:id', async (req, res) => {
     `);
   } catch (err) {
     res.status(500).send('Ошибка: ' + err.message);
+  }
+});
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Введите email' });
+
+    const user = await User.findOne({ email });
+    // Always return success so as not to reveal if email exists
+    if (!user) return res.json({ message: 'Если такой email зарегистрирован, письмо отправлено.' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken   = crypto.createHash('sha256').update(token).digest('hex');
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    await user.save({ validateBeforeSave: false });
+
+    const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
+    const resetLink = `${SITE_URL}/admin/reset-password/${token}`;
+
+    try {
+      await sendPasswordReset({ toEmail: user.email, toName: user.name, resetLink });
+    } catch (e) {
+      console.error('Mailer error:', e.message);
+      user.resetPasswordToken   = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      return res.status(500).json({ message: 'Ошибка отправки письма. Проверьте настройки почты.' });
+    }
+
+    res.json({ message: 'Если такой email зарегистрирован, письмо отправлено.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/auth/reset-password/:token
+router.post('/reset-password/:token', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6)
+      return res.status(400).json({ message: 'Пароль должен быть минимум 6 символов' });
+
+    const hashed = crypto.createHash('sha256').update(req.params.token).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken:   hashed,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) return res.status(400).json({ message: 'Ссылка недействительна или истекла' });
+
+    user.password             = password;
+    user.resetPasswordToken   = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Пароль успешно изменён. Теперь можете войти.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

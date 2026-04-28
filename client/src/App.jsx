@@ -1,11 +1,12 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header           from './components/Header';
 import Footer           from './components/Footer';
-import AdminLayout      from './pages/admin/AdminLayout';
-import AdminLogin       from './pages/admin/AdminLogin';
-import AdminDashboard   from './pages/admin/AdminDashboard';
-import AdminProducts    from './pages/admin/AdminProducts';
-import AdminProductForm from './pages/admin/AdminProductForm';
+import AdminLayout        from './pages/admin/AdminLayout';
+import AdminLogin         from './pages/admin/AdminLogin';
+import AdminResetPassword from './pages/admin/AdminResetPassword';
+import AdminDashboard     from './pages/admin/AdminDashboard';
+import AdminProducts      from './pages/admin/AdminProducts';
+import AdminProductForm   from './pages/admin/AdminProductForm';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -26,6 +27,7 @@ export default function App() {
     return (
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/reset-password/:token" element={<AdminResetPassword />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />

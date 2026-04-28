@@ -14,6 +14,8 @@ const userSchema = new mongoose.Schema({
   favorites:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   role:       { type: String, enum: ['user','admin','pending'], default: 'user' },
   isPending:  { type: Boolean, default: false },
+  resetPasswordToken:   { type: String },
+  resetPasswordExpires: { type: Date },
 }, { timestamps: true });
 
 // Hash password before save

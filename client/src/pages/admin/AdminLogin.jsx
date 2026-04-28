@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { login as apiLogin, register as apiRegister } from '../../api/index';
+import { login as apiLogin, register as apiRegister, forgotPassword as apiForgot } from '../../api/index';
 import './AdminLogin.css';
 
 export default function AdminLogin() {
   const { login } = useAuth();
   const navigate  = useNavigate();
-  const [tab, setTab]       = useState('login'); // 'login' | 'register'
+  const [tab, setTab]       = useState('login'); // 'login' | 'register' | 'forgot'
   const [form, setForm]     = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
   const [success, setSuccess] = useState('');
 
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+
+  const switchTab = (t) => { setTab(t); setError(''); setSuccess(''); };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -26,6 +28,19 @@ export default function AdminLogin() {
       navigate('/admin');
     } catch (err) {
       setError(err.response?.data?.message || 'Ошибка входа');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError(''); setSuccess('');
+    try {
+      const res = await apiForgot({ email: form.email });
+      setSuccess(res.data.message);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Ошибка отправки');
     } finally {
       setLoading(false);
     }
@@ -58,15 +73,21 @@ export default function AdminLogin() {
         <div className="admin-login-tabs">
           <button
             className={`admin-login-tab ${tab === 'login' ? 'active' : ''}`}
-            onClick={() => { setTab('login'); setError(''); setSuccess(''); }}
+            onClick={() => switchTab('login')}
           >
             Войти
           </button>
           <button
             className={`admin-login-tab ${tab === 'register' ? 'active' : ''}`}
-            onClick={() => { setTab('register'); setError(''); setSuccess(''); }}
+            onClick={() => switchTab('register')}
           >
             Запросить доступ
+          </button>
+          <button
+            className={`admin-login-tab ${tab === 'forgot' ? 'active' : ''}`}
+            onClick={() => switchTab('forgot')}
+          >
+            Забыли пароль?
           </button>
         </div>
 
@@ -97,6 +118,31 @@ export default function AdminLogin() {
             {error && <p className="admin-login-error">{error}</p>}
             <button type="submit" className="admin-login-btn" disabled={loading}>
               {loading ? 'Вход...' : 'Войти'}
+            </button>
+          </form>
+        )}
+
+        {/* Forgot password form */}
+        {tab === 'forgot' && (
+          <form onSubmit={handleForgot} className="admin-login-form">
+            <p className="admin-login-hint">
+              Введите email — мы отправим ссылку для сброса пароля (действует 1 час).
+            </p>
+            <div className="admin-login-field">
+              <label>Email</label>
+              <input
+                type="email"
+                required
+                value={form.email}
+                onChange={e => set('email', e.target.value)}
+                placeholder="your@email.com"
+                autoFocus
+              />
+            </div>
+            {error   && <p className="admin-login-error">{error}</p>}
+            {success && <p className="admin-login-success">{success}</p>}
+            <button type="submit" className="admin-login-btn" disabled={loading}>
+              {loading ? 'Отправка...' : 'Отправить письмо'}
             </button>
           </form>
         )}

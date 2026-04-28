@@ -15,8 +15,10 @@ export const getProduct  = (id)     => api.get(`/products/${id}`);
 export const getCategories = ()     => api.get('/products/categories');
 
 // Auth
-export const register = (data) => api.post('/auth/register', data);
-export const login    = (data) => api.post('/auth/login', data);
+export const register       = (data) => api.post('/auth/register', data);
+export const login          = (data) => api.post('/auth/login', data);
+export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
+export const resetPassword  = (token, data) => api.post(`/auth/reset-password/${token}`, data);
 export const getMe    = ()     => api.get('/auth/me');
 export const updateMe = (data) => api.patch('/auth/me', data);
 export const toggleFavorite = (id) => api.post(`/auth/favorites/${id}`);
