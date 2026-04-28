@@ -7,14 +7,14 @@ import './AdminLogin.css';
 export default function AdminLogin() {
   const { login } = useAuth();
   const navigate  = useNavigate();
-  const [tab, setTab]       = useState('login'); // 'login' | 'register' | 'forgot'
-  const [form, setForm]     = useState({ name: '', email: '', password: '' });
+  const [tab, setTab]         = useState('login'); // 'login' | 'register' | 'forgot'
+  const [form, setForm]       = useState({ name: '', email: '', password: '' });
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError]     = useState('');
   const [success, setSuccess] = useState('');
 
   const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
-
   const switchTab = (t) => { setTab(t); setError(''); setSuccess(''); };
 
   const handleLogin = async (e) => {
@@ -83,12 +83,6 @@ export default function AdminLogin() {
           >
             Запросить доступ
           </button>
-          <button
-            className={`admin-login-tab ${tab === 'forgot' ? 'active' : ''}`}
-            onClick={() => switchTab('forgot')}
-          >
-            Забыли пароль?
-          </button>
         </div>
 
         {/* Login form */}
@@ -107,15 +101,35 @@ export default function AdminLogin() {
             </div>
             <div className="admin-login-field">
               <label>Пароль</label>
-              <input
-                type="password"
-                required
-                value={form.password}
-                onChange={e => set('password', e.target.value)}
-                placeholder="••••••••"
-              />
+              <div className="admin-login-password-wrap">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  required
+                  value={form.password}
+                  onChange={e => set('password', e.target.value)}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="admin-login-eye"
+                  onClick={() => setShowPass(v => !v)}
+                  tabIndex={-1}
+                  aria-label={showPass ? 'Скрыть пароль' : 'Показать пароль'}
+                >
+                  {showPass ? '🙈' : '👁'}
+                </button>
+              </div>
             </div>
             {error && <p className="admin-login-error">{error}</p>}
+            {error && (
+              <button
+                type="button"
+                className="admin-login-forgot-link"
+                onClick={() => switchTab('forgot')}
+              >
+                Забыли пароль?
+              </button>
+            )}
             <button type="submit" className="admin-login-btn" disabled={loading}>
               {loading ? 'Вход...' : 'Войти'}
             </button>
@@ -143,6 +157,9 @@ export default function AdminLogin() {
             {success && <p className="admin-login-success">{success}</p>}
             <button type="submit" className="admin-login-btn" disabled={loading}>
               {loading ? 'Отправка...' : 'Отправить письмо'}
+            </button>
+            <button type="button" className="admin-login-forgot-link" onClick={() => switchTab('login')}>
+              ← Вернуться ко входу
             </button>
           </form>
         )}
@@ -175,14 +192,24 @@ export default function AdminLogin() {
             </div>
             <div className="admin-login-field">
               <label>Пароль</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={form.password}
-                onChange={e => set('password', e.target.value)}
-                placeholder="Минимум 6 символов"
-              />
+              <div className="admin-login-password-wrap">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={form.password}
+                  onChange={e => set('password', e.target.value)}
+                  placeholder="Минимум 6 символов"
+                />
+                <button
+                  type="button"
+                  className="admin-login-eye"
+                  onClick={() => setShowPass(v => !v)}
+                  tabIndex={-1}
+                >
+                  {showPass ? '🙈' : '👁'}
+                </button>
+              </div>
             </div>
             {error   && <p className="admin-login-error">{error}</p>}
             {success && <p className="admin-login-success">{success}</p>}
