@@ -87,6 +87,8 @@ export default function AdminProducts() {
   const [inStock,        setInStock]        = useState('');
   const [productStatus,  setProductStatus]  = useState('');
   const [stockStatus,    setStockStatus]    = useState('');
+  const [stockFilter,    setStockFilter]    = useState('');   // '' | 'in' | 'out'
+  const [stockSort,      setStockSort]      = useState('');   // '' | 'asc' | 'desc'
   const [page,           setPage]           = useState(1);
   const [groupBySet, setGroupBySet] = useState(true);
 
@@ -168,25 +170,41 @@ export default function AdminProducts() {
   const grouped = useMemo(() => {
     const mk = (p) => `${cleanName(p.name)}__${p.category || ''}`;
 
+    const passStock = (variants) => {
+      if (!stockFilter) return true;
+      const total = variants.reduce((s, v) => s + (v.stock || 0), 0);
+      return stockFilter === 'in' ? total > 0 : total === 0;
+    };
+
     if (groupBySet) {
-      return products.reduce((acc, p) => {
+      const acc = {};
+      products.forEach(p => {
         const sk = p.set || '__none__';
         if (!acc[sk]) acc[sk] = {};
         const key = mk(p);
         if (!acc[sk][key]) acc[sk][key] = [];
         acc[sk][key].push(p);
-        return acc;
-      }, {});
+      });
+      // Apply stock filter
+      Object.keys(acc).forEach(sk => {
+        Object.keys(acc[sk]).forEach(key => {
+          if (!passStock(acc[sk][key])) delete acc[sk][key];
+        });
+        if (Object.keys(acc[sk]).length === 0) delete acc[sk];
+      });
+      return acc;
     }
-    return {
-      __all__: products.reduce((acc, p) => {
-        const key = mk(p);
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(p);
-        return acc;
-      }, {}),
-    };
-  }, [products, groupBySet]);
+    const acc = {};
+    products.forEach(p => {
+      const key = mk(p);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(p);
+    });
+    Object.keys(acc).forEach(key => {
+      if (!passStock(acc[key])) delete acc[key];
+    });
+    return { __all__: acc };
+  }, [products, groupBySet, stockFilter]);
 
   const groupKeys = useMemo(() =>
     Object.keys(grouped).sort((a, b) => {
@@ -196,6 +214,17 @@ export default function AdminProducts() {
       return a.localeCompare(b);
     })
   , [grouped]);
+
+  // Sort model keys within each group by total stock
+  const sortedModelKeys = useCallback((models) => {
+    const keys = Object.keys(models);
+    if (!stockSort) return keys;
+    return keys.sort((a, b) => {
+      const ta = models[a].reduce((s, v) => s + (v.stock || 0), 0);
+      const tb = models[b].reduce((s, v) => s + (v.stock || 0), 0);
+      return stockSort === 'asc' ? ta - tb : tb - ta;
+    });
+  }, [stockSort]);
 
   // Unique model count across current page
   const uniqueModelCount = useMemo(() =>
@@ -257,9 +286,18 @@ export default function AdminProducts() {
             ))}
           </select>
 
-          {/* Stock status */}
-          <select className="admin-select" value={stockStatus} onChange={e => setStockStatus(e.target.value)}>
-            {STOCK_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {/* Stock filter by quantity */}
+          <select className="admin-select" value={stockFilter} onChange={e => setStockFilter(e.target.value)}>
+            <option value="">Любой склад</option>
+            <option value="in">✅ В наличии</option>
+            <option value="out">❌ Нет в наличии</option>
+          </select>
+
+          {/* Stock sort */}
+          <select className="admin-select" value={stockSort} onChange={e => setStockSort(e.target.value)}>
+            <option value="">Сортировка склада</option>
+            <option value="desc">↓ По убыванию</option>
+            <option value="asc">↑ По возрастанию</option>
           </select>
 
           {/* Product status */}
@@ -307,7 +345,7 @@ export default function AdminProducts() {
             <tbody>
               {groupKeys.map(gk => {
                 const models = grouped[gk];
-                const modelKeys = Object.keys(models);
+                const modelKeys = sortedModelKeys(models);
                 return (
                   <>
                     {groupBySet && gk !== '__all__' && (
