@@ -41,9 +41,10 @@ const productSchema = new mongoose.Schema({
   images:      [{ type: String }],  // fallback static URLs
 
   // Status
-  isNew:    { type: Boolean, default: false },
-  inStock:  { type: Boolean, default: true },
-  stock:    { type: Number, default: 50 },
+  isNew:         { type: Boolean, default: false },
+  inStock:       { type: Boolean, default: true },
+  stock:         { type: Number, default: 50 },
+  productStatus: { type: String, enum: ['planned', 'improvement', 'ready'], default: 'ready' },
 
   // Stats
   rating:      { type: Number, default: 0, min: 0, max: 5 },

@@ -31,16 +31,17 @@ router.get('/stats', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', brand, set, inStock } = req.query;
+    const { page = 1, limit = 20, search = '', brand, set, inStock, productStatus } = req.query;
     const filter = {};
     if (search) filter.$or = [
       { name: new RegExp(search, 'i') },
       { fullName: new RegExp(search, 'i') },
       { sku: new RegExp(search, 'i') },
     ];
-    if (brand) filter.brand = brand;
-    if (set)   filter.set   = set;
+    if (brand)         filter.brand         = brand;
+    if (set)           filter.set           = set;
     if (inStock !== undefined) filter.inStock = inStock === 'true';
+    if (productStatus) filter.productStatus = productStatus;
 
     const [products, total] = await Promise.all([
       Product.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(Number(limit)),

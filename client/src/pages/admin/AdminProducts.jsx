@@ -16,6 +16,19 @@ const STOCK_OPTIONS = [
   { value: 'false', label: 'Нет в наличии' },
 ];
 
+const PRODUCT_STATUS_OPTIONS = [
+  { value: '',            label: 'Все статусы' },
+  { value: 'planned',     label: '📋 В плане' },
+  { value: 'improvement', label: '🔧 На улучшении' },
+  { value: 'ready',       label: '✅ Готовые' },
+];
+
+const PRODUCT_STATUS_META = {
+  planned:     { label: 'В плане',       bg: '#eef2ff', color: '#3b5bdb' },
+  improvement: { label: 'На улучшении',  bg: '#fff8e6', color: '#c47a00' },
+  ready:       { label: 'Готовый',       bg: '#e6f4ea', color: '#2d7a3a' },
+};
+
 function thumb(p) {
   if (p.images?.[0]) {
     return p.images[0].includes('cloudinary.com')
@@ -37,8 +50,9 @@ export default function AdminProducts() {
   const [brand,    setBrand]    = useState('');
   const [set,      setSet]      = useState('');
   const [category, setCategory] = useState('');
-  const [inStock,  setInStock]  = useState('');
-  const [page,     setPage]     = useState(1);
+  const [inStock,        setInStock]        = useState('');
+  const [productStatus,  setProductStatus]  = useState('');
+  const [page,           setPage]           = useState(1);
   const [groupBySet, setGroupBySet] = useState(true);
 
   // Data
@@ -69,17 +83,18 @@ export default function AdminProducts() {
   // Reset dependent filters when parent changes
   useEffect(() => { setSet(''); setCategory(''); setPage(1); }, [brand]);
   useEffect(() => { setCategory(''); setPage(1); }, [set]);
-  useEffect(() => { setPage(1); }, [category, search, inStock]);
+  useEffect(() => { setPage(1); }, [category, search, inStock, productStatus]);
 
   // Load products
   const load = useCallback(() => {
     setLoading(true);
     adminGetProducts({
       page, limit: 50, search,
-      brand:    brand    || undefined,
-      set:      set      || undefined,
-      category: category || undefined,
-      inStock:  inStock  || undefined,
+      brand:         brand         || undefined,
+      set:           set           || undefined,
+      category:      category      || undefined,
+      inStock:       inStock       || undefined,
+      productStatus: productStatus || undefined,
     })
       .then(r => {
         setProducts(r.data.products);
@@ -175,6 +190,11 @@ export default function AdminProducts() {
             {STOCK_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
+          {/* Product status */}
+          <select className="admin-select" value={productStatus} onChange={e => setProductStatus(e.target.value)}>
+            {PRODUCT_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+
           <label className="admin-toolbar-groupby" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--slate)', cursor: 'pointer', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={groupBySet} onChange={e => setGroupBySet(e.target.checked)} />
             По сетам
@@ -182,13 +202,14 @@ export default function AdminProducts() {
         </div>
 
         {/* Active filter chips */}
-        {(brand || set || category || inStock || search) && (
+        {(brand || set || category || inStock || search || productStatus) && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '10px 20px', borderBottom: '1px solid var(--gray-200)' }}>
             {brand    && <Chip label={`Бренд: ${brand.replace('matkasym-', '').toUpperCase()}`} onRemove={() => setBrand('')} />}
             {set      && <Chip label={`Сет: ${set.toUpperCase()}`} onRemove={() => setSet('')} />}
             {category && <Chip label={`Категория: ${categoryLabel(category)}`} onRemove={() => setCategory('')} />}
             {inStock  && <Chip label={inStock === 'true' ? 'В наличии' : 'Нет в наличии'} onRemove={() => setInStock('')} />}
-            {search   && <Chip label={`«${search}»`} onRemove={() => setSearch('')} />}
+            {search        && <Chip label={`«${search}»`} onRemove={() => setSearch('')} />}
+            {productStatus && <Chip label={PRODUCT_STATUS_META[productStatus]?.label || productStatus} onRemove={() => setProductStatus('')} />}
           </div>
         )}
 
@@ -263,6 +284,14 @@ export default function AdminProducts() {
                           {p.isNew && (
                             <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>NEW</span>
                           )}
+                          {p.productStatus && p.productStatus !== 'ready' && (() => {
+                            const s = PRODUCT_STATUS_META[p.productStatus];
+                            return s ? (
+                              <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: s.color, marginTop: 3 }}>
+                                {p.productStatus === 'planned' ? '📋' : '🔧'} {s.label}
+                              </span>
+                            ) : null;
+                          })()}
                         </td>
                         <td>
                           <div className="admin-row-actions">

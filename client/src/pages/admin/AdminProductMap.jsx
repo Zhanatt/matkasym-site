@@ -83,6 +83,14 @@ function ProductNode({ data, selected }) {
             {data.price.toLocaleString()} сом
           </div>
         )}
+        {data.productStatus && data.productStatus !== 'ready' && (
+          <div style={{
+            fontSize: 10, fontWeight: 700, marginTop: 2,
+            color: data.productStatus === 'planned' ? '#3b5bdb' : '#c47a00',
+          }}>
+            {data.productStatus === 'planned' ? '📋 В плане' : '🔧 На улучшении'}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -142,6 +150,7 @@ function buildGraph(products, navigate) {
             category: p.category || '',
             price: p.price || 0,
             img: p.images?.[0] || '',
+            productStatus: p.productStatus || 'ready',
             onClick: () => navigate(`/admin/products/${p._id}`),
           },
         });
