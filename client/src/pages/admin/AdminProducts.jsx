@@ -124,7 +124,7 @@ export default function AdminProducts() {
   const load = useCallback(() => {
     setLoading(true);
     adminGetProducts({
-      page, limit: 50, search,
+      page, limit: 500, search,
       brand:         brand         || undefined,
       set:           set           || undefined,
       category:      category      || undefined,
