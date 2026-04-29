@@ -60,27 +60,12 @@ function SetNode({ data }) {
 
 function ProductNode({ data, selected }) {
   const navigate = useNavigate();
-  const [activeIdx, setActiveIdx] = useState(0);
   const isPlanned = data.productStatus === 'planned';
-
-  const variants = data.variants || [];
-  const activeVariant = variants[activeIdx] || null;
-  const displayImg = activeVariant?.img || data.img;
-  const activeId   = activeVariant?.id  || null;
-
-  const handleCardClick = () => {
-    if (activeId) navigate(`/admin/products/${activeId}`);
-    else data.onClick?.();
-  };
-
-  const handleDotClick = (e, idx) => {
-    e.stopPropagation();
-    setActiveIdx(idx);
-  };
+  const hasVariants = data.hasVariants;
 
   return (
     <div
-      onClick={handleCardClick}
+      onClick={() => data.onClick?.()}
       style={{
         background: '#fff',
         borderRadius: 8,
@@ -89,25 +74,24 @@ function ProductNode({ data, selected }) {
         display: 'flex', alignItems: 'center', gap: 10,
         minWidth: 210, maxWidth: 250,
         cursor: 'pointer',
-        boxShadow: selected
-          ? '0 4px 20px rgba(0,0,0,.12)'
-          : '0 1px 5px rgba(0,0,0,.05)',
+        boxShadow: selected ? '0 4px 20px rgba(0,0,0,.12)' : '0 1px 5px rgba(0,0,0,.05)',
         userSelect: 'none',
         opacity: isPlanned ? 0.4 : 1,
-        transition: 'box-shadow .2s, opacity .2s, border-color .2s',
+        transition: 'box-shadow .2s, opacity .2s',
       }}
     >
       <Handle type="target" position={Position.Left} style={{ background: '#ddd', width: 7, height: 7, border: 'none' }} />
+      {hasVariants && (
+        <Handle type="source" position={Position.Right} style={{ background: '#ddd', width: 7, height: 7, border: 'none' }} />
+      )}
 
-      {/* Image */}
       <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: '#f5f5f5' }}>
-        {displayImg
-          ? <img src={displayImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity .18s' }} />
+        {data.img
+          ? <img src={data.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#ccc' }}>□</div>
         }
       </div>
 
-      {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: 12, color: '#111', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {data.name}
@@ -115,41 +99,12 @@ function ProductNode({ data, selected }) {
         <div style={{ fontSize: 10, color: '#bbb', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {categoryLabel(data.category)}
         </div>
-
-        {/* Color dots */}
-        {variants.length > 1 && (
-          <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
-            {variants.map((v, idx) => {
-              const swatch = COLOR_SWATCHES[v.color?.toLowerCase()] || '#bbb';
-              const isActive = idx === activeIdx;
-              return (
-                <div
-                  key={v.id}
-                  title={v.color || ''}
-                  onClick={e => handleDotClick(e, idx)}
-                  style={{
-                    width: 10, height: 10, borderRadius: '50%',
-                    background: swatch,
-                    boxShadow: isActive ? `0 0 0 2px #fff, 0 0 0 3.5px ${swatch}` : '0 0 0 1px rgba(0,0,0,.12)',
-                    flexShrink: 0, cursor: 'pointer',
-                    transition: 'box-shadow .15s, transform .12s',
-                    transform: isActive ? 'scale(1.15)' : 'scale(1)',
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {/* Status badge */}
         {data.productStatus && data.productStatus !== 'ready' && (
           <div style={{
-            display: 'inline-block',
-            fontSize: 9, fontWeight: 700, marginTop: 4,
+            display: 'inline-block', fontSize: 9, fontWeight: 700, marginTop: 4,
             padding: '1px 6px', borderRadius: 4,
             background: data.productStatus === 'planned' ? '#eef2ff' : '#fff8e6',
             color: data.productStatus === 'planned' ? '#3b5bdb' : '#c47a00',
-            letterSpacing: .3,
           }}>
             {data.productStatus === 'planned' ? 'В плане' : 'На улучшении'}
           </div>
@@ -159,7 +114,33 @@ function ProductNode({ data, selected }) {
   );
 }
 
-const nodeTypes = { brand: BrandNode, set: SetNode, product: ProductNode };
+function ColorNode({ data }) {
+  const navigate = useNavigate();
+  const swatch = COLOR_SWATCHES[data.color?.toLowerCase()] || '#bbb';
+  const isLight = ['white', 'grey', 'gray', 'silver'].includes(data.color?.toLowerCase());
+
+  return (
+    <div
+      onClick={() => navigate(`/admin/products/${data.id}`)}
+      title={data.color || ''}
+      style={{
+        width: 30, height: 30,
+        borderRadius: '50%',
+        background: swatch,
+        border: isLight ? '1.5px solid #d0d0d0' : '1.5px solid rgba(0,0,0,.08)',
+        boxShadow: '0 2px 8px rgba(0,0,0,.12)',
+        cursor: 'pointer',
+        transition: 'transform .15s, box-shadow .15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.2)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.12)'; }}
+    >
+      <Handle type="target" position={Position.Left} style={{ background: 'transparent', border: 'none', width: 6, height: 6 }} />
+    </div>
+  );
+}
+
+const nodeTypes = { brand: BrandNode, set: SetNode, product: ProductNode, color: ColorNode };
 
 /* ── Color swatches ─────────────────────────────────── */
 const COLOR_SWATCHES = {
@@ -197,11 +178,14 @@ function buildGraph(products, navigate) {
     brandMap[b][s].push(p);
   });
 
-  const BRAND_X  = 0;
-  const SET_X    = 260;
-  const PROD_X   = 500;
-  const PROD_H   = 60;
-  const SET_GAP  = 24;
+  const BRAND_X   = 0;
+  const SET_X     = 260;
+  const PROD_X    = 500;
+  const COLOR_X   = 790;
+  const COLOR_SIZE = 30;
+  const COLOR_GAP  = 38;
+  const PROD_H    = 64;
+  const SET_GAP   = 24;
   const BRAND_GAP = 60;
 
   let globalY = 0;
@@ -230,17 +214,26 @@ function buildGraph(products, navigate) {
         const allVariantsPlanned = variants.every(v => (v.productStatus || 'ready') === 'planned');
         const anyImprovement = variants.some(v => v.productStatus === 'improvement');
         const status = allVariantsPlanned ? 'planned' : anyImprovement ? 'improvement' : 'ready';
+        const multiColor = variants.length > 1;
+
+        // Group height: enough space for color nodes if multiple variants
+        const groupH = multiColor
+          ? Math.max(PROD_H, variants.length * COLOR_GAP + 8)
+          : PROD_H;
+
+        const groupCenterY = globalY + groupH / 2;
+        const prodY = groupCenterY - 30; // center 60px card
 
         nodes.push({
           id: pid, type: 'product',
-          position: { x: PROD_X, y: globalY },
+          position: { x: PROD_X, y: prodY },
           data: {
             name,
             category: primary.category || '',
             price: primary.price || 0,
             img: primary.images?.[0] || '',
             productStatus: status,
-            variants: variants.map(v => ({ color: v.color, id: v._id, img: v.images?.[0] || '' })),
+            hasVariants: multiColor,
             onClick: () => navigate(`/admin/products/${primary._id}`),
           },
         });
@@ -251,7 +244,29 @@ function buildGraph(products, navigate) {
           style: { stroke: color, strokeWidth: 1.5, opacity: .5 },
           markerEnd: { type: MarkerType.Arrow, color },
         });
-        globalY += PROD_H;
+
+        // Color variant nodes branching to the right
+        if (multiColor) {
+          const totalH = (variants.length - 1) * COLOR_GAP;
+          const colorStartY = groupCenterY - totalH / 2 - COLOR_SIZE / 2;
+
+          variants.forEach((v, i) => {
+            const cid = `color__${v._id}`;
+            nodes.push({
+              id: cid, type: 'color',
+              position: { x: COLOR_X, y: colorStartY + i * COLOR_GAP },
+              data: { color: v.color, id: v._id },
+            });
+            edges.push({
+              id: `e__${pid}__${cid}`,
+              source: pid, target: cid,
+              type: 'smoothstep',
+              style: { stroke: '#e0e0e0', strokeWidth: 1.5 },
+            });
+          });
+        }
+
+        globalY += groupH + 8;
       });
 
       const setMidY = (setStartY + globalY) / 2 - 36;
