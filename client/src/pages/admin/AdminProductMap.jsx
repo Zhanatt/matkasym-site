@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Background, Controls, MiniMap,
-  useNodesState, useEdgesState,
+  useNodesState, useEdgesState, useReactFlow,
   MarkerType, Handle, Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -115,13 +115,23 @@ function ProductNode({ data, selected }) {
 }
 
 function ColorNode({ data }) {
-  const navigate = useNavigate();
+  const { setNodes } = useReactFlow();
   const swatch = COLOR_SWATCHES[data.color?.toLowerCase()] || '#bbb';
-  const isLight = ['white', 'grey', 'gray', 'silver'].includes(data.color?.toLowerCase());
+  const isLight = ['white', 'grey', 'gray', 'silver', 'beige'].includes(data.color?.toLowerCase());
+
+  const handleClick = () => {
+    if (data.productNodeId && data.img) {
+      setNodes(nodes => nodes.map(n =>
+        n.id === data.productNodeId
+          ? { ...n, data: { ...n.data, img: data.img } }
+          : n
+      ));
+    }
+  };
 
   return (
     <div
-      onClick={() => navigate(`/admin/products/${data.id}`)}
+      onClick={handleClick}
       title={data.color || ''}
       style={{
         width: 30, height: 30,
@@ -164,7 +174,9 @@ const SET_COLORS = [
 ];
 
 const COLOR_SUFFIX_RE = /\s*\((бел[ыьа][йяе]?|чёрн[ыьа][йяе]?|сер[ыьа][йяе]?|коричнев[ыьа][йяе]?|бежев[ыьа][йяе]?|красн[ыьа][йяе]?|синий|синяя|зелён[ыьа][йяе]?|золот[ыьа][йяе]?|серебрист[ыьа][йяе]?|white|black|grey|gray|brown|beige|red|blue|green|gold|silver)\)\s*$/i;
-function cleanName(name = '') { return name.replace(COLOR_SUFFIX_RE, '').trim(); }
+function cleanName(name = '') {
+  return name.replace(COLOR_SUFFIX_RE, '').replace(/__.*$/, '').trim();
+}
 
 /* ── Layout builder ─────────────────────────────────── */
 function buildGraph(products, navigate) {
@@ -259,7 +271,7 @@ function buildGraph(products, navigate) {
             nodes.push({
               id: cid, type: 'color',
               position: { x: COLOR_X, y: colorStartY + i * COLOR_GAP },
-              data: { color: v.color, id: v._id },
+              data: { color: v.color, id: v._id, img: v.images?.[0] || '', productNodeId: pid },
             });
             edges.push({
               id: `e__${pid}__${cid}`,
