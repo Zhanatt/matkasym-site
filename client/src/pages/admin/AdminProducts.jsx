@@ -396,10 +396,13 @@ export default function AdminProducts() {
                           </td>
                           <td>
                             {(() => {
-                              const ss = primary.stockStatus || (primary.inStock ? 'in_stock' : 'out_of_stock');
-                              const sm = STOCK_STATUS_META[ss];
-                              const icon = { in_stock: '✅', out_of_stock: '❌', expected: '🕐' }[ss] || '';
-                              return <span style={{ fontSize: 12, fontWeight: 700, color: sm?.color }}>{icon} {sm?.label || ss}</span>;
+                              const totalStock = variants.reduce((s, v) => s + (v.stock || 0), 0);
+                              const color = totalStock > 10 ? '#2d7a3a' : totalStock > 0 ? '#c47a00' : '#c0392b';
+                              return (
+                                <span style={{ fontSize: 15, fontWeight: 800, color }}>
+                                  {totalStock}
+                                </span>
+                              );
                             })()}
                           </td>
                           <td>
