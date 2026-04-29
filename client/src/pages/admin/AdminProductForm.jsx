@@ -64,10 +64,10 @@ export default function AdminProductForm() {
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
-  // When category changes — reset specs to template defaults
+  // When category changes — reset specs to template defaults (skip Цвет — handled separately)
   const handleCategoryChange = (value) => {
     set('category', value);
-    const template = CATEGORY_SPECS[value] || [];
+    const template = (CATEGORY_SPECS[value] || []).filter(t => t.key !== 'Цвет');
     setForm(f => ({
       ...f,
       category: value,
@@ -219,17 +219,50 @@ export default function AdminProductForm() {
 
           <div className="admin-form-group">
             <label>Цвет</label>
-            <SelectWithAdd
-              options={[
-                { value: 'white', label: 'Белый' },
-                { value: 'black', label: 'Чёрный' },
-                { value: 'grey',  label: 'Серый' },
-              ]}
-              value={form.color}
-              onChange={v => set('color', v)}
-              onAdd={({ value, label }) => set('color', value)}
-              placeholder="Выберите цвет..."
-            />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+              {[
+                { value: 'white',  label: 'Белый',       hex: '#f0f0f0', border: '#ccc' },
+                { value: 'black',  label: 'Чёрный',      hex: '#222',    border: '#222' },
+                { value: 'grey',   label: 'Серый',       hex: '#999',    border: '#999' },
+                { value: 'brown',  label: 'Коричневый',  hex: '#8B6914', border: '#8B6914' },
+                { value: 'beige',  label: 'Бежевый',     hex: '#d4b896', border: '#b89060' },
+                { value: 'red',    label: 'Красный',     hex: '#e10523', border: '#e10523' },
+                { value: 'blue',   label: 'Синий',       hex: '#1a6fb5', border: '#1a6fb5' },
+                { value: 'green',  label: 'Зелёный',     hex: '#2d7a3a', border: '#2d7a3a' },
+                { value: 'gold',   label: 'Золотой',     hex: '#c8a500', border: '#c8a500' },
+                { value: 'silver', label: 'Серебряный',  hex: '#aaa',    border: '#aaa' },
+              ].map(c => {
+                const active = form.color === c.value;
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    title={c.label}
+                    onClick={() => set('color', active ? '' : c.value)}
+                    style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: c.hex,
+                      border: active ? `3px solid #000` : `2px solid ${c.border}`,
+                      cursor: 'pointer',
+                      boxShadow: active ? '0 0 0 2px #fff inset' : 'none',
+                      transition: 'transform .12s, box-shadow .12s',
+                      transform: active ? 'scale(1.18)' : 'scale(1)',
+                      outline: 'none',
+                      flexShrink: 0,
+                    }}
+                  />
+                );
+              })}
+              {form.color && (
+                <span style={{ fontSize: 12, color: 'var(--slate)', marginLeft: 4 }}>
+                  {['white','black','grey','brown','beige','red','blue','green','gold','silver'].includes(form.color)
+                    ? ['Белый','Чёрный','Серый','Коричневый','Бежевый','Красный','Синий','Зелёный','Золотой','Серебряный'][
+                        ['white','black','grey','brown','beige','red','blue','green','gold','silver'].indexOf(form.color)
+                      ]
+                    : form.color}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Габариты */}
@@ -243,12 +276,13 @@ export default function AdminProductForm() {
           </div>
 
           {/* Характеристики по категории */}
-          {form.specs.length > 0 && (
+          {form.specs.some(s => s.key !== 'Цвет') && (
             <>
               {sectionLabel('Характеристики')}
               <div className="admin-specs-grid">
                 {form.specs.map((spec, idx) => {
-                  const template = (CATEGORY_SPECS[form.category] || [])[idx];
+                  if (spec.key === 'Цвет') return null;
+                  const template = (CATEGORY_SPECS[form.category] || []).find(t => t.key === spec.key);
                   return (
                     <div className="admin-form-group" key={spec.key}>
                       <label>

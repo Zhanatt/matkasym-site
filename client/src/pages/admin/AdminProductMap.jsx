@@ -163,6 +163,9 @@ const SET_COLORS = [
   '#3d3d9e','#006b4f',
 ];
 
+const COLOR_SUFFIX_RE = /\s*\((бел[ыьа][йяе]?|чёрн[ыьа][йяе]?|сер[ыьа][йяе]?|коричнев[ыьа][йяе]?|бежев[ыьа][йяе]?|красн[ыьа][йяе]?|синий|синяя|зелён[ыьа][йяе]?|золот[ыьа][йяе]?|серебрист[ыьа][йяе]?|white|black|grey|gray|brown|beige|red|blue|green|gold|silver)\)\s*$/i;
+function cleanName(name = '') { return name.replace(COLOR_SUFFIX_RE, '').trim(); }
+
 /* ── Layout builder ─────────────────────────────────── */
 function buildGraph(products, navigate) {
   const nodes = [];
@@ -201,10 +204,10 @@ function buildGraph(products, navigate) {
       const color = SET_COLORS[colorIdx % SET_COLORS.length];
       colorIdx++;
 
-      // Group variants by name + category (same name but different category = different product)
+      // Group variants by cleanName + category
       const nameGroups = {};
       prods.forEach(p => {
-        const key = `${p.name}__${p.category || ''}`;
+        const key = `${cleanName(p.name)}__${p.category || ''}`;
         if (!nameGroups[key]) nameGroups[key] = [];
         nameGroups[key].push(p);
       });

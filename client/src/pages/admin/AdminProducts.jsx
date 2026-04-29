@@ -29,6 +29,24 @@ const PRODUCT_STATUS_META = {
   ready:       { label: 'Готовый',       bg: '#e6f4ea', color: '#2d7a3a' },
 };
 
+const COLOR_SWATCHES = {
+  white:  '#f0f0f0',
+  black:  '#222',
+  grey:   '#999',
+  gray:   '#999',
+  brown:  '#8B6914',
+  beige:  '#d4b896',
+  red:    '#e10523',
+  blue:   '#1a6fb5',
+  green:  '#2d7a3a',
+  gold:   '#c8a500',
+  silver: '#aaa',
+};
+
+// Strip trailing color annotation from name, e.g. "Lion 4 (чёрный)" → "Lion 4"
+const COLOR_SUFFIX_RE = /\s*\((бел[ыьа][йяе]?|чёрн[ыьа][йяе]?|сер[ыьа][йяе]?|коричнев[ыьа][йяе]?|бежев[ыьа][йяе]?|красн[ыьа][йяе]?|синий|синяя|зелён[ыьа][йяе]?|золот[ыьа][йяе]?|серебрист[ыьа][йяе]?|white|black|grey|gray|brown|beige|red|blue|green|gold|silver)\)\s*$/i;
+function cleanName(name = '') { return name.replace(COLOR_SUFFIX_RE, '').trim(); }
+
 function thumb(p) {
   if (p.images?.[0]) {
     return p.images[0].includes('cloudinary.com')
@@ -112,17 +130,29 @@ export default function AdminProducts() {
     load();
   };
 
-  // Group by set (memoized)
-  const grouped = useMemo(() =>
-    groupBySet
-      ? products.reduce((acc, p) => {
-          const key = p.set || '__none__';
-          if (!acc[key]) acc[key] = [];
-          acc[key].push(p);
-          return acc;
-        }, {})
-      : { __all__: products }
-  , [products, groupBySet]);
+  // Group: set → model (cleanName+category) → [variants]
+  const grouped = useMemo(() => {
+    const mk = (p) => `${cleanName(p.name)}__${p.category || ''}`;
+
+    if (groupBySet) {
+      return products.reduce((acc, p) => {
+        const sk = p.set || '__none__';
+        if (!acc[sk]) acc[sk] = {};
+        const key = mk(p);
+        if (!acc[sk][key]) acc[sk][key] = [];
+        acc[sk][key].push(p);
+        return acc;
+      }, {});
+    }
+    return {
+      __all__: products.reduce((acc, p) => {
+        const key = mk(p);
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(p);
+        return acc;
+      }, {}),
+    };
+  }, [products, groupBySet]);
 
   const groupKeys = useMemo(() =>
     Object.keys(grouped).sort((a, b) => {
@@ -133,12 +163,20 @@ export default function AdminProducts() {
     })
   , [grouped]);
 
+  // Unique model count across current page
+  const uniqueModelCount = useMemo(() =>
+    groupKeys.reduce((sum, gk) => sum + Object.keys(grouped[gk]).length, 0)
+  , [grouped, groupKeys]);
+
   return (
     <div>
       <div className="admin-page-header">
         <h1 className="admin-page-title">
           Товары{' '}
-          <span style={{ color: 'var(--slate)', fontWeight: 500, fontSize: 18 }}>{total}</span>
+          <span style={{ color: 'var(--slate)', fontWeight: 500, fontSize: 18 }}>{uniqueModelCount}</span>
+          {uniqueModelCount !== total && (
+            <span style={{ color: 'var(--slate)', fontWeight: 400, fontSize: 13, marginLeft: 6 }}>({total} вариантов)</span>
+          )}
         </h1>
         <Link to="/admin/products/new" className="btn btn-primary btn-sm">+ Добавить</Link>
       </div>
@@ -231,83 +269,124 @@ export default function AdminProducts() {
               </tr>
             </thead>
             <tbody>
-              {groupKeys.map(gk => (
-                <>
-                  {groupBySet && gk !== '__all__' && (
-                    <tr key={`group-${gk}`} className="admin-table-group-row">
-                      <td colSpan={7}>
-                        {gk === '__none__' ? 'Без сета' : gk.toUpperCase()}
-                        <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--slate)' }}>
-                          {grouped[gk].length} шт.
-                        </span>
-                      </td>
-                    </tr>
-                  )}
-                  {grouped[gk].map(p => {
-                    const imgUrl = thumb(p);
-                    return (
-                      <tr key={p._id}>
-                        <td>
-                          {imgUrl ? (
-                            <img src={imgUrl} alt="" className="admin-table-img" />
-                          ) : (
-                            <div className="admin-table-img-placeholder">📦</div>
-                          )}
-                        </td>
-                        <td>
-                          <div className="admin-table-name">{p.fullName || p.name}</div>
-                          <div className="admin-table-sku">{p.sku || '—'}</div>
-                        </td>
-                        <td style={{ fontSize: 12, color: 'var(--slate)' }}>
-                          {categoryLabel(p.category)}
-                        </td>
-                        <td>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>
-                            {p.brand?.replace('matkasym-', '').toUpperCase()}
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--slate)' }}>
-                            {p.set || '—'}{p.setLevel ? ` · ${p.setLevel}` : ''}
-                          </div>
-                        </td>
-                        <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
-                          {p.price.toLocaleString('ru')} сом
-                          {p.oldPrice > 0 && (
-                            <div style={{ fontSize: 11, color: 'var(--slate)', textDecoration: 'line-through', fontWeight: 400 }}>
-                              {p.oldPrice.toLocaleString('ru')}
-                            </div>
-                          )}
-                        </td>
-                        <td>
-                          <span className={`admin-badge-stock ${p.inStock ? 'in' : 'out'}`}>
-                            {p.inStock ? 'В наличии' : 'Нет'}
+              {groupKeys.map(gk => {
+                const models = grouped[gk];
+                const modelKeys = Object.keys(models);
+                return (
+                  <>
+                    {groupBySet && gk !== '__all__' && (
+                      <tr key={`group-${gk}`} className="admin-table-group-row">
+                        <td colSpan={7}>
+                          {gk === '__none__' ? 'Без сета' : gk.toUpperCase()}
+                          <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--slate)' }}>
+                            {modelKeys.length} {modelKeys.length === 1 ? 'модель' : modelKeys.length < 5 ? 'модели' : 'моделей'}
                           </span>
-                          {p.isNew && (
-                            <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>NEW</span>
-                          )}
-                          {p.productStatus && p.productStatus !== 'ready' && (() => {
-                            const s = PRODUCT_STATUS_META[p.productStatus];
-                            return s ? (
-                              <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: s.color, marginTop: 3 }}>
-                                {p.productStatus === 'planned' ? '📋' : '🔧'} {s.label}
-                              </span>
-                            ) : null;
-                          })()}
-                        </td>
-                        <td>
-                          <div className="admin-row-actions">
-                            <button className="admin-btn-edit" onClick={() => navigate(`/admin/products/${p._id}`)}>
-                              Изменить
-                            </button>
-                            <button className="admin-btn-delete" onClick={() => handleDelete(p._id, p.fullName)}>
-                              Удалить
-                            </button>
-                          </div>
                         </td>
                       </tr>
-                    );
-                  })}
-                </>
-              ))}
+                    )}
+                    {modelKeys.map(mk => {
+                      const variants = models[mk];
+                      const primary  = variants[0];
+                      const imgUrl   = thumb(primary);
+                      const multiColor = variants.length > 1;
+                      const anyInStock = variants.some(v => v.inStock);
+                      const allPlanned = variants.every(v => (v.productStatus || 'ready') === 'planned');
+                      const anyImprovement = variants.some(v => v.productStatus === 'improvement');
+                      const aggStatus = allPlanned ? 'planned' : anyImprovement ? 'improvement' : 'ready';
+
+                      return (
+                        <tr key={mk}>
+                          <td>
+                            {imgUrl ? (
+                              <img src={imgUrl} alt="" className="admin-table-img" />
+                            ) : (
+                              <div className="admin-table-img-placeholder">📦</div>
+                            )}
+                          </td>
+                          <td>
+                            <div className="admin-table-name">{cleanName(primary.name)}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
+                              {multiColor
+                                ? variants.map(v => (
+                                    <button
+                                      key={v._id}
+                                      title={v.color || ''}
+                                      onClick={() => navigate(`/admin/products/${v._id}`)}
+                                      style={{
+                                        width: 14, height: 14, borderRadius: '50%',
+                                        background: COLOR_SWATCHES[v.color?.toLowerCase()] || '#bbb',
+                                        border: ['white','grey','gray','silver','beige'].includes(v.color?.toLowerCase())
+                                          ? '1.5px solid #ccc' : '1.5px solid rgba(0,0,0,.15)',
+                                        cursor: 'pointer', flexShrink: 0,
+                                        padding: 0, outline: 'none',
+                                        transition: 'transform .1s',
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.3)'}
+                                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                    />
+                                  ))
+                                : <span className="admin-table-sku">{primary.sku || '—'}</span>
+                              }
+                              {multiColor && (
+                                <span className="admin-table-sku" style={{ marginLeft: 2 }}>
+                                  {variants.length} цвета · {primary.sku || '—'}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ fontSize: 12, color: 'var(--slate)' }}>
+                            {categoryLabel(primary.category)}
+                          </td>
+                          <td>
+                            <div style={{ fontSize: 13, fontWeight: 600 }}>
+                              {primary.brand?.replace('matkasym-', '').toUpperCase()}
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--slate)' }}>
+                              {primary.set || '—'}{primary.setLevel ? ` · ${primary.setLevel}` : ''}
+                            </div>
+                          </td>
+                          <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            {primary.price.toLocaleString('ru')} сом
+                            {primary.oldPrice > 0 && (
+                              <div style={{ fontSize: 11, color: 'var(--slate)', textDecoration: 'line-through', fontWeight: 400 }}>
+                                {primary.oldPrice.toLocaleString('ru')}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`admin-badge-stock ${anyInStock ? 'in' : 'out'}`}>
+                              {anyInStock ? 'В наличии' : 'Нет'}
+                            </span>
+                            {primary.isNew && (
+                              <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>NEW</span>
+                            )}
+                            {aggStatus !== 'ready' && (() => {
+                              const s = PRODUCT_STATUS_META[aggStatus];
+                              return s ? (
+                                <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: s.color, marginTop: 3 }}>
+                                  {aggStatus === 'planned' ? '📋' : '🔧'} {s.label}
+                                </span>
+                              ) : null;
+                            })()}
+                          </td>
+                          <td>
+                            <div className="admin-row-actions">
+                              <button className="admin-btn-edit" onClick={() => navigate(`/admin/products/${primary._id}`)}>
+                                Изменить
+                              </button>
+                              {!multiColor && (
+                                <button className="admin-btn-delete" onClick={() => handleDelete(primary._id, primary.fullName || primary.name)}>
+                                  Удалить
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </>
+                );
+              })}
             </tbody>
           </table>
         )}
