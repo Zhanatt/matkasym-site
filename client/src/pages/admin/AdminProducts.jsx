@@ -257,11 +257,6 @@ export default function AdminProducts() {
             ))}
           </select>
 
-          {/* Stock */}
-          <select className="admin-select" value={inStock} onChange={e => setInStock(e.target.value)}>
-            {STOCK_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-
           {/* Stock status */}
           <select className="admin-select" value={stockStatus} onChange={e => setStockStatus(e.target.value)}>
             {STOCK_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
