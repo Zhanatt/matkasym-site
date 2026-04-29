@@ -8,7 +8,6 @@ const NAV_ALL = [
   { to: '/admin/products', label: 'Товары',       icon: '📦', roles: ['owner','editor','viewer'] },
   { to: '/admin/map',      label: 'Product Map',  icon: '🗺', roles: ['owner','editor','viewer'] },
   { to: '/admin/users',    label: 'Пользователи', icon: '👥', roles: ['owner'] },
-  { to: '/admin/brands',   label: 'Бренды',       icon: '🏷', roles: ['owner','editor'] },
 ];
 
 export default function AdminLayout() {
