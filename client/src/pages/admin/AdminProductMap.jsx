@@ -232,7 +232,7 @@ function buildGraph(products, navigate) {
           id: pid, type: 'product',
           position: { x: PROD_X, y: prodY },
           data: {
-            name,
+            name: cleanName(primary.name),
             category: primary.category || '',
             price: primary.price || 0,
             img: primary.images?.[0] || '',

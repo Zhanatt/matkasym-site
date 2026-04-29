@@ -219,50 +219,19 @@ export default function AdminProductForm() {
 
           <div className="admin-form-group">
             <label>Цвет</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-              {[
-                { value: 'white',  label: 'Белый',       hex: '#f0f0f0', border: '#ccc' },
-                { value: 'black',  label: 'Чёрный',      hex: '#222',    border: '#222' },
-                { value: 'grey',   label: 'Серый',       hex: '#999',    border: '#999' },
-                { value: 'brown',  label: 'Коричневый',  hex: '#8B6914', border: '#8B6914' },
-                { value: 'beige',  label: 'Бежевый',     hex: '#d4b896', border: '#b89060' },
-                { value: 'red',    label: 'Красный',     hex: '#e10523', border: '#e10523' },
-                { value: 'blue',   label: 'Синий',       hex: '#1a6fb5', border: '#1a6fb5' },
-                { value: 'green',  label: 'Зелёный',     hex: '#2d7a3a', border: '#2d7a3a' },
-                { value: 'gold',   label: 'Золотой',     hex: '#c8a500', border: '#c8a500' },
-                { value: 'silver', label: 'Серебряный',  hex: '#aaa',    border: '#aaa' },
-              ].map(c => {
-                const active = form.color === c.value;
-                return (
-                  <button
-                    key={c.value}
-                    type="button"
-                    title={c.label}
-                    onClick={() => set('color', active ? '' : c.value)}
-                    style={{
-                      width: 28, height: 28, borderRadius: '50%',
-                      background: c.hex,
-                      border: active ? `3px solid #000` : `2px solid ${c.border}`,
-                      cursor: 'pointer',
-                      boxShadow: active ? '0 0 0 2px #fff inset' : 'none',
-                      transition: 'transform .12s, box-shadow .12s',
-                      transform: active ? 'scale(1.18)' : 'scale(1)',
-                      outline: 'none',
-                      flexShrink: 0,
-                    }}
-                  />
-                );
-              })}
-              {form.color && (
-                <span style={{ fontSize: 12, color: 'var(--slate)', marginLeft: 4 }}>
-                  {['white','black','grey','brown','beige','red','blue','green','gold','silver'].includes(form.color)
-                    ? ['Белый','Чёрный','Серый','Коричневый','Бежевый','Красный','Синий','Зелёный','Золотой','Серебряный'][
-                        ['white','black','grey','brown','beige','red','blue','green','gold','silver'].indexOf(form.color)
-                      ]
-                    : form.color}
-                </span>
-              )}
-            </div>
+            <select value={form.color} onChange={e => set('color', e.target.value)}>
+              <option value="">— не выбран —</option>
+              <option value="white">Белый</option>
+              <option value="black">Чёрный</option>
+              <option value="grey">Серый</option>
+              <option value="brown">Коричневый</option>
+              <option value="beige">Бежевый</option>
+              <option value="red">Красный</option>
+              <option value="blue">Синий</option>
+              <option value="green">Зелёный</option>
+              <option value="gold">Золотой</option>
+              <option value="silver">Серебряный</option>
+            </select>
           </div>
 
           {/* Габариты */}
