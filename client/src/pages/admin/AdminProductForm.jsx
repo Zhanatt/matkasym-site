@@ -23,7 +23,7 @@ const EMPTY = {
   priceCost: '', priceWholesale: '', priceDealer: '', price: '',
   description: '',
   images: [],
-  inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', productStatus: 'for_sale',
+  inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', productStatus: 'for_sale', developmentStage: '',
 };
 
 const sectionLabel = (text) => (
@@ -347,10 +347,11 @@ export default function AdminProductForm() {
             <label>Статус товара</label>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {[
-                { value: 'for_sale',     label: '🛒 В продаже',            bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
-                { value: 'planned',      label: '📋 В плане',              bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
-                { value: 'improvement',  label: '🔧 На улучшении',         bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
-                { value: 'discontinued', label: '🚫 Снят с производства',  bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
+                { value: 'for_sale',       label: '🛒 В продаже',            bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
+                { value: 'planned',        label: '📋 В плане',              bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
+                { value: 'in_development', label: '🔨 В разработке',         bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
+                { value: 'improvement',    label: '🔧 На улучшении',         bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
+                { value: 'discontinued',   label: '🚫 Снят с производства',  bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
               ].map(opt => (
                 <label key={opt.value} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -369,6 +370,17 @@ export default function AdminProductForm() {
                 </label>
               ))}
             </div>
+            {form.productStatus === 'in_development' && (
+              <div style={{ marginTop: 10 }}>
+                <input
+                  className="admin-input"
+                  placeholder="Этап разработки (напр. производство, моделирование, чертеж)"
+                  value={form.developmentStage || ''}
+                  onChange={e => set('developmentStage', e.target.value)}
+                  style={{ maxWidth: 400 }}
+                />
+              </div>
+            )}
           </div>
 
           <div className="admin-form-row">
