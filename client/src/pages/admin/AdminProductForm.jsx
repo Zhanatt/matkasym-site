@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   adminGetProduct, adminCreateProduct, adminUpdateProduct,
   adminGetBrands, adminUpdateBrand,
@@ -35,9 +35,11 @@ const sectionLabel = (text) => (
 export default function AdminProductForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const isNew = id === 'new';
 
-  const [form, setForm]           = useState(EMPTY);
+  const dupData = isNew ? location.state?.duplicate : null;
+  const [form, setForm]           = useState(dupData ? { ...EMPTY, ...dupData } : EMPTY);
   const [loading, setLoading]     = useState(!isNew);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');

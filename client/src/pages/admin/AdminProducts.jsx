@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { adminGetProduct } from '../../api/index';
 import { adminGetProducts, adminDeleteProduct, adminGetFacets } from '../../api/index';
 import { cloudinaryOpt } from '../../utils/drive';
 import { CATEGORIES } from '../../config/categorySpecs';
@@ -128,6 +129,22 @@ export default function AdminProducts() {
     if (!window.confirm(`Удалить «${name}»?`)) return;
     await adminDeleteProduct(id);
     load();
+  };
+
+  const handleDuplicate = async (id) => {
+    const r = await adminGetProduct(id);
+    const p = r.data;
+    navigate('/admin/products/new', {
+      state: {
+        duplicate: {
+          ...p,
+          _id: undefined,
+          sku: '',
+          color: '',
+          images: [],
+        },
+      },
+    });
   };
 
   // Group: set → model (cleanName+category) → [variants]
@@ -373,6 +390,14 @@ export default function AdminProducts() {
                             <div className="admin-row-actions">
                               <button className="admin-btn-edit" onClick={() => navigate(`/admin/products/${primary._id}`)}>
                                 Изменить
+                              </button>
+                              <button
+                                className="admin-btn-edit"
+                                style={{ background: '#f5f5f5', color: '#555' }}
+                                onClick={() => handleDuplicate(primary._id)}
+                                title="Создать копию с другим цветом"
+                              >
+                                + Цвет
                               </button>
                               {!multiColor && (
                                 <button className="admin-btn-delete" onClick={() => handleDelete(primary._id, primary.fullName || primary.name)}>
