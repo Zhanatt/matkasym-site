@@ -598,17 +598,23 @@ table.admin-table {
     gap: 8px;
     font-size: 13px;
   }
-  /* Product cards: reserve space for absolute image */
+  /* Product cards: image pinned top-left, content offset right */
   .admin-table tr:not(.admin-table-group-row) {
-    padding-right: 76px;
+    padding-left: 88px;
+    padding-right: 12px;
   }
 
-  /* First td = image → absolute top-right */
+  /* First td = image → absolute top-left */
   .admin-table td:first-child {
     position: absolute;
-    top: 12px; right: 12px;
+    top: 12px; left: 12px;
   }
-  .admin-table-img { width: 52px; height: 52px; }
+  .admin-table-img {
+    width: 68px; height: 68px;
+    object-fit: contain;
+    background: #f5f5f5;
+    border-radius: 8px;
+  }
 
   /* Group row stays full-width */
   .admin-table-group-row {
