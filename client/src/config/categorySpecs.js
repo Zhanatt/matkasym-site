@@ -14,6 +14,7 @@ export const CATEGORIES = [
   { value: 'ironing-board-ext',   label: 'Гладильная доска с удлинителем' },
   { value: 'laundry-basket',      label: 'Корзина для белья' },
   // ── Хранение и организация ───────────────────
+  { value: 'suit-hanger',         label: 'Костюмная вешалка' },
   { value: 'wardrobe-rack',       label: 'Гардеробная вешалка' },
   { value: 'wall-hanger',         label: 'Настенная вешалка' },
   { value: 'floor-hanger',        label: 'Напольная вешалка' },
@@ -55,6 +56,12 @@ export const CATEGORY_SPECS = {
     { key: 'Объём',            unit: 'л',      type: 'number' },
     { key: 'Цвет',             unit: '',       type: 'text' },
     { key: 'Макс. нагрузка',   unit: 'кг',     type: 'number' },
+  ],
+  'suit-hanger': [
+    { key: 'Макс. нагрузка',   unit: 'кг',     type: 'number' },
+    { key: 'Габариты ДxШxВ',   unit: 'см',     type: 'text' },
+    { key: 'Цвет',             unit: '',       type: 'text' },
+    { key: 'Конструкция',      unit: '',       type: 'select', options: ['разборно-сборная', 'цельная', 'складная'] },
   ],
   'wardrobe-rack': [
     { key: 'Кол-во полок',     unit: 'шт',     type: 'number' },
