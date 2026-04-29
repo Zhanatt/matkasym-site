@@ -138,7 +138,7 @@ export default function AdminProducts() {
         setPages(r.data.pages);
       })
       .finally(() => setLoading(false));
-  }, [page, search, brand, set, category, inStock]);
+  }, [page, search, brand, set, category, inStock, productStatus, stockStatus]);
 
   useEffect(() => { load(); }, [load]);
 
