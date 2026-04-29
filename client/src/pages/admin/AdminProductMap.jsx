@@ -87,6 +87,22 @@ function ProductNode({ data, selected }) {
             {data.price.toLocaleString()} сом
           </div>
         )}
+        {data.variants && data.variants.length > 1 && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 3, flexWrap: 'wrap' }}>
+            {data.variants.map(v => (
+              <div
+                key={v.id}
+                title={v.color || ''}
+                style={{
+                  width: 9, height: 9, borderRadius: '50%',
+                  background: COLOR_SWATCHES[v.color?.toLowerCase()] || '#bbb',
+                  border: '1.5px solid rgba(0,0,0,.18)',
+                  flexShrink: 0,
+                }}
+              />
+            ))}
+          </div>
+        )}
         {data.productStatus && data.productStatus !== 'ready' && (
           <div style={{
             fontSize: 10, fontWeight: 700, marginTop: 2,
@@ -101,6 +117,20 @@ function ProductNode({ data, selected }) {
 }
 
 const nodeTypes = { brand: BrandNode, set: SetNode, product: ProductNode };
+
+/* ── Color swatches ─────────────────────────────────── */
+const COLOR_SWATCHES = {
+  white:  '#f0f0f0',
+  black:  '#222',
+  grey:   '#999',
+  gray:   '#999',
+  brown:  '#8B6914',
+  red:    '#e10523',
+  blue:   '#1a6fb5',
+  green:  '#2d7a3a',
+  gold:   '#c8a500',
+  silver: '#aaa',
+};
 
 /* ── Set colors ──────────────────────────────────────── */
 const SET_COLORS = [
@@ -144,18 +174,31 @@ function buildGraph(products, navigate) {
       const color = SET_COLORS[colorIdx % SET_COLORS.length];
       colorIdx++;
 
+      // Group variants by product name
+      const nameGroups = {};
       prods.forEach(p => {
-        const pid = `prod__${p._id}`;
+        if (!nameGroups[p.name]) nameGroups[p.name] = [];
+        nameGroups[p.name].push(p);
+      });
+
+      Object.entries(nameGroups).forEach(([name, variants]) => {
+        const primary = variants[0];
+        const pid = `prod__${setKey}__${name.replace(/\s+/g, '_')}`;
+        const allVariantsPlanned = variants.every(v => (v.productStatus || 'ready') === 'planned');
+        const anyImprovement = variants.some(v => v.productStatus === 'improvement');
+        const status = allVariantsPlanned ? 'planned' : anyImprovement ? 'improvement' : 'ready';
+
         nodes.push({
           id: pid, type: 'product',
           position: { x: PROD_X, y: globalY },
           data: {
-            name: p.name,
-            category: p.category || '',
-            price: p.price || 0,
-            img: p.images?.[0] || '',
-            productStatus: p.productStatus || 'ready',
-            onClick: () => navigate(`/admin/products/${p._id}`),
+            name,
+            category: primary.category || '',
+            price: primary.price || 0,
+            img: primary.images?.[0] || '',
+            productStatus: status,
+            variants: variants.map(v => ({ color: v.color, id: v._id })),
+            onClick: () => navigate(`/admin/products/${primary._id}`),
           },
         });
         edges.push({
@@ -171,10 +214,11 @@ function buildGraph(products, navigate) {
       const setMidY = (setStartY + globalY) / 2 - 36;
       const setLabel = setKey === '__none__' ? 'Без сета' : setKey.toUpperCase().replace(/-/g, ' ');
       const allPlanned = prods.length > 0 && prods.every(p => (p.productStatus || 'ready') === 'planned');
+      const uniqueCount = Object.keys(nameGroups).length;
       nodes.push({
         id: setId, type: 'set',
         position: { x: SET_X, y: setMidY },
-        data: { label: setLabel, count: prods.length, color, allPlanned },
+        data: { label: setLabel, count: uniqueCount, color, allPlanned },
       });
       edges.push({
         id: `e__${brandId}__${setId}`,
