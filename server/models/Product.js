@@ -44,7 +44,8 @@ const productSchema = new mongoose.Schema({
   isNew:         { type: Boolean, default: false },
   inStock:       { type: Boolean, default: true },
   stock:         { type: Number, default: 50 },
-  productStatus: { type: String, enum: ['planned', 'improvement', 'ready', 'discontinued'], default: 'ready' },
+  stockStatus:   { type: String, enum: ['in_stock', 'out_of_stock', 'expected', 'discontinued'], default: 'in_stock' },
+  productStatus: { type: String, enum: ['planned', 'improvement', 'ready'], default: 'ready' },
 
   // Stats
   rating:      { type: Number, default: 0, min: 0, max: 5 },

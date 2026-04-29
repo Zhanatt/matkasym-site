@@ -18,18 +18,31 @@ const STOCK_OPTIONS = [
 ];
 
 const PRODUCT_STATUS_OPTIONS = [
-  { value: '',             label: 'Все статусы' },
-  { value: 'planned',      label: '📋 В плане' },
-  { value: 'improvement',  label: '🔧 На улучшении' },
-  { value: 'ready',        label: '✅ Готовые' },
-  { value: 'discontinued', label: '🚫 Снят с производства' },
+  { value: '',            label: 'Все статусы' },
+  { value: 'planned',     label: '📋 В плане' },
+  { value: 'improvement', label: '🔧 На улучшении' },
+  { value: 'ready',       label: '✅ Готовые' },
 ];
 
 const PRODUCT_STATUS_META = {
-  planned:      { label: 'В плане',              bg: '#eef2ff', color: '#3b5bdb' },
-  improvement:  { label: 'На улучшении',         bg: '#fff8e6', color: '#c47a00' },
-  ready:        { label: 'Готовый',              bg: '#e6f4ea', color: '#2d7a3a' },
-  discontinued: { label: 'Снят с производства',  bg: '#f5f5f5', color: '#888' },
+  planned:     { label: 'В плане',      color: '#3b5bdb' },
+  improvement: { label: 'На улучшении', color: '#c47a00' },
+  ready:       { label: 'Готовый',      color: '#2d7a3a' },
+};
+
+const STOCK_STATUS_OPTIONS = [
+  { value: '',             label: 'Все склады' },
+  { value: 'in_stock',     label: '✅ В наличии' },
+  { value: 'out_of_stock', label: '❌ Нет в наличии' },
+  { value: 'expected',     label: '🕐 Ожидается' },
+  { value: 'discontinued', label: '🚫 Снят с производства' },
+];
+
+const STOCK_STATUS_META = {
+  in_stock:     { label: 'В наличии',           color: '#2d7a3a' },
+  out_of_stock: { label: 'Нет в наличии',       color: '#c0392b' },
+  expected:     { label: 'Ожидается',           color: '#c47a00' },
+  discontinued: { label: 'Снят с производства', color: '#888'    },
 };
 
 const COLOR_SWATCHES = {
@@ -73,6 +86,7 @@ export default function AdminProducts() {
   const [category, setCategory] = useState('');
   const [inStock,        setInStock]        = useState('');
   const [productStatus,  setProductStatus]  = useState('');
+  const [stockStatus,    setStockStatus]    = useState('');
   const [page,           setPage]           = useState(1);
   const [groupBySet, setGroupBySet] = useState(true);
 
@@ -104,7 +118,7 @@ export default function AdminProducts() {
   // Reset dependent filters when parent changes
   useEffect(() => { setSet(''); setCategory(''); setPage(1); }, [brand]);
   useEffect(() => { setCategory(''); setPage(1); }, [set]);
-  useEffect(() => { setPage(1); }, [category, search, inStock, productStatus]);
+  useEffect(() => { setPage(1); }, [category, search, inStock, productStatus, stockStatus]);
 
   // Load products
   const load = useCallback(() => {
@@ -116,6 +130,7 @@ export default function AdminProducts() {
       category:      category      || undefined,
       inStock:       inStock       || undefined,
       productStatus: productStatus || undefined,
+      stockStatus:   stockStatus   || undefined,
     })
       .then(r => {
         setProducts(r.data.products);
@@ -247,6 +262,11 @@ export default function AdminProducts() {
             {STOCK_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
 
+          {/* Stock status */}
+          <select className="admin-select" value={stockStatus} onChange={e => setStockStatus(e.target.value)}>
+            {STOCK_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+
           {/* Product status */}
           <select className="admin-select" value={productStatus} onChange={e => setProductStatus(e.target.value)}>
             {PRODUCT_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -266,6 +286,7 @@ export default function AdminProducts() {
             {category && <Chip label={`Категория: ${categoryLabel(category)}`} onRemove={() => setCategory('')} />}
             {inStock  && <Chip label={inStock === 'true' ? 'В наличии' : 'Нет в наличии'} onRemove={() => setInStock('')} />}
             {search        && <Chip label={`«${search}»`} onRemove={() => setSearch('')} />}
+            {stockStatus   && <Chip label={STOCK_STATUS_META[stockStatus]?.label   || stockStatus}   onRemove={() => setStockStatus('')} />}
             {productStatus && <Chip label={PRODUCT_STATUS_META[productStatus]?.label || productStatus} onRemove={() => setProductStatus('')} />}
           </div>
         )}
@@ -373,9 +394,12 @@ export default function AdminProducts() {
                             )}
                           </td>
                           <td>
-                            <span className={`admin-badge-stock ${anyInStock ? 'in' : 'out'}`}>
-                              {anyInStock ? 'В наличии' : 'Нет'}
-                            </span>
+                            {(() => {
+                              const ss = primary.stockStatus || (primary.inStock ? 'in_stock' : 'out_of_stock');
+                              const sm = STOCK_STATUS_META[ss];
+                              const icon = { in_stock: '✅', out_of_stock: '❌', expected: '🕐', discontinued: '🚫' }[ss] || '';
+                              return <span style={{ fontSize: 11, fontWeight: 700, color: sm?.color }}>{icon} {sm?.label || ss}</span>;
+                            })()}
                             {primary.isNew && (
                               <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>NEW</span>
                             )}
@@ -383,7 +407,7 @@ export default function AdminProducts() {
                               const s = PRODUCT_STATUS_META[aggStatus];
                               return s ? (
                                 <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: s.color, marginTop: 3 }}>
-                                  {{ planned: '📋', improvement: '🔧', discontinued: '🚫' }[aggStatus] || ''} {s.label}
+                                  {{ planned: '📋', improvement: '🔧' }[aggStatus] || ''} {s.label}
                                 </span>
                               ) : null;
                             })()}

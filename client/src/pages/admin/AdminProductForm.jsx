@@ -23,7 +23,7 @@ const EMPTY = {
   priceCost: '', priceWholesale: '', priceDealer: '', price: '',
   description: '',
   images: [],
-  inStock: true, isNew: false, stock: 50, productStatus: 'ready',
+  inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', productStatus: 'ready',
 };
 
 const sectionLabel = (text) => (
@@ -317,13 +317,40 @@ export default function AdminProductForm() {
           {sectionLabel('Статус')}
 
           <div className="admin-form-group">
-            <label>Статус разработки</label>
+            <label>Склад</label>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {[
-                { value: 'planned',      label: '📋 В плане',              bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
-                { value: 'improvement',  label: '🔧 На улучшении',        bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
-                { value: 'ready',        label: '✅ Готовый',              bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
-                { value: 'discontinued', label: '🚫 Снят с производства',  bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
+                { value: 'in_stock',     label: '✅ В наличии',           bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
+                { value: 'out_of_stock', label: '❌ Нет в наличии',       bg: '#fff0f0', color: '#c0392b', border: '#f5b7b1' },
+                { value: 'expected',     label: '🕐 Ожидается',           bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
+                { value: 'discontinued', label: '🚫 Снят с производства', bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
+              ].map(opt => (
+                <label key={opt.value} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 18px', borderRadius: 8, cursor: 'pointer',
+                  border: `2px solid ${form.stockStatus === opt.value ? opt.border : 'var(--gray-200)'}`,
+                  background: form.stockStatus === opt.value ? opt.bg : '#fff',
+                  color: form.stockStatus === opt.value ? opt.color : 'var(--slate)',
+                  fontWeight: form.stockStatus === opt.value ? 700 : 500,
+                  fontSize: 13, transition: 'all .15s',
+                }}>
+                  <input type="radio" name="stockStatus" value={opt.value}
+                    checked={form.stockStatus === opt.value}
+                    onChange={() => set('stockStatus', opt.value)}
+                    style={{ display: 'none' }} />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="admin-form-group">
+            <label>Статус товара</label>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {[
+                { value: 'planned',     label: '📋 В плане',       bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
+                { value: 'improvement', label: '🔧 На улучшении',  bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
+                { value: 'ready',       label: '✅ Готовый',        bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
               ].map(opt => (
                 <label key={opt.value} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -334,14 +361,10 @@ export default function AdminProductForm() {
                   fontWeight: form.productStatus === opt.value ? 700 : 500,
                   fontSize: 13, transition: 'all .15s',
                 }}>
-                  <input
-                    type="radio"
-                    name="productStatus"
-                    value={opt.value}
+                  <input type="radio" name="productStatus" value={opt.value}
                     checked={form.productStatus === opt.value}
                     onChange={() => set('productStatus', opt.value)}
-                    style={{ display: 'none' }}
-                  />
+                    style={{ display: 'none' }} />
                   {opt.label}
                 </label>
               ))}
