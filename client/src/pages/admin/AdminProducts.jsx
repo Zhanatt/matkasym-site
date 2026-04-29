@@ -276,7 +276,7 @@ export default function AdminProducts() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th style={{ width: 60 }}></th>
+                <th style={{ width: 96 }}></th>
                 <th>Название / SKU</th>
                 <th>Категория</th>
                 <th>Бренд / Сет</th>

@@ -236,10 +236,10 @@ table.admin-table {
 .admin-table tr:hover td { background: var(--gray-50); }
 
 .admin-table-img {
-  width: 52px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--gray-100);
 }
 .admin-table-img-placeholder {
@@ -600,9 +600,9 @@ table.admin-table {
   }
   /* Product cards: image pinned top-left, content offset right */
   .admin-table tr:not(.admin-table-group-row) {
-    padding-left: 80px;
+    padding-left: 100px;
     padding-right: 12px;
-    min-height: 96px;
+    min-height: 100px;
   }
 
   /* First td = image → absolute top-left */
@@ -611,10 +611,10 @@ table.admin-table {
     top: 12px; left: 12px;
   }
   .admin-table-img {
-    width: 60px; height: 84px;
+    width: 80px; height: 80px;
     object-fit: contain;
     background: #f5f5f5;
-    border-radius: 8px;
+    border-radius: 10px;
   }
 
   /* Group row stays full-width */
