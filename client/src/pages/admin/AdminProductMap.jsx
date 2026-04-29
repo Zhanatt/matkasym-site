@@ -53,10 +53,28 @@ function SetNode({ data }) {
 }
 
 function ProductNode({ data, selected }) {
+  const navigate = useNavigate();
+  const [activeIdx, setActiveIdx] = useState(0);
   const isPlanned = data.productStatus === 'planned';
+
+  const variants = data.variants || [];
+  const activeVariant = variants[activeIdx] || null;
+  const displayImg  = activeVariant?.img  || data.img;
+  const activeId    = activeVariant?.id   || null;
+
+  const handleCardClick = () => {
+    if (activeId) navigate(`/admin/products/${activeId}`);
+    else data.onClick?.();
+  };
+
+  const handleDotClick = (e, idx) => {
+    e.stopPropagation();
+    setActiveIdx(idx);
+  };
+
   return (
     <div
-      onClick={data.onClick}
+      onClick={handleCardClick}
       style={{
         background: '#fff',
         borderRadius: 8,
@@ -72,8 +90,8 @@ function ProductNode({ data, selected }) {
       }}
     >
       <Handle type="target" position={Position.Left} style={{ background: '#ccc' }} />
-      {data.img ? (
-        <img src={data.img} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+      {displayImg ? (
+        <img src={displayImg} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0, transition: 'opacity .2s' }} />
       ) : (
         <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f0f0f0', flexShrink: 0 }} />
       )}
@@ -87,17 +105,23 @@ function ProductNode({ data, selected }) {
             {data.price.toLocaleString()} сом
           </div>
         )}
-        {data.variants && data.variants.length > 1 && (
-          <div style={{ display: 'flex', gap: 4, marginTop: 3, flexWrap: 'wrap' }}>
-            {data.variants.map(v => (
+        {variants.length > 1 && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+            {variants.map((v, idx) => (
               <div
                 key={v.id}
                 title={v.color || ''}
+                onClick={e => handleDotClick(e, idx)}
                 style={{
-                  width: 9, height: 9, borderRadius: '50%',
+                  width: 11, height: 11, borderRadius: '50%',
                   background: COLOR_SWATCHES[v.color?.toLowerCase()] || '#bbb',
-                  border: '1.5px solid rgba(0,0,0,.18)',
+                  border: idx === activeIdx
+                    ? '2px solid #e10523'
+                    : '1.5px solid rgba(0,0,0,.2)',
                   flexShrink: 0,
+                  cursor: 'pointer',
+                  transition: 'border .15s, transform .1s',
+                  transform: idx === activeIdx ? 'scale(1.25)' : 'scale(1)',
                 }}
               />
             ))}
@@ -105,7 +129,7 @@ function ProductNode({ data, selected }) {
         )}
         {data.productStatus && data.productStatus !== 'ready' && (
           <div style={{
-            fontSize: 10, fontWeight: 700, marginTop: 2,
+            fontSize: 10, fontWeight: 700, marginTop: 3,
             color: data.productStatus === 'planned' ? '#3b5bdb' : '#c47a00',
           }}>
             {data.productStatus === 'planned' ? '📋 В плане' : '🔧 На улучшении'}
@@ -197,7 +221,7 @@ function buildGraph(products, navigate) {
             price: primary.price || 0,
             img: primary.images?.[0] || '',
             productStatus: status,
-            variants: variants.map(v => ({ color: v.color, id: v._id })),
+            variants: variants.map(v => ({ color: v.color, id: v._id, img: v.images?.[0] || '' })),
             onClick: () => navigate(`/admin/products/${primary._id}`),
           },
         });
