@@ -201,11 +201,12 @@ function buildGraph(products, navigate) {
       const color = SET_COLORS[colorIdx % SET_COLORS.length];
       colorIdx++;
 
-      // Group variants by product name
+      // Group variants by name + category (same name but different category = different product)
       const nameGroups = {};
       prods.forEach(p => {
-        if (!nameGroups[p.name]) nameGroups[p.name] = [];
-        nameGroups[p.name].push(p);
+        const key = `${p.name}__${p.category || ''}`;
+        if (!nameGroups[key]) nameGroups[key] = [];
+        nameGroups[key].push(p);
       });
 
       Object.entries(nameGroups).forEach(([name, variants]) => {
