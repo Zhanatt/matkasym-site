@@ -17,16 +17,16 @@ const categoryLabel = (value) =>
 function BrandNode({ data }) {
   return (
     <div style={{
-      background: '#000', color: '#fff',
-      borderRadius: 12, padding: '14px 24px',
-      fontWeight: 800, fontSize: 15, letterSpacing: 1,
-      minWidth: 180, textAlign: 'center',
-      boxShadow: '0 4px 20px rgba(0,0,0,.3)',
+      background: '#111', color: '#fff',
+      borderRadius: 10, padding: '12px 20px',
+      fontWeight: 800, fontSize: 13, letterSpacing: .5,
+      minWidth: 160, textAlign: 'center',
+      boxShadow: '0 2px 12px rgba(0,0,0,.2)',
       userSelect: 'none',
     }}>
-      <div style={{ fontSize: 10, color: '#e10523', fontWeight: 700, letterSpacing: 2, marginBottom: 4 }}>БРЕНД</div>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,.4)', fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 5 }}>Бренд</div>
       {data.label}
-      <Handle type="source" position={Position.Right} style={{ background: '#e10523' }} />
+      <Handle type="source" position={Position.Right} style={{ background: '#444', width: 8, height: 8, border: 'none' }} />
     </div>
   );
 }
@@ -34,20 +34,26 @@ function BrandNode({ data }) {
 function SetNode({ data }) {
   return (
     <div style={{
-      background: data.color, color: '#fff',
-      borderRadius: 10, padding: '10px 18px',
-      fontWeight: 700, fontSize: 13,
-      minWidth: 160, textAlign: 'center',
-      boxShadow: '0 3px 12px rgba(0,0,0,.15)',
+      background: '#fff',
+      borderRadius: 8,
+      borderLeft: `3px solid ${data.color}`,
+      border: `1px solid #eee`,
+      borderLeftWidth: 3,
+      borderLeftColor: data.color,
+      padding: '9px 14px',
+      minWidth: 140,
+      boxShadow: '0 1px 6px rgba(0,0,0,.06)',
       userSelect: 'none',
-      opacity: data.allPlanned ? 0.45 : 1,
+      opacity: data.allPlanned ? 0.4 : 1,
       transition: 'opacity .2s',
     }}>
-      <Handle type="target" position={Position.Left} style={{ background: 'rgba(255,255,255,.5)' }} />
-      <div style={{ fontSize: 9, opacity: .75, fontWeight: 600, letterSpacing: 1.5, marginBottom: 3 }}>СЕТ</div>
-      {data.label}
-      <div style={{ fontSize: 11, opacity: .8, marginTop: 3 }}>{data.count} товар{data.count === 1 ? '' : data.count < 5 ? 'а' : 'ов'}</div>
-      <Handle type="source" position={Position.Right} style={{ background: 'rgba(255,255,255,.5)' }} />
+      <Handle type="target" position={Position.Left} style={{ background: data.color, width: 7, height: 7, border: 'none' }} />
+      <div style={{ fontSize: 9, color: data.color, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Сет</div>
+      <div style={{ fontWeight: 800, fontSize: 12, color: '#111', letterSpacing: .3 }}>{data.label}</div>
+      <div style={{ fontSize: 10, color: '#bbb', marginTop: 2 }}>
+        {data.count} {data.count === 1 ? 'модель' : data.count < 5 ? 'модели' : 'моделей'}
+      </div>
+      <Handle type="source" position={Position.Right} style={{ background: data.color, width: 7, height: 7, border: 'none' }} />
     </div>
   );
 }
@@ -59,8 +65,8 @@ function ProductNode({ data, selected }) {
 
   const variants = data.variants || [];
   const activeVariant = variants[activeIdx] || null;
-  const displayImg  = activeVariant?.img  || data.img;
-  const activeId    = activeVariant?.id   || null;
+  const displayImg = activeVariant?.img || data.img;
+  const activeId   = activeVariant?.id  || null;
 
   const handleCardClick = () => {
     if (activeId) navigate(`/admin/products/${activeId}`);
@@ -78,61 +84,74 @@ function ProductNode({ data, selected }) {
       style={{
         background: '#fff',
         borderRadius: 8,
-        border: selected ? '2px solid #e10523' : '1.5px solid #e8e8e8',
-        padding: '8px 10px',
+        border: selected ? '1.5px solid #111' : '1px solid #ebebeb',
+        padding: '9px 12px',
         display: 'flex', alignItems: 'center', gap: 10,
-        minWidth: 220, maxWidth: 260,
+        minWidth: 210, maxWidth: 250,
         cursor: 'pointer',
-        boxShadow: selected ? '0 0 0 3px rgba(225,5,35,.15)' : '0 2px 8px rgba(0,0,0,.07)',
+        boxShadow: selected
+          ? '0 4px 20px rgba(0,0,0,.12)'
+          : '0 1px 5px rgba(0,0,0,.05)',
         userSelect: 'none',
-        opacity: isPlanned ? 0.45 : 1,
-        transition: 'box-shadow .15s, opacity .2s',
+        opacity: isPlanned ? 0.4 : 1,
+        transition: 'box-shadow .2s, opacity .2s, border-color .2s',
       }}
     >
-      <Handle type="target" position={Position.Left} style={{ background: '#ccc' }} />
-      {displayImg ? (
-        <img src={displayImg} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0, transition: 'opacity .2s' }} />
-      ) : (
-        <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f0f0f0', flexShrink: 0 }} />
-      )}
-      <div style={{ overflow: 'hidden' }}>
-        <div style={{ fontWeight: 700, fontSize: 12, color: '#000', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 175 }}>
+      <Handle type="target" position={Position.Left} style={{ background: '#ddd', width: 7, height: 7, border: 'none' }} />
+
+      {/* Image */}
+      <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: '#f5f5f5' }}>
+        {displayImg
+          ? <img src={displayImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity .18s' }} />
+          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#ccc' }}>□</div>
+        }
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: '#111', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {data.name}
         </div>
-        <div style={{ fontSize: 11, color: '#7d96a0', marginTop: 2 }}>{categoryLabel(data.category)}</div>
-        {data.price > 0 && (
-          <div style={{ fontSize: 11, color: '#e10523', fontWeight: 700, marginTop: 1 }}>
-            {data.price.toLocaleString()} сом
-          </div>
-        )}
+        <div style={{ fontSize: 10, color: '#bbb', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {categoryLabel(data.category)}
+        </div>
+
+        {/* Color dots */}
         {variants.length > 1 && (
-          <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
-            {variants.map((v, idx) => (
-              <div
-                key={v.id}
-                title={v.color || ''}
-                onClick={e => handleDotClick(e, idx)}
-                style={{
-                  width: 11, height: 11, borderRadius: '50%',
-                  background: COLOR_SWATCHES[v.color?.toLowerCase()] || '#bbb',
-                  border: idx === activeIdx
-                    ? '2px solid #e10523'
-                    : '1.5px solid rgba(0,0,0,.2)',
-                  flexShrink: 0,
-                  cursor: 'pointer',
-                  transition: 'border .15s, transform .1s',
-                  transform: idx === activeIdx ? 'scale(1.25)' : 'scale(1)',
-                }}
-              />
-            ))}
+          <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
+            {variants.map((v, idx) => {
+              const swatch = COLOR_SWATCHES[v.color?.toLowerCase()] || '#bbb';
+              const isActive = idx === activeIdx;
+              return (
+                <div
+                  key={v.id}
+                  title={v.color || ''}
+                  onClick={e => handleDotClick(e, idx)}
+                  style={{
+                    width: 10, height: 10, borderRadius: '50%',
+                    background: swatch,
+                    boxShadow: isActive ? `0 0 0 2px #fff, 0 0 0 3.5px ${swatch}` : '0 0 0 1px rgba(0,0,0,.12)',
+                    flexShrink: 0, cursor: 'pointer',
+                    transition: 'box-shadow .15s, transform .12s',
+                    transform: isActive ? 'scale(1.15)' : 'scale(1)',
+                  }}
+                />
+              );
+            })}
           </div>
         )}
+
+        {/* Status badge */}
         {data.productStatus && data.productStatus !== 'ready' && (
           <div style={{
-            fontSize: 10, fontWeight: 700, marginTop: 3,
+            display: 'inline-block',
+            fontSize: 9, fontWeight: 700, marginTop: 4,
+            padding: '1px 6px', borderRadius: 4,
+            background: data.productStatus === 'planned' ? '#eef2ff' : '#fff8e6',
             color: data.productStatus === 'planned' ? '#3b5bdb' : '#c47a00',
+            letterSpacing: .3,
           }}>
-            {data.productStatus === 'planned' ? '📋 В плане' : '🔧 На улучшении'}
+            {data.productStatus === 'planned' ? 'В плане' : 'На улучшении'}
           </div>
         )}
       </div>
