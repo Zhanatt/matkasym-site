@@ -40,6 +40,8 @@ function SetNode({ data }) {
       minWidth: 160, textAlign: 'center',
       boxShadow: '0 3px 12px rgba(0,0,0,.15)',
       userSelect: 'none',
+      opacity: data.allPlanned ? 0.45 : 1,
+      transition: 'opacity .2s',
     }}>
       <Handle type="target" position={Position.Left} style={{ background: 'rgba(255,255,255,.5)' }} />
       <div style={{ fontSize: 9, opacity: .75, fontWeight: 600, letterSpacing: 1.5, marginBottom: 3 }}>СЕТ</div>
@@ -51,6 +53,7 @@ function SetNode({ data }) {
 }
 
 function ProductNode({ data, selected }) {
+  const isPlanned = data.productStatus === 'planned';
   return (
     <div
       onClick={data.onClick}
@@ -64,7 +67,8 @@ function ProductNode({ data, selected }) {
         cursor: 'pointer',
         boxShadow: selected ? '0 0 0 3px rgba(225,5,35,.15)' : '0 2px 8px rgba(0,0,0,.07)',
         userSelect: 'none',
-        transition: 'box-shadow .15s',
+        opacity: isPlanned ? 0.45 : 1,
+        transition: 'box-shadow .15s, opacity .2s',
       }}
     >
       <Handle type="target" position={Position.Left} style={{ background: '#ccc' }} />
@@ -166,10 +170,11 @@ function buildGraph(products, navigate) {
 
       const setMidY = (setStartY + globalY) / 2 - 36;
       const setLabel = setKey === '__none__' ? 'Без сета' : setKey.toUpperCase().replace(/-/g, ' ');
+      const allPlanned = prods.length > 0 && prods.every(p => (p.productStatus || 'ready') === 'planned');
       nodes.push({
         id: setId, type: 'set',
         position: { x: SET_X, y: setMidY },
-        data: { label: setLabel, count: prods.length, color },
+        data: { label: setLabel, count: prods.length, color, allPlanned },
       });
       edges.push({
         id: `e__${brandId}__${setId}`,
