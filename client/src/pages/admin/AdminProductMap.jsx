@@ -87,7 +87,7 @@ function ProductNode({ data, selected }) {
 
       <div style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: '#f5f5f5' }}>
         {data.img
-          ? <img src={data.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ? <img src={data.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 2 }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#ccc' }}>□</div>
         }
       </div>
