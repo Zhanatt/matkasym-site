@@ -236,11 +236,12 @@ table.admin-table {
 .admin-table tr:hover td { background: var(--gray-50); }
 
 .admin-table-img {
-  width: 48px;
-  height: 48px;
-  object-fit: cover;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
   border-radius: 6px;
   background: var(--gray-100);
+  padding: 4px;
 }
 .admin-table-img-placeholder {
   width: 48px;
