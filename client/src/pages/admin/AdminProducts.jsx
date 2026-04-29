@@ -19,11 +19,11 @@ const STOCK_OPTIONS = [
 
 const PRODUCT_STATUS_OPTIONS = [
   { value: '',              label: 'Все статусы' },
-  { value: 'for_sale',      label: '🛒 В продаже' },
-  { value: 'planned',       label: '📋 В плане' },
-  { value: 'in_development',label: '🔨 В разработке' },
-  { value: 'improvement',   label: '🔧 На улучшении' },
-  { value: 'discontinued',  label: '🚫 Снят с производства' },
+  { value: 'for_sale',      label: 'В продаже' },
+  { value: 'planned',       label: 'В плане' },
+  { value: 'in_development',label: 'В разработке' },
+  { value: 'improvement',   label: 'На улучшении' },
+  { value: 'discontinued',  label: 'Снят с производства' },
 ];
 
 const PRODUCT_STATUS_META = {
@@ -36,9 +36,9 @@ const PRODUCT_STATUS_META = {
 
 const STOCK_STATUS_OPTIONS = [
   { value: '',             label: 'Любой склад' },
-  { value: 'in_stock',     label: '✅ В наличии' },
-  { value: 'out_of_stock', label: '❌ Нет в наличии' },
-  { value: 'expected',     label: '🕐 Ожидается' },
+  { value: 'in_stock',     label: 'В наличии' },
+  { value: 'out_of_stock', label: 'Нет в наличии' },
+  { value: 'expected',     label: 'Ожидается' },
 ];
 
 const STOCK_STATUS_META = {
@@ -291,8 +291,8 @@ export default function AdminProducts() {
           {/* Stock filter by quantity */}
           <select className="admin-select" value={stockFilter} onChange={e => setStockFilter(e.target.value)}>
             <option value="">Любой склад</option>
-            <option value="in">✅ В наличии</option>
-            <option value="out">❌ Нет в наличии</option>
+            <option value="in">В наличии</option>
+            <option value="out">Нет в наличии</option>
           </select>
 
           {/* Stock sort */}
@@ -444,9 +444,8 @@ export default function AdminProducts() {
                             {(() => {
                               const ps = primary.productStatus || 'for_sale';
                               const pm = PRODUCT_STATUS_META[ps];
-                              const icon = { for_sale: '🛒', planned: '📋', in_development: '🔨', improvement: '🔧', discontinued: '🚫' }[ps] || '';
                               const stage = ps === 'in_development' && primary.developmentStage ? ` (${primary.developmentStage})` : '';
-                              return <span style={{ fontSize: 12, fontWeight: 700, color: pm?.color }}>{icon} {pm?.label || ps}{stage}</span>;
+                              return <span style={{ fontSize: 12, fontWeight: 700, color: pm?.color }}>{pm?.label || ps}{stage}</span>;
                             })()}
                             {primary.isNew && (
                               <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>NEW</span>

@@ -320,9 +320,9 @@ export default function AdminProductForm() {
             <label>Склад</label>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {[
-                { value: 'in_stock',     label: '✅ В наличии',     bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
-                { value: 'out_of_stock', label: '❌ Нет в наличии', bg: '#fff0f0', color: '#c0392b', border: '#f5b7b1' },
-                { value: 'expected',     label: '🕐 Ожидается',     bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
+                { value: 'in_stock',     label: 'В наличии',     bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
+                { value: 'out_of_stock', label: 'Нет в наличии', bg: '#fff0f0', color: '#c0392b', border: '#f5b7b1' },
+                { value: 'expected',     label: 'Ожидается',     bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
               ].map(opt => (
                 <label key={opt.value} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -347,11 +347,11 @@ export default function AdminProductForm() {
             <label>Статус товара</label>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {[
-                { value: 'for_sale',       label: '🛒 В продаже',            bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
-                { value: 'planned',        label: '📋 В плане',              bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
-                { value: 'in_development', label: '🔨 В разработке',         bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
-                { value: 'improvement',    label: '🔧 На улучшении',         bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
-                { value: 'discontinued',   label: '🚫 Снят с производства',  bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
+                { value: 'for_sale',       label: 'В продаже',            bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
+                { value: 'planned',        label: 'В плане',              bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
+                { value: 'in_development', label: 'В разработке',         bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
+                { value: 'improvement',    label: 'На улучшении',         bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
+                { value: 'discontinued',   label: 'Снят с производства',  bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
               ].map(opt => (
                 <label key={opt.value} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
