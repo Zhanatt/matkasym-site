@@ -60,7 +60,7 @@ function SetNode({ data }) {
 
 function ProductNode({ data, selected }) {
   const navigate = useNavigate();
-  const isPlanned = data.productStatus === 'planned';
+  const isPlanned = data.productStatus === 'planned' || data.productStatus === 'discontinued';
   const hasVariants = data.hasVariants;
 
   return (

@@ -18,16 +18,18 @@ const STOCK_OPTIONS = [
 ];
 
 const PRODUCT_STATUS_OPTIONS = [
-  { value: '',            label: 'Все статусы' },
-  { value: 'planned',     label: '📋 В плане' },
-  { value: 'improvement', label: '🔧 На улучшении' },
-  { value: 'ready',       label: '✅ Готовые' },
+  { value: '',             label: 'Все статусы' },
+  { value: 'planned',      label: '📋 В плане' },
+  { value: 'improvement',  label: '🔧 На улучшении' },
+  { value: 'ready',        label: '✅ Готовые' },
+  { value: 'discontinued', label: '🚫 Снят с производства' },
 ];
 
 const PRODUCT_STATUS_META = {
-  planned:     { label: 'В плане',       bg: '#eef2ff', color: '#3b5bdb' },
-  improvement: { label: 'На улучшении',  bg: '#fff8e6', color: '#c47a00' },
-  ready:       { label: 'Готовый',       bg: '#e6f4ea', color: '#2d7a3a' },
+  planned:      { label: 'В плане',              bg: '#eef2ff', color: '#3b5bdb' },
+  improvement:  { label: 'На улучшении',         bg: '#fff8e6', color: '#c47a00' },
+  ready:        { label: 'Готовый',              bg: '#e6f4ea', color: '#2d7a3a' },
+  discontinued: { label: 'Снят с производства',  bg: '#f5f5f5', color: '#888' },
 };
 
 const COLOR_SWATCHES = {
@@ -381,7 +383,7 @@ export default function AdminProducts() {
                               const s = PRODUCT_STATUS_META[aggStatus];
                               return s ? (
                                 <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: s.color, marginTop: 3 }}>
-                                  {aggStatus === 'planned' ? '📋' : '🔧'} {s.label}
+                                  {{ planned: '📋', improvement: '🔧', discontinued: '🚫' }[aggStatus] || ''} {s.label}
                                 </span>
                               ) : null;
                             })()}
