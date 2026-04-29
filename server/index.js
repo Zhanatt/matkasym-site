@@ -18,6 +18,7 @@ app.use('/api/brands',   require('./routes/brands'));
 app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/orders',   require('./routes/orders'));
+app.use('/api/catalog',  require('./routes/catalog'));  // AI-bot context API
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'OK', time: new Date() }));
