@@ -18,31 +18,31 @@ const STOCK_OPTIONS = [
 ];
 
 const PRODUCT_STATUS_OPTIONS = [
-  { value: '',            label: 'Все статусы' },
-  { value: 'planned',     label: '📋 В плане' },
-  { value: 'improvement', label: '🔧 На улучшении' },
-  { value: 'ready',       label: '✅ Готовые' },
-];
-
-const PRODUCT_STATUS_META = {
-  planned:     { label: 'В плане',      color: '#3b5bdb' },
-  improvement: { label: 'На улучшении', color: '#c47a00' },
-  ready:       { label: 'Готовый',      color: '#2d7a3a' },
-};
-
-const STOCK_STATUS_OPTIONS = [
-  { value: '',             label: 'Все склады' },
-  { value: 'in_stock',     label: '✅ В наличии' },
-  { value: 'out_of_stock', label: '❌ Нет в наличии' },
-  { value: 'expected',     label: '🕐 Ожидается' },
+  { value: '',             label: 'Все статусы' },
+  { value: 'for_sale',     label: '🛒 В продаже' },
+  { value: 'planned',      label: '📋 В плане' },
+  { value: 'improvement',  label: '🔧 На улучшении' },
   { value: 'discontinued', label: '🚫 Снят с производства' },
 ];
 
-const STOCK_STATUS_META = {
-  in_stock:     { label: 'В наличии',           color: '#2d7a3a' },
-  out_of_stock: { label: 'Нет в наличии',       color: '#c0392b' },
-  expected:     { label: 'Ожидается',           color: '#c47a00' },
+const PRODUCT_STATUS_META = {
+  for_sale:     { label: 'В продаже',           color: '#2d7a3a' },
+  planned:      { label: 'В плане',             color: '#3b5bdb' },
+  improvement:  { label: 'На улучшении',        color: '#c47a00' },
   discontinued: { label: 'Снят с производства', color: '#888'    },
+};
+
+const STOCK_STATUS_OPTIONS = [
+  { value: '',             label: 'Любой склад' },
+  { value: 'in_stock',     label: '✅ В наличии' },
+  { value: 'out_of_stock', label: '❌ Нет в наличии' },
+  { value: 'expected',     label: '🕐 Ожидается' },
+];
+
+const STOCK_STATUS_META = {
+  in_stock:     { label: 'В наличии',     color: '#2d7a3a' },
+  out_of_stock: { label: 'Нет в наличии', color: '#c0392b' },
+  expected:     { label: 'Ожидается',     color: '#c47a00' },
 };
 
 const COLOR_SWATCHES = {
@@ -304,6 +304,7 @@ export default function AdminProducts() {
                 <th>Категория</th>
                 <th>Бренд / Сет</th>
                 <th>Цена</th>
+                <th>Склад</th>
                 <th>Статус</th>
                 <th></th>
               </tr>
@@ -316,7 +317,7 @@ export default function AdminProducts() {
                   <>
                     {groupBySet && gk !== '__all__' && (
                       <tr key={`group-${gk}`} className="admin-table-group-row">
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           {gk === '__none__' ? 'Без сета' : gk.toUpperCase()}
                           <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--slate)' }}>
                             {modelKeys.length} {modelKeys.length === 1 ? 'модель' : modelKeys.length < 5 ? 'модели' : 'моделей'}
@@ -397,20 +398,20 @@ export default function AdminProducts() {
                             {(() => {
                               const ss = primary.stockStatus || (primary.inStock ? 'in_stock' : 'out_of_stock');
                               const sm = STOCK_STATUS_META[ss];
-                              const icon = { in_stock: '✅', out_of_stock: '❌', expected: '🕐', discontinued: '🚫' }[ss] || '';
-                              return <span style={{ fontSize: 11, fontWeight: 700, color: sm?.color }}>{icon} {sm?.label || ss}</span>;
+                              const icon = { in_stock: '✅', out_of_stock: '❌', expected: '🕐' }[ss] || '';
+                              return <span style={{ fontSize: 12, fontWeight: 700, color: sm?.color }}>{icon} {sm?.label || ss}</span>;
+                            })()}
+                          </td>
+                          <td>
+                            {(() => {
+                              const ps = primary.productStatus || 'for_sale';
+                              const pm = PRODUCT_STATUS_META[ps];
+                              const icon = { for_sale: '🛒', planned: '📋', improvement: '🔧', discontinued: '🚫' }[ps] || '';
+                              return <span style={{ fontSize: 12, fontWeight: 700, color: pm?.color }}>{icon} {pm?.label || ps}</span>;
                             })()}
                             {primary.isNew && (
                               <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>NEW</span>
                             )}
-                            {aggStatus !== 'ready' && (() => {
-                              const s = PRODUCT_STATUS_META[aggStatus];
-                              return s ? (
-                                <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: s.color, marginTop: 3 }}>
-                                  {{ planned: '📋', improvement: '🔧' }[aggStatus] || ''} {s.label}
-                                </span>
-                              ) : null;
-                            })()}
                           </td>
                           <td>
                             <div className="admin-row-actions">
