@@ -29,8 +29,17 @@ const AVATAR_COLORS = {
   pending:'#c47a00',
 };
 
+const ROLE_LABELS = {
+  owner:  '👑 Владелец',
+  editor: '✏️ Редактор',
+  viewer: '👁️ Просмотр',
+  banned: '🚫 Заблокирован',
+  user:   '👤 Пользователь',
+};
+
 export default function AdminUsers() {
   const { user: me } = useAuth();
+  const isOwner = me?.role === 'owner';
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState(null);
@@ -61,7 +70,7 @@ export default function AdminUsers() {
   const handleApprove = async (u) => {
     setSaving(u._id);
     try {
-      const res = await adminUpdateUser(u._id, { role: 'admin', isPending: false });
+      const res = await adminUpdateUser(u._id, { role: 'viewer', isPending: false });
       setUsers(prev => prev.map(x => x._id === u._id ? res.data : x));
     } finally {
       setSaving(null);
@@ -128,14 +137,20 @@ export default function AdminUsers() {
         {/* Role + Delete actions */}
         <div className="admin-user-actions">
           {u.isPending ? (
-            <button
-              className="btn btn-sm"
-              style={{ background: '#2d7a3a', color: '#fff', border: 'none', fontSize: 13, padding: '8px 16px' }}
-              onClick={() => handleApprove(u)}
-              disabled={saving === u._id}
-            >
-              ✓ Одобрить доступ
-            </button>
+            isOwner ? (
+              <button
+                className="btn btn-sm"
+                style={{ background: '#2d7a3a', color: '#fff', border: 'none', fontSize: 13, padding: '8px 16px' }}
+                onClick={() => handleApprove(u)}
+                disabled={saving === u._id}
+              >
+                ✓ Одобрить доступ
+              </button>
+            ) : (
+              <div style={{ padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, background: '#fff8e1', color: '#c47a00', border: '1.5px solid #f0c060' }}>
+                ⏳ Ожидает
+              </div>
+            )
           ) : u.role === 'owner' ? (
             <div style={{
               padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
@@ -143,7 +158,7 @@ export default function AdminUsers() {
             }}>
               👑 Владелец
             </div>
-          ) : (
+          ) : isOwner ? (
             <select
               value={u.role}
               disabled={isSelf || saving === u._id}
@@ -162,9 +177,17 @@ export default function AdminUsers() {
               <option value="viewer">👁️ Просмотр</option>
               <option value="banned">🚫 Запретить доступ</option>
             </select>
+          ) : (
+            <div style={{
+              padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              background: '#f5f5f5', color: AVATAR_COLORS[u.role] || '#333',
+              border: '1.5px solid var(--gray-200)', minWidth: 140, textAlign: 'center',
+            }}>
+              {ROLE_LABELS[u.role] || u.role}
+            </div>
           )}
 
-          {!isSelf && (
+          {!isSelf && isOwner && (
             <button
               className="btn btn-sm"
               style={{ background: '#fde8e8', color: '#c0392b', border: 'none', fontSize: 13, padding: '8px 14px' }}

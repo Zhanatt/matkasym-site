@@ -134,7 +134,7 @@ router.patch('/brands/:key', editor, async (req, res) => {
 });
 
 // ── Users (admin+ only) ──────────────────────────
-router.get('/users', admin, async (req, res) => {
+router.get('/users', viewer, async (req, res) => {
   try {
     res.json(await User.find({}).select('-password -resetPasswordToken -resetPasswordExpires').sort({ createdAt: -1 }));
   } catch (e) { res.status(500).json({ error: e.message }); }

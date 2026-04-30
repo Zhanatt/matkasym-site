@@ -47,6 +47,9 @@ router.post('/login', async (req, res) => {
     if (user.isPending)
       return res.status(403).json({ message: 'Ваш аккаунт ожидает подтверждения администратора.' });
 
+    if (user.role === 'banned')
+      return res.status(403).json({ message: 'У вас нет доступа к этой базе' });
+
     const token = signToken(user._id);
     res.json({ token, user });
   } catch (err) {

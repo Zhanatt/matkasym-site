@@ -12,6 +12,7 @@ exports.protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user) return res.status(401).json({ message: 'Пользователь не найден' });
+    if (req.user.role === 'banned') return res.status(403).json({ message: 'У вас нет доступа к этой базе' });
     next();
   } catch {
     res.status(401).json({ message: 'Недействительный токен' });
