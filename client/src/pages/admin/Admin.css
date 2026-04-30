@@ -167,7 +167,7 @@
   background: #fff;
   border-radius: var(--radius-lg);
   border: 1px solid var(--gray-200);
-  overflow: hidden;
+  overflow: clip;  /* clip не создаёт scroll-контекст — sticky работает */
 }
 
 .admin-toolbar {
@@ -176,6 +176,10 @@
   gap: 12px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #fff;
 }
 
 .admin-search {
@@ -225,6 +229,9 @@ table.admin-table {
   color: var(--slate);
   background: var(--gray-50);
   border-bottom: 1px solid var(--gray-200);
+  position: sticky;
+  top: 61px;   /* высота toolbar */
+  z-index: 19;
 }
 .admin-table td {
   padding: 13px 20px;
