@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { adminGetProduct } from '../../api/index';
 import { adminGetProducts, adminDeleteProduct, adminGetFacets } from '../../api/index';
+import { downloadCatalogPDF } from './CatalogPDF';
 import { cloudinaryOpt } from '../../utils/drive';
 import { CATEGORIES } from '../../config/categorySpecs';
 import { useAuth } from '../../context/AuthContext';
@@ -265,7 +266,21 @@ export default function AdminProducts() {
             <span style={{ color: 'var(--slate)', fontWeight: 400, fontSize: 13, marginLeft: 6 }}>({total} вариантов)</span>
           )}
         </h1>
-        {canEdit && <Link to="/admin/products/new" className="btn btn-primary btn-sm">+ Добавить</Link>}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {set && (
+            <button
+              className="btn btn-sm"
+              style={{ background: '#1a73e8', color: '#fff', border: 'none' }}
+              onClick={async () => {
+                const setLabel = set.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                await downloadCatalogPDF(products, setLabel);
+              }}
+            >
+              📄 Скачать PDF
+            </button>
+          )}
+          {canEdit && <Link to="/admin/products/new" className="btn btn-primary btn-sm">+ Добавить</Link>}
+        </div>
       </div>
 
       <div className="admin-table-wrap">
