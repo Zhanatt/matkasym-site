@@ -4,6 +4,7 @@ import { adminGetProduct } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 import { CATEGORIES } from '../../config/categorySpecs';
 import { cloudinaryOpt } from '../../utils/drive';
+import { CRM_STAGES } from './AdminProductForm';
 
 const PRODUCT_STATUS_META = {
   for_sale:       { label: 'В продаже',           color: '#2d7a3a' },
@@ -159,6 +160,11 @@ export default function AdminProductView() {
             </div>
           </div>
 
+          {/* CRM pipeline */}
+          {product.productStatus === 'in_development' && product.developmentStage && (
+            <CrmPipeline stage={product.developmentStage} />
+          )}
+
           {/* Category */}
           <Row label="Категория" value={categoryLabel(product.category)} />
 
@@ -249,6 +255,54 @@ function PriceCard({ label, value }) {
     <div style={{ background: '#f7f8fa', borderRadius: 8, padding: '10px 14px' }}>
       <div style={{ fontSize: 11, color: 'var(--slate)', fontWeight: 600, marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 800 }}>{Number(value).toLocaleString('ru')} сом</div>
+    </div>
+  );
+}
+
+function CrmPipeline({ stage }) {
+  const activeIdx = CRM_STAGES.indexOf(stage);
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#7c3aed', marginBottom: 10 }}>
+        Этап разработки (CRM)
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+        {CRM_STAGES.map((s, i) => {
+          const done    = i < activeIdx;
+          const current = i === activeIdx;
+          const future  = i > activeIdx;
+          return (
+            <div key={s} style={{ display: 'flex', alignItems: 'center', flex: i < CRM_STAGES.length - 1 ? 1 : 'none' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 800,
+                  background: done ? '#7c3aed' : current ? '#f3e8ff' : '#f0f0f0',
+                  border: current ? '2px solid #7c3aed' : done ? 'none' : '2px solid #ddd',
+                  color: done ? '#fff' : current ? '#7c3aed' : '#bbb',
+                }}>
+                  {done ? '✓' : i + 1}
+                </div>
+                <div style={{
+                  fontSize: 10, fontWeight: current ? 700 : 500, textAlign: 'center',
+                  color: done ? '#7c3aed' : current ? '#7c3aed' : '#bbb',
+                  whiteSpace: 'nowrap', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis',
+                }} title={s}>
+                  {s}
+                </div>
+              </div>
+              {i < CRM_STAGES.length - 1 && (
+                <div style={{
+                  flex: 1, height: 2, marginBottom: 16,
+                  background: done ? '#7c3aed' : '#e0e0e0',
+                  transition: 'background .3s',
+                }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { adminGetProducts, adminDeleteProduct, adminGetFacets } from '../../api/
 import { cloudinaryOpt } from '../../utils/drive';
 import { CATEGORIES } from '../../config/categorySpecs';
 import { useAuth } from '../../context/AuthContext';
+import { CRM_STAGES } from './AdminProductForm';
 
 const BRANDS = [
   { value: '', label: 'Все бренды' },
@@ -450,8 +451,28 @@ export default function AdminProducts() {
                               const ps = primary.productStatus || 'for_sale';
                               const pm = PRODUCT_STATUS_META[ps];
                               const icon = { for_sale: '🛒', planned: '📋', in_development: '🔨', improvement: '🔧', discontinued: '🚫' }[ps] || '';
-                              const stage = ps === 'in_development' && primary.developmentStage ? ` (${primary.developmentStage})` : '';
-                              return <span style={{ fontSize: 12, fontWeight: 700, color: pm?.color }}>{icon} {pm?.label || ps}{stage}</span>;
+                              const stageText = ps === 'in_development' && primary.developmentStage ? primary.developmentStage : null;
+                              const stageIdx  = stageText ? CRM_STAGES.indexOf(stageText) : -1;
+                              return (
+                                <>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: pm?.color }}>{icon} {pm?.label || ps}</span>
+                                  {stageText && (
+                                    <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <div style={{ display: 'flex', gap: 2 }}>
+                                        {CRM_STAGES.map((_, i) => (
+                                          <div key={i} style={{
+                                            width: 10, height: 4, borderRadius: 2,
+                                            background: i <= stageIdx ? '#7c3aed' : '#e0e0e0',
+                                          }} />
+                                        ))}
+                                      </div>
+                                      <span style={{ fontSize: 10, color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                        {stageText}
+                                      </span>
+                                    </div>
+                                  )}
+                                </>
+                              );
                             })()}
                             {primary.isNew && (
                               <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--red)', marginTop: 2 }}>NEW</span>

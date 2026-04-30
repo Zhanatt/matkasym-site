@@ -8,6 +8,15 @@ import ImageUploader  from '../../components/ImageUploader';
 import SelectWithAdd  from '../../components/SelectWithAdd';
 import { CATEGORIES, CATEGORY_SPECS } from '../../config/categorySpecs';
 
+export const CRM_STAGES = [
+  'Новая заявка',
+  'Разработка Тех. листа',
+  'Утверждение Тех. листа',
+  'Моделирование',
+  'Чертеж',
+  'Образец',
+];
+
 const BRAND_OPTIONS = [
   { value: 'matkasym-home',  label: 'MATKASYM HOME' },
   { value: 'matkasym-shaar', label: 'MATKASYM SHAAR' },
@@ -371,14 +380,36 @@ export default function AdminProductForm() {
               ))}
             </div>
             {form.productStatus === 'in_development' && (
-              <div style={{ marginTop: 10 }}>
-                <input
-                  className="admin-input"
-                  placeholder="Этап разработки (напр. производство, моделирование, чертеж)"
-                  value={form.developmentStage || ''}
-                  onChange={e => set('developmentStage', e.target.value)}
-                  style={{ maxWidth: 400 }}
-                />
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--slate)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+                  Этап разработки (CRM)
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {CRM_STAGES.map((stage, i) => {
+                    const active = form.developmentStage === stage;
+                    return (
+                      <button
+                        key={stage}
+                        type="button"
+                        onClick={() => set('developmentStage', active ? '' : stage)}
+                        style={{
+                          padding: '6px 14px', borderRadius: 20, fontSize: 13,
+                          fontWeight: active ? 700 : 500,
+                          border: active ? '2px solid #7c3aed' : '1.5px solid var(--gray-200)',
+                          background: active ? '#f3e8ff' : '#fff',
+                          color: active ? '#7c3aed' : '#555',
+                          cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}
+                      >
+                        <span style={{ fontSize: 11, background: active ? '#7c3aed' : '#ddd', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0 }}>
+                          {i + 1}
+                        </span>
+                        {stage}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
