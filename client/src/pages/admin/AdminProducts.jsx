@@ -4,6 +4,7 @@ import { adminGetProduct } from '../../api/index';
 import { adminGetProducts, adminDeleteProduct, adminGetFacets } from '../../api/index';
 import { cloudinaryOpt } from '../../utils/drive';
 import { CATEGORIES } from '../../config/categorySpecs';
+import { useAuth } from '../../context/AuthContext';
 
 const BRANDS = [
   { value: '', label: 'Все бренды' },
@@ -80,6 +81,8 @@ function categoryLabel(value) {
 
 export default function AdminProducts() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'owner' || user?.role === 'editor';
 
   // Filters
   const [search,   setSearch]   = useState('');
@@ -243,7 +246,7 @@ export default function AdminProducts() {
             <span style={{ color: 'var(--slate)', fontWeight: 400, fontSize: 13, marginLeft: 6 }}>({total} вариантов)</span>
           )}
         </h1>
-        <Link to="/admin/products/new" className="btn btn-primary btn-sm">+ Добавить</Link>
+        {canEdit && <Link to="/admin/products/new" className="btn btn-primary btn-sm">+ Добавить</Link>}
       </div>
 
       <div className="admin-table-wrap">
@@ -448,24 +451,26 @@ export default function AdminProducts() {
                             )}
                           </td>
                           <td>
-                            <div className="admin-row-actions">
-                              <button className="admin-btn-edit" onClick={() => navigate(`/admin/products/${primary._id}`)}>
-                                Изменить
-                              </button>
-                              <button
-                                className="admin-btn-edit"
-                                style={{ background: '#f5f5f5', color: '#555' }}
-                                onClick={() => handleDuplicate(primary._id)}
-                                title="Создать копию с другим цветом"
-                              >
-                                + Цвет
-                              </button>
-                              {!multiColor && (
-                                <button className="admin-btn-delete" onClick={() => handleDelete(primary._id, primary.fullName || primary.name)}>
-                                  Удалить
+                            {canEdit && (
+                              <div className="admin-row-actions">
+                                <button className="admin-btn-edit" onClick={() => navigate(`/admin/products/${primary._id}`)}>
+                                  Изменить
                                 </button>
-                              )}
-                            </div>
+                                <button
+                                  className="admin-btn-edit"
+                                  style={{ background: '#f5f5f5', color: '#555' }}
+                                  onClick={() => handleDuplicate(primary._id)}
+                                  title="Создать копию с другим цветом"
+                                >
+                                  + Цвет
+                                </button>
+                                {!multiColor && (
+                                  <button className="admin-btn-delete" onClick={() => handleDelete(primary._id, primary.fullName || primary.name)}>
+                                    Удалить
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
