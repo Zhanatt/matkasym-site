@@ -24,6 +24,8 @@ export const CATEGORIES = [
   { value: 'shelf-washer',        label: 'Над-стиральная полка' },
   { value: 'shelf-corner',        label: 'Угловая полка' },
   { value: 'shelf-flowers',       label: 'Полка для цветов' },
+  // ── Стеллажи ─────────────────────────────────
+  { value: 'metal-shelf',         label: 'Металлический стеллаж' },
   // ── Дом и декор ──────────────────────────────
   { value: 'mirror-floor',        label: 'Напольное зеркало' },
   { value: 'bbq-grill',           label: 'Мангал' },
@@ -130,6 +132,15 @@ export const CATEGORY_SPECS = {
     { key: 'Цвет',             unit: '',       type: 'text' },
     { key: 'Макс. нагрузка',   unit: 'кг',     type: 'number' },
     { key: 'Конструкция',      unit: '',       type: 'select', options: ['разборно-сборная', 'цельная', 'складная'] },
+  ],
+  'metal-shelf': [
+    { key: 'Кол-во полок',       unit: 'шт',  type: 'number' },
+    { key: 'Размер полки ДxШ',   unit: 'см',  type: 'text' },
+    { key: 'Высота',             unit: 'см',  type: 'number' },
+    { key: 'Тип стоек',          unit: '',    type: 'select', options: ['round (круглые)', 'slotted (перфорированные)'] },
+    { key: 'Макс. нагрузка',     unit: 'кг',  type: 'number' },
+    { key: 'Цвет',               unit: '',    type: 'text' },
+    { key: 'Конструкция',        unit: '',    type: 'select', options: ['разборно-сборная', 'цельная'] },
   ],
   'mirror-floor': [
     { key: 'Цвет рамы',        unit: '',       type: 'text' },
