@@ -35,6 +35,7 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
+          <Route path="products/new" element={<AdminProductForm />} />
           <Route path="products/:id" element={<AdminProductView />} />
           <Route path="products/:id/edit" element={<AdminProductForm />} />
           <Route path="map" element={<AdminProductMap />} />
