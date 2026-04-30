@@ -31,6 +31,27 @@ export const CATEGORIES = [
   { value: 'antenna-outdoor',     label: 'Антенна наружная' },
   { value: 'antenna-indoor',      label: 'Антенна комнатная' },
   { value: 'tv-mount',            label: 'Кронштейн для TV' },
+  // ── SHAAR — Урны и контейнеры ───────────────────────────────────────────
+  { value: 'waste-bin',               label: 'Офисная урна' },
+  { value: 'waste-bin-eco',           label: 'Эко урна' },
+  { value: 'waste-container',         label: 'Контейнер для отходов' },
+  // ── SHAAR — Улица ───────────────────────────────────────────────────────
+  { value: 'street-bench',            label: 'Уличная скамейка' },
+  { value: 'street-light',            label: 'Уличный светильник' },
+  // ── SHAAR — Электрощиты ─────────────────────────────────────────────────
+  { value: 'electric-panel-outdoor',  label: 'Электрощит наружный (ЩРн IP31)' },
+  { value: 'electric-panel-mount',    label: 'Щит с монтажной панелью (ЩМП)' },
+  { value: 'electric-panel-gas',      label: 'Щит газовый регулирующий (ЩГР)' },
+  { value: 'electric-panel-floor',    label: 'Щит этажный (ЩЭ)' },
+  { value: 'electric-panel-plumbing', label: 'Щит сантехнический (ЩС)' },
+  // ── SHAAR — Фасад / кондиционеры ────────────────────────────────────────
+  { value: 'ac-basket',               label: 'Корзина для кондиционера' },
+  { value: 'ac-mount',                label: 'Кронштейн для кондиционера' },
+  // ── SHAAR — Мебель и хранение ───────────────────────────────────────────
+  { value: 'storage-tumba',           label: 'Тумба' },
+  { value: 'storage-cabinet',         label: 'Шкаф для хранения' },
+  { value: 'school-desk',             label: 'Школьная парта / Стол' },
+  { value: 'industrial-shelf',        label: 'Промышленный стеллаж' },
   // ── Прочее ───────────────────────────────────
   { value: 'other',               label: 'Другое' },
 ];
