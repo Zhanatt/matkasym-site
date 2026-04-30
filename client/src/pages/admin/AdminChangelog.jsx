@@ -9,15 +9,58 @@ function formatDate(iso) {
   });
 }
 
+const VALUE_LABELS = {
+  // stockStatus
+  in_stock:     'В наличии',
+  out_of_stock: 'Нет в наличии',
+  expected:     'Ожидается',
+  // productStatus
+  for_sale:       'В продаже',
+  planned:        'В плане',
+  in_development: 'В разработке',
+  improvement:    'На улучшении',
+  discontinued:   'Снят с производства',
+  // boolean
+  true:  'Да',
+  false: 'Нет',
+};
+
 function formatValue(val) {
   if (val === null || val === undefined) return '—';
   if (typeof val === 'boolean') return val ? 'Да' : 'Нет';
   if (Array.isArray(val)) {
     if (val.length === 0) return '(пусто)';
-    return val.map(s => s?.key ? `${s.key}: ${s.value}` : JSON.stringify(s)).join(', ');
+    // specs array
+    if (val[0]?.key !== undefined) return val.map(s => `${s.key}: ${s.value}`).join(', ');
+    return null; // images — handled separately
   }
   if (typeof val === 'object') return JSON.stringify(val);
-  return String(val);
+  const str = String(val);
+  return VALUE_LABELS[str] ?? str;
+}
+
+function isImageArray(val) {
+  return Array.isArray(val) && (val.length === 0 || typeof val[0] === 'string');
+}
+
+function ImageList({ urls, bg }) {
+  if (!urls || urls.length === 0) {
+    return <div style={{ background: bg, borderRadius: 6, padding: '6px 10px', fontSize: 13, color: '#aaa' }}>(нет фото)</div>;
+  }
+  return (
+    <div style={{ background: bg, borderRadius: 6, padding: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {urls.map((url, i) => (
+        <a key={i} href={url} target="_blank" rel="noreferrer">
+          <img
+            src={url}
+            alt=""
+            style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(0,0,0,.08)' }}
+            onError={e => { e.currentTarget.style.display = 'none'; }}
+          />
+        </a>
+      ))}
+    </div>
+  );
 }
 
 export default function AdminChangelog() {
@@ -104,35 +147,34 @@ export default function AdminChangelog() {
               </div>
 
               {/* Changes */}
-              <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {log.changes.map((c, i) => (
-                  <div key={i} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '160px 1fr 24px 1fr',
-                    gap: 8,
-                    alignItems: 'start',
-                    fontSize: 13,
-                  }}>
-                    <div style={{ fontWeight: 600, color: '#555', paddingTop: 1 }}>
-                      {c.field}
+              <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {log.changes.map((c, i) => {
+                  const isPhotos = isImageArray(c.from) || isImageArray(c.to);
+                  return (
+                    <div key={i}>
+                      <div style={{ fontWeight: 600, color: '#555', fontSize: 13, marginBottom: 6 }}>
+                        {c.field}
+                      </div>
+                      {isPhotos ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 24px 1fr', gap: 8, alignItems: 'start' }}>
+                          <ImageList urls={c.from} label="было" color="#c0392b" bg="#fff0f0" />
+                          <div style={{ textAlign: 'center', color: 'var(--slate)', paddingTop: 8 }}>→</div>
+                          <ImageList urls={c.to} label="стало" color="#2d7a3a" bg="#f0fff4" />
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 24px 1fr', gap: 8, alignItems: 'start', fontSize: 13 }}>
+                          <div style={{ background: '#fff0f0', borderRadius: 6, padding: '4px 10px', color: '#c0392b', wordBreak: 'break-word' }}>
+                            {formatValue(c.from)}
+                          </div>
+                          <div style={{ textAlign: 'center', color: 'var(--slate)', paddingTop: 4 }}>→</div>
+                          <div style={{ background: '#f0fff4', borderRadius: 6, padding: '4px 10px', color: '#2d7a3a', wordBreak: 'break-word' }}>
+                            {formatValue(c.to)}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{
-                      background: '#fff0f0', borderRadius: 6,
-                      padding: '3px 10px', color: '#c0392b',
-                      wordBreak: 'break-word',
-                    }}>
-                      {formatValue(c.from)}
-                    </div>
-                    <div style={{ textAlign: 'center', color: 'var(--slate)', paddingTop: 4 }}>→</div>
-                    <div style={{
-                      background: '#f0fff4', borderRadius: 6,
-                      padding: '3px 10px', color: '#2d7a3a',
-                      wordBreak: 'break-word',
-                    }}>
-                      {formatValue(c.to)}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

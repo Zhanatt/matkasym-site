@@ -127,6 +127,9 @@ router.patch('/products/:id',  editor, async (req, res) => {
     if (req.body.specs !== undefined && JSON.stringify(old.specs) !== JSON.stringify(req.body.specs)) {
       changes.push({ field: FIELD_LABELS.specs, from: old.specs, to: req.body.specs });
     }
+    if (req.body.images !== undefined && JSON.stringify(old.images) !== JSON.stringify(req.body.images)) {
+      changes.push({ field: 'Фото', from: old.images || [], to: req.body.images || [] });
+    }
 
     const p = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
 
