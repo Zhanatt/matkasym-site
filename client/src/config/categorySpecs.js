@@ -152,6 +152,46 @@ export const CATEGORY_SPECS = {
     { key: 'Материал корпуса', unit: '',       type: 'text' },
     { key: 'Кол-во пазов',     unit: 'шт',     type: 'number' },
   ],
+  // ── Электрощиты ──────────────────────────────────────────────────────────
+  'electric-panel-outdoor': [
+    { key: 'Габариты ВxШxГ',  unit: 'мм',  type: 'text' },
+    { key: 'Степень защиты',  unit: '',    type: 'text' },
+    { key: 'Покрытие',        unit: '',    type: 'select', options: ['серый (порошковый)', 'чёрный (порошковый)', 'белый (порошковый)', 'бежевый (порошковый)'] },
+    { key: 'Цвет',            unit: '',    type: 'select', options: ['RAL 7035 (светло-серый)', 'RAL 9005 (чёрный)', 'RAL 9003 (белый)', 'RAL 1013 (бежевый)'] },
+    { key: 'Замок',           unit: '',    type: 'select', options: ['ключ', 'ручка', 'без замка'] },
+    { key: 'Кол-во модулей',  unit: 'шт', type: 'number' },
+  ],
+  'electric-panel-mount': [
+    { key: 'Габариты ВxШxГ',  unit: 'мм',  type: 'text' },
+    { key: 'Покрытие',        unit: '',    type: 'select', options: ['серый (порошковый)', 'чёрный (порошковый)', 'белый (порошковый)', 'бежевый (порошковый)'] },
+    { key: 'Цвет',            unit: '',    type: 'select', options: ['RAL 7035 (светло-серый)', 'RAL 9005 (чёрный)', 'RAL 9003 (белый)', 'RAL 1013 (бежевый)'] },
+    { key: 'Монтажная панель', unit: '',   type: 'select', options: ['есть', 'нет'] },
+    { key: 'Замок',           unit: '',    type: 'select', options: ['ключ', 'ручка', 'без замка'] },
+    { key: 'Кол-во модулей',  unit: 'шт', type: 'number' },
+  ],
+  'electric-panel-gas': [
+    { key: 'Габариты ВxШxГ',  unit: 'мм',  type: 'text' },
+    { key: 'Покрытие',        unit: '',    type: 'select', options: ['серый (порошковый)', 'чёрный (порошковый)', 'белый (порошковый)', 'бежевый (порошковый)'] },
+    { key: 'Цвет',            unit: '',    type: 'select', options: ['RAL 7035 (светло-серый)', 'RAL 9005 (чёрный)', 'RAL 9003 (белый)', 'RAL 1013 (бежевый)'] },
+    { key: 'Назначение',      unit: '',    type: 'text' },
+    { key: 'Замок',           unit: '',    type: 'select', options: ['ключ', 'ручка', 'без замка'] },
+  ],
+  'electric-panel-floor': [
+    { key: 'Габариты ВxШxГ',  unit: 'мм',  type: 'text' },
+    { key: 'Покрытие',        unit: '',    type: 'select', options: ['серый (порошковый)', 'чёрный (порошковый)', 'белый (порошковый)', 'бежевый (порошковый)'] },
+    { key: 'Цвет',            unit: '',    type: 'select', options: ['RAL 7035 (светло-серый)', 'RAL 9005 (чёрный)', 'RAL 9003 (белый)', 'RAL 1013 (бежевый)'] },
+    { key: 'Кол-во секций',   unit: 'шт', type: 'number' },
+    { key: 'Замок',           unit: '',    type: 'select', options: ['ключ', 'ручка', 'без замка'] },
+    { key: 'Кол-во модулей',  unit: 'шт', type: 'number' },
+  ],
+  'electric-panel-plumbing': [
+    { key: 'Габариты ВxШxГ',  unit: 'мм',  type: 'text' },
+    { key: 'Покрытие',        unit: '',    type: 'select', options: ['серый (порошковый)', 'чёрный (порошковый)', 'белый (порошковый)', 'бежевый (порошковый)'] },
+    { key: 'Цвет',            unit: '',    type: 'select', options: ['RAL 7035 (светло-серый)', 'RAL 9005 (чёрный)', 'RAL 9003 (белый)', 'RAL 1013 (бежевый)'] },
+    { key: 'Назначение',      unit: '',    type: 'text' },
+    { key: 'Замок',           unit: '',    type: 'select', options: ['ключ', 'ручка', 'без замка'] },
+  ],
+
   'antenna-outdoor': [
     { key: 'Сопротивление',    unit: 'Ом',     type: 'number' },
     { key: 'Диапазон частот',  unit: 'МГц',    type: 'text' },
