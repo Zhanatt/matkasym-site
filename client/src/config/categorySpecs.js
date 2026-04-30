@@ -152,6 +152,31 @@ export const CATEGORY_SPECS = {
     { key: 'Материал корпуса', unit: '',       type: 'text' },
     { key: 'Кол-во пазов',     unit: 'шт',     type: 'number' },
   ],
+  // ── Урны и контейнеры ────────────────────────────────────────────────────
+  'waste-bin': [
+    { key: 'Объём',          unit: 'л',   type: 'number' },
+    { key: 'Габариты ДxШxВ', unit: 'мм', type: 'text' },
+    { key: 'Материал',       unit: '',    type: 'text' },
+    { key: 'Цвет',           unit: '',    type: 'text' },
+    { key: 'Крышка',         unit: '',    type: 'select', options: ['есть', 'нет', 'педальная', 'качающаяся'] },
+  ],
+  'waste-bin-eco': [
+    { key: 'Объём',          unit: 'л',   type: 'number' },
+    { key: 'Габариты ДxШxВ', unit: 'мм', type: 'text' },
+    { key: 'Кол-во секций',  unit: 'шт', type: 'number' },
+    { key: 'Материал',       unit: '',    type: 'text' },
+    { key: 'Цвет',           unit: '',    type: 'text' },
+    { key: 'Тип сортировки', unit: '',    type: 'text' },
+  ],
+  'waste-container': [
+    { key: 'Объём',          unit: 'л',   type: 'number' },
+    { key: 'Габариты ДxШxВ', unit: 'мм', type: 'text' },
+    { key: 'Материал',       unit: '',    type: 'text' },
+    { key: 'Цвет',           unit: '',    type: 'text' },
+    { key: 'Колёса',         unit: '',    type: 'select', options: ['есть', 'нет'] },
+    { key: 'Крышка',         unit: '',    type: 'select', options: ['есть', 'нет'] },
+  ],
+
   // ── Электрощиты ──────────────────────────────────────────────────────────
   'electric-panel-outdoor': [
     { key: 'Габариты ВxШxГ',  unit: 'мм',  type: 'text' },
