@@ -49,7 +49,7 @@ router.get('/stats', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', brand, set, inStock, productStatus, stockStatus } = req.query;
+    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus } = req.query;
     const filter = {};
     if (search) filter.$or = [
       { name: new RegExp(search, 'i') },
@@ -58,6 +58,7 @@ router.get('/products', async (req, res) => {
     ];
     if (brand)         filter.brand         = brand;
     if (set)           filter.set           = set;
+    if (category)      filter.category      = category;
     if (inStock !== undefined) filter.inStock = inStock === 'true';
     if (productStatus) filter.productStatus = productStatus;
     if (stockStatus)   filter.stockStatus   = stockStatus;
