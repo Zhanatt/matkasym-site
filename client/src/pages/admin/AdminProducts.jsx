@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { adminGetProduct } from '../../api/index';
 import { adminGetProducts, adminDeleteProduct, adminGetFacets } from '../../api/index';
 import { cloudinaryOpt } from '../../utils/drive';
@@ -85,18 +85,43 @@ export default function AdminProducts() {
   const { user } = useAuth();
   const canEdit = user?.role === 'owner' || user?.role === 'editor';
 
-  // Filters
-  const [search,   setSearch]   = useState('');
-  const [brand,    setBrand]    = useState('');
-  const [set,      setSet]      = useState('');
-  const [category, setCategory] = useState('');
-  const [inStock,        setInStock]        = useState('');
-  const [productStatus,  setProductStatus]  = useState('');
-  const [stockStatus,    setStockStatus]    = useState('');
-  const [stockFilter,    setStockFilter]    = useState('');   // '' | 'in' | 'out'
-  const [stockSort,      setStockSort]      = useState('');   // '' | 'asc' | 'desc'
-  const [page,           setPage]           = useState(1);
-  const [groupBySet, setGroupBySet] = useState(true);
+  // ── Filters stored in URL so they survive navigation ──────────────────────
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const search        = searchParams.get('q')      || '';
+  const brand         = searchParams.get('brand')  || '';
+  const set           = searchParams.get('set')    || '';
+  const category      = searchParams.get('cat')    || '';
+  const productStatus = searchParams.get('status') || '';
+  const stockFilter   = searchParams.get('stock')  || '';
+  const stockSort     = searchParams.get('sort')   || '';
+  const groupBySet    = searchParams.get('group')  !== '0';
+  const page          = Number(searchParams.get('page')) || 1;
+
+  // Update one or more params at once, keeps the rest intact
+  const upd = useCallback((patch) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      Object.entries(patch).forEach(([k, v]) => {
+        if (v !== undefined && v !== '' && v !== null && v !== false)
+          next.set(k, String(v));
+        else
+          next.delete(k);
+      });
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Setters — cascade resets happen inline, no separate useEffects needed
+  const setSearch        = v => upd({ q: v, page: '' });
+  const setBrand         = v => upd({ brand: v, set: '', cat: '', page: '' });
+  const setSet           = v => upd({ set: v, cat: '', page: '' });
+  const setCategory      = v => upd({ cat: v, page: '' });
+  const setProductStatus = v => upd({ status: v, page: '' });
+  const setStockFilter   = v => upd({ stock: v });
+  const setStockSort     = v => upd({ sort: v });
+  const setGroupBySet    = v => upd({ group: v ? '' : '0' });
+  const setPage          = v => upd({ page: v === 1 ? '' : String(v) });
 
   // Data
   const [products, setProducts] = useState([]);
@@ -123,11 +148,6 @@ export default function AdminProducts() {
       .catch(() => {});
   }, [brand, set, category, search]);
 
-  // Reset dependent filters when parent changes
-  useEffect(() => { setSet(''); setCategory(''); setPage(1); }, [brand]);
-  useEffect(() => { setCategory(''); setPage(1); }, [set]);
-  useEffect(() => { setPage(1); }, [category, search, inStock, productStatus, stockStatus]);
-
   // Load products
   const load = useCallback(() => {
     setLoading(true);
@@ -136,9 +156,7 @@ export default function AdminProducts() {
       brand:         brand         || undefined,
       set:           set           || undefined,
       category:      category      || undefined,
-      inStock:       inStock       || undefined,
       productStatus: productStatus || undefined,
-      stockStatus:   stockStatus   || undefined,
     })
       .then(r => {
         setProducts(r.data.products);
@@ -146,7 +164,7 @@ export default function AdminProducts() {
         setPages(r.data.pages);
       })
       .finally(() => setLoading(false));
-  }, [page, search, brand, set, category, inStock, productStatus, stockStatus]);
+  }, [page, search, brand, set, category, productStatus]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -318,15 +336,14 @@ export default function AdminProducts() {
         </div>
 
         {/* Active filter chips */}
-        {(brand || set || category || inStock || search || productStatus) && (
+        {(brand || set || category || search || productStatus || stockFilter) && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '10px 20px', borderBottom: '1px solid var(--gray-200)' }}>
-            {brand    && <Chip label={`Бренд: ${brand.replace('matkasym-', '').toUpperCase()}`} onRemove={() => setBrand('')} />}
-            {set      && <Chip label={`Сет: ${set.toUpperCase()}`} onRemove={() => setSet('')} />}
-            {category && <Chip label={`Категория: ${categoryLabel(category)}`} onRemove={() => setCategory('')} />}
-            {inStock  && <Chip label={inStock === 'true' ? 'В наличии' : 'Нет в наличии'} onRemove={() => setInStock('')} />}
+            {brand         && <Chip label={`Бренд: ${brand.replace('matkasym-', '').toUpperCase()}`} onRemove={() => setBrand('')} />}
+            {set           && <Chip label={`Сет: ${set.toUpperCase()}`} onRemove={() => setSet('')} />}
+            {category      && <Chip label={`Категория: ${categoryLabel(category)}`} onRemove={() => setCategory('')} />}
             {search        && <Chip label={`«${search}»`} onRemove={() => setSearch('')} />}
-            {stockStatus   && <Chip label={STOCK_STATUS_META[stockStatus]?.label   || stockStatus}   onRemove={() => setStockStatus('')} />}
             {productStatus && <Chip label={PRODUCT_STATUS_META[productStatus]?.label || productStatus} onRemove={() => setProductStatus('')} />}
+            {stockFilter   && <Chip label={stockFilter === 'in' ? '✅ В наличии' : '❌ Нет в наличии'} onRemove={() => setStockFilter('')} />}
           </div>
         )}
 
