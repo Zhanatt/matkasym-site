@@ -167,7 +167,7 @@
   background: #fff;
   border-radius: var(--radius-lg);
   border: 1px solid var(--gray-200);
-  overflow: clip;  /* clip не создаёт scroll-контекст — sticky работает */
+  overflow: visible;
 }
 
 .admin-toolbar {
