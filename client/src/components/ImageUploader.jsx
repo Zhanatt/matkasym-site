@@ -8,6 +8,7 @@ const UPLOAD_PRESET = 'Matkasym';
 export default function ImageUploader({ images = [], onChange }) {
   const [deleting, setDeleting] = useState(null); // url being deleted
   const openWidget = () => {
+    const batch = []; // собираем все загруженные URL в одну сессию
     window.cloudinary.openUploadWidget(
       {
         cloudName:    CLOUD_NAME,
@@ -50,8 +51,11 @@ export default function ImageUploader({ images = [], onChange }) {
       (error, result) => {
         if (error) return;
         if (result.event === 'success') {
-          const url = result.info.secure_url;
-          onChange([...images, url]);
+          batch.push(result.info.secure_url);
+        }
+        // queues-end — все файлы обработаны, добавляем разом
+        if (result.event === 'queues-end' && batch.length > 0) {
+          onChange([...images, ...batch]);
         }
       }
     );
