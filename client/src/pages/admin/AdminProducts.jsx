@@ -375,7 +375,10 @@ export default function AdminProducts() {
 
                       return (
                         <tr key={mk}>
-                          <td>
+                          <td
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => navigate(`/admin/products/${primary._id}`)}
+                          >
                             {imgUrl ? (
                               <img src={imgUrl} alt="" className="admin-table-img" />
                             ) : (
@@ -383,7 +386,11 @@ export default function AdminProducts() {
                             )}
                           </td>
                           <td>
-                            <div className="admin-table-name">{cleanName(primary.name)}</div>
+                            <div
+                              className="admin-table-name"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => navigate(`/admin/products/${primary._id}`)}
+                            >{cleanName(primary.name)}</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
                               {multiColor
                                 ? variants.map(v => (
@@ -453,7 +460,7 @@ export default function AdminProducts() {
                           <td>
                             {canEdit && (
                               <div className="admin-row-actions">
-                                <button className="admin-btn-edit" onClick={() => navigate(`/admin/products/${primary._id}`)}>
+                                <button className="admin-btn-edit" onClick={() => navigate(`/admin/products/${primary._id}/edit`)}>
                                   Изменить
                                 </button>
                                 <button
