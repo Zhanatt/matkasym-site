@@ -47,5 +47,6 @@ export const adminGetUsers    = ()       => api.get('/admin/users');
 export const adminUpdateUser  = (id, data) => api.patch(`/admin/users/${id}`, data);
 export const adminDeleteUser  = (id)    => api.delete(`/admin/users/${id}`);
 export const adminDeleteImage = (url)       => api.delete('/admin/images', { data: { url } });
+export const adminGetChangelog = (params)   => api.get('/admin/changelog', { params });
 
 export default api;

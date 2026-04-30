@@ -2,8 +2,26 @@ const router     = require('express').Router();
 const Product    = require('../models/Product');
 const Brand      = require('../models/Brand');
 const User       = require('../models/User');
+const ChangeLog  = require('../models/ChangeLog');
 const cloudinary = require('../lib/cloudinary');
 const { protect, admin, editor, viewer } = require('../middleware/auth');
+
+const TRACKED_FIELDS = [
+  'name','fullName','sku','price','priceWholesale','priceDealer','priceCost',
+  'inStock','stock','stockStatus','productStatus','description','dimensions',
+  'category','set','color','isNew','developmentStage',
+];
+
+const FIELD_LABELS = {
+  name: 'Название', fullName: 'Полное название', sku: 'SKU',
+  price: 'Розничная цена', priceWholesale: 'Оптовая цена',
+  priceDealer: 'Дилерская цена', priceCost: 'Себестоимость',
+  inStock: 'В наличии', stock: 'Количество', stockStatus: 'Статус склада',
+  productStatus: 'Статус продукта', description: 'Описание',
+  dimensions: 'Габариты', category: 'Категория', set: 'Сет',
+  color: 'Цвет', isNew: 'Новинка', developmentStage: 'Стадия разработки',
+  specs: 'Характеристики',
+};
 
 // All admin routes require valid JWT + at least viewer role
 router.use(protect, viewer);
@@ -96,8 +114,31 @@ router.post('/products',       editor, async (req, res) => {
 
 router.patch('/products/:id',  editor, async (req, res) => {
   try {
+    const old = await Product.findById(req.params.id);
+    if (!old) return res.status(404).json({ error: 'Не найден' });
+
+    // Detect changed fields
+    const changes = [];
+    for (const field of TRACKED_FIELDS) {
+      if (req.body[field] !== undefined && String(old[field]) !== String(req.body[field])) {
+        changes.push({ field: FIELD_LABELS[field] || field, from: old[field], to: req.body[field] });
+      }
+    }
+    if (req.body.specs !== undefined && JSON.stringify(old.specs) !== JSON.stringify(req.body.specs)) {
+      changes.push({ field: FIELD_LABELS.specs, from: old.specs, to: req.body.specs });
+    }
+
     const p = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!p) return res.status(404).json({ error: 'Не найден' });
+
+    if (changes.length > 0) {
+      await ChangeLog.create({
+        productId:   p._id,
+        productName: p.fullName || p.name,
+        changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
+        changes,
+      });
+    }
+
     res.json(p);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -131,6 +172,22 @@ router.patch('/brands/:key', editor, async (req, res) => {
     if (!brand) return res.status(404).json({ error: 'Не найден' });
     res.json(brand);
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── Changelog (admin only) ───────────────────────
+router.get('/changelog', admin, async (req, res) => {
+  try {
+    const { productId, userId, limit = 100, page = 1 } = req.query;
+    const filter = {};
+    if (productId) filter.productId = productId;
+    if (userId)    filter['changedBy.id'] = userId;
+    const logs = await ChangeLog.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+    const total = await ChangeLog.countDocuments(filter);
+    res.json({ logs, total });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── Users (admin+ only) ──────────────────────────

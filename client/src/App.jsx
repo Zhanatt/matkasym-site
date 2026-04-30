@@ -9,6 +9,7 @@ import AdminProducts      from './pages/admin/AdminProducts';
 import AdminProductForm   from './pages/admin/AdminProductForm';
 import AdminProductMap    from './pages/admin/AdminProductMap';
 import AdminUsers         from './pages/admin/AdminUsers';
+import AdminChangelog     from './pages/admin/AdminChangelog';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="products/:id" element={<AdminProductForm />} />
           <Route path="map" element={<AdminProductMap />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="changelog" element={<AdminChangelog />} />
         </Route>
       </Routes>
     );
