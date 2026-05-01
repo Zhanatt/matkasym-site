@@ -14,6 +14,28 @@ const BRANDS = [
   { value: 'matkasym-shaar', label: 'SHAAR' },
 ];
 
+const SET_LABELS_RU = {
+  'nelikvid':    'Неликвид',
+  'samples':     'Образцы',
+  'small-batch': 'Малосерийные',
+  'misc':        'Разное',
+  'equipment':   'Оборудование и сырьё',
+  'other':       'Прочее',
+  'achyk-asman': 'ACHYK ASMAN',
+  'den-sooluk':  'DEN SOOLUK',
+  'green-omir':  'GREEN OMIR',
+  'kosh-keliniz':'KOSH KELINIZ',
+  'sanarip-tv':  'SANARIP TV',
+  'taza-kiym':   'TAZA KIYM',
+  'jenil-ashkana':'JENIL ASHKANA',
+  'onoi-sakta':  'ONOI SAKTA',
+  'turak-jai':   'TURAK JAI',
+  'bilim-kelechek':'BILIM KELECHEK',
+  'uzak-koldon': 'UZAK KOLDON',
+  'bekem-fasad': 'BEKEM FASAD',
+  '0-tashtandy': '0-TASHTANDY',
+};
+
 const STOCK_OPTIONS = [
   { value: '',      label: 'Любой статус' },
   { value: 'true',  label: 'В наличии' },
@@ -308,7 +330,7 @@ export default function AdminProducts() {
           >
             <option value="">Все сеты</option>
             {availSets.map(s => (
-              <option key={s} value={s}>{s.toUpperCase()}</option>
+              <option key={s} value={s}>{SET_LABELS_RU[s] || s.toUpperCase().replace(/-/g, ' ')}</option>
             ))}
           </select>
 
