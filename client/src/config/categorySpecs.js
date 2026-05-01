@@ -55,6 +55,23 @@ export const CATEGORIES = [
   { value: 'school-desk',             label: 'Школьная парта / Стол' },
   { value: 'industrial-shelf',        label: 'Промышленный стеллаж' },
   // ── Прочее ───────────────────────────────────
+  // ── Уборка и ванная ──────────────────────────────────────────────────────
+  { value: 'toilet-brush',        label: 'Ершик для туалета' },
+  { value: 'mop',                 label: 'Швабра' },
+  { value: 'cleaning-set',        label: 'Щётка с совком / стекломойка' },
+  { value: 'bath-mat',            label: 'Коврик для ванной' },
+  { value: 'entrance-mat',        label: 'Коврик для прихожей' },
+  { value: 'bath-accessories',    label: 'Аксессуары для ванны' },
+  { value: 'bath-curtain-rod',    label: 'Карниз для шторки' },
+  { value: 'bath-shower-curtain', label: 'Шторка для душа' },
+  { value: 'ladder',              label: 'Стремянка' },
+  // ── Кухня и органайзеры ────────────────────────────────────────────────
+  { value: 'hook',                label: 'Крючки' },
+  { value: 'organizer-kitchen',   label: 'Кухонный органайзер' },
+  { value: 'dish-drainer',        label: 'Сушилка для посуды' },
+  // ── Одежда / плечики ───────────────────────────────────────────────────
+  { value: 'hanger-clip',         label: 'Плечики' },
+  // ── Прочее ───────────────────────────────────────────────────────────
   { value: 'other',               label: 'Другое' },
 ];
 
