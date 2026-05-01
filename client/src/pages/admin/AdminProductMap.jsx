@@ -287,7 +287,16 @@ function buildGraph(products, navigate) {
       });
 
       const setMidY = (setStartY + globalY) / 2 - 36;
-      const setLabel = setKey === '__none__' ? 'Без сета' : setKey.toUpperCase().replace(/-/g, ' ');
+      const SET_LABELS_RU = {
+        'nelikvid':    'Неликвид',
+        'samples':     'Образцы',
+        'small-batch': 'Малосерийные',
+        'misc':        'Разное',
+        'equipment':   'Оборудование и сырьё',
+        'other':       'Прочее',
+      };
+      const setLabel = setKey === '__none__' ? 'Без сета'
+        : (SET_LABELS_RU[setKey] || setKey.toUpperCase().replace(/-/g, ' '));
       const allPlanned = prods.length > 0 && prods.every(p => (p.productStatus || 'ready') === 'planned');
       const uniqueCount = Object.keys(nameGroups).length;
       nodes.push({
