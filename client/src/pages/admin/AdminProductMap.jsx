@@ -317,38 +317,78 @@ function buildGraph(products, navigate) {
   return { nodes, edges };
 }
 
+const formatBrandLabel = (b) =>
+  b === 'matkasym-home' ? 'MATKASYM HOME' : b.toUpperCase().replace(/-/g, ' ');
+
 /* ── Main component ─────────────────────────────────── */
 export default function AdminProductMap() {
   const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
+  const [allProducts, setAllProducts] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [selectedBrand, setSelectedBrand] = useState(null);
 
   useEffect(() => {
     adminGetProducts({ limit: 500 }).then(r => {
       const products = r.data.products || r.data;
-      setTotal(products.length);
-      const { nodes: n, edges: e } = buildGraph(products, navigate);
-      setNodes(n);
-      setEdges(e);
+      setAllProducts(products);
+      const uniqueBrands = [...new Set(products.map(p => p.brand || 'matkasym-home'))];
+      setBrands(uniqueBrands);
+      setSelectedBrand(uniqueBrands[0] || null);
     }).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!selectedBrand || allProducts.length === 0) return;
+    const filtered = allProducts.filter(p => (p.brand || 'matkasym-home') === selectedBrand);
+    const { nodes: n, edges: e } = buildGraph(filtered, navigate);
+    setNodes(n);
+    setEdges(e);
+  }, [selectedBrand, allProducts]);
+
   if (loading) return <div className="admin-empty">Строим карту...</div>;
+
+  const filteredCount = allProducts.filter(p => (p.brand || 'matkasym-home') === selectedBrand).length;
 
   return (
     <div>
-      <div className="admin-page-header" style={{ marginBottom: 16 }}>
+      <div className="admin-page-header" style={{ marginBottom: 12 }}>
         <div>
           <h1 className="admin-page-title">Product Map</h1>
           <p style={{ color: 'var(--slate)', fontSize: 13, margin: '2px 0 0' }}>
-            {total} товаров · Scroll для зума · Drag для перемещения · Click на товар — открыть
+            {filteredCount} товаров · Scroll для зума · Drag для перемещения · Click на товар — открыть
           </p>
         </div>
       </div>
 
-      <div style={{ height: 'calc(100vh - 140px)', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--gray-200)', background: '#fafafa' }}>
+      {/* Brand tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        {brands.map(b => (
+          <button
+            key={b}
+            onClick={() => setSelectedBrand(b)}
+            style={{
+              padding: '7px 18px',
+              borderRadius: 8,
+              border: '1.5px solid',
+              borderColor: selectedBrand === b ? '#111' : '#e0e0e0',
+              background: selectedBrand === b ? '#111' : '#fff',
+              color: selectedBrand === b ? '#fff' : '#444',
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: .5,
+              cursor: 'pointer',
+              transition: 'all .15s',
+            }}
+          >
+            {formatBrandLabel(b)}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ height: 'calc(100vh - 190px)', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--gray-200)', background: '#fafafa' }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
