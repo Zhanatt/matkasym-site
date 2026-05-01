@@ -8,6 +8,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { adminGetProducts } from '../../api/index';
 import { CATEGORIES } from '../../config/categorySpecs';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const categoryLabel = (value) =>
   CATEGORIES.find(c => c.value === value)?.label || value || '—';
@@ -247,7 +248,7 @@ function buildGraph(products, navigate) {
             name: cleanName(primary.name),
             category: primary.category || '',
             price: primary.price || 0,
-            img: primary.images?.[0] || '',
+            img: cloudinaryOpt(primary.images?.[0] || '', 80),
             productStatus: status,
             hasVariants: multiColor,
             onClick: () => navigate(`/admin/products/${primary._id}`),
@@ -271,7 +272,7 @@ function buildGraph(products, navigate) {
             nodes.push({
               id: cid, type: 'color',
               position: { x: COLOR_X, y: colorStartY + i * COLOR_GAP },
-              data: { color: v.color, id: v._id, img: v.images?.[0] || '', productNodeId: pid },
+              data: { color: v.color, id: v._id, img: cloudinaryOpt(v.images?.[0] || '', 80), productNodeId: pid },
             });
             edges.push({
               id: `e__${pid}__${cid}`,

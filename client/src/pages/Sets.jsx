@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getProducts } from '../api';
-import { driveThumb } from '../utils/drive';
+import { cloudinaryOpt } from '../utils/drive';
 import { useCart } from '../context/CartContext';
 import './Sets.css';
 
@@ -122,8 +122,8 @@ export default function Sets() {
                         </div>
                       )}
                       <Link to={`/product/${p._id}`} className="set-card-img">
-                        {p.driveImages?.[0]
-                          ? <img src={driveThumb(p.driveImages[0])} alt={p.name} loading="lazy" />
+                        {p.images?.[0]
+                          ? <img src={cloudinaryOpt(p.images[0], 400)} alt={p.name} loading="lazy" />
                           : <div className="set-card-no-img">📦</div>
                         }
                       </Link>
