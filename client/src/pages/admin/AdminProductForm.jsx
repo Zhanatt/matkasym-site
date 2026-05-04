@@ -88,12 +88,20 @@ export default function AdminProductForm() {
     }));
   };
 
-  const setSpec = (idx, value) => {
+  const setSpec = (idx, field, value) => {
     setForm(f => {
       const specs = [...f.specs];
-      specs[idx] = { ...specs[idx], value };
+      specs[idx] = { ...specs[idx], [field]: value };
       return { ...f, specs };
     });
+  };
+
+  const addCustomSpec = () => {
+    setForm(f => ({ ...f, specs: [...f.specs, { key: '', value: '', options: [] }] }));
+  };
+
+  const removeSpec = (idx) => {
+    setForm(f => ({ ...f, specs: f.specs.filter((_, i) => i !== idx) }));
   };
 
   // Sets for current brand
@@ -257,40 +265,125 @@ export default function AdminProductForm() {
             />
           </div>
 
-          {/* Характеристики по категории */}
-          {form.specs.some(s => s.key !== 'Цвет') && (
-            <>
-              {sectionLabel('Характеристики')}
-              <div className="admin-specs-grid">
-                {form.specs.map((spec, idx) => {
-                  if (spec.key === 'Цвет') return null;
-                  const template = (CATEGORY_SPECS[form.category] || []).find(t => t.key === spec.key);
-                  return (
-                    <div className="admin-form-group" key={spec.key}>
-                      <label>
-                        {spec.key}
-                        {template?.unit && <span style={{ color: 'var(--slate)', fontWeight: 400, marginLeft: 4 }}>({template.unit})</span>}
-                      </label>
-                      {template?.type === 'select' ? (
-                        <select value={spec.value} onChange={e => setSpec(idx, e.target.value)}>
-                          <option value="">— выберите —</option>
-                          {template.options.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      ) : (
-                        <input
-                          type={template?.type === 'number' ? 'number' : 'text'}
-                          value={spec.value}
-                          onChange={e => setSpec(idx, e.target.value)}
-                          placeholder={template?.unit || ''}
-                          min={template?.type === 'number' ? 0 : undefined}
-                        />
-                      )}
+          {/* Характеристики по категории + пользовательские */}
+          {sectionLabel('Характеристики')}
+          <div className="admin-specs-grid">
+            {form.specs.map((spec, idx) => {
+              if (spec.key === 'Цвет') return null;
+              const template = (CATEGORY_SPECS[form.category] || []).find(t => t.key === spec.key);
+              const isCustom = !template;
+              const isSelect = template?.type === 'select' || (isCustom && spec.options?.length > 0);
+
+              return (
+                <div className="admin-form-group" key={idx} style={{ position: 'relative' }}>
+                  {/* Имя свойства */}
+                  {isCustom ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                      <input
+                        value={spec.key}
+                        onChange={e => setSpec(idx, 'key', e.target.value)}
+                        placeholder="Название свойства"
+                        style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--slate)', border: '1px dashed var(--gray-300)', borderRadius: 6, padding: '3px 8px', background: '#fafafa' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSpec(idx)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
+                        title="Удалить"
+                      >×</button>
                     </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                  ) : (
+                    <label>
+                      {spec.key}
+                      {template?.unit && <span style={{ color: 'var(--slate)', fontWeight: 400, marginLeft: 4 }}>({template.unit})</span>}
+                    </label>
+                  )}
+
+                  {/* Тип ввода для пользовательских свойств */}
+                  {isCustom && (
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                      {['text', 'select'].map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setSpec(idx, 'options', t === 'select' ? (spec.options?.length ? spec.options : ['']) : [])}
+                          style={{
+                            fontSize: 11, padding: '2px 10px', borderRadius: 12, cursor: 'pointer',
+                            border: `1.5px solid ${(t === 'select') === isSelect ? 'var(--primary)' : 'var(--gray-200)'}`,
+                            background: (t === 'select') === isSelect ? 'var(--primary)' : '#fff',
+                            color: (t === 'select') === isSelect ? '#fff' : 'var(--slate)',
+                            fontWeight: 600,
+                          }}
+                        >{t === 'text' ? 'Текст' : 'Список'}</button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Редактирование вариантов списка */}
+                  {isCustom && isSelect && (
+                    <div style={{ marginBottom: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {spec.options.map((opt, oi) => (
+                        <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <input
+                            value={opt}
+                            onChange={e => {
+                              const opts = [...spec.options];
+                              opts[oi] = e.target.value;
+                              setSpec(idx, 'options', opts);
+                            }}
+                            placeholder={`Вариант ${oi + 1}`}
+                            style={{ width: 90, fontSize: 12, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gray-300)' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSpec(idx, 'options', spec.options.filter((_, i) => i !== oi))}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: 14, padding: '0 2px' }}
+                          >×</button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setSpec(idx, 'options', [...spec.options, ''])}
+                        style={{ fontSize: 12, padding: '3px 10px', borderRadius: 6, border: '1px dashed var(--gray-300)', background: '#fafafa', cursor: 'pointer', color: 'var(--slate)' }}
+                      >+ вариант</button>
+                    </div>
+                  )}
+
+                  {/* Значение */}
+                  {isSelect ? (
+                    <select value={spec.value} onChange={e => setSpec(idx, 'value', e.target.value)}>
+                      <option value="">— выберите —</option>
+                      {(template?.options || spec.options || []).filter(Boolean).map(o => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={template?.type === 'number' ? 'number' : 'text'}
+                      value={spec.value}
+                      onChange={e => setSpec(idx, 'value', e.target.value)}
+                      placeholder={template?.unit || ''}
+                      min={template?.type === 'number' ? 0 : undefined}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={addCustomSpec}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 13, padding: '8px 16px', borderRadius: 8,
+              border: '1.5px dashed var(--gray-300)', background: '#fafafa',
+              cursor: 'pointer', color: 'var(--slate)', fontWeight: 600,
+              marginBottom: 8,
+            }}
+          >
+            + Добавить свойство
+          </button>
 
           {sectionLabel('Цены (сом)')}
 

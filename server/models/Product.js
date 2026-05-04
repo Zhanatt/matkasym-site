@@ -27,8 +27,9 @@ const productSchema = new mongoose.Schema({
   // Specs — dynamic key-value per category
   specs: [
     {
-      key:   { type: String },   // e.g. "Макс. нагрузка"
-      value: { type: String },   // e.g. "10 кг"
+      key:     { type: String },          // e.g. "Макс. нагрузка"
+      value:   { type: String },          // e.g. "10 кг"
+      options: [{ type: String }],        // if set → renders as dropdown in admin
     }
   ],
 
