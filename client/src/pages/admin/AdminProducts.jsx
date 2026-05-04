@@ -115,6 +115,20 @@ export default function AdminProducts() {
   // ── Filters stored in URL so they survive navigation ──────────────────────
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Restore filters from sessionStorage if URL has no params (e.g. after coming back from edit)
+  useEffect(() => {
+    if (!window.location.search) {
+      const saved = sessionStorage.getItem('adminProductsFilters');
+      if (saved) setSearchParams(new URLSearchParams(saved), { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save filters to sessionStorage on every change
+  useEffect(() => {
+    sessionStorage.setItem('adminProductsFilters', searchParams.toString());
+  }, [searchParams]);
+
   const search        = searchParams.get('q')      || '';
   const brand         = searchParams.get('brand')  || '';
   const set           = searchParams.get('set')    || '';
