@@ -81,11 +81,28 @@ export default function AdminProductForm() {
     adminGetProduct(id)
       .then(r => {
         const p = r.data;
-        setForm({ ...p, images: p.images || [], specs: p.specs || [], priceCost: p.priceCost ?? '', priceWholesale: p.priceWholesale ?? '', priceDealer: p.priceDealer ?? '', dimensions: p.dimensions || '' });
-        if (p.category) loadSavedCatSpecs(p.category);
+        const baseSpecs = p.specs || [];
+        setForm({ ...p, images: p.images || [], specs: baseSpecs, priceCost: p.priceCost ?? '', priceWholesale: p.priceWholesale ?? '', priceDealer: p.priceDealer ?? '', dimensions: p.dimensions || '' });
+
+        if (p.category) {
+          adminGetCategorySpecs(p.category)
+            .then(catR => {
+              setSavedCatSpecs(catR.data || []);
+              // Add saved custom specs that the product doesn't have yet
+              const existingKeys = new Set(baseSpecs.map(s => s.key));
+              const missing = (catR.data || []).filter(s => !existingKeys.has(s.key));
+              if (missing.length > 0) {
+                setForm(f => ({
+                  ...f,
+                  specs: [...f.specs, ...missing.map(s => ({ key: s.key, value: '', options: s.options || [] }))],
+                }));
+              }
+            })
+            .catch(() => {});
+        }
       })
       .finally(() => setLoading(false));
-  }, [id, isNew, loadSavedCatSpecs]);
+  }, [id, isNew]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
