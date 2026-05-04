@@ -32,8 +32,12 @@ const SET_LABELS_RU = {
   'turak-jai':   'TURAK JAI',
   'bilim-kelechek':'BILIM KELECHEK',
   'uzak-koldon': 'UZAK KOLDON',
-  'bekem-fasad': 'BEKEM FASAD',
-  '0-tashtandy': '0-TASHTANDY',
+  'bekem-fasad':    'BEKEM FASAD',
+  '0-tashtandy':    '0-TASHTANDY',
+  'konok-keldi':    'KONOK KELDI',
+  'korkom-aiym':    'KORKOM AIYM',
+  'shirin-balalyk': 'SHIRIN BALALYK',
+  'uydo-ishtoo':    'UYDO ISHTOO',
 };
 
 const STOCK_OPTIONS = [
