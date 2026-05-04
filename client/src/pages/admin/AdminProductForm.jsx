@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   adminGetProduct, adminCreateProduct, adminUpdateProduct,
   adminGetBrands, adminUpdateBrand,
+  adminGetCategorySpecs, adminSaveCategorySpec,
 } from '../../api/index';
 import ImageUploader  from '../../components/ImageUploader';
 import SelectWithAdd  from '../../components/SelectWithAdd';
@@ -56,8 +57,10 @@ export default function AdminProductForm() {
   const [error, setError]         = useState('');
 
   // Brands + sets from DB
-  const [brandsData, setBrandsData] = useState([]);  // full brand objects
-  const [categories, setCategories] = useState(CATEGORIES);
+  const [brandsData, setBrandsData]   = useState([]);
+  const [categories, setCategories]   = useState(CATEGORIES);
+  const [savedCatSpecs, setSavedCatSpecs] = useState([]);  // custom specs saved to this category
+  const [savingSpec, setSavingSpec]   = useState(null);    // idx of spec being saved
 
   // Load brands for set selector
   useEffect(() => {
@@ -71,21 +74,41 @@ export default function AdminProductForm() {
       .then(r => {
         const p = r.data;
         setForm({ ...p, images: p.images || [], specs: p.specs || [], priceCost: p.priceCost ?? '', priceWholesale: p.priceWholesale ?? '', priceDealer: p.priceDealer ?? '', dimensions: p.dimensions || '' });
+        if (p.category) loadSavedCatSpecs(p.category);
       })
       .finally(() => setLoading(false));
-  }, [id, isNew]);
+  }, [id, isNew, loadSavedCatSpecs]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
   // When category changes — reset specs to template defaults (skip Цвет — handled separately)
   const handleCategoryChange = (value) => {
-    set('category', value);
-    const template = (CATEGORY_SPECS[value] || []).filter(t => t.key !== 'Цвет');
-    setForm(f => ({
-      ...f,
-      category: value,
-      specs: template.map(t => ({ key: t.key, value: '' })),
-    }));
+    const staticSpecs = (CATEGORY_SPECS[value] || []).filter(t => t.key !== 'Цвет');
+    // Load saved custom specs, then merge
+    adminGetCategorySpecs(value)
+      .then(r => {
+        setSavedCatSpecs(r.data);
+        const allKeys = new Set(staticSpecs.map(t => t.key));
+        const extraSpecs = (r.data || [])
+          .filter(s => !allKeys.has(s.key))
+          .map(s => ({ key: s.key, value: '', options: s.options || [] }));
+        setForm(f => ({
+          ...f,
+          category: value,
+          specs: [
+            ...staticSpecs.map(t => ({ key: t.key, value: '' })),
+            ...extraSpecs,
+          ],
+        }));
+      })
+      .catch(() => {
+        setSavedCatSpecs([]);
+        setForm(f => ({
+          ...f,
+          category: value,
+          specs: staticSpecs.map(t => ({ key: t.key, value: '' })),
+        }));
+      });
   };
 
   const setSpec = (idx, field, value) => {
@@ -102,6 +125,32 @@ export default function AdminProductForm() {
 
   const removeSpec = (idx) => {
     setForm(f => ({ ...f, specs: f.specs.filter((_, i) => i !== idx) }));
+  };
+
+  // Load saved custom specs for current category
+  const loadSavedCatSpecs = useCallback((category) => {
+    if (!category) return;
+    adminGetCategorySpecs(category)
+      .then(r => setSavedCatSpecs(r.data))
+      .catch(() => {});
+  }, []);
+
+  // Save custom spec to category template
+  const saveSpecToCategory = async (idx) => {
+    const spec = form.specs[idx];
+    if (!spec.key.trim() || !form.category) return;
+    setSavingSpec(idx);
+    try {
+      const type = spec.options?.length > 0 ? 'select' : 'text';
+      const result = await adminSaveCategorySpec(form.category, {
+        key: spec.key.trim(),
+        type,
+        options: spec.options?.filter(Boolean) || [],
+      });
+      setSavedCatSpecs(result.data);
+    } finally {
+      setSavingSpec(null);
+    }
   };
 
   // Sets for current brand
@@ -285,6 +334,24 @@ export default function AdminProductForm() {
                         placeholder="Название свойства"
                         style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--slate)', border: '1px dashed var(--gray-300)', borderRadius: 6, padding: '3px 8px', background: '#fafafa' }}
                       />
+                      {/* ОК — сохранить свойство в шаблон категории */}
+                      {spec.key.trim() && form.category && !savedCatSpecs.some(s => s.key === spec.key.trim()) && (
+                        <button
+                          type="button"
+                          onClick={() => saveSpecToCategory(idx)}
+                          disabled={savingSpec === idx}
+                          style={{
+                            fontSize: 11, padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
+                            border: '1.5px solid #2d7a3a', background: savingSpec === idx ? '#e6f4ea' : '#2d7a3a',
+                            color: savingSpec === idx ? '#2d7a3a' : '#fff',
+                            fontWeight: 700, flexShrink: 0,
+                          }}
+                          title="Сохранить в шаблон категории"
+                        >{savingSpec === idx ? '...' : 'ОК'}</button>
+                      )}
+                      {spec.key.trim() && savedCatSpecs.some(s => s.key === spec.key.trim()) && (
+                        <span style={{ fontSize: 11, color: '#2d7a3a', fontWeight: 700, flexShrink: 0 }}>✓ сохранено</span>
+                      )}
                       <button
                         type="button"
                         onClick={() => removeSpec(idx)}

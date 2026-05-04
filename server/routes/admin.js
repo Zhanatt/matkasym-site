@@ -1,9 +1,10 @@
-const router     = require('express').Router();
-const Product    = require('../models/Product');
-const Brand      = require('../models/Brand');
-const User       = require('../models/User');
-const ChangeLog  = require('../models/ChangeLog');
-const cloudinary = require('../lib/cloudinary');
+const router       = require('express').Router();
+const Product      = require('../models/Product');
+const Brand        = require('../models/Brand');
+const User         = require('../models/User');
+const ChangeLog    = require('../models/ChangeLog');
+const CategorySpec = require('../models/CategorySpec');
+const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer } = require('../middleware/auth');
 
 const TRACKED_FIELDS = [
@@ -230,6 +231,45 @@ router.delete('/users/:id', admin, async (req, res) => {
       return res.status(403).json({ error: 'Нельзя удалить владельца' });
     await User.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Category custom specs ──────────────────────────────────────────────────
+
+// GET /api/admin/category-specs/:category — get custom specs for a category
+router.get('/category-specs/:category', protect, viewer, async (req, res) => {
+  try {
+    const doc = await CategorySpec.findOne({ category: req.params.category });
+    res.json(doc?.customSpecs || []);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/category-specs/:category — add or update a custom spec
+router.post('/category-specs/:category', protect, editor, async (req, res) => {
+  try {
+    const { key, type, options } = req.body;
+    if (!key) return res.status(400).json({ error: 'key required' });
+
+    const doc = await CategorySpec.findOneAndUpdate(
+      { category: req.params.category },
+      { $pull: { customSpecs: { key } } },
+      { new: true, upsert: true }
+    );
+    doc.customSpecs.push({ key, type: type || 'text', options: options || [] });
+    await doc.save();
+    res.json(doc.customSpecs);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/category-specs/:category/:key — remove a custom spec
+router.delete('/category-specs/:category/:key', protect, editor, async (req, res) => {
+  try {
+    const doc = await CategorySpec.findOneAndUpdate(
+      { category: req.params.category },
+      { $pull: { customSpecs: { key: req.params.key } } },
+      { new: true }
+    );
+    res.json(doc?.customSpecs || []);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

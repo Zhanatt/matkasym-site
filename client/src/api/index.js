@@ -47,6 +47,9 @@ export const adminGetUsers    = ()       => api.get('/admin/users');
 export const adminUpdateUser  = (id, data) => api.patch(`/admin/users/${id}`, data);
 export const adminDeleteUser  = (id)    => api.delete(`/admin/users/${id}`);
 export const adminDeleteImage = (url)       => api.delete('/admin/images', { data: { url } });
+export const adminGetCategorySpecs    = (cat)       => api.get(`/admin/category-specs/${cat}`);
+export const adminSaveCategorySpec    = (cat, data) => api.post(`/admin/category-specs/${cat}`, data);
+export const adminDeleteCategorySpec  = (cat, key)  => api.delete(`/admin/category-specs/${cat}/${encodeURIComponent(key)}`);
 export const adminGetChangelog = (params)   => api.get('/admin/changelog', { params });
 
 export default api;
