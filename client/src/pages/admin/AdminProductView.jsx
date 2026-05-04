@@ -168,6 +168,9 @@ export default function AdminProductView() {
           {/* Category */}
           <Row label="Категория" value={categoryLabel(product.category)} />
 
+          {/* Color */}
+          {product.color && <Row label="Цвет" value={{ white: 'Белый', black: 'Чёрный', grey: 'Серый', pink: 'Розовый', green: 'Зелёный' }[product.color] || product.color} />}
+
           {/* Dimensions */}
           {product.dimensions && <Row label="Габариты" value={product.dimensions} />}
 
