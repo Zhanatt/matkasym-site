@@ -160,11 +160,17 @@ export default function ProductPage() {
           </Link>
 
           {/* Characteristics table */}
-          {(product.dimensions || product.specs?.some(s => s.value)) && (
+          {(product.color || product.dimensions || product.specs?.some(s => s.value)) && (
             <div className="product-specs">
               <h3 className="product-specs-title">Характеристики</h3>
               <table className="product-specs-table">
                 <tbody>
+                  {product.color && (
+                    <tr>
+                      <td>Цвет</td>
+                      <td>{{ white: 'Белый', black: 'Чёрный', grey: 'Серый', pink: 'Розовый', green: 'Зелёный' }[product.color] || product.color}</td>
+                    </tr>
+                  )}
                   {product.dimensions && (
                     <tr>
                       <td>Габариты (ДxШxВ)</td>

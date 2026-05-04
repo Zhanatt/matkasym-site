@@ -19,7 +19,7 @@ const SET_INFO = {
   },
 };
 
-const COLOR_LABELS = { white: 'Белый', black: 'Чёрный', grey: 'Серый' };
+const COLOR_LABELS = { white: 'Белый', black: 'Чёрный', grey: 'Серый', pink: 'Розовый', green: 'Зелёный' };
 const LEVEL_COLORS = { standard: '#555', vip: '#0058A3', premium: '#8B1A1A' };
 
 export default function Sets() {
