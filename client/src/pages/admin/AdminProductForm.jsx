@@ -62,6 +62,14 @@ export default function AdminProductForm() {
   const [savedCatSpecs, setSavedCatSpecs] = useState([]);  // custom specs saved to this category
   const [savingSpec, setSavingSpec]   = useState(null);    // idx of spec being saved
 
+  // Load saved custom specs for current category — defined first, used in useEffect below
+  const loadSavedCatSpecs = useCallback((category) => {
+    if (!category) return;
+    adminGetCategorySpecs(category)
+      .then(r => setSavedCatSpecs(r.data))
+      .catch(() => {});
+  }, []);
+
   // Load brands for set selector
   useEffect(() => {
     adminGetBrands().then(r => setBrandsData(r.data)).catch(() => {});
@@ -81,10 +89,9 @@ export default function AdminProductForm() {
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
-  // When category changes — reset specs to template defaults (skip Цвет — handled separately)
+  // When category changes — reset specs to template defaults, merge saved custom specs
   const handleCategoryChange = (value) => {
     const staticSpecs = (CATEGORY_SPECS[value] || []).filter(t => t.key !== 'Цвет');
-    // Load saved custom specs, then merge
     adminGetCategorySpecs(value)
       .then(r => {
         setSavedCatSpecs(r.data);
@@ -126,14 +133,6 @@ export default function AdminProductForm() {
   const removeSpec = (idx) => {
     setForm(f => ({ ...f, specs: f.specs.filter((_, i) => i !== idx) }));
   };
-
-  // Load saved custom specs for current category
-  const loadSavedCatSpecs = useCallback((category) => {
-    if (!category) return;
-    adminGetCategorySpecs(category)
-      .then(r => setSavedCatSpecs(r.data))
-      .catch(() => {});
-  }, []);
 
   // Save custom spec to category template
   const saveSpecToCategory = async (idx) => {
