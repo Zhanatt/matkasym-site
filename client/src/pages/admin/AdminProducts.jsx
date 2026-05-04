@@ -33,7 +33,7 @@ const SET_LABELS_RU = {
   'bilim-kelechek':'BILIM KELECHEK',
   'uzak-koldon': 'UZAK KOLDON',
   'bekem-fasad':    'BEKEM FASAD',
-  '0-tashtandy':    '0-TASHTANDY',
+  '0-tashtandy':    '0 TASHTANDY',
   'konok-keldi':    'KONOK KELDI',
   'korkom-aiym':    'KORKOM AIYM',
   'shirin-balalyk': 'SHIRIN BALALYK',
@@ -450,6 +450,14 @@ export default function AdminProducts() {
                               style={{ cursor: 'pointer' }}
                               onClick={() => navigate(`/admin/products/${primary._id}`)}
                             >{cleanName(primary.name)}</div>
+                            {primary.tags?.includes('not-in-1c') && (
+                              <span style={{
+                                display: 'inline-block', marginTop: 3,
+                                background: '#ff6b00', color: '#fff',
+                                fontSize: 10, fontWeight: 700, letterSpacing: .4,
+                                padding: '1px 6px', borderRadius: 4,
+                              }}>НЕТ В 1С</span>
+                            )}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
                               {multiColor
                                 ? variants.map(v => (
