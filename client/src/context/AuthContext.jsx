@@ -4,18 +4,30 @@ import { getMe, heartbeat } from '../api';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user,    setUser]    = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,        setUser]        = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [authError,   setAuthError]   = useState(false); // network error on startup
   const hbRef = useRef(null);
 
-  useEffect(() => {
+  const checkAuth = () => {
     const token = localStorage.getItem('token');
     if (!token) { setLoading(false); return; }
+    setLoading(true);
+    setAuthError(false);
     getMe()
-      .then(r => setUser(r.data.user))
-      .catch(() => localStorage.removeItem('token'))
+      .then(r => { setUser(r.data.user); setAuthError(false); })
+      .catch(err => {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          localStorage.removeItem('token');
+        } else {
+          // Network/server error — keep token, show retry
+          setAuthError(true);
+        }
+      })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { checkAuth(); }, []);
 
   // Heartbeat every 60s when logged in
   useEffect(() => {
@@ -36,7 +48,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, saveLogin, logout }}>
+    <AuthContext.Provider value={{ user, setUser, loading, authError, checkAuth, saveLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
