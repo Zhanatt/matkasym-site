@@ -39,59 +39,59 @@ const S = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 180,
+    height: 240,
     backgroundColor: RED,
-    borderBottomLeftRadius: 90,
-    borderBottomRightRadius: 90,
+    borderBottomLeftRadius: 120,
+    borderBottomRightRadius: 120,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 16,
+    paddingTop: 20,
   },
   coverLogo: {
-    width: 160,
-    height: 32,
-    marginTop: 20,
+    width: 180,
+    height: 36,
+    marginTop: 24,
   },
   coverBody: {
     position: 'absolute',
-    top: 195,
+    top: 260,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   coverH1a: {
-    fontSize: 52,
+    fontSize: 64,
     fontWeight: 700,
     color: INK,
-    letterSpacing: 3,
+    letterSpacing: 4,
     lineHeight: 1,
   },
   coverH1b: {
-    fontSize: 52,
+    fontSize: 64,
     fontWeight: 700,
     color: INK,
-    letterSpacing: 3,
+    letterSpacing: 4,
     lineHeight: 1.05,
-    marginBottom: 14,
+    marginBottom: 18,
   },
   coverSubtitle: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 500,
     color: STEEL,
-    letterSpacing: 5,
+    letterSpacing: 6,
   },
   coverTagline: {
     position: 'absolute',
-    bottom: 44,
+    bottom: 56,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   coverTaglineText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: 500,
     color: INK,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   barsRow: {
     flexDirection: 'row',
@@ -122,11 +122,11 @@ const S = StyleSheet.create({
     alignItems: 'center',
   },
   headerLogo: {
-    width: 88,
-    height: 18,
+    width: 100,
+    height: 20,
   },
   headerSetName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 700,
     color: INK,
     letterSpacing: 0.8,
@@ -139,40 +139,40 @@ const S = StyleSheet.create({
   },
 
   // ── 2×2 grid ───────────────────────────────────────────────────────────────
-  // A5 content width = 419.53 - 56 = 363.5pt
-  // 2 cards + 10pt gap → each card = (363.5 - 10) / 2 = 176.75pt
-  // A5 content height = 595.28 - 64 = 531pt; header ~40pt → grid = 491pt
-  // 2 rows + 10pt gap → each row = (491 - 10) / 2 = 240pt
+  // A4 content width = 595.28 - 56 = 539.28pt
+  // 2 cards + 14pt gap → each card = (539.28 - 14) / 2 = 262.64pt
+  // A4 content height = 841.89 - 64 = 777.89pt; header ~40pt → grid = 737pt
+  // 2 rows + 14pt gap → each row = (737 - 14) / 2 = 361.5pt
   grid: {
     flexDirection: 'column',
-    gap: 10,
+    gap: 14,
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 14,
   },
   card: {
-    width: 176,
+    width: 262,
   },
 
   // ── Image area ─────────────────────────────────────────────────────────────
   imageWrap: {
-    width: 176,
-    height: 108,
+    width: 262,
+    height: 190,
     backgroundColor: '#f8f8f8',
-    marginBottom: 6,
+    marginBottom: 8,
     position: 'relative',
   },
   productImg: {
-    width: 176,
-    height: 108,
+    width: 262,
+    height: 190,
     objectFit: 'contain',
   },
   noImageWrap: {
-    width: 176,
-    height: 108,
+    width: 262,
+    height: 190,
     backgroundColor: '#1A1A1A',
-    marginBottom: 6,
+    marginBottom: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -194,19 +194,19 @@ const S = StyleSheet.create({
     borderRadius: 999,
   },
 
-  // ── Card body (~130pt budget) ──────────────────────────────────────────────
+  // ── Card body ─────────────────────────────────────────────────────────────
   kicker: {
-    fontSize: 7,
+    fontSize: 8,
     color: GRAY,
     fontWeight: 400,
-    marginBottom: 2,
+    marginBottom: 3,
     lineHeight: 1.2,
   },
   productName: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 700,
     color: INK,
-    marginBottom: 4,
+    marginBottom: 5,
     lineHeight: 1.2,
   },
   nameHairline: {
@@ -220,17 +220,17 @@ const S = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
   priceLabel: {
-    fontSize: 7,
+    fontSize: 8,
     color: GRAY,
     fontWeight: 400,
   },
   priceValue: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: 700,
     color: RED,
   },
@@ -239,18 +239,18 @@ const S = StyleSheet.create({
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 2.5,
+    paddingVertical: 3.5,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
   specKey: {
-    fontSize: 6.5,
+    fontSize: 7.5,
     color: GRAY,
     fontWeight: 400,
     width: '55%',
   },
   specVal: {
-    fontSize: 6.5,
+    fontSize: 7.5,
     color: INK,
     fontWeight: 400,
     width: '43%',
@@ -281,9 +281,9 @@ const S = StyleSheet.create({
     position: 'relative',
   },
   backLogo: {
-    width: 200,
-    height: 40,
-    marginBottom: 60,
+    width: 240,
+    height: 48,
+    marginBottom: 0,
   },
   backFooter: {
     position: 'absolute',
@@ -291,23 +291,22 @@ const S = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: RED,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    paddingVertical: 28,
+    paddingHorizontal: 36,
     flexDirection: 'row',
-    gap: 0,
   },
   backCol: {
     flex: 1,
   },
   backColLabel: {
-    fontSize: 7.5,
+    fontSize: 9,
     fontWeight: 700,
     color: WHITE,
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 5,
   },
   backColText: {
-    fontSize: 8,
+    fontSize: 9,
     color: WHITE,
     fontWeight: 400,
     lineHeight: 1.6,
@@ -352,7 +351,7 @@ const CATEGORY_LABELS = {
 // ── Cover Page ────────────────────────────────────────────────────────────────
 function CoverPage() {
   return (
-    <Page size="A5" style={S.coverPage}>
+    <Page size="A4" style={S.coverPage}>
       {/* Red arch plaque */}
       <View style={S.coverPlaque} />
 
@@ -380,7 +379,7 @@ function CoverPage() {
 // ── Back Cover ────────────────────────────────────────────────────────────────
 function BackCoverPage() {
   return (
-    <Page size="A5" style={S.backPage}>
+    <Page size="A4" style={S.backPage}>
       <Image src={LOGO} style={S.backLogo} />
 
       <View style={S.backFooter}>
@@ -408,7 +407,7 @@ function BackCoverPage() {
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product }) {
   const imageUrl = product.images?.[0];
-  const specs    = (product.specs || []).filter(s => s.value).slice(0, 3);
+  const specs    = (product.specs || []).filter(s => s.value).slice(0, 4);
   const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
 
   const swatches = [];
@@ -473,7 +472,7 @@ function ProductCard({ product }) {
 function ContentPage({ products, setName, pageIndex }) {
   const logoLeft = pageIndex % 2 === 0;
   return (
-    <Page size="A5" style={S.contentPage}>
+    <Page size="A4" style={S.contentPage}>
       {/* Header — alternates logo side per page */}
       <View style={S.pageHeader}>
         {logoLeft ? (
