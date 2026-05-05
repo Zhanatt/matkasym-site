@@ -458,7 +458,7 @@ function ProductCard({ product, priceType }) {
       <Text style={S.kicker}>{catLabel}</Text>
 
       {/* Name */}
-      <Text style={S.productName}>{noPhoto ? 'СКОРО !' : (product.name || product.fullName)}</Text>
+      <Text style={S.productName}>{product.name || product.fullName}</Text>
 
       {/* Hairline */}
       <View style={S.nameHairline} />
