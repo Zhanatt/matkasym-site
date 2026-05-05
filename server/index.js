@@ -1,8 +1,9 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const path = require('path');
+const express      = require('express');
+const mongoose     = require('mongoose');
+const cors         = require('cors');
+const cookieParser = require('cookie-parser');
+const dotenv       = require('dotenv');
+const path         = require('path');
 
 dotenv.config();
 
@@ -11,6 +12,7 @@ const app = express();
 // Middleware
 app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 // Routes
 app.use('/api/products', require('./routes/products'));

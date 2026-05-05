@@ -5,8 +5,18 @@ const { protect } = require('../middleware/auth');
 const crypto  = require('crypto');
 const { sendApprovalRequest, sendApproved, sendRejected, sendPasswordReset } = require('../lib/mailer');
 
+const COOKIE_MAX_AGE = 90 * 24 * 60 * 60 * 1000; // 90 дней
+
 const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '90d' });
+
+const setCookie = (res, token) =>
+  res.cookie('auth_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: COOKIE_MAX_AGE,
+  });
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -51,6 +61,7 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ message: 'У вас нет доступа к этой базе' });
 
     const token = signToken(user._id);
+    setCookie(res, token);
     res.json({ token, user });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -169,7 +180,20 @@ router.post('/reset-password/:token', async (req, res) => {
 
 // GET /api/auth/me
 router.get('/me', protect, (req, res) => {
+  // If authenticated via cookie (no localStorage token), return a fresh token
+  // so the client can restore localStorage and use Bearer for subsequent requests
+  if (req.authViaCookie) {
+    const token = signToken(req.user._id);
+    setCookie(res, token); // extend cookie
+    return res.json({ user: req.user, token });
+  }
   res.json({ user: req.user });
+});
+
+// POST /api/auth/logout — clears the auth cookie
+router.post('/logout', (req, res) => {
+  res.clearCookie('auth_token', { httpOnly: true, sameSite: 'lax' });
+  res.json({ ok: true });
 });
 
 // POST /api/auth/heartbeat — update lastSeen
