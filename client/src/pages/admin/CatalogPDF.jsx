@@ -23,10 +23,7 @@ const WHITE    = '#FFFFFF';
 const YELLOW   = '#F2C84A';
 const ORANGE   = '#E89B3C';
 
-// Logos
-const LOGO_DARK  = '/logos/logo-home-dark.png';   // for white bg pages
-const LOGO_WHITE = '/logos/logo-white.png';        // for red bg (cover plaque)
-const LOGO_VERT  = '/logos/logo-vertical.png';     // for back cover center
+const LOGO = '/logos/logo-main.png';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
@@ -50,13 +47,14 @@ const S = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 16,
   },
-  coverLogoWhite: {
-    width: 140,
-    height: 28,
+  coverLogo: {
+    width: 160,
+    height: 32,
+    marginTop: 20,
   },
   coverBody: {
     position: 'absolute',
-    top: 190,
+    top: 195,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -124,8 +122,8 @@ const S = StyleSheet.create({
     alignItems: 'center',
   },
   headerLogo: {
-    width: 80,
-    height: 20,
+    width: 88,
+    height: 18,
   },
   headerSetName: {
     fontSize: 13,
@@ -276,9 +274,10 @@ const S = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  backLogoVert: {
-    width: 120,
-    height: 110,
+  backLogo: {
+    width: 200,
+    height: 40,
+    marginBottom: 60,
   },
   backFooter: {
     position: 'absolute',
@@ -349,12 +348,11 @@ function CoverPage() {
   return (
     <Page size="A5" style={S.coverPage}>
       {/* Red arch plaque */}
-      <View style={S.coverPlaque}>
-        <Image src={LOGO_WHITE} style={S.coverLogoWhite} />
-      </View>
+      <View style={S.coverPlaque} />
 
-      {/* Main title */}
+      {/* Main title + logo */}
       <View style={S.coverBody}>
+        <Image src={LOGO} style={S.coverLogo} />
         <Text style={S.coverH1a}>MATKASYM</Text>
         <Text style={S.coverH1b}>HOME</Text>
         <Text style={S.coverSubtitle}>ТОВАРЫ ДЛЯ ДОМА</Text>
@@ -377,7 +375,7 @@ function CoverPage() {
 function BackCoverPage() {
   return (
     <Page size="A5" style={S.backPage}>
-      <Image src={LOGO_VERT} style={S.backLogoVert} />
+      <Image src={LOGO} style={S.backLogo} />
 
       <View style={S.backFooter}>
         <View style={S.backCol}>
@@ -474,13 +472,13 @@ function ContentPage({ products, setName, pageIndex }) {
       <View style={S.pageHeader}>
         {logoLeft ? (
           <>
-            <Image src={LOGO_DARK} style={S.headerLogo} />
+            <Image src={LOGO} style={S.headerLogo} />
             <Text style={S.headerSetName}>{setName}</Text>
           </>
         ) : (
           <>
             <Text style={S.headerSetName}>{setName}</Text>
-            <Image src={LOGO_DARK} style={S.headerLogo} />
+            <Image src={LOGO} style={S.headerLogo} />
           </>
         )}
       </View>
