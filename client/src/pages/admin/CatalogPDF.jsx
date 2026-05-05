@@ -13,7 +13,7 @@ Font.register({
 });
 Font.registerHyphenationCallback(w => [w]);
 
-// ── Design tokens (from Figma) ────────────────────────────────────────────────
+// ── Design System ─────────────────────────────────────────────────────────────
 const RED      = '#D8232A';
 const INK      = '#1A1A1A';
 const GRAY     = '#6E7378';
@@ -23,12 +23,7 @@ const WHITE    = '#FFFFFF';
 const YELLOW   = '#F2C84A';
 const ORANGE   = '#E89B3C';
 
-// A4: 595.28 × 841.89 pt
-// content width  = 595.28 - 2×28 = 539.28 → card = (539.28 - 14) / 2 = 262.64 ≈ 262
-// content height = 841.89 - 28 - 36 = 777.89; header ~32 → grid = 745; row = (745-14)/2 = 365
-const CARD_W   = 262;
-const IMG_H    = 200;
-const LOGO     = '/logos/logo-main.png';
+const LOGO = '/logos/logo-main.png';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
@@ -39,113 +34,103 @@ const S = StyleSheet.create({
     backgroundColor: WHITE,
     position: 'relative',
   },
-
-  // Red pentagon shape: rectangle + downward triangle
-  coverRect: {
+  coverPlaque: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 160,
+    height: 240,
     backgroundColor: RED,
-  },
-  coverTriangle: {
-    position: 'absolute',
-    top: 160,
-    left: 0,
-    width: 0,
-    height: 0,
-    borderStyle: 'solid',
-    borderLeftWidth: 297.5,
-    borderRightWidth: 297.5,
-    borderTopWidth: 70,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: RED,
-  },
-
-  // Logo inside red area, centered
-  coverLogoWrap: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
+    borderBottomLeftRadius: 120,
+    borderBottomRightRadius: 120,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 20,
   },
   coverLogo: {
-    width: 160,
-    height: 32,
+    width: 180,
+    height: 36,
+    marginTop: 24,
   },
-
-  // Title block below the red shape
   coverBody: {
     position: 'absolute',
-    top: 270,
+    top: 260,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
-  coverH1: {
-    fontSize: 60,
+  coverH1a: {
+    fontSize: 64,
     fontWeight: 700,
     color: INK,
-    letterSpacing: 2,
+    letterSpacing: 4,
+    lineHeight: 1,
+  },
+  coverH1b: {
+    fontSize: 64,
+    fontWeight: 700,
+    color: INK,
+    letterSpacing: 4,
     lineHeight: 1.05,
-    textAlign: 'center',
+    marginBottom: 18,
   },
   coverSubtitle: {
     fontSize: 13,
     fontWeight: 500,
     color: STEEL,
     letterSpacing: 6,
-    marginTop: 12,
   },
-
-  // Tagline bottom-left
   coverTagline: {
     position: 'absolute',
-    bottom: 52,
-    left: 44,
+    bottom: 56,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
   coverTaglineText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: 500,
     color: INK,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   barsRow: {
     flexDirection: 'row',
     gap: 5,
   },
   bar: {
-    width: 7,
-    height: 30,
+    width: 6,
+    height: 28,
     borderRadius: 2,
   },
 
-  // ── Content pages ──────────────────────────────────────────────────────────
+  // ── Content page ───────────────────────────────────────────────────────────
   contentPage: {
     fontFamily: 'Roboto',
     backgroundColor: WHITE,
-    paddingTop: 24,
+    paddingTop: 28,
     paddingHorizontal: 28,
-    paddingBottom: 32,
+    paddingBottom: 36,
   },
   pageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 7,
+  },
+  pageHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerLogo: {
-    width: 96,
-    height: 19,
+    width: 100,
+    height: 20,
   },
   headerSetName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 700,
     color: INK,
-    letterSpacing: 0.3,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   headerHairline: {
     height: 0.75,
@@ -153,7 +138,11 @@ const S = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // ── Grid: explicit rows to avoid react-pdf flexWrap bug ────────────────────
+  // ── 2×2 grid ───────────────────────────────────────────────────────────────
+  // A4 content width = 595.28 - 56 = 539.28pt
+  // 2 cards + 14pt gap → each card = (539.28 - 14) / 2 = 262.64pt
+  // A4 content height = 841.89 - 64 = 777.89pt; header ~40pt → grid = 737pt
+  // 2 rows + 14pt gap → each row = (737 - 14) / 2 = 361.5pt
   grid: {
     flexDirection: 'column',
     gap: 14,
@@ -162,156 +151,124 @@ const S = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
   },
-
-  // ── Card ───────────────────────────────────────────────────────────────────
   card: {
-    width: CARD_W,
+    width: 262,
   },
 
-  // Image area
-  imageArea: {
-    width: CARD_W,
-    height: IMG_H,
-    backgroundColor: '#f7f7f7',
-    marginBottom: 0,
+  // ── Image area ─────────────────────────────────────────────────────────────
+  imageWrap: {
+    width: 262,
+    height: 190,
+    backgroundColor: '#f8f8f8',
+    marginBottom: 8,
     position: 'relative',
   },
   productImg: {
-    width: CARD_W,
-    height: IMG_H,
+    width: 262,
+    height: 190,
     objectFit: 'contain',
   },
-  // "СКОРО!" black-covered product
-  soonImgArea: {
-    width: CARD_W,
-    height: IMG_H,
+  noImageWrap: {
+    width: 262,
+    height: 190,
     backgroundColor: '#1A1A1A',
-    marginBottom: 0,
+    marginBottom: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
+  noImageText: {
+    fontSize: 7,
+    color: '#444',
+    fontWeight: 400,
+  },
   swatchRow: {
     position: 'absolute',
-    bottom: 7,
-    right: 8,
+    bottom: 5,
+    right: 5,
     flexDirection: 'row',
-    gap: 4,
+    gap: 3,
   },
   swatch: {
-    width: 12,
-    height: 12,
+    width: 10,
+    height: 10,
     borderRadius: 999,
   },
-  swatchWhite: {
-    borderWidth: 1,
-    borderColor: '#bbbbbb',
-    backgroundColor: WHITE,
-  },
-  swatchBlack: {
-    backgroundColor: INK,
-  },
 
-  // Meta row: kicker (left) + "розничная цена" label (right)
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginTop: 8,
-    marginBottom: 2,
-  },
+  // ── Card body ─────────────────────────────────────────────────────────────
   kicker: {
     fontSize: 8,
     color: GRAY,
     fontWeight: 400,
+    marginBottom: 3,
     lineHeight: 1.2,
   },
-  priceLabel: {
-    fontSize: 8,
-    color: GRAY,
-    fontWeight: 400,
-  },
-
-  // Name row: product name (left) + red price badge (right)
-  nameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
   productName: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 700,
     color: INK,
-    lineHeight: 1.15,
-    flex: 1,
-    marginRight: 8,
+    marginBottom: 5,
+    lineHeight: 1.2,
   },
-  priceBadge: {
-    backgroundColor: RED,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 3,
-    minWidth: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  priceText: {
-    fontSize: 9,
-    fontWeight: 700,
-    color: WHITE,
-    whiteSpace: 'nowrap',
-  },
-
-  // Hairline between name block and specs
   nameHairline: {
     height: 0.75,
     backgroundColor: HAIRLINE,
     marginBottom: 0,
   },
 
-  // Spec rows
-  specRow: {
+  // price row
+  priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 5,
-    borderBottomWidth: 0.75,
+    paddingVertical: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
+  },
+  priceLabel: {
+    fontSize: 8,
+    color: GRAY,
+    fontWeight: 400,
+  },
+  priceValue: {
+    fontSize: 9,
+    fontWeight: 700,
+    color: RED,
+  },
+
+  // spec row
+  specRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3.5,
+    borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
   specKey: {
-    fontSize: 8,
+    fontSize: 7.5,
     color: GRAY,
     fontWeight: 400,
     width: '55%',
   },
   specVal: {
-    fontSize: 8,
+    fontSize: 7.5,
     color: INK,
     fontWeight: 400,
     width: '43%',
     textAlign: 'right',
   },
-  // Empty spec line for СКОРО! placeholder
-  specRowEmpty: {
-    height: 18.75,
-    borderBottomWidth: 0.75,
-    borderBottomColor: HAIRLINE,
-  },
 
   // ── Page footer ────────────────────────────────────────────────────────────
   pageFooter: {
     position: 'absolute',
-    bottom: 12,
+    bottom: 14,
     left: 28,
     right: 28,
     flexDirection: 'row',
     justifyContent: 'center',
   },
   pageNum: {
-    fontSize: 8,
-    color: '#cccccc',
+    fontSize: 7.5,
+    color: HAIRLINE,
     fontWeight: 400,
   },
 
@@ -324,8 +281,9 @@ const S = StyleSheet.create({
     position: 'relative',
   },
   backLogo: {
-    width: 220,
-    height: 44,
+    width: 240,
+    height: 48,
+    marginBottom: 0,
   },
   backFooter: {
     position: 'absolute',
@@ -334,7 +292,7 @@ const S = StyleSheet.create({
     right: 0,
     backgroundColor: RED,
     paddingVertical: 28,
-    paddingHorizontal: 40,
+    paddingHorizontal: 36,
     flexDirection: 'row',
   },
   backCol: {
@@ -344,21 +302,21 @@ const S = StyleSheet.create({
     fontSize: 9,
     fontWeight: 700,
     color: WHITE,
-    letterSpacing: 0.4,
-    marginBottom: 6,
+    letterSpacing: 0.5,
+    marginBottom: 5,
   },
   backColText: {
     fontSize: 9,
     color: WHITE,
     fontWeight: 400,
-    lineHeight: 1.7,
+    lineHeight: 1.6,
   },
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const COLOR_HEX = {
-  white: '#ffffff', black: '#1a1a1a', grey: '#888', gray: '#888',
-  red: '#D8232A', blue: '#1565C0', silver: '#c0c0c0',
+  white: '#f0f0f0', black: '#1a1a1a', grey: '#888', gray: '#888',
+  red: '#e53935', blue: '#1565C0', silver: '#c0c0c0',
   gold: '#d4af37', brown: '#795548', beige: '#d4b896',
 };
 
@@ -367,20 +325,21 @@ const CATEGORY_LABELS = {
   'laundry-basket':       'корзина для белья',
   'ironing-board':        'гладильная доска',
   'wardrobe-rack':        'напольная вешалка',
-  'coat-hanger':          'вешалка',
+  'coat-hanger':          'костюмная вешалка',
   'shoe-rack':            'обувная полка',
   'wall-hanger':          'настенная вешалка',
-  'toilet-shelf':         'над унитазная полка',
-  'bath-shelf':           'над стиральная полка',
+  'toilet-shelf':         'полка для туалета',
+  'bath-shelf':           'полка для ванной',
   'bath-corner-shelf':    'угловая полка',
   'flower-stand':         'подставка для цветов',
   'bbq-grill':            'мангал',
-  'antenna':              'антенна наружная',
-  'antenna-indoor':       'антенна комнатная',
-  'tv-bracket':           'кронштейн для TV',
+  'antenna':              'антенна',
+  'tv-bracket':           'кронштейн для ТВ',
   'electric-panel':       'электрощит',
   'wall-shelf':           'настенная полка',
   'hook':                 'крючки',
+  'organizer-kitchen':    'кухонный органайзер',
+  'dish-drainer':         'сушилка для посуды',
   'school-desk':          'школьная парта',
   'school-chair':         'школьный стул',
   'ladder':               'стремянка',
@@ -393,22 +352,18 @@ const CATEGORY_LABELS = {
 function CoverPage() {
   return (
     <Page size="A4" style={S.coverPage}>
-      {/* Red pentagon: rectangle + downward triangle */}
-      <View style={S.coverRect} />
-      <View style={S.coverTriangle} />
+      {/* Red arch plaque */}
+      <View style={S.coverPlaque} />
 
-      {/* Logo centered in red area */}
-      <View style={S.coverLogoWrap}>
-        <Image src={LOGO} style={S.coverLogo} />
-      </View>
-
-      {/* Title */}
+      {/* Main title + logo */}
       <View style={S.coverBody}>
-        <Text style={S.coverH1}>{'MATKASYM\nHOME'}</Text>
+        <Image src={LOGO} style={S.coverLogo} />
+        <Text style={S.coverH1a}>MATKASYM</Text>
+        <Text style={S.coverH1b}>HOME</Text>
         <Text style={S.coverSubtitle}>ТОВАРЫ ДЛЯ ДОМА</Text>
       </View>
 
-      {/* Tagline bottom-left */}
+      {/* Tagline + 3 bars */}
       <View style={S.coverTagline}>
         <Text style={S.coverTaglineText}>сделаем лучше!</Text>
         <View style={S.barsRow}>
@@ -426,6 +381,7 @@ function BackCoverPage() {
   return (
     <Page size="A4" style={S.backPage}>
       <Image src={LOGO} style={S.backLogo} />
+
       <View style={S.backFooter}>
         <View style={S.backCol}>
           <Text style={S.backColLabel}>АДРЕС</Text>
@@ -438,7 +394,9 @@ function BackCoverPage() {
         <View style={S.backCol}>
           <Text style={S.backColLabel}>КОНТАКТЫ</Text>
           <Text style={S.backColText}>
-            matkasymovllc@gmail.com{'\n'}@matkasym_home{'\n'}@make_in_kg
+            matkasymovllc@gmail.com{'\n'}
+            @matkasym_home{'\n'}
+            @make_in_kg
           </Text>
         </View>
       </View>
@@ -446,94 +404,76 @@ function BackCoverPage() {
   );
 }
 
-// ── Color Swatches ────────────────────────────────────────────────────────────
-function Swatches({ color }) {
-  if (!color) return null;
-  const c = color.toLowerCase();
-  const hasWhite = ['white', 'белый', 'белый, черный'].includes(c) || c.includes('бел');
-  const hasBlack = ['black', 'черный', 'белый, черный'].includes(c) || c.includes('черн');
-  const other    = !hasWhite && !hasBlack && COLOR_HEX[c];
-
-  if (!hasWhite && !hasBlack && !other) return null;
-  return (
-    <View style={S.swatchRow}>
-      {hasWhite && <View style={[S.swatch, S.swatchWhite]} />}
-      {hasBlack && <View style={[S.swatch, S.swatchBlack]} />}
-      {other    && <View style={[S.swatch, { backgroundColor: COLOR_HEX[c] }]} />}
-    </View>
-  );
-}
-
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product }) {
-  const imageUrl  = product.images?.[0];
-  const specs     = (product.specs || []).filter(s => s.value).slice(0, 4);
-  const catLabel  = CATEGORY_LABELS[product.category] || 'товар для дома';
-  const isSoon    = !imageUrl && !product.price;
-  const priceStr  = product.price > 0
-    ? `${product.price.toLocaleString('ru')} сом`
-    : null;
+  const imageUrl = product.images?.[0];
+  const specs    = (product.specs || []).filter(s => s.value).slice(0, 4);
+  const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
+
+  const swatches = [];
+  if (product.color) {
+    const c = product.color.toLowerCase();
+    if (COLOR_HEX[c]) swatches.push(c);
+  }
 
   return (
     <View style={S.card}>
-      {/* Image area */}
+      {/* Image */}
       {imageUrl ? (
-        <View style={S.imageArea}>
+        <View style={S.imageWrap}>
           <Image src={imageUrl} style={S.productImg} />
-          <Swatches color={product.color} />
+          {swatches.length > 0 && (
+            <View style={S.swatchRow}>
+              {swatches.map((c, i) => (
+                <View key={i} style={[S.swatch, {
+                  backgroundColor: COLOR_HEX[c],
+                  borderWidth: c === 'white' ? 0.5 : 0,
+                  borderColor: HAIRLINE,
+                }]} />
+              ))}
+            </View>
+          )}
         </View>
       ) : (
-        <View style={S.soonImgArea}>
-          <Swatches color={product.color} />
+        <View style={S.noImageWrap}>
+          <Text style={S.noImageText}>product photo</Text>
         </View>
       )}
 
-      {/* Meta row: kicker | "розничная цена" */}
-      <View style={S.metaRow}>
-        <Text style={S.kicker}>{catLabel}</Text>
-        <Text style={S.priceLabel}>розничная цена</Text>
-      </View>
+      {/* Kicker */}
+      <Text style={S.kicker}>{catLabel}</Text>
 
-      {/* Name row: name | price badge */}
-      <View style={S.nameRow}>
-        <Text style={S.productName}>
-          {isSoon ? 'СКОРО!' : (product.name || product.fullName)}
-        </Text>
-        <View style={S.priceBadge}>
-          {priceStr ? <Text style={S.priceText}>{priceStr}</Text> : null}
-        </View>
-      </View>
+      {/* Name */}
+      <Text style={S.productName}>{product.name || product.fullName}</Text>
 
       {/* Hairline */}
       <View style={S.nameHairline} />
 
-      {/* Specs — or empty placeholder lines for СКОРО! */}
-      {isSoon ? (
-        <>
-          <View style={S.specRowEmpty} />
-          <View style={S.specRowEmpty} />
-          <View style={S.specRowEmpty} />
-          <View style={S.specRowEmpty} />
-        </>
-      ) : (
-        specs.map((s, i) => (
-          <View key={i} style={S.specRow}>
-            <Text style={S.specKey}>{s.key}</Text>
-            <Text style={S.specVal}>{s.value}{s.unit ? ` ${s.unit}` : ''}</Text>
-          </View>
-        ))
-      )}
+      {/* Price */}
+      <View style={S.priceRow}>
+        <Text style={S.priceLabel}>розн. цена</Text>
+        <Text style={S.priceValue}>
+          {product.price > 0 ? `${product.price.toLocaleString('ru')} сом` : 'по запросу'}
+        </Text>
+      </View>
+
+      {/* Specs */}
+      {specs.map((s, i) => (
+        <View key={i} style={S.specRow}>
+          <Text style={S.specKey}>{s.key}</Text>
+          <Text style={S.specVal}>{s.value}{s.unit ? ` ${s.unit}` : ''}</Text>
+        </View>
+      ))}
     </View>
   );
 }
 
 // ── Content Page ──────────────────────────────────────────────────────────────
 function ContentPage({ products, setName, pageIndex }) {
-  // Odd pages: Logo left, SetName right. Even: SetName left, Logo right.
   const logoLeft = pageIndex % 2 === 0;
   return (
     <Page size="A4" style={S.contentPage}>
-      {/* Header */}
+      {/* Header — alternates logo side per page */}
       <View style={S.pageHeader}>
         {logoLeft ? (
           <>
@@ -549,7 +489,7 @@ function ContentPage({ products, setName, pageIndex }) {
       </View>
       <View style={S.headerHairline} />
 
-      {/* 2×2 grid — explicit rows */}
+      {/* 2×2 grid — explicit rows to avoid flexWrap issues in react-pdf */}
       <View style={S.grid}>
         <View style={S.gridRow}>
           {products[0] && <ProductCard product={products[0]} />}
@@ -561,6 +501,7 @@ function ContentPage({ products, setName, pageIndex }) {
         </View>
       </View>
 
+      {/* Page number */}
       <View style={S.pageFooter} fixed>
         <Text
           style={S.pageNum}
@@ -573,10 +514,12 @@ function ContentPage({ products, setName, pageIndex }) {
 
 // ── Document ──────────────────────────────────────────────────────────────────
 function CatalogDocument({ products, setName }) {
+  const PER_PAGE = 4;
   const pages = [];
-  for (let i = 0; i < products.length; i += 4) {
-    pages.push(products.slice(i, i + 4));
+  for (let i = 0; i < products.length; i += PER_PAGE) {
+    pages.push(products.slice(i, i + PER_PAGE));
   }
+
   return (
     <Document title={`Каталог — ${setName}`} author="MATKASYM HOME">
       <CoverPage />
@@ -593,10 +536,11 @@ export async function downloadCatalogPDF(products, setName) {
   const blob = await pdf(
     <CatalogDocument products={products} setName={setName} />
   ).toBlob();
+
   const url = URL.createObjectURL(blob);
   const a   = document.createElement('a');
   a.href     = url;
-  a.download = `matkasym-${setName.toLowerCase().replace(/\s+/g, '-')}.pdf`;
+  a.download = `matkasym-catalog-${setName.toLowerCase().replace(/\s+/g, '-')}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
 }
