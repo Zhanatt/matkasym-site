@@ -412,8 +412,14 @@ function BackCoverPage() {
   );
 }
 
+const PRICE_LABELS = {
+  price:          'розн. цена',
+  priceWholesale: 'опт. цена',
+  priceDealer:    'дил. цена',
+};
+
 // ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ product }) {
+function ProductCard({ product, priceType }) {
   const imageUrl = pdfImg(product.images?.[0]);
   const specs    = (product.specs || []).filter(s => s.value).slice(0, 4);
   const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
@@ -423,6 +429,10 @@ function ProductCard({ product }) {
     const c = product.color.toLowerCase();
     if (COLOR_HEX[c]) swatches.push(c);
   }
+
+  const priceVal  = priceType !== 'none' ? (product[priceType] || 0) : null;
+  const priceStr  = priceVal > 0 ? `${priceVal.toLocaleString('ru')} сом` : (priceType !== 'none' ? 'по запросу' : null);
+  const priceLabel = PRICE_LABELS[priceType] || '';
 
   return (
     <View style={S.card}>
@@ -457,13 +467,13 @@ function ProductCard({ product }) {
       {/* Hairline */}
       <View style={S.nameHairline} />
 
-      {/* Price */}
-      <View style={S.priceRow}>
-        <Text style={S.priceLabel}>розн. цена</Text>
-        <Text style={S.priceValue}>
-          {product.price > 0 ? `${product.price.toLocaleString('ru')} сом` : 'по запросу'}
-        </Text>
-      </View>
+      {/* Price — hidden if priceType === 'none' */}
+      {priceType !== 'none' && (
+        <View style={S.priceRow}>
+          <Text style={S.priceLabel}>{priceLabel}</Text>
+          <Text style={S.priceValue}>{priceStr}</Text>
+        </View>
+      )}
 
       {/* Specs */}
       {specs.map((s, i) => (
@@ -477,7 +487,7 @@ function ProductCard({ product }) {
 }
 
 // ── Content Page ──────────────────────────────────────────────────────────────
-function ContentPage({ products, setName, pageIndex }) {
+function ContentPage({ products, setName, pageIndex, priceType }) {
   const logoLeft = pageIndex % 2 === 0;
   return (
     <Page size="A4" style={S.contentPage}>
@@ -500,12 +510,12 @@ function ContentPage({ products, setName, pageIndex }) {
       {/* 2×2 grid — explicit rows to avoid flexWrap issues in react-pdf */}
       <View style={S.grid}>
         <View style={S.gridRow}>
-          {products[0] && <ProductCard product={products[0]} />}
-          {products[1] && <ProductCard product={products[1]} />}
+          {products[0] && <ProductCard product={products[0]} priceType={priceType} />}
+          {products[1] && <ProductCard product={products[1]} priceType={priceType} />}
         </View>
         <View style={S.gridRow}>
-          {products[2] && <ProductCard product={products[2]} />}
-          {products[3] && <ProductCard product={products[3]} />}
+          {products[2] && <ProductCard product={products[2]} priceType={priceType} />}
+          {products[3] && <ProductCard product={products[3]} priceType={priceType} />}
         </View>
       </View>
 
@@ -521,7 +531,7 @@ function ContentPage({ products, setName, pageIndex }) {
 }
 
 // ── Document ──────────────────────────────────────────────────────────────────
-function CatalogDocument({ products, setName }) {
+function CatalogDocument({ products, setName, priceType }) {
   const PER_PAGE = 4;
   const pages = [];
   for (let i = 0; i < products.length; i += PER_PAGE) {
@@ -532,7 +542,7 @@ function CatalogDocument({ products, setName }) {
     <Document title={`Каталог — ${setName}`} author="MATKASYM HOME">
       <CoverPage />
       {pages.map((chunk, idx) => (
-        <ContentPage key={idx} products={chunk} setName={setName} pageIndex={idx} />
+        <ContentPage key={idx} products={chunk} setName={setName} pageIndex={idx} priceType={priceType} />
       ))}
       <BackCoverPage />
     </Document>
@@ -540,9 +550,9 @@ function CatalogDocument({ products, setName }) {
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
-export async function downloadCatalogPDF(products, setName) {
+export async function downloadCatalogPDF(products, setName, priceType = 'price') {
   const blob = await pdf(
-    <CatalogDocument products={products} setName={setName} />
+    <CatalogDocument products={products} setName={setName} priceType={priceType} />
   ).toBlob();
 
   const url = URL.createObjectURL(blob);

@@ -170,6 +170,9 @@ export default function AdminProducts() {
   const [pages,    setPages]    = useState(1);
   const [loading,  setLoading]  = useState(false);
 
+  // PDF price type
+  const [pdfPriceType, setPdfPriceType] = useState('price');
+
   // Available options from facets (dependent on other filters)
   const [availSets, setAvailSets]   = useState([]);  // set keys from DB
   const [availCats, setAvailCats]   = useState([]);  // category keys from DB
@@ -322,13 +325,26 @@ export default function AdminProducts() {
         </h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {filteredForPDF.length > 0 && (
-            <button
-              className="btn btn-sm"
-              style={{ background: '#1a73e8', color: '#fff', border: 'none' }}
-              onClick={() => downloadCatalogPDF(filteredForPDF, pdfLabel)}
-            >
-              📄 Скачать PDF
-            </button>
+            <>
+              <select
+                className="admin-select"
+                value={pdfPriceType}
+                onChange={e => setPdfPriceType(e.target.value)}
+                style={{ fontSize: 12 }}
+              >
+                <option value="price">Розничная цена</option>
+                <option value="priceWholesale">Оптовая цена</option>
+                <option value="priceDealer">Дилерская цена</option>
+                <option value="none">Без цены</option>
+              </select>
+              <button
+                className="btn btn-sm"
+                style={{ background: '#1a73e8', color: '#fff', border: 'none' }}
+                onClick={() => downloadCatalogPDF(filteredForPDF, pdfLabel, pdfPriceType)}
+              >
+                📄 Скачать PDF
+              </button>
+            </>
           )}
           {canEdit && <Link to="/admin/products/new" className="btn btn-primary btn-sm">+ Добавить</Link>}
         </div>
