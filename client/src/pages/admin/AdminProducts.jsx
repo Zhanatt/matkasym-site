@@ -296,6 +296,20 @@ export default function AdminProducts() {
     groupKeys.reduce((sum, gk) => sum + Object.keys(grouped[gk]).length, 0)
   , [grouped, groupKeys]);
 
+  // Flat list of products after ALL filters (including client-side stock filter) — used for PDF
+  const filteredForPDF = useMemo(() =>
+    groupKeys.flatMap(gk => Object.values(grouped[gk]).flat())
+  , [grouped, groupKeys]);
+
+  // PDF title — most specific active filter
+  const pdfLabel = useMemo(() => {
+    if (set)      return set.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    if (category) return CATEGORIES.find(c => c.value === category)?.label || category;
+    if (brand)    return brand.replace('matkasym-', '').toUpperCase();
+    if (search)   return search;
+    return 'Каталог';
+  }, [set, category, brand, search]);
+
   return (
     <div>
       <div className="admin-page-header">
@@ -307,14 +321,11 @@ export default function AdminProducts() {
           )}
         </h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {set && (
+          {filteredForPDF.length > 0 && (
             <button
               className="btn btn-sm"
               style={{ background: '#1a73e8', color: '#fff', border: 'none' }}
-              onClick={async () => {
-                const setLabel = set.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                await downloadCatalogPDF(products, setLabel);
-              }}
+              onClick={() => downloadCatalogPDF(filteredForPDF, pdfLabel)}
             >
               📄 Скачать PDF
             </button>
