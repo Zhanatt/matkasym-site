@@ -314,6 +314,14 @@ const S = StyleSheet.create({
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// react-pdf doesn't support WebP — convert via Cloudinary f_jpg transformation
+function pdfImg(url) {
+  if (!url) return url;
+  if (url.includes('cloudinary.com')) return url.replace('/upload/', '/upload/f_jpg/');
+  return url.replace(/\.webp(\?.*)?$/, '.jpg$1');
+}
+
 const COLOR_HEX = {
   white: '#f0f0f0', black: '#1a1a1a', grey: '#888', gray: '#888',
   red: '#e53935', blue: '#1565C0', silver: '#c0c0c0',
@@ -406,7 +414,7 @@ function BackCoverPage() {
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product }) {
-  const imageUrl = product.images?.[0];
+  const imageUrl = pdfImg(product.images?.[0]);
   const specs    = (product.specs || []).filter(s => s.value).slice(0, 4);
   const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
 
