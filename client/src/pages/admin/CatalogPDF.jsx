@@ -139,34 +139,40 @@ const S = StyleSheet.create({
   },
 
   // ── 2×2 grid ───────────────────────────────────────────────────────────────
+  // A5 content width = 419.53 - 56 = 363.5pt
+  // 2 cards + 10pt gap → each card = (363.5 - 10) / 2 = 176.75pt
+  // A5 content height = 595.28 - 64 = 531pt; header ~40pt → grid = 491pt
+  // 2 rows + 10pt gap → each row = (491 - 10) / 2 = 240pt
   grid: {
+    flexDirection: 'column',
+    gap: 10,
+  },
+  gridRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
   card: {
-    width: '48.5%',
-    marginBottom: 12,
+    width: 176,
   },
 
   // ── Image area ─────────────────────────────────────────────────────────────
   imageWrap: {
-    width: '100%',
-    height: 148,
+    width: 176,
+    height: 108,
     backgroundColor: '#f8f8f8',
-    marginBottom: 7,
+    marginBottom: 6,
     position: 'relative',
   },
   productImg: {
-    width: '100%',
-    height: 148,
+    width: 176,
+    height: 108,
     objectFit: 'contain',
   },
   noImageWrap: {
-    width: '100%',
-    height: 148,
+    width: 176,
+    height: 108,
     backgroundColor: '#1A1A1A',
-    marginBottom: 7,
+    marginBottom: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -188,19 +194,19 @@ const S = StyleSheet.create({
     borderRadius: 999,
   },
 
-  // ── Card body ──────────────────────────────────────────────────────────────
+  // ── Card body (~130pt budget) ──────────────────────────────────────────────
   kicker: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: GRAY,
     fontWeight: 400,
-    marginBottom: 3,
-    lineHeight: 1.3,
+    marginBottom: 2,
+    lineHeight: 1.2,
   },
   productName: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 700,
     color: INK,
-    marginBottom: 5,
+    marginBottom: 4,
     lineHeight: 1.2,
   },
   nameHairline: {
@@ -214,17 +220,17 @@ const S = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 3.5,
+    paddingVertical: 3,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
   priceLabel: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: GRAY,
     fontWeight: 400,
   },
   priceValue: {
-    fontSize: 8.5,
+    fontSize: 8,
     fontWeight: 700,
     color: RED,
   },
@@ -233,18 +239,18 @@ const S = StyleSheet.create({
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 3,
+    paddingVertical: 2.5,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
   specKey: {
-    fontSize: 7,
+    fontSize: 6.5,
     color: GRAY,
     fontWeight: 400,
     width: '55%',
   },
   specVal: {
-    fontSize: 7,
+    fontSize: 6.5,
     color: INK,
     fontWeight: 400,
     width: '43%',
@@ -402,7 +408,7 @@ function BackCoverPage() {
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product }) {
   const imageUrl = product.images?.[0];
-  const specs    = (product.specs || []).filter(s => s.value).slice(0, 4);
+  const specs    = (product.specs || []).filter(s => s.value).slice(0, 3);
   const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
 
   const swatches = [];
@@ -484,11 +490,16 @@ function ContentPage({ products, setName, pageIndex }) {
       </View>
       <View style={S.headerHairline} />
 
-      {/* 2×2 grid */}
+      {/* 2×2 grid — explicit rows to avoid flexWrap issues in react-pdf */}
       <View style={S.grid}>
-        {products.map(p => (
-          <ProductCard key={p._id || p.name} product={p} />
-        ))}
+        <View style={S.gridRow}>
+          {products[0] && <ProductCard product={products[0]} />}
+          {products[1] && <ProductCard product={products[1]} />}
+        </View>
+        <View style={S.gridRow}>
+          {products[2] && <ProductCard product={products[2]} />}
+          {products[3] && <ProductCard product={products[3]} />}
+        </View>
       </View>
 
       {/* Page number */}
