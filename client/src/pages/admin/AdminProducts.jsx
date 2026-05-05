@@ -472,6 +472,14 @@ export default function AdminProducts() {
                                 padding: '1px 6px', borderRadius: 4,
                               }}>НЕТ В 1С</span>
                             )}
+                            {primary.tags?.includes('not-in-catalog') && (
+                              <span style={{
+                                display: 'inline-block', marginTop: 3, marginLeft: 4,
+                                background: '#7c3aed', color: '#fff',
+                                fontSize: 10, fontWeight: 700, letterSpacing: .4,
+                                padding: '1px 6px', borderRadius: 4,
+                              }}>НЕТ В КАТАЛОГЕ</span>
+                            )}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
                               {multiColor
                                 ? variants.map(v => (
