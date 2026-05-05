@@ -23,7 +23,8 @@ const WHITE    = '#FFFFFF';
 const YELLOW   = '#F2C84A';
 const ORANGE   = '#E89B3C';
 
-const LOGO = '/logos/logo-main.png';
+const LOGO      = '/logos/logo-main.png';
+const NO_PHOTO  = '/logos/no-photo.png';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
@@ -420,9 +421,10 @@ const PRICE_LABELS = {
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product, priceType }) {
-  const imageUrl = pdfImg(product.images?.[0]);
-  const specs    = (product.specs || []).filter(s => s.value).slice(0, 4);
-  const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
+  const imageUrl  = pdfImg(product.images?.[0]);
+  const noPhoto   = !imageUrl;
+  const specs     = (product.specs || []).filter(s => s.value).slice(0, 4);
+  const catLabel  = CATEGORY_LABELS[product.category] || 'товар для дома';
 
   const swatches = [];
   if (product.color) {
@@ -437,32 +439,26 @@ function ProductCard({ product, priceType }) {
   return (
     <View style={S.card}>
       {/* Image */}
-      {imageUrl ? (
-        <View style={S.imageWrap}>
-          <Image src={imageUrl} style={S.productImg} />
-          {swatches.length > 0 && (
-            <View style={S.swatchRow}>
-              {swatches.map((c, i) => (
-                <View key={i} style={[S.swatch, {
-                  backgroundColor: COLOR_HEX[c],
-                  borderWidth: c === 'white' ? 0.5 : 0,
-                  borderColor: HAIRLINE,
-                }]} />
-              ))}
-            </View>
-          )}
-        </View>
-      ) : (
-        <View style={S.noImageWrap}>
-          <Text style={S.noImageText}>product photo</Text>
-        </View>
-      )}
+      <View style={S.imageWrap}>
+        <Image src={noPhoto ? NO_PHOTO : imageUrl} style={S.productImg} />
+        {!noPhoto && swatches.length > 0 && (
+          <View style={S.swatchRow}>
+            {swatches.map((c, i) => (
+              <View key={i} style={[S.swatch, {
+                backgroundColor: COLOR_HEX[c],
+                borderWidth: c === 'white' ? 0.5 : 0,
+                borderColor: HAIRLINE,
+              }]} />
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* Kicker */}
       <Text style={S.kicker}>{catLabel}</Text>
 
       {/* Name */}
-      <Text style={S.productName}>{product.name || product.fullName}</Text>
+      <Text style={S.productName}>{noPhoto ? 'СКОРО !' : (product.name || product.fullName)}</Text>
 
       {/* Hairline */}
       <View style={S.nameHairline} />
