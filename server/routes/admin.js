@@ -234,6 +234,30 @@ router.delete('/users/:id', admin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Custom categories (user-created) ─────────────────────────────────────
+
+// GET /api/admin/custom-categories — list user-created categories
+router.get('/custom-categories', async (req, res) => {
+  try {
+    const specs = await CategorySpec.find({ label: { $ne: '' } }, 'category label').lean();
+    res.json(specs.map(s => ({ value: s.category, label: s.label })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/custom-categories — create a new category
+router.post('/custom-categories', protect, editor, async (req, res) => {
+  try {
+    const { value, label } = req.body;
+    if (!value || !label) return res.status(400).json({ error: 'value and label required' });
+    await CategorySpec.findOneAndUpdate(
+      { category: value },
+      { $set: { label } },
+      { upsert: true }
+    );
+    res.json({ value, label });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Category custom specs ──────────────────────────────────────────────────
 
 // GET /api/admin/category-specs/:category — get custom specs for a category

@@ -4,6 +4,7 @@ import {
   adminGetProduct, adminCreateProduct, adminUpdateProduct,
   adminGetBrands, adminUpdateBrand,
   adminGetCategorySpecs, adminSaveCategorySpec,
+  adminGetCustomCategories, adminCreateCustomCategory,
 } from '../../api/index';
 import ImageUploader  from '../../components/ImageUploader';
 import SelectWithAdd  from '../../components/SelectWithAdd';
@@ -73,6 +74,19 @@ export default function AdminProductForm() {
   // Load brands for set selector
   useEffect(() => {
     adminGetBrands().then(r => setBrandsData(r.data)).catch(() => {});
+  }, []);
+
+  // Load user-created categories from server and merge with static list
+  useEffect(() => {
+    adminGetCustomCategories()
+      .then(r => {
+        if (r.data.length > 0) {
+          const staticKeys = new Set(CATEGORIES.map(c => c.value));
+          const extra = r.data.filter(c => !staticKeys.has(c.value));
+          if (extra.length > 0) setCategories(prev => [...prev, ...extra]);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Load product for edit
@@ -198,9 +212,14 @@ export default function AdminProductForm() {
     setBrandsData(prev => prev.map(b => b.key === currentBrand.key ? { ...b, sets: updatedSets } : b));
   };
 
-  // Add new category
-  const handleAddCategory = ({ value, label }) => {
+  // Add new category — persist to server so it survives page reloads
+  const handleAddCategory = async ({ value, label }) => {
     setCategories(prev => [...prev, { value, label }]);
+    try {
+      await adminCreateCustomCategory({ value, label });
+    } catch (e) {
+      console.error('Failed to save category:', e);
+    }
   };
 
   const handleSubmit = async (e) => {
