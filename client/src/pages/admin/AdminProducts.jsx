@@ -470,7 +470,7 @@ export default function AdminProducts() {
                                 background: '#ff6b00', color: '#fff',
                                 fontSize: 10, fontWeight: 700, letterSpacing: .4,
                                 padding: '1px 6px', borderRadius: 4,
-                              }}>НЕТ В 1С</span>
+                              }}>ПОД ЗАКАЗ</span>
                             )}
                             {primary.tags?.includes('not-in-catalog') && (
                               <span style={{
