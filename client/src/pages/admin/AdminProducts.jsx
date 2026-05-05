@@ -480,6 +480,14 @@ export default function AdminProducts() {
                                 padding: '1px 6px', borderRadius: 4,
                               }}>НЕТ В КАТАЛОГЕ</span>
                             )}
+                            {variants.every(v => !v.images?.length) && (
+                              <span style={{
+                                display: 'inline-block', marginTop: 3, marginLeft: 4,
+                                background: '#e53e3e', color: '#fff',
+                                fontSize: 10, fontWeight: 700, letterSpacing: .4,
+                                padding: '1px 6px', borderRadius: 4,
+                              }}>НЕТ ФОТО</span>
+                            )}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
                               {multiColor
                                 ? variants.map(v => (
