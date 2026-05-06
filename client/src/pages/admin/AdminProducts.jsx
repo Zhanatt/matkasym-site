@@ -441,7 +441,7 @@ export default function AdminProducts() {
                 <th>Название / SKU</th>
                 <th>Категория</th>
                 <th>Бренд / Сет</th>
-                <th>Роз. цена</th>
+                <th>Опт. цена</th>
                 <th>Склад</th>
                 <th>Статус</th>
                 <th></th>
@@ -556,7 +556,7 @@ export default function AdminProducts() {
                             </div>
                           </td>
                           <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
-                            {primary.price.toLocaleString('ru')} сом
+                            {(primary.priceWholesale || 0).toLocaleString('ru')} сом
                           </td>
                           <td>
                             {(() => {
