@@ -411,6 +411,13 @@ function ProductDetailModal({ product, onClose }) {
     return () => document.removeEventListener('keydown', h);
   }, [images.length, onClose]);
 
+  // Prevent body scroll bleed
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   return (
     <>
       <div onClick={onClose}
@@ -455,7 +462,12 @@ function ProductDetailModal({ product, onClose }) {
           </div>
 
           {/* Body */}
-          <div style={{ flex: 1, overflow: 'auto', display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1fr 1fr' }}>
+          <div style={{
+            flex: 1, overflow: 'auto',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1fr 1fr',
+          }}>
 
             {/* Image gallery */}
             <div style={{ background: '#f5f5f7', display: 'flex', flexDirection: 'column' }}>
@@ -500,7 +512,7 @@ function ProductDetailModal({ product, onClose }) {
             </div>
 
             {/* Info */}
-            <div style={{ padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ padding: '20px 24px', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* Badges */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -632,14 +644,21 @@ async function downloadCatalogPdf(products, priceMode, setTitle, brandLabel, acc
 function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride }) {
   const accent      = accentOverride || BRAND_META[brandKey]?.accent || '#555';
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
-  const [priceMode, setPriceMode]       = useState(defaultMode);
-  const [pdfMode,   setPdfMode]         = useState(defaultMode);
-  const [showPdfOpts, setShowPdf]       = useState(false);
-  const [products,  setProducts]        = useState([]);
-  const [loading,   setLoading]         = useState(true);
-  const [pdfLoading, setPdfLoading]     = useState(false);
+  const [priceMode, setPriceMode]         = useState(defaultMode);
+  const [pdfMode,   setPdfMode]           = useState(defaultMode);
+  const [showPdfOpts, setShowPdf]         = useState(false);
+  const [products,  setProducts]          = useState([]);
+  const [loading,   setLoading]           = useState(true);
+  const [pdfLoading, setPdfLoading]       = useState(false);
   const [detailProduct, setDetailProduct] = useState(null);
   const isMobile = useIsMobile();
+
+  // Lock body scroll while panel is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -668,42 +687,61 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   const priceLabel = getPriceLabel(priceMode);
 
+  // On desktop — full screen (covers sidebar too); on mobile — full screen
+  const panelStyle = {
+    position: 'fixed', inset: 0,
+    background: '#f7f8fa', zIndex: 1500,
+    display: 'flex', flexDirection: 'column',
+  };
+
   return (
     <>
-      <div onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 1100 }} />
+      {/* Mobile-only backdrop tap-to-close */}
+      {isMobile && (
+        <div onClick={onClose}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 1499 }} />
+      )}
 
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: isMobile ? '100%' : 560,
-        background: '#fff', zIndex: 1101,
-        display: 'flex', flexDirection: 'column',
-        boxShadow: '-6px 0 32px rgba(0,0,0,.18)',
-      }}>
+      <div style={panelStyle}>
 
         {/* Header */}
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0',
-          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+        <div style={{
+          padding: '0 20px', height: 56, background: '#fff',
+          borderBottom: '1px solid #eee',
+          display: 'flex', alignItems: 'center', gap: 12,
+          flexShrink: 0, flexWrap: 'wrap',
+        }}>
           <button onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#555', padding: '0 2px', flexShrink: 0 }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 22, color: '#555', padding: '0 4px', flexShrink: 0, lineHeight: 1 }}>
             ←
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 17, color: '#111', lineHeight: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: '#111', lineHeight: 1 }}>
               {titleOverride || toTitle(setSlug)}
             </div>
             {BRAND_META[brandKey]?.label && (
-              <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginTop: 1 }}>{BRAND_META[brandKey].label}</div>
+              <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginTop: 1 }}>
+                {BRAND_META[brandKey].label}
+              </div>
             )}
           </div>
 
-          {/* Price view toggle */}
+          {/* Stats inline */}
+          {!loading && (
+            <div style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>
+              {products.length} тов. · {models.length} мод.
+            </div>
+          )}
+
+          {/* Price toggle */}
           <div style={{ display: 'flex', gap: 0, background: '#f5f5f5', borderRadius: 8, padding: 3, flexShrink: 0 }}>
             {PRICE_MODES.filter(m => m.key !== 'none').map(m => (
               <button key={m.key} onClick={() => setPriceMode(m.key)} style={{
-                padding: '4px 9px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                fontSize: 11, fontWeight: 600,
                 background: priceMode === m.key ? accent : 'transparent',
-                color: priceMode === m.key ? '#fff' : '#888',
+                color:      priceMode === m.key ? '#fff'  : '#888',
               }}>{m.short}</button>
             ))}
           </div>
@@ -711,18 +749,17 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
           {/* PDF button */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button onClick={() => setShowPdf(s => !s)} disabled={pdfLoading}
-              style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${accent}`,
-                background: 'transparent', color: accent, fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 5 }}>
+              style={{ padding: '6px 14px', borderRadius: 8, border: `1.5px solid ${accent}`,
+                background: 'transparent', color: accent, fontWeight: 700, fontSize: 12,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
               {pdfLoading ? '⏳' : '⬇'} PDF
             </button>
-
-            {/* PDF options dropdown */}
             {showPdfOpts && (
               <div onClick={e => e.stopPropagation()}
                 style={{ position: 'absolute', top: '110%', right: 0, background: '#fff',
-                  border: '1px solid #eee', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,.12)',
-                  padding: 12, zIndex: 10, minWidth: 200 }}>
+                  border: '1px solid #eee', borderRadius: 10,
+                  boxShadow: '0 4px 24px rgba(0,0,0,.14)',
+                  padding: 14, zIndex: 10, minWidth: 210 }}>
                 <div style={{ fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 8 }}>Цены в PDF:</div>
                 {PRICE_MODES.map(m => (
                   <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 8,
@@ -743,74 +780,67 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
           </div>
         </div>
 
-        {/* Stats bar */}
-        {!loading && (
-          <div style={{ padding: '6px 16px', background: '#fafafa', borderBottom: '1px solid #f5f5f5',
-            fontSize: 11, color: '#888', flexShrink: 0, display: 'flex', gap: 12 }}>
-            <span>{products.length} товаров · {models.length} моделей</span>
-            <span style={{ color: accent, fontWeight: 600 }}>{priceLabel}</span>
-          </div>
-        )}
-
-        {/* Product grid */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
+        {/* Product grid — scrollable */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
+          padding: isMobile ? '12px 10px' : '20px 24px',
+        }}>
           {loading ? (
-            <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>Загрузка…</div>
+            <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
           ) : models.length === 0 ? (
-            <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>Нет товаров</div>
+            <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Нет товаров</div>
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)',
-              gap: 12,
+              gridTemplateColumns: isMobile
+                ? 'repeat(2, 1fr)'
+                : 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: isMobile ? 10 : 16,
             }}>
               {models.map(([name, variants]) => {
-                const primary  = variants[0];
-                const img      = primary.images?.[0] || NO_PHOTO;
-                const price    = getPrice(primary, priceMode);
-                const hasStock  = primary.stock > 0 || primary.inStock;
+                const primary    = variants[0];
+                const img        = primary.images?.[0] || NO_PHOTO;
+                const price      = getPrice(primary, priceMode);
+                const hasStock   = primary.stock > 0 || primary.inStock;
                 const stockLabel = primary.stock > 0
                   ? `${primary.stock} шт.`
                   : (primary.inStock ? 'Есть' : 'Нет');
                 return (
                   <div key={name}
                     onClick={() => setDetailProduct(primary)}
-                    style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden',
-                      background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.05)',
-                      cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.05)'; e.currentTarget.style.transform = 'none'; }}
+                    style={{
+                      border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
+                      background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+                      cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
-
                     <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8' }}>
                       <img src={img} alt={name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={e => { e.target.src = NO_PHOTO; }}
                       />
                     </div>
-
-                    <div style={{ padding: '8px 10px' }}>
+                    <div style={{ padding: '10px 11px' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
                         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {name}
                       </div>
-
-                      {/* Variants count */}
                       {variants.length > 1 && (
                         <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>
                           {variants.length} вариантов
                         </div>
                       )}
-
-                      {/* Key specs */}
                       {primary.specs?.slice(0, 2).map(s => (
                         <div key={s.key} style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.2 }}>
                           <span style={{ color: '#bbb' }}>{s.key}:</span> {s.value}
                         </div>
                       ))}
-
-                      {/* Price + stock */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
                         <div>
                           <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>
                             {priceLabel}
@@ -822,13 +852,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                         <div style={{
                           fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
                           background: hasStock ? '#e8f5e9' : '#fce8e8',
-                          color: hasStock ? '#2d7a3a' : '#c00',
+                          color:      hasStock ? '#2d7a3a' : '#c00',
                         }}>
                           {stockLabel}
                         </div>
                       </div>
-
-                      {/* SKU */}
                       {primary.sku && (
                         <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>
                       )}
@@ -841,7 +869,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         </div>
       </div>
 
-      {/* Product detail modal — on top of catalog panel */}
+      {/* Product detail modal */}
       {detailProduct && (
         <ProductDetailModal product={detailProduct} onClose={() => setDetailProduct(null)} />
       )}
