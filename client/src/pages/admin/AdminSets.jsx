@@ -1,4 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   adminGetFacets, adminGetProducts,
   adminGetFrontmen, adminCreateFrontman, adminUpdateFrontman, adminDeleteFrontman,
@@ -31,6 +33,23 @@ const SET_NAMES = {
 };
 
 const EXCLUDE = new Set(['nelikvid', 'samples', 'small-batch', 'misc', 'equipment', 'other']);
+
+const PROCHIYE = [
+  { slug: 'nelikvid',    label: 'Неликвид' },
+  { slug: 'samples',     label: 'Образцы' },
+  { slug: 'small-batch', label: 'Малосерийные' },
+  { slug: 'misc',        label: 'Разное' },
+  { slug: 'equipment',   label: 'Оборудование и сырьё' },
+  { slug: 'other',       label: 'Прочее' },
+];
+
+const PRODUCT_STATUS_META = {
+  for_sale:       { label: 'В продаже',           color: '#2d7a3a', bg: '#e8f5e9' },
+  planned:        { label: 'В плане',             color: '#3b5bdb', bg: '#e8eeff' },
+  in_development: { label: 'В разработке',        color: '#7c3aed', bg: '#f3e8ff' },
+  improvement:    { label: 'На улучшении',        color: '#c47a00', bg: '#fff3cd' },
+  discontinued:   { label: 'Снят с производства', color: '#888',    bg: '#f5f5f5' },
+};
 
 const BRAND_META = {
   'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
@@ -360,6 +379,223 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
   function setDraftColor(id, v) { setDraft(d => d.map(f => f._id===id ? {...f,color:v}   : f)); }
 }
 
+// ── ProductDetailModal ────────────────────────────────────────────────────────
+
+function ProductDetailModal({ product, onClose }) {
+  const { user } = useAuth();
+  const navigate  = useNavigate();
+  const isMobile  = useIsMobile();
+  const canEdit   = user?.role === 'owner' || user?.role === 'editor';
+  const [imgIdx, setImgIdx] = useState(0);
+
+  const images = (product.images || []).filter(Boolean);
+  const img    = images[imgIdx] || NO_PHOTO;
+
+  const prices = [
+    { label: 'Розничная',     value: product.price },
+    { label: 'Оптовая',       value: product.priceWholesale },
+    { label: 'Дилерская',     value: product.priceDealer },
+    { label: 'Себестоимость', value: product.priceCost },
+  ].filter(p => p.value > 0);
+
+  const statusMeta = PRODUCT_STATUS_META[product.productStatus];
+  const stockLabel  = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
+
+  useEffect(() => {
+    const h = e => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft'  && images.length > 1) setImgIdx(i => (i - 1 + images.length) % images.length);
+      if (e.key === 'ArrowRight' && images.length > 1) setImgIdx(i => (i + 1) % images.length);
+    };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [images.length, onClose]);
+
+  return (
+    <>
+      <div onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1200 }} />
+
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 1201,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: isMobile ? 0 : 24, pointerEvents: 'none',
+      }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: isMobile ? 0 : 16,
+          width: '100%', maxWidth: 900,
+          maxHeight: isMobile ? '100%' : '92vh',
+          height: isMobile ? '100%' : 'auto',
+          overflow: 'hidden',
+          display: 'flex', flexDirection: 'column',
+          pointerEvents: 'auto',
+        }}>
+
+          {/* Top bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Карточка товара
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {canEdit && (
+                <button onClick={() => navigate(`/admin/products/${product._id}/edit`)}
+                  style={{ padding: '7px 16px', borderRadius: 8, background: '#111', color: '#fff',
+                    border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  ✏️ Редактировать
+                </button>
+              )}
+              <button onClick={onClose}
+                style={{ width: 32, height: 32, borderRadius: 8, background: '#f5f5f5',
+                  border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: '32px', textAlign: 'center' }}>
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex: 1, overflow: 'auto', display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1fr 1fr' }}>
+
+            {/* Image gallery */}
+            <div style={{ background: '#f5f5f7', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ flex: 1, position: 'relative', minHeight: isMobile ? 280 : 380, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img src={img} alt={product.name}
+                  style={{ maxWidth: '100%', maxHeight: isMobile ? 280 : 380, objectFit: 'contain', display: 'block', padding: 16 }}
+                  onError={e => { e.target.src = NO_PHOTO; }}
+                />
+                {images.length > 1 && (
+                  <>
+                    <button onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
+                      style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                        background: 'rgba(0,0,0,.35)', color: '#fff', border: 'none', borderRadius: 8,
+                        width: 36, height: 36, fontSize: 20, cursor: 'pointer', lineHeight: '36px', textAlign: 'center' }}>
+                      ‹
+                    </button>
+                    <button onClick={() => setImgIdx(i => (i + 1) % images.length)}
+                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                        background: 'rgba(0,0,0,.35)', color: '#fff', border: 'none', borderRadius: 8,
+                        width: 36, height: 36, fontSize: 20, cursor: 'pointer', lineHeight: '36px', textAlign: 'center' }}>
+                      ›
+                    </button>
+                    <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+                      fontSize: 11, color: '#999', background: 'rgba(255,255,255,.8)', borderRadius: 10, padding: '2px 8px' }}>
+                      {imgIdx + 1} / {images.length}
+                    </div>
+                  </>
+                )}
+              </div>
+              {images.length > 1 && (
+                <div style={{ display: 'flex', gap: 6, padding: '8px 12px', overflowX: 'auto', background: '#eee', flexShrink: 0 }}>
+                  {images.map((src, i) => (
+                    <img key={i} src={src} alt=""
+                      onClick={() => setImgIdx(i)}
+                      style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', flexShrink: 0,
+                        border: i === imgIdx ? '2px solid #333' : '2px solid transparent',
+                        opacity: i === imgIdx ? 1 : 0.6 }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div style={{ padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Badges */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {statusMeta && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+                    background: statusMeta.bg, color: statusMeta.color }}>
+                    {statusMeta.label}
+                  </span>
+                )}
+                {product.isNew && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: '#fff3cd', color: '#856404' }}>
+                    Новинка
+                  </span>
+                )}
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+                  background: product.inStock ? '#e8f5e9' : '#fce8e8',
+                  color: product.inStock ? '#2d7a3a' : '#c00' }}>
+                  {stockLabel}
+                </span>
+              </div>
+
+              {/* Title */}
+              <div>
+                <div style={{ fontSize: isMobile ? 16 : 19, fontWeight: 800, color: '#111', lineHeight: 1.25 }}>
+                  {product.fullName || product.name}
+                </div>
+                {product.fullName && product.name !== product.fullName && (
+                  <div style={{ fontSize: 13, color: '#888', marginTop: 3 }}>{product.name}</div>
+                )}
+                {product.sku && <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>SKU: {product.sku}</div>}
+              </div>
+
+              {/* Prices */}
+              {prices.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Цены
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+                    {prices.map(p => (
+                      <div key={p.label} style={{ background: '#f8f8f8', borderRadius: 8, padding: '8px 12px' }}>
+                        <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>{p.label}</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#111' }}>
+                          {p.value.toLocaleString('ru')} сом
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Specs */}
+              {product.specs?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Характеристики
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {product.specs.map((s, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, paddingBottom: 5,
+                        borderBottom: '1px solid #f5f5f5' }}>
+                        <span style={{ color: '#aaa', minWidth: 110, flexShrink: 0 }}>{s.key}</span>
+                        <span style={{ color: '#1c1c1c', fontWeight: 600 }}>{s.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {product.description && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Описание
+                  </div>
+                  <div style={{ fontSize: 13, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                    {product.description}
+                  </div>
+                </div>
+              )}
+
+              {/* Dimensions */}
+              {product.dimensions && (
+                <div style={{ fontSize: 13, color: '#888' }}>
+                  <span style={{ color: '#bbb' }}>Габариты:</span> {product.dimensions}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── SetCatalogPanel ───────────────────────────────────────────────────────────
 
 const RETAIL_BRANDS = new Set(['matkasym-home', 'matkasym-shaar']);
@@ -393,20 +629,24 @@ async function downloadCatalogPdf(products, priceMode, setTitle, brandLabel, acc
   URL.revokeObjectURL(url);
 }
 
-function SetCatalogPanel({ brandKey, setSlug, onClose }) {
-  const accent      = BRAND_META[brandKey]?.accent || '#333';
-  const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'wholesale';
-  const [priceMode, setPriceMode]   = useState(defaultMode);
-  const [pdfMode,   setPdfMode]     = useState(defaultMode);
-  const [showPdfOpts, setShowPdf]   = useState(false);
-  const [products,  setProducts]    = useState([]);
-  const [loading,   setLoading]     = useState(true);
-  const [pdfLoading, setPdfLoading] = useState(false);
+function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride }) {
+  const accent      = accentOverride || BRAND_META[brandKey]?.accent || '#555';
+  const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
+  const [priceMode, setPriceMode]       = useState(defaultMode);
+  const [pdfMode,   setPdfMode]         = useState(defaultMode);
+  const [showPdfOpts, setShowPdf]       = useState(false);
+  const [products,  setProducts]        = useState([]);
+  const [loading,   setLoading]         = useState(true);
+  const [pdfLoading, setPdfLoading]     = useState(false);
+  const [detailProduct, setDetailProduct] = useState(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
     setLoading(true);
-    adminGetProducts({ brand: brandKey, set: setSlug, limit: 500, page: 1 })
+    adminGetProducts({
+      ...(brandKey ? { brand: brandKey } : {}),
+      set: setSlug, limit: 500, page: 1,
+    })
       .then(r => { setProducts(r.data.products || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [brandKey, setSlug]);
@@ -449,8 +689,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
             ←
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 17, color: '#111', lineHeight: 1 }}>{toTitle(setSlug)}</div>
-            <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginTop: 1 }}>{BRAND_META[brandKey]?.label}</div>
+            <div style={{ fontWeight: 800, fontSize: 17, color: '#111', lineHeight: 1 }}>
+              {titleOverride || toTitle(setSlug)}
+            </div>
+            {BRAND_META[brandKey]?.label && (
+              <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginTop: 1 }}>{BRAND_META[brandKey].label}</div>
+            )}
           </div>
 
           {/* Price view toggle */}
@@ -529,8 +773,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
                   ? `${primary.stock} шт.`
                   : (primary.inStock ? 'Есть' : 'Нет');
                 return (
-                  <div key={name} style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden',
-                    background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.05)' }}>
+                  <div key={name}
+                    onClick={() => setDetailProduct(primary)}
+                    style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden',
+                      background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.05)',
+                      cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.05)'; e.currentTarget.style.transform = 'none'; }}
+                  >
 
                     <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8' }}>
                       <img src={img} alt={name}
@@ -590,7 +840,70 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
           )}
         </div>
       </div>
+
+      {/* Product detail modal — on top of catalog panel */}
+      {detailProduct && (
+        <ProductDetailModal product={detailProduct} onClose={() => setDetailProduct(null)} />
+      )}
     </>
+  );
+}
+
+// ── ProchiyeSection ───────────────────────────────────────────────────────────
+
+function ProchiyeSection() {
+  const [catalogSlug, setCatalog] = useState(null);
+  const [catalogTitle, setCatalogTitle] = useState('');
+  const isMobile = useIsMobile();
+  const accent   = '#555';
+  const pad      = isMobile ? '20px 16px' : '32px 36px';
+
+  function openCatalog(slug, label) {
+    setCatalog(slug);
+    setCatalogTitle(label);
+  }
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, padding: pad, boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: isMobile ? 36 : 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>
+          ПРОЧИЕ
+        </div>
+        <div style={{ height: 3, width: 50, background: accent, borderRadius: 2, margin: '8px 0 6px' }} />
+        <div style={{ fontSize: 12, color: '#6b8997' }}>
+          Дополнительные категории товаров
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {PROCHIYE.map((item, i) => (
+          <div key={item.slug}
+            style={{ padding: '8px 10px', background: i % 2 === 0 ? '#f8f9fb' : '#fff', borderRadius: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 20, textAlign: 'right', fontWeight: 700, fontSize: 12, color: accent, flexShrink: 0 }}>
+                {i + 1}
+              </span>
+              <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
+              <span onClick={() => openCatalog(item.slug, item.label)}
+                style={{ fontSize: 13, color: '#1c1c1c', flex: 1, cursor: 'pointer',
+                  textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: '#bbb' }}>
+                {item.label}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {catalogSlug && (
+        <SetCatalogPanel
+          brandKey={null}
+          setSlug={catalogSlug}
+          accentOverride={accent}
+          titleOverride={catalogTitle}
+          onClose={() => setCatalog(null)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -617,10 +930,10 @@ export default function AdminSets() {
   }, []);
 
   return (
-    <div style={{ maxWidth: 820, margin: '0 auto' }}>
+    <div style={{ maxWidth: 860, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: '#111' }}>Схема сетов</div>
-        <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>Линейки по брендам и их фронтмены</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: '#111' }}>Товары и фронтмены</div>
+        <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>Линейки по брендам, фронтмены и каталог товаров</div>
       </div>
       {loading
         ? <div style={{ color: '#aaa', fontSize: 14 }}>Загрузка…</div>
@@ -635,6 +948,7 @@ export default function AdminSets() {
                 subItems={SET_SUB_ITEMS}
               />
             ))}
+            <ProchiyeSection />
           </div>
         )
       }
