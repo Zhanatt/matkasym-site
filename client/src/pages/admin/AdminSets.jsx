@@ -463,7 +463,7 @@ function ProductDetailModal({ product, onClose }) {
 
           {/* Body */}
           <div style={{
-            flex: 1, overflow: 'auto',
+            flex: 1, minHeight: 0, overflow: 'auto',
             overscrollBehavior: 'contain',
             WebkitOverflowScrolling: 'touch',
             display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1fr 1fr',
@@ -783,6 +783,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         {/* Product grid — scrollable */}
         <div style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
