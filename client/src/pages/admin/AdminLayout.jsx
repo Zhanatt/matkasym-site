@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { adminStats } from '../../api';
 import './Admin.css';
 
 const NAV_ALL = [
@@ -16,6 +17,15 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const load = () => adminStats().then(r => setPendingCount(r.data.pending || 0)).catch(() => {});
+    load();
+    const id = setInterval(load, 60_000);
+    return () => clearInterval(id);
+  }, [!!user]);
 
   const ALLOWED = ['owner', 'editor', 'viewer'];
 
@@ -77,6 +87,22 @@ export default function AdminLayout() {
             >
               <span className="admin-nav-icon">{n.icon}</span>
               {n.label}
+              {n.to === '/admin/users' && pendingCount > 0 && (
+                <span style={{
+                  marginLeft: 'auto',
+                  background: '#e10523',
+                  color: '#fff',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  padding: '1px 7px',
+                  minWidth: 18,
+                  textAlign: 'center',
+                  lineHeight: '18px',
+                }}>
+                  {pendingCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
