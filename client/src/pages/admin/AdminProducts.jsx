@@ -220,6 +220,12 @@ export default function AdminProducts() {
     load();
   };
 
+  const handleDeleteGroup = async (variants, name) => {
+    if (!window.confirm(`Удалить все ${variants.length} варианта «${name}»?`)) return;
+    await Promise.all(variants.map(v => adminDeleteProduct(v._id)));
+    load();
+  };
+
   const handleDuplicate = async (id) => {
     const r = await adminGetProduct(id);
     const p = r.data;
@@ -644,7 +650,11 @@ export default function AdminProducts() {
                                 >
                                   + Цвет
                                 </button>
-                                {!multiColor && (
+                                {multiColor ? (
+                                  <button className="admin-btn-delete" onClick={() => handleDeleteGroup(variants, primary.fullName || primary.name)}>
+                                    Удалить все
+                                  </button>
+                                ) : (
                                   <button className="admin-btn-delete" onClick={() => handleDelete(primary._id, primary.fullName || primary.name)}>
                                     Удалить
                                   </button>
