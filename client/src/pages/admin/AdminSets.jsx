@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -418,7 +419,7 @@ function ProductDetailModal({ product, onClose }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  return (
+  return createPortal(
     <>
       <div onClick={onClose}
         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1200 }} />
@@ -604,7 +605,8 @@ function ProductDetailModal({ product, onClose }) {
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
@@ -694,7 +696,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     display: 'flex', flexDirection: 'column',
   };
 
-  return (
+  return createPortal(
     <>
       {/* Mobile-only backdrop tap-to-close */}
       {isMobile && (
@@ -874,7 +876,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       {detailProduct && (
         <ProductDetailModal product={detailProduct} onClose={() => setDetailProduct(null)} />
       )}
-    </>
+    </>,
+    document.body
   );
 }
 
