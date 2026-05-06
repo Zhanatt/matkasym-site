@@ -24,7 +24,7 @@ const SET_LABELS_RU = {
   'other':       'Прочее',
   'achyk-asman': 'ACHYK ASMAN',
   'den-sooluk':  'DEN SOOLUK',
-  'green-omir':  'GREEN OMIR',
+  'zhashyl-ömür': 'ZHASHYL ÖMÜR',
   'kosh-keliniz':'KOSH KELINIZ',
   'sanarip-tv':  'SANARIP TV',
   'taza-kiym':   'TAZA KIYM',
@@ -39,6 +39,8 @@ const SET_LABELS_RU = {
   'korkom-aiym':    'KORKOM AIYM',
   'shirin-balalyk': 'SHIRIN BALALYK',
   'uydo-ishtoo':    'UYDO ISHTOO',
+  'mazza-seiyl':    'MAZZA SEIYL',
+  'kooz-koopsuzduk':'KOOZ KOOPSUZDUK',
 };
 
 const STOCK_OPTIONS = [
