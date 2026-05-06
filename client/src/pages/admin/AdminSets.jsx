@@ -361,15 +361,95 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
 
 // ── SetCatalogPanel ───────────────────────────────────────────────────────────
 
-const RETAIL_BRANDS   = new Set(['matkasym-home', 'matkasym-shaar']);
-const NO_PHOTO = '/logos/no-photo.png';
+const RETAIL_BRANDS = new Set(['matkasym-home', 'matkasym-shaar']);
+const NO_PHOTO      = '/logos/no-photo.png';
+
+const PRICE_MODES = [
+  { key: 'retail',     label: 'Розничная',  short: 'Розн.' },
+  { key: 'wholesale',  label: 'Оптовая',    short: 'Опт.'  },
+  { key: 'dealer',     label: 'Дилерская',  short: 'Дил.'  },
+  { key: 'none',       label: 'Без цен',    short: 'Без'   },
+];
+
+function getPrice(product, mode) {
+  if (mode === 'retail')    return product.price;
+  if (mode === 'wholesale') return product.priceWholesale;
+  if (mode === 'dealer')    return product.priceDealer;
+  return null;
+}
+function getPriceLabel(mode) {
+  return PRICE_MODES.find(m => m.key === mode)?.label || '';
+}
+
+async function downloadCatalogPdf(models, priceMode, setTitle, brandLabel, accent) {
+  const { jsPDF } = await import('jspdf');
+  const autoTable  = (await import('jspdf-autotable')).default;
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210;
+
+  // header
+  doc.setFillColor(...hexToRgb(accent));
+  doc.rect(0, 0, W, 18, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${brandLabel} · ${setTitle}`, 14, 12);
+  if (priceMode !== 'none') {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(getPriceLabel(priceMode), W - 14, 12, { align: 'right' });
+  }
+
+  // table data
+  const head = [['#', 'Название / SKU', 'Характеристики', ...(priceMode !== 'none' ? ['Цена'] : []), 'Наличие']];
+  const body = models.map(([name, variants], i) => {
+    const p     = variants[0];
+    const specs = (p.specs || []).slice(0, 3).map(s => `${s.key}: ${s.value}`).join('\n');
+    const price = priceMode !== 'none' ? getPrice(p, priceMode) : undefined;
+    return [
+      String(i + 1),
+      `${name}${p.sku ? '\n' + p.sku : ''}`,
+      specs || '—',
+      ...(priceMode !== 'none' ? [price > 0 ? `${price.toLocaleString('ru')} сом` : '—'] : []),
+      p.stock > 0 ? `${p.stock} шт.` : (p.inStock ? 'Есть' : 'Нет'),
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 22,
+    head,
+    body,
+    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+    headStyles: { fillColor: hexToRgb(accent), textColor: 255, fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 8,  halign: 'center' },
+      1: { cellWidth: 60 },
+      2: { cellWidth: priceMode !== 'none' ? 65 : 95 },
+      ...(priceMode !== 'none' ? { 3: { cellWidth: 30, halign: 'right' }, 4: { cellWidth: 22, halign: 'center' } }
+                               : { 3: { cellWidth: 22, halign: 'center' } }),
+    },
+    alternateRowStyles: { fillColor: [250, 250, 252] },
+    margin: { left: 10, right: 10 },
+  });
+
+  doc.save(`${brandLabel}_${setTitle}.pdf`);
+}
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
 
 function SetCatalogPanel({ brandKey, setSlug, onClose }) {
-  const accent   = BRAND_META[brandKey]?.accent || '#333';
+  const accent      = BRAND_META[brandKey]?.accent || '#333';
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'wholesale';
-  const [priceMode, setPriceMode] = useState(defaultMode);
-  const [products, setProducts]   = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [priceMode, setPriceMode]   = useState(defaultMode);
+  const [pdfMode,   setPdfMode]     = useState(defaultMode);
+  const [showPdfOpts, setShowPdf]   = useState(false);
+  const [products,  setProducts]    = useState([]);
+  const [loading,   setLoading]     = useState(true);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -379,22 +459,28 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
       .catch(() => setLoading(false));
   }, [brandKey, setSlug]);
 
-  // group products by base model name (strip last word if it looks like a color)
   const grouped = {};
   products.forEach(p => {
-    const key = p.name;
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(p);
+    if (!grouped[p.name]) grouped[p.name] = [];
+    grouped[p.name].push(p);
   });
   const models = Object.entries(grouped);
 
+  async function handleDownload() {
+    setPdfLoading(true);
+    setShowPdf(false);
+    try {
+      await downloadCatalogPdf(models, pdfMode, toTitle(setSlug), BRAND_META[brandKey]?.label || '', accent);
+    } finally { setPdfLoading(false); }
+  }
+
+  const priceLabel = getPriceLabel(priceMode);
+
   return (
     <>
-      {/* Backdrop */}
       <div onClick={onClose}
         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 1100 }} />
 
-      {/* Panel */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
         width: isMobile ? '100%' : 560,
@@ -404,41 +490,74 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
       }}>
 
         {/* Header */}
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f0f0f0',
-          display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0',
+          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
           <button onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#555', padding: '0 4px' }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#555', padding: '0 2px', flexShrink: 0 }}>
             ←
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 18, color: '#111', lineHeight: 1 }}>{toTitle(setSlug)}</div>
-            <div style={{ fontSize: 12, color: accent, fontWeight: 600, marginTop: 2 }}>
-              {BRAND_META[brandKey]?.label}
-            </div>
+            <div style={{ fontWeight: 800, fontSize: 17, color: '#111', lineHeight: 1 }}>{toTitle(setSlug)}</div>
+            <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginTop: 1 }}>{BRAND_META[brandKey]?.label}</div>
           </div>
-          {/* Price toggle */}
+
+          {/* Price view toggle */}
           <div style={{ display: 'flex', gap: 0, background: '#f5f5f5', borderRadius: 8, padding: 3, flexShrink: 0 }}>
-            {[['retail','Розн.'],['wholesale','Опт.']].map(([mode, label]) => (
-              <button key={mode} onClick={() => setPriceMode(mode)} style={{
-                padding: '5px 11px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                background: priceMode === mode ? accent : 'transparent',
-                color: priceMode === mode ? '#fff' : '#888',
-                transition: 'all .15s',
-              }}>{label}</button>
+            {PRICE_MODES.filter(m => m.key !== 'none').map(m => (
+              <button key={m.key} onClick={() => setPriceMode(m.key)} style={{
+                padding: '4px 9px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                background: priceMode === m.key ? accent : 'transparent',
+                color: priceMode === m.key ? '#fff' : '#888',
+              }}>{m.short}</button>
             ))}
+          </div>
+
+          {/* PDF button */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button onClick={() => setShowPdf(s => !s)} disabled={pdfLoading}
+              style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${accent}`,
+                background: 'transparent', color: accent, fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 5 }}>
+              {pdfLoading ? '⏳' : '⬇'} PDF
+            </button>
+
+            {/* PDF options dropdown */}
+            {showPdfOpts && (
+              <div onClick={e => e.stopPropagation()}
+                style={{ position: 'absolute', top: '110%', right: 0, background: '#fff',
+                  border: '1px solid #eee', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,.12)',
+                  padding: 12, zIndex: 10, minWidth: 200 }}>
+                <div style={{ fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 8 }}>Цены в PDF:</div>
+                {PRICE_MODES.map(m => (
+                  <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '5px 4px', cursor: 'pointer', fontSize: 13 }}>
+                    <input type="radio" name="pdfMode" value={m.key}
+                      checked={pdfMode === m.key} onChange={() => setPdfMode(m.key)} />
+                    {m.label}
+                  </label>
+                ))}
+                <button onClick={handleDownload}
+                  style={{ marginTop: 10, width: '100%', padding: '8px', borderRadius: 7,
+                    background: accent, color: '#fff', border: 'none', fontWeight: 700,
+                    fontSize: 13, cursor: 'pointer' }}>
+                  Скачать PDF
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Stats bar */}
         {!loading && (
-          <div style={{ padding: '8px 18px', background: '#fafafa', borderBottom: '1px solid #f5f5f5',
-            fontSize: 12, color: '#888', flexShrink: 0 }}>
-            {products.length} товаров · {models.length} моделей
+          <div style={{ padding: '6px 16px', background: '#fafafa', borderBottom: '1px solid #f5f5f5',
+            fontSize: 11, color: '#888', flexShrink: 0, display: 'flex', gap: 12 }}>
+            <span>{products.length} товаров · {models.length} моделей</span>
+            <span style={{ color: accent, fontWeight: 600 }}>{priceLabel}</span>
           </div>
         )}
 
         {/* Product grid */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
           {loading ? (
             <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>Загрузка…</div>
           ) : models.length === 0 ? (
@@ -450,15 +569,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
               gap: 12,
             }}>
               {models.map(([name, variants]) => {
-                const primary = variants[0];
-                const img     = primary.images?.[0] || NO_PHOTO;
-                const price   = priceMode === 'retail' ? primary.price : primary.priceWholesale;
+                const primary  = variants[0];
+                const img      = primary.images?.[0] || NO_PHOTO;
+                const price    = getPrice(primary, priceMode);
                 const hasStock = primary.stock > 0 || primary.inStock;
                 return (
                   <div key={name} style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden',
                     background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.05)' }}>
 
-                    {/* Image */}
                     <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8' }}>
                       <img src={img} alt={name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -466,7 +584,6 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
                       />
                     </div>
 
-                    {/* Info */}
                     <div style={{ padding: '8px 10px' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
                         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -489,8 +606,13 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
 
                       {/* Price + stock */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: accent }}>
-                          {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                        <div>
+                          <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>
+                            {priceLabel}
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
+                            {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                          </div>
                         </div>
                         <div style={{
                           fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4,
