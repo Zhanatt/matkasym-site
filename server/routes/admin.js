@@ -1,4 +1,5 @@
 const router       = require('express').Router();
+const path         = require('path');
 const Product      = require('../models/Product');
 const Brand        = require('../models/Brand');
 const User         = require('../models/User');
@@ -7,6 +8,8 @@ const CategorySpec = require('../models/CategorySpec');
 const Frontman     = require('../models/Frontman');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer } = require('../middleware/auth');
+
+const FONTS_DIR = path.join(__dirname, '../fonts');
 
 const TRACKED_FIELDS = [
   'name','fullName','sku','price','priceWholesale','priceDealer','priceCost',
@@ -333,5 +336,143 @@ router.delete('/frontmen/:id', protect, editor, async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── Catalog PDF (server-side, Cyrillic support) ───────────────────────────────
+// POST /api/admin/pdf/catalog
+router.post('/pdf/catalog', protect, viewer, async (req, res) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const { products, priceMode, setTitle, brandLabel, accent } = req.body;
+
+    const fontReg  = path.join(FONTS_DIR, 'Roboto-Regular.ttf');
+    const fontBold = path.join(FONTS_DIR, 'Roboto-Bold.ttf');
+    const fontMed  = path.join(FONTS_DIR, 'Roboto-Medium.ttf');
+
+    const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `${brandLabel} · ${setTitle}` } });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(brandLabel)}_${encodeURIComponent(setTitle)}.pdf"`);
+    doc.pipe(res);
+
+    // Parse accent hex → r,g,b
+    const hex = (accent || '#333333').replace('#', '');
+    const aR = parseInt(hex.substring(0,2),16), aG = parseInt(hex.substring(2,4),16), aB = parseInt(hex.substring(4,6),16);
+
+    const PAGE_W = 595.28, PAGE_H = 841.89;
+    const MARGIN = 30;
+    const COL_W  = PAGE_W - MARGIN * 2;
+
+    // ── Header bar ──
+    doc.rect(0, 0, PAGE_W, 46).fill([aR, aG, aB]);
+    doc.font(fontBold).fontSize(15).fillColor('white')
+       .text(`${brandLabel} · ${setTitle}`, MARGIN, 16, { lineBreak: false });
+    if (priceMode !== 'none') {
+      const modeLabel = { retail:'Розничные цены', wholesale:'Оптовые цены', dealer:'Дилерские цены' }[priceMode] || '';
+      doc.font(fontReg).fontSize(9).fillColor('rgba(255,255,255,0.85)')
+         .text(modeLabel, 0, 18, { width: PAGE_W - MARGIN, align: 'right', lineBreak: false });
+    }
+
+    // ── Column headers ──
+    const COL = buildCols(priceMode, COL_W);
+    let y = 60;
+    doc.rect(MARGIN, y, COL_W, 22).fill([aR, aG, aB]);
+    doc.fillColor('white').font(fontMed).fontSize(8);
+    drawRow(doc, MARGIN, y + 7, COL, ['#', 'Название', 'SKU', 'Характеристики', ...(priceMode !== 'none' ? ['Цена'] : []), 'Наличие']);
+    y += 22;
+
+    // ── Rows ──
+    let rowIdx = 0;
+    for (const p of products) {
+      const price = getPrice(p, priceMode);
+      const specs = (p.specs || []).slice(0, 4).map(s => `${s.key}: ${s.value}`).join('\n');
+      const stock = p.stock > 0 ? `${p.stock} шт.` : (p.inStock ? 'Есть' : 'Нет');
+      const cells = [
+        String(rowIdx + 1),
+        p.fullName || p.name || '—',
+        p.sku || '—',
+        specs || '—',
+        ...(priceMode !== 'none' ? [price > 0 ? `${price.toLocaleString('ru')} сом` : '—'] : []),
+        stock,
+      ];
+
+      // measure row height
+      const rowH = measureRowHeight(doc, fontReg, COL, cells, 8, 5);
+
+      if (y + rowH > PAGE_H - 30) {
+        doc.addPage({ size: 'A4', margin: 0 });
+        y = 30;
+        // repeat header
+        doc.rect(MARGIN, y, COL_W, 20).fill([aR, aG, aB]);
+        doc.fillColor('white').font(fontMed).fontSize(8);
+        drawRow(doc, MARGIN, y + 6, COL, ['#', 'Название', 'SKU', 'Характеристики', ...(priceMode !== 'none' ? ['Цена'] : []), 'Наличие']);
+        y += 20;
+      }
+
+      const bg = rowIdx % 2 === 0 ? [255,255,255] : [248,249,252];
+      doc.rect(MARGIN, y, COL_W, rowH).fill(bg);
+
+      // subtle border
+      doc.rect(MARGIN, y, COL_W, rowH).stroke([220,220,228]);
+
+      doc.fillColor([30,30,30]).font(fontReg).fontSize(8);
+      drawRow(doc, MARGIN, y + 5, COL, cells);
+
+      y += rowH;
+      rowIdx++;
+    }
+
+    // ── Footer ──
+    doc.font(fontReg).fontSize(7).fillColor([180,180,180])
+       .text(`MATKASYM · ${brandLabel} · ${setTitle}`, MARGIN, PAGE_H - 20, { width: COL_W, align: 'center' });
+
+    doc.end();
+  } catch (e) {
+    console.error('PDF error:', e);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
+
+function buildCols(priceMode, totalW) {
+  // [key, width, align]
+  const base = [
+    { w: 18,  align: 'center' },  // #
+    { w: 130, align: 'left'   },  // Название
+    { w: 65,  align: 'left'   },  // SKU
+  ];
+  if (priceMode !== 'none') {
+    base.push({ w: totalW - 18 - 130 - 65 - 55 - 38, align: 'left'  }); // specs
+    base.push({ w: 55, align: 'right'  }); // price
+  } else {
+    base.push({ w: totalW - 18 - 130 - 65 - 38, align: 'left' }); // specs
+  }
+  base.push({ w: 38, align: 'center' }); // наличие
+  return base;
+}
+
+function drawRow(doc, startX, y, cols, cells) {
+  let x = startX + 4;
+  for (let i = 0; i < cols.length; i++) {
+    const col  = cols[i];
+    const text = String(cells[i] || '');
+    doc.text(text, x, y, { width: col.w - 6, align: col.align, lineBreak: false, ellipsis: true });
+    x += col.w;
+  }
+}
+
+function measureRowHeight(doc, font, cols, cells, fontSize, padding) {
+  doc.font(font).fontSize(fontSize);
+  let maxH = 0;
+  for (let i = 0; i < cols.length; i++) {
+    const h = doc.heightOfString(String(cells[i] || ''), { width: cols[i].w - 6 });
+    if (h > maxH) maxH = h;
+  }
+  return Math.max(maxH + padding * 2, 20);
+}
+
+function getPrice(p, mode) {
+  if (mode === 'retail')    return p.price;
+  if (mode === 'wholesale') return p.priceWholesale;
+  if (mode === 'dealer')    return p.priceDealer;
+  return null;
+}
 
 module.exports = router;

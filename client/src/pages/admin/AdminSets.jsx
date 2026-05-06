@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react
 import {
   adminGetFacets, adminGetProducts,
   adminGetFrontmen, adminCreateFrontman, adminUpdateFrontman, adminDeleteFrontman,
+  adminCatalogPdf,
 } from '../../api';
 
 // ── constants ──────────────────────────────────────────────────────────────────
@@ -381,64 +382,15 @@ function getPriceLabel(mode) {
   return PRICE_MODES.find(m => m.key === mode)?.label || '';
 }
 
-async function downloadCatalogPdf(models, priceMode, setTitle, brandLabel, accent) {
-  const { jsPDF } = await import('jspdf');
-  const autoTable  = (await import('jspdf-autotable')).default;
-
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const W = 210;
-
-  // header
-  doc.setFillColor(...hexToRgb(accent));
-  doc.rect(0, 0, W, 18, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${brandLabel} · ${setTitle}`, 14, 12);
-  if (priceMode !== 'none') {
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.text(getPriceLabel(priceMode), W - 14, 12, { align: 'right' });
-  }
-
-  // table data
-  const head = [['#', 'Название / SKU', 'Характеристики', ...(priceMode !== 'none' ? ['Цена'] : []), 'Наличие']];
-  const body = models.map(([name, variants], i) => {
-    const p     = variants[0];
-    const specs = (p.specs || []).slice(0, 3).map(s => `${s.key}: ${s.value}`).join('\n');
-    const price = priceMode !== 'none' ? getPrice(p, priceMode) : undefined;
-    return [
-      String(i + 1),
-      `${name}${p.sku ? '\n' + p.sku : ''}`,
-      specs || '—',
-      ...(priceMode !== 'none' ? [price > 0 ? `${price.toLocaleString('ru')} сом` : '—'] : []),
-      p.stock > 0 ? `${p.stock} шт.` : (p.inStock ? 'Есть' : 'Нет'),
-    ];
-  });
-
-  autoTable(doc, {
-    startY: 22,
-    head,
-    body,
-    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: hexToRgb(accent), textColor: 255, fontStyle: 'bold' },
-    columnStyles: {
-      0: { cellWidth: 8,  halign: 'center' },
-      1: { cellWidth: 60 },
-      2: { cellWidth: priceMode !== 'none' ? 65 : 95 },
-      ...(priceMode !== 'none' ? { 3: { cellWidth: 30, halign: 'right' }, 4: { cellWidth: 22, halign: 'center' } }
-                               : { 3: { cellWidth: 22, halign: 'center' } }),
-    },
-    alternateRowStyles: { fillColor: [250, 250, 252] },
-    margin: { left: 10, right: 10 },
-  });
-
-  doc.save(`${brandLabel}_${setTitle}.pdf`);
-}
-
-function hexToRgb(hex) {
-  const n = parseInt(hex.replace('#',''), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+async function downloadCatalogPdf(products, priceMode, setTitle, brandLabel, accent) {
+  const blob = await adminCatalogPdf({ products, priceMode, setTitle, brandLabel, accent })
+    .then(r => r.data);
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${brandLabel}_${setTitle}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function SetCatalogPanel({ brandKey, setSlug, onClose }) {
@@ -470,7 +422,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
     setPdfLoading(true);
     setShowPdf(false);
     try {
-      await downloadCatalogPdf(models, pdfMode, toTitle(setSlug), BRAND_META[brandKey]?.label || '', accent);
+      await downloadCatalogPdf(products, pdfMode, toTitle(setSlug), BRAND_META[brandKey]?.label || '', accent);
     } finally { setPdfLoading(false); }
   }
 
