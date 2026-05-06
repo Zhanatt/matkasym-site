@@ -582,8 +582,9 @@ export default function AdminProducts() {
                               {primary.set || '—'}{primary.setLevel ? ` · ${primary.setLevel}` : ''}
                             </div>
                           </td>
-                          <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
-                            {(primary.priceWholesale || 0).toLocaleString('ru')} сом
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--slate)', display: 'block', lineHeight: 1.2 }}>Опт.</span>
+                            <span style={{ fontWeight: 700 }}>{(primary.priceWholesale || 0).toLocaleString('ru')} сом</span>
                           </td>
                           <td>
                             {(() => {
@@ -591,7 +592,7 @@ export default function AdminProducts() {
                               const color = totalStock > 10 ? '#2d7a3a' : totalStock > 0 ? '#c47a00' : '#c0392b';
                               return (
                                 <span style={{ fontSize: 15, fontWeight: 800, color }}>
-                                  {totalStock}
+                                  {totalStock} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--slate)' }}>шт.</span>
                                 </span>
                               );
                             })()}
