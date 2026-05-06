@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, forwardRef } from 'react';
+import { TableVirtuoso } from 'react-virtuoso';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { adminGetProduct } from '../../api/index';
 import { adminGetProducts, adminDeleteProduct, adminGetFacets } from '../../api/index';
@@ -294,6 +295,22 @@ export default function AdminProducts() {
     });
   }, [stockSort]);
 
+  // Flat list of rows for TableVirtuoso: group headers + product rows
+  const flatRows = useMemo(() => {
+    const rows = [];
+    for (const gk of groupKeys) {
+      const models = grouped[gk];
+      const mKeys = sortedModelKeys(models);
+      if (groupBySet && gk !== '__all__') {
+        rows.push({ type: 'group', gk, modelCount: mKeys.length });
+      }
+      for (const mk of mKeys) {
+        rows.push({ type: 'product', mk, variants: models[mk] });
+      }
+    }
+    return rows;
+  }, [grouped, groupKeys, groupBySet, sortedModelKeys]);
+
   // Unique model count across current page
   const uniqueModelCount = useMemo(() =>
     groupKeys.reduce((sum, gk) => sum + Object.keys(grouped[gk]).length, 0)
@@ -434,8 +451,20 @@ export default function AdminProducts() {
         ) : products.length === 0 ? (
           <div className="admin-empty">Товары не найдены</div>
         ) : (
-          <table className="admin-table">
-            <thead>
+          <TableVirtuoso
+            style={{ height: 'calc(100vh - 270px)', minHeight: 400 }}
+            data={flatRows}
+            components={{
+              Table: ({ style, ...props }) => (
+                <table className="admin-table" style={{ ...style, borderCollapse: 'collapse', tableLayout: 'fixed' }} {...props} />
+              ),
+              TableHead: forwardRef((props, ref) => <thead ref={ref} style={{ background: '#fff', position: 'sticky', top: 0, zIndex: 2 }} {...props} />),
+              TableBody: forwardRef((props, ref) => <tbody ref={ref} {...props} />),
+              TableRow: ({ item, ...props }) => (
+                <tr {...props} className={item?.type === 'group' ? 'admin-table-group-row' : undefined} />
+              ),
+            }}
+            fixedHeaderContent={() => (
               <tr>
                 <th style={{ width: 96 }}></th>
                 <th>Название / SKU</th>
@@ -446,25 +475,21 @@ export default function AdminProducts() {
                 <th>Статус</th>
                 <th></th>
               </tr>
-            </thead>
-            <tbody>
-              {groupKeys.map(gk => {
-                const models = grouped[gk];
-                const modelKeys = sortedModelKeys(models);
+            )}
+            itemContent={(_index, row) => {
+              if (row.type === 'group') {
+                const { gk, modelCount } = row;
                 return (
-                  <>
-                    {groupBySet && gk !== '__all__' && (
-                      <tr key={`group-${gk}`} className="admin-table-group-row">
-                        <td colSpan={8}>
-                          {gk === '__none__' ? 'Без сета' : gk.toUpperCase()}
-                          <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--slate)' }}>
-                            {modelKeys.length} {modelKeys.length === 1 ? 'модель' : modelKeys.length < 5 ? 'модели' : 'моделей'}
-                          </span>
-                        </td>
-                      </tr>
-                    )}
-                    {modelKeys.map(mk => {
-                      const variants = models[mk];
+                  <td colSpan={8}>
+                    {gk === '__none__' ? 'Без сета' : gk.toUpperCase()}
+                    <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--slate)' }}>
+                      {modelCount} {modelCount === 1 ? 'модель' : modelCount < 5 ? 'модели' : 'моделей'}
+                    </span>
+                  </td>
+                );
+              }
+
+              const { mk, variants } = row;
                       const primary  = variants[0];
                       const imgUrl   = thumb(primary);
                       const multiColor = variants.length > 1;
@@ -474,7 +499,7 @@ export default function AdminProducts() {
                       const aggStatus = allPlanned ? 'planned' : anyImprovement ? 'improvement' : 'ready';
 
                       return (
-                        <tr key={mk}>
+                        <>
                           <td
                             style={{ cursor: 'pointer' }}
                             onClick={() => navigate(`/admin/products/${primary._id}`)}
@@ -623,14 +648,10 @@ export default function AdminProducts() {
                               </div>
                             )}
                           </td>
-                        </tr>
+                        </>
                       );
-                    })}
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
+            }}
+          />
         )}
 
         {pages > 1 && (
