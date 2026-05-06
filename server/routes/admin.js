@@ -384,9 +384,7 @@ router.post('/pdf/catalog', protect, viewer, async (req, res) => {
     for (const p of products) {
       const price = getPrice(p, priceMode);
       const specs = (p.specs || []).slice(0, 4).map(s => `${s.key}: ${s.value}`).join('\n');
-      const stock = (p.stock != null && p.stock !== '')
-        ? `${p.stock} шт.`
-        : (p.inStock ? 'Есть' : 'Нет');
+      const stock = p.inStock ? 'Есть' : 'Нет';
       const cells = [
         String(rowIdx + 1),
         p.fullName || p.name || '—',

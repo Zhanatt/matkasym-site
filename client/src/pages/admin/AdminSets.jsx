@@ -524,7 +524,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
                 const primary  = variants[0];
                 const img      = primary.images?.[0] || NO_PHOTO;
                 const price    = getPrice(primary, priceMode);
-                const hasStock = primary.stock > 0 || primary.inStock;
+                const hasStock  = primary.stock > 0 || primary.inStock;
+                const stockLabel = primary.stock > 0
+                  ? `${primary.stock} шт.`
+                  : (primary.inStock ? 'Есть' : 'Нет');
                 return (
                   <div key={name} style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden',
                     background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.05)' }}>
@@ -567,11 +570,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose }) {
                           </div>
                         </div>
                         <div style={{
-                          fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4,
+                          fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
                           background: hasStock ? '#e8f5e9' : '#fce8e8',
                           color: hasStock ? '#2d7a3a' : '#c00',
                         }}>
-                          {hasStock ? 'В нал.' : 'Нет'}
+                          {stockLabel}
                         </div>
                       </div>
 
