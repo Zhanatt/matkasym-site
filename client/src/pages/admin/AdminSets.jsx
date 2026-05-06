@@ -45,63 +45,75 @@ function toTitle(slug) {
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+// returns array of fmIds assigned to this slug
+function buildAssignMap(frontmen) {
+  const m = {};
+  frontmen.forEach(fm => fm.sets.forEach(s => {
+    m[s] = m[s] ? [...m[s], fm._id] : [fm._id];
+  }));
+  return m;
+}
+
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setMob(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return mob;
+}
+
 // ── BrandSection ──────────────────────────────────────────────────────────────
 
 function BrandSection({ brandKey, sets, accent }) {
   const [frontmen, setFrontmen] = useState([]);
   const [editing, setEditing]   = useState(false);
-  const [draft, setDraft]       = useState([]);   // local edit copy
+  const [draft, setDraft]       = useState([]);
   const [saving, setSaving]     = useState(false);
   const containerRef = useRef();
   const setRefs      = useRef({});
   const fmRefs       = useRef({});
   const [lines, setLines] = useState([]);
   const linesSig     = useRef('');
+  const isMobile     = useIsMobile();
 
-  // load frontmen
   const loadFrontmen = useCallback(() => {
     adminGetFrontmen(brandKey).then(r => setFrontmen(r.data));
   }, [brandKey]);
 
   useEffect(() => { loadFrontmen(); }, [loadFrontmen]);
 
-  // derive assignment map: setSlug → frontman._id
-  const assignMap = {};
-  frontmen.forEach(fm => fm.sets.forEach(s => { assignMap[s] = fm._id; }));
+  const assignMap = buildAssignMap(frontmen);
 
-  // ── SVG lines (only update when positions actually change) ─
+  // ── SVG lines ─────────────────────────────────────────────
   useLayoutEffect(() => {
-    if (!containerRef.current || editing) {
-      if (linesSig.current !== '__clear__') {
-        linesSig.current = '__clear__';
-        setLines([]);
-      }
+    if (!containerRef.current || editing || isMobile) {
+      if (linesSig.current !== '__clear__') { linesSig.current = '__clear__'; setLines([]); }
       return;
     }
     const base = containerRef.current.getBoundingClientRect();
     const newLines = [];
-
     sets.forEach(slug => {
-      const fmId = assignMap[slug];
-      if (!fmId) return;
-      const se = setRefs.current[slug];
-      const fe = fmRefs.current[fmId];
-      if (!se || !fe) return;
-      const sr = se.getBoundingClientRect();
-      const fr = fe.getBoundingClientRect();
-      const x1 = Math.round(sr.right  - base.left);
-      const y1 = Math.round(sr.top    + sr.height / 2 - base.top);
-      const x2 = Math.round(fr.left   - base.left);
-      const y2 = Math.round(fr.top    + fr.height / 2 - base.top);
-      const fm = frontmen.find(f => f._id === fmId);
-      newLines.push({ x1, y1, x2, y2, color: fm?.color || '#aaa', key: slug });
+      (assignMap[slug] || []).forEach(fmId => {
+        const se = setRefs.current[slug];
+        const fe = fmRefs.current[fmId];
+        if (!se || !fe) return;
+        const sr = se.getBoundingClientRect();
+        const fr = fe.getBoundingClientRect();
+        const fm = frontmen.find(f => f._id === fmId);
+        newLines.push({
+          x1: Math.round(sr.right - base.left),
+          y1: Math.round(sr.top + sr.height / 2 - base.top),
+          x2: Math.round(fr.left - base.left),
+          y2: Math.round(fr.top + fr.height / 2 - base.top),
+          color: fm?.color || '#aaa',
+          key: `${slug}-${fmId}`,
+        });
+      });
     });
-
     const sig = JSON.stringify(newLines);
-    if (sig !== linesSig.current) {
-      linesSig.current = sig;
-      setLines(newLines);
-    }
+    if (sig !== linesSig.current) { linesSig.current = sig; setLines(newLines); }
   });
 
   // ── edit helpers ──────────────────────────────────────────
@@ -133,135 +145,154 @@ function BrandSection({ brandKey, sets, accent }) {
     setDraft(d => d.filter(f => f._id !== id));
   }
 
-  function setDraftName(id, val) {
-    setDraft(d => d.map(f => f._id === id ? { ...f, name: val } : f));
-  }
-  function setDraftInsta(id, val) {
-    setDraft(d => d.map(f => f._id === id ? { ...f, instagram: val } : f));
-  }
-  function setDraftColor(id, val) {
-    setDraft(d => d.map(f => f._id === id ? { ...f, color: val } : f));
-  }
-  function assignSetTo(slug, fmId) {
-    setDraft(d => d.map(f => ({
-      ...f,
-      sets: fmId === f._id
-        ? (f.sets.includes(slug) ? f.sets : [...f.sets, slug])
-        : f.sets.filter(s => s !== slug),
-    })));
+  // toggle one set for one frontman (multi-assign)
+  function toggleSetFrontman(slug, fmId) {
+    setDraft(d => d.map(f => {
+      if (f._id !== fmId) return f;
+      return {
+        ...f,
+        sets: f.sets.includes(slug) ? f.sets.filter(s => s !== slug) : [...f.sets, slug],
+      };
+    }));
   }
 
-  // for edit mode, derive live assignment from draft
-  const draftAssign = {};
-  (editing ? draft : frontmen).forEach(fm => fm.sets.forEach(s => { draftAssign[s] = fm._id; }));
-  const activeFrontmen = editing ? draft : frontmen;
+  const activeFrontmen  = editing ? draft : frontmen;
+  const activeAssignMap = buildAssignMap(activeFrontmen);
+
+  // ── render ────────────────────────────────────────────────
+  const pad = isMobile ? '20px 16px' : '32px 36px';
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, padding: '32px 36px', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
+    <div style={{ background: '#fff', borderRadius: 12, padding: pad, boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ fontSize: 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>
+          <div style={{ fontSize: isMobile ? 36 : 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>
             {BRAND_META[brandKey].label}
           </div>
-          <div style={{ height: 3, width: 55, background: accent, borderRadius: 2, margin: '10px 0 8px' }} />
-          <div style={{ fontSize: 13, color: '#6b8997' }}>
+          <div style={{ height: 3, width: 50, background: accent, borderRadius: 2, margin: '8px 0 6px' }} />
+          <div style={{ fontSize: 12, color: '#6b8997' }}>
             Линейки <span style={{ fontWeight: 700, color: accent }}>сетов</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           {editing ? (
             <>
-              <button onClick={addFrontman} style={btnStyle('#f0f4ff','#3463A3')}>+ Фронтмен</button>
-              <button onClick={cancelEdit} style={btnStyle('#f5f5f5','#555')}>Отмена</button>
-              <button onClick={saveEdit} disabled={saving} style={btnStyle(accent,'#fff',true)}>
+              <button onClick={addFrontman} style={btn('#f0f4ff','#3463A3')}>+ Фронтмен</button>
+              <button onClick={cancelEdit}  style={btn('#f5f5f5','#555')}>Отмена</button>
+              <button onClick={saveEdit} disabled={saving} style={btn(accent,'#fff',true)}>
                 {saving ? '…' : 'Сохранить'}
               </button>
             </>
           ) : (
-            <button onClick={startEdit} style={btnStyle('#f5f5f5','#333')}>✏️ Изменить</button>
+            <button onClick={startEdit} style={btn('#f5f5f5','#333')}>✏️ Изменить</button>
           )}
         </div>
       </div>
 
-      {/* Two-column + SVG lines */}
+      {/* Body */}
       <div ref={containerRef} style={{ position: 'relative' }}>
-        {/* SVG overlay */}
-        {!editing && (
+
+        {/* SVG lines — desktop view mode only */}
+        {!editing && !isMobile && (
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
             {lines.map(l => (
               <path key={l.key}
-                d={`M ${l.x1} ${l.y1} C ${l.x1 + 40} ${l.y1}, ${l.x2 - 40} ${l.y2}, ${l.x2} ${l.y2}`}
-                stroke={l.color} strokeWidth={1.5} fill="none" strokeOpacity={0.5} strokeDasharray="4 3"
+                d={`M ${l.x1} ${l.y1} C ${l.x1+40} ${l.y1}, ${l.x2-40} ${l.y2}, ${l.x2} ${l.y2}`}
+                stroke={l.color} strokeWidth={1.5} fill="none" strokeOpacity={0.45} strokeDasharray="4 3"
               />
             ))}
           </svg>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 32, alignItems: 'start' }}>
+        {/* Layout: edit → stacked; view → grid on desktop */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: editing || isMobile ? '1fr' : '1fr 200px',
+          gap: isMobile ? 16 : 28,
+          alignItems: 'start',
+        }}>
 
           {/* Sets column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {sets.map((slug, i) => {
-              const fmId  = editing ? draftAssign[slug] : assignMap[slug];
-              const fm    = activeFrontmen.find(f => f._id === fmId);
-              const color = fm?.color || '#ddd';
-              const even  = i % 2 === 0;
-              return (
-                <div
-                  key={slug}
-                  ref={el => { setRefs.current[slug] = el; }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
-                    background: even ? '#f8f9fb' : '#fff', borderRadius: 6,
-                    borderLeft: `3px solid ${fm ? color : 'transparent'}`,
-                  }}
-                >
-                  <span style={{ width: 22, textAlign: 'right', fontWeight: 700, fontSize: 13, color: accent, flexShrink: 0 }}>
-                    {i + 1}
-                  </span>
-                  <span style={{ color: '#bbb', fontSize: 14 }}>|</span>
-                  <span style={{ fontSize: 14, color: '#1c1c1c', flex: 1 }}>{toTitle(slug)}</span>
+              const fmIds  = activeAssignMap[slug] || [];
+              const colors = fmIds.map(id => activeFrontmen.find(f => f._id === id)?.color).filter(Boolean);
+              const even   = i % 2 === 0;
+              const borderColor = colors[0] || 'transparent';
 
-                  {editing && (
-                    <select
-                      value={fmId || ''}
-                      onChange={e => assignSetTo(slug, e.target.value || null)}
-                      style={{ fontSize: 12, border: '1px solid #e0e0e0', borderRadius: 4, padding: '2px 6px', color: '#444', background: '#fff' }}
-                    >
-                      <option value="">— не назначен</option>
-                      {draft.map(f => <option key={f._id} value={f._id}>{f.name}</option>)}
-                    </select>
+              return (
+                <div key={slug} ref={el => { setRefs.current[slug] = el; }}
+                  style={{ padding: '8px 10px', background: even ? '#f8f9fb' : '#fff',
+                    borderRadius: 6, borderLeft: `3px solid ${colors.length ? borderColor : 'transparent'}` }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 20, textAlign: 'right', fontWeight: 700, fontSize: 12, color: accent, flexShrink: 0 }}>
+                      {i + 1}
+                    </span>
+                    <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
+                    <span style={{ fontSize: 13, color: '#1c1c1c', flex: 1, minWidth: 0 }}>{toTitle(slug)}</span>
+
+                    {/* View mode: color dots for each assigned frontman */}
+                    {!editing && colors.length > 0 && (
+                      <div style={{ display: 'flex', gap: 3 }}>
+                        {colors.map((c, ci) => (
+                          <div key={ci} style={{ width: 8, height: 8, borderRadius: '50%', background: c }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Edit mode: toggle pills per frontman */}
+                  {editing && draft.length > 0 && (
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6, paddingLeft: 30 }}>
+                      {draft.map(fm => {
+                        const active = fm.sets.includes(slug);
+                        return (
+                          <button key={fm._id} onClick={() => toggleSetFrontman(slug, fm._id)}
+                            style={{
+                              padding: '3px 9px', borderRadius: 20, cursor: 'pointer',
+                              border: `1.5px solid ${fm.color}`,
+                              background: active ? fm.color : 'transparent',
+                              color: active ? '#fff' : fm.color,
+                              fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+                            }}>
+                            {fm.name}
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               );
             })}
           </div>
 
-          {/* Frontmen column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Frontmen column — view mode (or edit mode for name/color/insta editing) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {activeFrontmen.map(fm => (
-              <div
-                key={fm._id}
-                ref={el => { fmRefs.current[fm._id] = el; }}
-                style={{ borderRadius: 8, border: `2px solid ${fm.color}20`, background: `${fm.color}08`,
-                  padding: '12px 14px', position: 'relative' }}
+              <div key={fm._id} ref={el => { fmRefs.current[fm._id] = el; }}
+                style={{ borderRadius: 8, border: `2px solid ${fm.color}25`,
+                  background: `${fm.color}0A`, padding: '10px 12px', position: 'relative' }}
               >
-                {/* Color dot */}
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: fm.color,
-                  position: 'absolute', left: -6, top: '50%', transform: 'translateY(-50%)',
-                  boxShadow: `0 0 0 2px white` }} />
+                {/* connector dot */}
+                {!isMobile && (
+                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: fm.color,
+                    position: 'absolute', left: -5, top: '50%', transform: 'translateY(-50%)',
+                    boxShadow: '0 0 0 2px #fff' }} />
+                )}
 
                 {editing ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input type="color" value={fm.color} onChange={e => setDraftColor(fm._id, e.target.value)}
-                        style={{ width: 24, height: 24, border: 'none', cursor: 'pointer', borderRadius: 4, padding: 0 }} />
+                        style={{ width: 22, height: 22, border: 'none', cursor: 'pointer', borderRadius: 4, padding: 0, flexShrink: 0 }} />
                       <input value={fm.name} onChange={e => setDraftName(fm._id, e.target.value)}
                         style={{ flex: 1, fontSize: 13, fontWeight: 700, border: '1px solid #e0e0e0',
-                          borderRadius: 4, padding: '4px 8px' }} />
+                          borderRadius: 4, padding: '4px 8px', minWidth: 0 }} />
                       <button onClick={() => deleteFrontman(fm._id)}
-                        style={{ color: '#c00', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}>✕</button>
+                        style={{ color: '#c00', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>✕</button>
                     </div>
                     <input value={fm.instagram || ''} onChange={e => setDraftInsta(fm._id, e.target.value)}
                       placeholder="@instagram"
@@ -270,10 +301,8 @@ function BrandSection({ brandKey, sets, accent }) {
                 ) : (
                   <>
                     <div style={{ fontWeight: 700, fontSize: 13, color: '#1c1c1c' }}>{fm.name}</div>
-                    {fm.instagram && (
-                      <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{fm.instagram}</div>
-                    )}
-                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {fm.instagram && <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{fm.instagram}</div>}
+                    <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {fm.sets.map(s => (
                         <div key={s} style={{ fontSize: 11, color: fm.color, display: 'flex', alignItems: 'center', gap: 4 }}>
                           <span style={{ width: 4, height: 4, borderRadius: '50%', background: fm.color, flexShrink: 0, display: 'inline-block' }} />
@@ -287,43 +316,45 @@ function BrandSection({ brandKey, sets, accent }) {
             ))}
 
             {!editing && frontmen.length === 0 && (
-              <div style={{ fontSize: 12, color: '#bbb', textAlign: 'center', padding: '20px 0' }}>
-                Нет фронтменов
-              </div>
+              <div style={{ fontSize: 12, color: '#ccc', textAlign: 'center', padding: '16px 0' }}>Нет фронтменов</div>
             )}
           </div>
         </div>
       </div>
     </div>
   );
+
+  function setDraftName (id, v) { setDraft(d => d.map(f => f._id===id ? {...f,name:v}    : f)); }
+  function setDraftInsta(id, v) { setDraft(d => d.map(f => f._id===id ? {...f,instagram:v}: f)); }
+  function setDraftColor(id, v) { setDraft(d => d.map(f => f._id===id ? {...f,color:v}   : f)); }
 }
 
-// ── KYZMAT (static, no frontmen) ──────────────────────────────────────────────
+// ── KYZMAT ────────────────────────────────────────────────────────────────────
 
 function KyzmatSection() {
-  const accent = '#267846';
+  const accent   = '#267846';
+  const isMobile = useIsMobile();
+  const pad      = isMobile ? '20px 16px' : '32px 36px';
   return (
-    <div style={{ background: '#fff', borderRadius: 12, padding: '32px 36px', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>KYZMAT</div>
-        <div style={{ height: 3, width: 55, background: accent, borderRadius: 2, margin: '10px 0 8px' }} />
-        <div style={{ fontSize: 13, color: '#6b8997' }}>
-          Линейки <span style={{ fontWeight: 700, color: accent }}>сетов</span>
-        </div>
+    <div style={{ background: '#fff', borderRadius: 12, padding: pad, boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: isMobile ? 36 : 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>KYZMAT</div>
+        <div style={{ height: 3, width: 50, background: accent, borderRadius: 2, margin: '8px 0 6px' }} />
+        <div style={{ fontSize: 12, color: '#6b8997' }}>Линейки <span style={{ fontWeight: 700, color: accent }}>сетов</span></div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {KYZMAT.map((set, i) => (
           <div key={set.name}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#eef3ef', borderRadius: 6 }}>
-              <span style={{ width: 22, textAlign: 'right', fontWeight: 700, fontSize: 13, color: accent, flexShrink: 0 }}>{i + 1}</span>
-              <span style={{ color: '#bbb', fontSize: 14 }}>|</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1c1c1c' }}>{set.name}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#eef3ef', borderRadius: 6 }}>
+              <span style={{ width: 20, textAlign: 'right', fontWeight: 700, fontSize: 12, color: accent, flexShrink: 0 }}>{i+1}</span>
+              <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1c1c1c' }}>{set.name}</span>
             </div>
-            <div style={{ paddingLeft: 46, marginTop: 3, marginBottom: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ paddingLeft: 40, marginTop: 2, marginBottom: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {set.subs.map(sub => (
-                <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-                  <div style={{ width: 3, height: 16, background: accent, borderRadius: 2 }} />
-                  <span style={{ color: '#aaa', fontSize: 12 }}>—</span>
+                <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 0' }}>
+                  <div style={{ width: 3, height: 14, background: accent, borderRadius: 2 }} />
+                  <span style={{ color: '#bbb', fontSize: 11 }}>—</span>
                   <span style={{ fontSize: 12, color: '#555' }}>{sub}</span>
                 </div>
               ))}
@@ -335,49 +366,44 @@ function KyzmatSection() {
   );
 }
 
-// ── helper ────────────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 
-function btnStyle(bg, color, bold) {
-  return {
-    padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-    background: bg, color, fontWeight: bold ? 700 : 500, fontSize: 13,
-  };
+function btn(bg, color, bold) {
+  return { padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+    background: bg, color, fontWeight: bold ? 700 : 500, fontSize: 13, whiteSpace: 'nowrap' };
 }
 
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function AdminSets() {
-  const [sets, setSets] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [sets, setSets]     = useState({});
+  const [loading, setLoad]  = useState(true);
 
   useEffect(() => {
     Promise.all(
       Object.keys(BRAND_META).map(k =>
         adminGetFacets({ brand: k }).then(r => [k, r.data.sets.filter(s => !EXCLUDE.has(s))])
       )
-    ).then(res => {
-      setSets(Object.fromEntries(res));
-      setLoading(false);
-    });
+    ).then(res => { setSets(Object.fromEntries(res)); setLoad(false); });
   }, []);
 
   return (
-    <div style={{ maxWidth: 780, margin: '0 auto' }}>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: '#111' }}>Схема сетов</div>
-        <div style={{ fontSize: 13, color: '#aaa', marginTop: 2 }}>Линейки по брендам и их фронтмены</div>
+    <div style={{ maxWidth: 820, margin: '0 auto' }}>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: '#111' }}>Схема сетов</div>
+        <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>Линейки по брендам и их фронтмены</div>
       </div>
-
-      {loading ? (
-        <div style={{ color: '#aaa', fontSize: 14 }}>Загрузка…</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {Object.entries(BRAND_META).map(([key, meta]) => (
-            <BrandSection key={key} brandKey={key} sets={sets[key] || []} accent={meta.accent} />
-          ))}
-          <KyzmatSection />
-        </div>
-      )}
+      {loading
+        ? <div style={{ color: '#aaa', fontSize: 14 }}>Загрузка…</div>
+        : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {Object.entries(BRAND_META).map(([key, meta]) => (
+              <BrandSection key={key} brandKey={key} sets={sets[key] || []} accent={meta.accent} />
+            ))}
+            <KyzmatSection />
+          </div>
+        )
+      }
     </div>
   );
 }
