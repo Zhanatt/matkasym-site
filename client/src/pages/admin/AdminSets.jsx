@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import {
-  adminGetFacets,
+  adminGetFacets, adminGetProducts,
   adminGetFrontmen, adminCreateFrontman, adminUpdateFrontman, adminDeleteFrontman,
 } from '../../api';
 
@@ -71,10 +71,11 @@ function useIsMobile() {
 // ── BrandSection ──────────────────────────────────────────────────────────────
 
 function BrandSection({ brandKey, sets, accent, subItems = {} }) {
-  const [frontmen, setFrontmen] = useState([]);
-  const [editing, setEditing]   = useState(false);
-  const [draft, setDraft]       = useState([]);
-  const [saving, setSaving]     = useState(false);
+  const [frontmen, setFrontmen]   = useState([]);
+  const [editing, setEditing]     = useState(false);
+  const [draft, setDraft]         = useState([]);
+  const [saving, setSaving]       = useState(false);
+  const [catalogSlug, setCatalog] = useState(null);
   const containerRef = useRef();
   const setRefs      = useRef({});
   const fmRefs       = useRef({});
@@ -236,7 +237,14 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
                       {i + 1}
                     </span>
                     <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
-                    <span style={{ fontSize: 13, color: '#1c1c1c', flex: 1, minWidth: 0 }}>{toTitle(slug)}</span>
+                    <span
+                      onClick={() => !editing && setCatalog(slug)}
+                      style={{ fontSize: 13, color: '#1c1c1c', flex: 1, minWidth: 0,
+                        cursor: editing ? 'default' : 'pointer',
+                        textDecoration: editing ? 'none' : 'underline',
+                        textDecorationStyle: 'dotted', textDecorationColor: '#bbb',
+                      }}
+                    >{toTitle(slug)}</span>
 
                     {/* View mode: color dots for each assigned frontman */}
                     {!editing && colors.length > 0 && (
@@ -338,12 +346,175 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
           </div>
         </div>
       </div>
+
+      {/* Catalog panel overlay */}
+      {catalogSlug && (
+        <SetCatalogPanel brandKey={brandKey} setSlug={catalogSlug} onClose={() => setCatalog(null)} />
+      )}
     </div>
   );
 
   function setDraftName (id, v) { setDraft(d => d.map(f => f._id===id ? {...f,name:v}    : f)); }
   function setDraftInsta(id, v) { setDraft(d => d.map(f => f._id===id ? {...f,instagram:v}: f)); }
   function setDraftColor(id, v) { setDraft(d => d.map(f => f._id===id ? {...f,color:v}   : f)); }
+}
+
+// ── SetCatalogPanel ───────────────────────────────────────────────────────────
+
+const RETAIL_BRANDS   = new Set(['matkasym-home', 'matkasym-shaar']);
+const NO_PHOTO = '/logos/no-photo.png';
+
+function SetCatalogPanel({ brandKey, setSlug, onClose }) {
+  const accent   = BRAND_META[brandKey]?.accent || '#333';
+  const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'wholesale';
+  const [priceMode, setPriceMode] = useState(defaultMode);
+  const [products, setProducts]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    setLoading(true);
+    adminGetProducts({ brand: brandKey, set: setSlug, limit: 500, page: 1 })
+      .then(r => { setProducts(r.data.products || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [brandKey, setSlug]);
+
+  // group products by base model name (strip last word if it looks like a color)
+  const grouped = {};
+  products.forEach(p => {
+    const key = p.name;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(p);
+  });
+  const models = Object.entries(grouped);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 1100 }} />
+
+      {/* Panel */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0,
+        width: isMobile ? '100%' : 560,
+        background: '#fff', zIndex: 1101,
+        display: 'flex', flexDirection: 'column',
+        boxShadow: '-6px 0 32px rgba(0,0,0,.18)',
+      }}>
+
+        {/* Header */}
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f0f0f0',
+          display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <button onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#555', padding: '0 4px' }}>
+            ←
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: '#111', lineHeight: 1 }}>{toTitle(setSlug)}</div>
+            <div style={{ fontSize: 12, color: accent, fontWeight: 600, marginTop: 2 }}>
+              {BRAND_META[brandKey]?.label}
+            </div>
+          </div>
+          {/* Price toggle */}
+          <div style={{ display: 'flex', gap: 0, background: '#f5f5f5', borderRadius: 8, padding: 3, flexShrink: 0 }}>
+            {[['retail','Розн.'],['wholesale','Опт.']].map(([mode, label]) => (
+              <button key={mode} onClick={() => setPriceMode(mode)} style={{
+                padding: '5px 11px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                background: priceMode === mode ? accent : 'transparent',
+                color: priceMode === mode ? '#fff' : '#888',
+                transition: 'all .15s',
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats bar */}
+        {!loading && (
+          <div style={{ padding: '8px 18px', background: '#fafafa', borderBottom: '1px solid #f5f5f5',
+            fontSize: 12, color: '#888', flexShrink: 0 }}>
+            {products.length} товаров · {models.length} моделей
+          </div>
+        )}
+
+        {/* Product grid */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+          {loading ? (
+            <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>Загрузка…</div>
+          ) : models.length === 0 ? (
+            <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>Нет товаров</div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)',
+              gap: 12,
+            }}>
+              {models.map(([name, variants]) => {
+                const primary = variants[0];
+                const img     = primary.images?.[0] || NO_PHOTO;
+                const price   = priceMode === 'retail' ? primary.price : primary.priceWholesale;
+                const hasStock = primary.stock > 0 || primary.inStock;
+                return (
+                  <div key={name} style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden',
+                    background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.05)' }}>
+
+                    {/* Image */}
+                    <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8' }}>
+                      <img src={img} alt={name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={e => { e.target.src = NO_PHOTO; }}
+                      />
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ padding: '8px 10px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {name}
+                      </div>
+
+                      {/* Variants count */}
+                      {variants.length > 1 && (
+                        <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>
+                          {variants.length} вариантов
+                        </div>
+                      )}
+
+                      {/* Key specs */}
+                      {primary.specs?.slice(0, 2).map(s => (
+                        <div key={s.key} style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.2 }}>
+                          <span style={{ color: '#bbb' }}>{s.key}:</span> {s.value}
+                        </div>
+                      ))}
+
+                      {/* Price + stock */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: accent }}>
+                          {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                        </div>
+                        <div style={{
+                          fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4,
+                          background: hasStock ? '#e8f5e9' : '#fce8e8',
+                          color: hasStock ? '#2d7a3a' : '#c00',
+                        }}>
+                          {hasStock ? 'В нал.' : 'Нет'}
+                        </div>
+                      </div>
+
+                      {/* SKU */}
+                      {primary.sku && (
+                        <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
