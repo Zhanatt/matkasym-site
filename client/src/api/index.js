@@ -54,5 +54,9 @@ export const adminGetCategorySpecs    = (cat)       => api.get(`/admin/category-
 export const adminSaveCategorySpec    = (cat, data) => api.post(`/admin/category-specs/${cat}`, data);
 export const adminDeleteCategorySpec  = (cat, key)  => api.delete(`/admin/category-specs/${cat}/${encodeURIComponent(key)}`);
 export const adminGetChangelog = (params)   => api.get('/admin/changelog', { params });
+export const adminGetFrontmen    = (brand)      => api.get('/admin/frontmen', { params: brand ? { brand } : {} });
+export const adminCreateFrontman = (data)       => api.post('/admin/frontmen', data);
+export const adminUpdateFrontman = (id, data)   => api.patch(`/admin/frontmen/${id}`, data);
+export const adminDeleteFrontman = (id)         => api.delete(`/admin/frontmen/${id}`);
 
 export default api;

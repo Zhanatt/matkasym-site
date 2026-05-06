@@ -4,6 +4,7 @@ const Brand        = require('../models/Brand');
 const User         = require('../models/User');
 const ChangeLog    = require('../models/ChangeLog');
 const CategorySpec = require('../models/CategorySpec');
+const Frontman     = require('../models/Frontman');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer } = require('../middleware/auth');
 
@@ -294,6 +295,42 @@ router.delete('/category-specs/:category/:key', protect, editor, async (req, res
       { new: true }
     );
     res.json(doc?.customSpecs || []);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Frontmen ──────────────────────────────────────────────────────────────────
+
+// GET /api/admin/frontmen?brand=xxx
+router.get('/frontmen', protect, viewer, async (req, res) => {
+  try {
+    const q = req.query.brand ? { brand: req.query.brand } : {};
+    const list = await Frontman.find(q).sort({ order: 1, createdAt: 1 });
+    res.json(list);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/frontmen
+router.post('/frontmen', protect, editor, async (req, res) => {
+  try {
+    const fm = await Frontman.create(req.body);
+    res.status(201).json(fm);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/frontmen/:id
+router.patch('/frontmen/:id', protect, editor, async (req, res) => {
+  try {
+    const fm = await Frontman.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!fm) return res.status(404).json({ error: 'Не найден' });
+    res.json(fm);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/frontmen/:id
+router.delete('/frontmen/:id', protect, editor, async (req, res) => {
+  try {
+    await Frontman.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
