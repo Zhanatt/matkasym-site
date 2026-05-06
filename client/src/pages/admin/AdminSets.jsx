@@ -56,6 +56,7 @@ function BrandSection({ brandKey, sets, accent }) {
   const setRefs      = useRef({});
   const fmRefs       = useRef({});
   const [lines, setLines] = useState([]);
+  const linesSig     = useRef('');
 
   // load frontmen
   const loadFrontmen = useCallback(() => {
@@ -68,9 +69,9 @@ function BrandSection({ brandKey, sets, accent }) {
   const assignMap = {};
   frontmen.forEach(fm => fm.sets.forEach(s => { assignMap[s] = fm._id; }));
 
-  // ── SVG lines ──────────────────────────────────────────────
+  // ── SVG lines (only update when positions actually change) ─
   useLayoutEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || editing) { linesSig.current = ''; setLines([]); return; }
     const base = containerRef.current.getBoundingClientRect();
     const newLines = [];
 
@@ -82,14 +83,19 @@ function BrandSection({ brandKey, sets, accent }) {
       if (!se || !fe) return;
       const sr = se.getBoundingClientRect();
       const fr = fe.getBoundingClientRect();
-      const x1 = sr.right  - base.left;
-      const y1 = sr.top    + sr.height / 2 - base.top;
-      const x2 = fr.left   - base.left;
-      const y2 = fr.top    + fr.height / 2 - base.top;
+      const x1 = Math.round(sr.right  - base.left);
+      const y1 = Math.round(sr.top    + sr.height / 2 - base.top);
+      const x2 = Math.round(fr.left   - base.left);
+      const y2 = Math.round(fr.top    + fr.height / 2 - base.top);
       const fm = frontmen.find(f => f._id === fmId);
       newLines.push({ x1, y1, x2, y2, color: fm?.color || '#aaa', key: slug });
     });
-    setLines(newLines);
+
+    const sig = JSON.stringify(newLines);
+    if (sig !== linesSig.current) {
+      linesSig.current = sig;
+      setLines(newLines);
+    }
   });
 
   // ── edit helpers ──────────────────────────────────────────
