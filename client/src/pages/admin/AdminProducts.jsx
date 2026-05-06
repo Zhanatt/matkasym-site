@@ -452,13 +452,15 @@ export default function AdminProducts() {
           <div className="admin-empty">Товары не найдены</div>
         ) : (
           <TableVirtuoso
-            style={{ height: 'calc(100vh - 270px)', minHeight: 400 }}
+            useWindowScroll
             data={flatRows}
             components={{
-              Table: ({ style, ...props }) => (
-                <table className="admin-table" style={{ ...style, borderCollapse: 'collapse', tableLayout: 'fixed' }} {...props} />
+              Table: (props) => (
+                <table className="admin-table" style={{ borderCollapse: 'collapse', width: '100%' }} {...props} />
               ),
-              TableHead: forwardRef((props, ref) => <thead ref={ref} style={{ background: '#fff', position: 'sticky', top: 0, zIndex: 2 }} {...props} />),
+              TableHead: forwardRef((props, ref) => (
+                <thead ref={ref} style={{ background: '#fff', position: 'sticky', top: 0, zIndex: 2, boxShadow: '0 1px 0 #e5e7eb' }} {...props} />
+              )),
               TableBody: forwardRef((props, ref) => <tbody ref={ref} {...props} />),
               TableRow: ({ item, ...props }) => (
                 <tr {...props} className={item?.type === 'group' ? 'admin-table-group-row' : undefined} />
