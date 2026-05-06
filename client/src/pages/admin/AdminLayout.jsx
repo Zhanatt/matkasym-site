@@ -8,6 +8,7 @@ const NAV_ALL = [
   { to: '/admin',          label: 'Дашборд',      icon: '◻', end: true, roles: ['owner','editor','viewer'] },
   { to: '/admin/products', label: 'Товары',       icon: '📦', roles: ['owner','editor','viewer'] },
   { to: '/admin/map',      label: 'Product Map',  icon: '🗺', roles: ['owner','editor','viewer'] },
+  { to: '/admin/sets',     label: 'Схема сетов',  icon: '🗂', roles: ['owner','editor','viewer'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'] },
   { to: '/admin/changelog', label: 'История изменений',  icon: '📋', roles: ['owner'] },
 ];

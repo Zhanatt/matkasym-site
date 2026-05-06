@@ -11,6 +11,7 @@ import AdminProductMap    from './pages/admin/AdminProductMap';
 import AdminUsers         from './pages/admin/AdminUsers';
 import AdminChangelog     from './pages/admin/AdminChangelog';
 import AdminProductView   from './pages/admin/AdminProductView';
+import AdminSets          from './pages/admin/AdminSets';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="products/:id" element={<AdminProductView />} />
           <Route path="products/:id/edit" element={<AdminProductForm />} />
           <Route path="map" element={<AdminProductMap />} />
+          <Route path="sets" element={<AdminSets />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="changelog" element={<AdminChangelog />} />
         </Route>
