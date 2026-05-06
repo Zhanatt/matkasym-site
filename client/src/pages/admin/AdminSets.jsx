@@ -71,7 +71,13 @@ function BrandSection({ brandKey, sets, accent }) {
 
   // ── SVG lines (only update when positions actually change) ─
   useLayoutEffect(() => {
-    if (!containerRef.current || editing) { linesSig.current = ''; setLines([]); return; }
+    if (!containerRef.current || editing) {
+      if (linesSig.current !== '__clear__') {
+        linesSig.current = '__clear__';
+        setLines([]);
+      }
+      return;
+    }
     const base = containerRef.current.getBoundingClientRect();
     const newLines = [];
 
