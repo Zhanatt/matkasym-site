@@ -7,6 +7,8 @@ import {
 // ── constants ──────────────────────────────────────────────────────────────────
 
 const SET_NAMES = {
+  'önügüü-set':      'Önügüü Set',
+  'dayar-tütük':     'Dayar Tütük',
   'achyk-asman':     'Achyk Asman',
   'den-sooluk':      'Den Sooluk',
   'zhashyl-ömür':    'Zhashyl Ömür',
@@ -29,14 +31,16 @@ const SET_NAMES = {
 
 const EXCLUDE = new Set(['nelikvid', 'samples', 'small-batch', 'misc', 'equipment', 'other']);
 
-const KYZMAT = [
-  { name: 'Önügüü Set', subs: ['Лазер', 'Гибка', 'Сварка', 'Труборез', 'Покраска'] },
-  { name: 'Dayar Tütük', subs: ['Трубопрокат'] },
-];
-
 const BRAND_META = {
-  'matkasym-home':  { label: 'HOME',  accent: '#DC1E24' },
-  'matkasym-shaar': { label: 'SHAAR', accent: '#3463A3' },
+  'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
+  'matkasym-shaar':  { label: 'SHAAR',  accent: '#3463A3' },
+  'matkasym-kyzmat': { label: 'KYZMAT', accent: '#267846',
+    staticSets: ['önügüü-set', 'dayar-tütük'] },
+};
+
+const SET_SUB_ITEMS = {
+  'önügüü-set':  ['Лазер', 'Гибка', 'Сварка', 'Труборез', 'Покраска'],
+  'dayar-tütük': ['Трубопрокат'],
 };
 
 const PALETTE = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E'];
@@ -66,7 +70,7 @@ function useIsMobile() {
 
 // ── BrandSection ──────────────────────────────────────────────────────────────
 
-function BrandSection({ brandKey, sets, accent }) {
+function BrandSection({ brandKey, sets, accent, subItems = {} }) {
   const [frontmen, setFrontmen] = useState([]);
   const [editing, setEditing]   = useState(false);
   const [draft, setDraft]       = useState([]);
@@ -264,6 +268,19 @@ function BrandSection({ brandKey, sets, accent }) {
                       })}
                     </div>
                   )}
+
+                  {/* Sub-items (e.g. KYZMAT) */}
+                  {subItems[slug] && (
+                    <div style={{ paddingLeft: 36, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {subItems[slug].map(sub => (
+                        <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '2px 0' }}>
+                          <div style={{ width: 3, height: 13, background: accent, borderRadius: 2, flexShrink: 0 }} />
+                          <span style={{ color: '#bbb', fontSize: 11 }}>—</span>
+                          <span style={{ fontSize: 12, color: '#555' }}>{sub}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -329,43 +346,6 @@ function BrandSection({ brandKey, sets, accent }) {
   function setDraftColor(id, v) { setDraft(d => d.map(f => f._id===id ? {...f,color:v}   : f)); }
 }
 
-// ── KYZMAT ────────────────────────────────────────────────────────────────────
-
-function KyzmatSection() {
-  const accent   = '#267846';
-  const isMobile = useIsMobile();
-  const pad      = isMobile ? '20px 16px' : '32px 36px';
-  return (
-    <div style={{ background: '#fff', borderRadius: 12, padding: pad, boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: isMobile ? 36 : 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>KYZMAT</div>
-        <div style={{ height: 3, width: 50, background: accent, borderRadius: 2, margin: '8px 0 6px' }} />
-        <div style={{ fontSize: 12, color: '#6b8997' }}>Линейки <span style={{ fontWeight: 700, color: accent }}>сетов</span></div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {KYZMAT.map((set, i) => (
-          <div key={set.name}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#eef3ef', borderRadius: 6 }}>
-              <span style={{ width: 20, textAlign: 'right', fontWeight: 700, fontSize: 12, color: accent, flexShrink: 0 }}>{i+1}</span>
-              <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#1c1c1c' }}>{set.name}</span>
-            </div>
-            <div style={{ paddingLeft: 40, marginTop: 2, marginBottom: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {set.subs.map(sub => (
-                <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 0' }}>
-                  <div style={{ width: 3, height: 14, background: accent, borderRadius: 2 }} />
-                  <span style={{ color: '#bbb', fontSize: 11 }}>—</span>
-                  <span style={{ fontSize: 12, color: '#555' }}>{sub}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function btn(bg, color, bold) {
@@ -380,8 +360,9 @@ export default function AdminSets() {
   const [loading, setLoad]  = useState(true);
 
   useEffect(() => {
+    const dynamicBrands = Object.entries(BRAND_META).filter(([, m]) => !m.staticSets);
     Promise.all(
-      Object.keys(BRAND_META).map(k =>
+      dynamicBrands.map(([k]) =>
         adminGetFacets({ brand: k }).then(r => [k, r.data.sets.filter(s => !EXCLUDE.has(s))])
       )
     ).then(res => { setSets(Object.fromEntries(res)); setLoad(false); });
@@ -398,9 +379,14 @@ export default function AdminSets() {
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {Object.entries(BRAND_META).map(([key, meta]) => (
-              <BrandSection key={key} brandKey={key} sets={sets[key] || []} accent={meta.accent} />
+              <BrandSection
+                key={key}
+                brandKey={key}
+                sets={meta.staticSets || sets[key] || []}
+                accent={meta.accent}
+                subItems={SET_SUB_ITEMS}
+              />
             ))}
-            <KyzmatSection />
           </div>
         )
       }
