@@ -474,14 +474,21 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
     const statusLb = isdev ? 'В разработке' : 'На улучшении';
     const filename = `${isdev ? 'ТЗ_разработка' : 'ТЗ_улучшение'}_${(product.name || product._id).replace(/[^a-zA-Zа-яА-Я0-9]/g, '_')}.pdf`;
 
-    // Pre-fetch: product image + QR code (parallel, failures are non-fatal)
+    // Pre-fetch: product image + QR + attached image files (parallel)
     const productImgUrl = (product.images || [])[0];
     const qrText = `matkasym-site — ${product.fullName || product.name} — ${product._id}`;
 
-    const [imgBuf, qrBuf] = await Promise.all([
+    const isImageUrl = (url) => /\.(jpe?g|png|webp|gif|bmp|tiff?)(\?|$)/i.test(url) || url.includes('cloudinary.com');
+
+    const attachedFiles = tzData.files || [];
+    const attachedImgUrls = attachedFiles.filter(f => isImageUrl(f.url));
+    const attachedOtherFiles = attachedFiles.filter(f => !isImageUrl(f.url));
+
+    const [imgBuf, qrBuf, ...attachedImgBufs] = await Promise.all([
       productImgUrl ? fetchBuffer(productImgUrl).catch(() => null) : Promise.resolve(null),
       QRCode.toBuffer(qrText, { errorCorrectionLevel: 'M', margin: 1, width: 80,
         color: { dark: '#546e7a', light: '#ffffff' } }).catch(() => null),
+      ...attachedImgUrls.map(f => fetchBuffer(f.url).catch(() => null)),
     ]);
 
     const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: filename.replace('.pdf', '') } });
@@ -493,8 +500,8 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
     const BX = 22, BY = 22;
     const BW = PAGE_W - BX * 2, BH = PAGE_H - BY * 2;
     const CX = BX + 20;
+    const fullCW = BW - 40;
     const PHOTO_SIZE = 90;
-    const CW = BW - 40 - (imgBuf ? PHOTO_SIZE + 16 : 0);
 
     // Border
     doc.roundedRect(BX, BY, BW, BH, 14).strokeColor('#b0bec5').lineWidth(0.8).stroke();
@@ -506,22 +513,20 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
       doc.font(fontBold).fontSize(13).fillColor([225, 5, 35]).text('MATKASYM', CX, BY + 18);
     }
 
-    // Product photo top-right (inside border)
-    if (imgBuf) {
-      const photoX = BX + BW - PHOTO_SIZE - 20;
-      const photoY = BY + 10;
-      try {
-        doc.image(imgBuf, photoX, photoY, { width: PHOTO_SIZE, height: PHOTO_SIZE, fit: [PHOTO_SIZE, PHOTO_SIZE] });
-      } catch (_) {}
-    }
-
-    // Header separator
+    // Header separator (full width — drawn BEFORE photo so photo is on top)
     doc.moveTo(BX + 1, BY + 52).lineTo(BX + BW - 1, BY + 52).strokeColor('#dde3ea').lineWidth(0.5).stroke();
 
-    // Title block
+    // Product photo top-right — drawn AFTER separator so it covers the line
+    if (imgBuf) {
+      const photoX = BX + BW - PHOTO_SIZE - 16;
+      const photoY = BY + 8;
+      try { doc.image(imgBuf, photoX, photoY, { fit: [PHOTO_SIZE, PHOTO_SIZE] }); } catch (_) {}
+    }
+
+    // Title block (text column narrowed to avoid photo)
+    const CW = imgBuf ? fullCW - PHOTO_SIZE - 16 : fullCW;
     let y = BY + 68;
-    doc.font(fontBold).fontSize(15).fillColor(accent)
-      .text(title, CX, y, { width: CW });
+    doc.font(fontBold).fontSize(15).fillColor(accent).text(title, CX, y, { width: CW });
     y += 22;
 
     doc.font(fontBold).fontSize(12).fillColor('#111111')
@@ -536,18 +541,20 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
     ].filter(Boolean).join('   ·   ');
 
     doc.font(fontReg).fontSize(8.5).fillColor('#607080').text(meta, CX, y, { width: CW });
-    y += 20;
 
-    doc.moveTo(CX, y).lineTo(CX + CW, y).strokeColor('#dde3ea').lineWidth(0.5).stroke();
+    // Move y below the photo if it's taller than the text block
+    const photoBottom = imgBuf ? (BY + 8 + PHOTO_SIZE + 10) : 0;
+    y = Math.max(BY + 68 + 22 + 18 + 20, photoBottom);
+
+    doc.moveTo(CX, y).lineTo(CX + fullCW, y).strokeColor('#dde3ea').lineWidth(0.5).stroke();
     y += 16;
 
     if (isdev && product.developmentStage) {
       doc.font(fontMed).fontSize(8.5).fillColor(accent)
-        .text(`ЭТАП: ${product.developmentStage.toUpperCase()}`, CX, y, { width: CW });
+        .text(`ЭТАП: ${product.developmentStage.toUpperCase()}`, CX, y, { width: fullCW });
       y += 18;
     }
 
-    const fullCW = BW - 40;
     const drawSection = (label, text) => {
       doc.font(fontMed).fontSize(9).fillColor('#333333').text(label, CX, y, { width: fullCW });
       y += 14;
@@ -564,16 +571,47 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
       drawSection('ВОЗМОЖНОЕ РЕШЕНИЕ:', tzData.solution);
     }
 
-    // Attached files
-    if (tzData.files?.length > 0) {
+    // Attached files section
+    if (attachedFiles.length > 0) {
       doc.moveTo(CX, y).lineTo(CX + fullCW, y).strokeColor('#dde3ea').lineWidth(0.5).stroke();
       y += 14;
       doc.font(fontMed).fontSize(9).fillColor('#333333').text('ПРИКРЕПЛЁННЫЕ ФАЙЛЫ:', CX, y);
-      y += 14;
-      for (const f of tzData.files) {
+      y += 16;
+
+      // Non-image files — text list
+      for (const f of attachedOtherFiles) {
         doc.font(fontReg).fontSize(9).fillColor('#3b5bdb')
           .text(`• ${f.name}`, CX + 8, y, { width: fullCW - 8, lineBreak: false, ellipsis: true });
         y += 13;
+      }
+
+      // Image files — rendered as thumbnails in a row
+      if (attachedImgBufs.length > 0) {
+        const THUMB = 110;
+        const GAP   = 10;
+        let imgX = CX + 8;
+        let rowStartY = y + (attachedOtherFiles.length > 0 ? 8 : 0);
+
+        for (let i = 0; i < attachedImgBufs.length; i++) {
+          const buf = attachedImgBufs[i];
+          if (!buf) continue;
+
+          // New row if needed
+          if (imgX + THUMB > CX + fullCW - 8) {
+            imgX = CX + 8;
+            rowStartY += THUMB + GAP + 14;
+          }
+
+          try {
+            doc.image(buf, imgX, rowStartY, { fit: [THUMB, THUMB] });
+            // filename caption
+            doc.font(fontReg).fontSize(7).fillColor('#607080')
+              .text(attachedImgUrls[i]?.name || '', imgX, rowStartY + THUMB + 2, { width: THUMB, align: 'center', lineBreak: false, ellipsis: true });
+          } catch (_) {}
+
+          imgX += THUMB + GAP;
+        }
+        y = rowStartY + THUMB + 20;
       }
     }
 
