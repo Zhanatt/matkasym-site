@@ -48,7 +48,7 @@ router.get('/stats', async (req, res) => {
     ]);
     res.json({ products, outOfStock, brands, users, usersOnline, pending });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: mongoErr(e) });
   }
 });
 
@@ -76,7 +76,7 @@ router.get('/products', async (req, res) => {
     ]);
     res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: mongoErr(e) });
   }
 });
 
@@ -100,7 +100,7 @@ router.get('/products/facets', async (req, res) => {
     ]);
     res.json({ sets: sets.filter(Boolean).sort(), categories: categories.filter(Boolean).sort() });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: mongoErr(e) });
   }
 });
 
@@ -110,14 +110,14 @@ router.get('/products/:id', async (req, res) => {
     if (!product) return res.status(404).json({ error: 'Не найден' });
     res.json(product);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: mongoErr(e) });
   }
 });
 
 // Editor+ required for mutations
 router.post('/products',       editor, async (req, res) => {
   try { res.status(201).json(await Product.create(req.body)); }
-  catch (e) { res.status(400).json({ error: e.message }); }
+  catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
 router.patch('/products/:id',  editor, async (req, res) => {
@@ -151,12 +151,12 @@ router.patch('/products/:id',  editor, async (req, res) => {
     }
 
     res.json(p);
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
 router.delete('/products/:id', editor, async (req, res) => {
   try { await Product.findByIdAndDelete(req.params.id); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Cloudinary ───────────────────────────────────
@@ -168,13 +168,13 @@ router.delete('/images', editor, async (req, res) => {
     const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(\.[^.]+)?$/);
     if (!match) return res.status(400).json({ error: 'Не удалось извлечь public_id' });
     res.json({ ok: true, result: await cloudinary.uploader.destroy(match[1]) });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Brands ───────────────────────────────────────
 router.get('/brands', async (req, res) => {
   try { res.json(await Brand.find().sort('order')); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 router.patch('/brands/:key', editor, async (req, res) => {
@@ -182,7 +182,7 @@ router.patch('/brands/:key', editor, async (req, res) => {
     const brand = await Brand.findOneAndUpdate({ key: req.params.key }, req.body, { new: true, runValidators: true });
     if (!brand) return res.status(404).json({ error: 'Не найден' });
     res.json(brand);
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
 // ── Changelog (admin only) ───────────────────────
@@ -198,14 +198,14 @@ router.get('/changelog', admin, async (req, res) => {
       .limit(Number(limit));
     const total = await ChangeLog.countDocuments(filter);
     res.json({ logs, total });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Users (admin+ only) ──────────────────────────
 router.get('/users', viewer, async (req, res) => {
   try {
     res.json(await User.find({}).select('-password -resetPasswordToken -resetPasswordExpires').sort({ createdAt: -1 }));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 router.patch('/users/:id', admin, async (req, res) => {
@@ -225,7 +225,7 @@ router.patch('/users/:id', admin, async (req, res) => {
       { new: true }
     ).select('-password');
     res.json(user);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 router.delete('/users/:id', admin, async (req, res) => {
@@ -237,7 +237,7 @@ router.delete('/users/:id', admin, async (req, res) => {
       return res.status(403).json({ error: 'Нельзя удалить владельца' });
     await User.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Custom categories (user-created) ─────────────────────────────────────
@@ -247,7 +247,7 @@ router.get('/custom-categories', async (req, res) => {
   try {
     const specs = await CategorySpec.find({ label: { $ne: '' } }, 'category label').lean();
     res.json(specs.map(s => ({ value: s.category, label: s.label })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // POST /api/admin/custom-categories — create a new category
@@ -261,7 +261,7 @@ router.post('/custom-categories', protect, editor, async (req, res) => {
       { upsert: true }
     );
     res.json({ value, label });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Category custom specs ──────────────────────────────────────────────────
@@ -271,7 +271,7 @@ router.get('/category-specs/:category', protect, viewer, async (req, res) => {
   try {
     const doc = await CategorySpec.findOne({ category: req.params.category });
     res.json(doc?.customSpecs || []);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // POST /api/admin/category-specs/:category — add or update a custom spec
@@ -288,7 +288,7 @@ router.post('/category-specs/:category', protect, editor, async (req, res) => {
     doc.customSpecs.push({ key, type: type || 'text', options: options || [] });
     await doc.save();
     res.json(doc.customSpecs);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // DELETE /api/admin/category-specs/:category/:key — remove a custom spec
@@ -300,7 +300,7 @@ router.delete('/category-specs/:category/:key', protect, editor, async (req, res
       { new: true }
     );
     res.json(doc?.customSpecs || []);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Frontmen ──────────────────────────────────────────────────────────────────
@@ -311,7 +311,7 @@ router.get('/frontmen', protect, viewer, async (req, res) => {
     const q = req.query.brand ? { brand: req.query.brand } : {};
     const list = await Frontman.find(q).sort({ order: 1, createdAt: 1 });
     res.json(list);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // POST /api/admin/frontmen
@@ -319,7 +319,7 @@ router.post('/frontmen', protect, editor, async (req, res) => {
   try {
     const fm = await Frontman.create(req.body);
     res.status(201).json(fm);
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
 // PATCH /api/admin/frontmen/:id
@@ -328,7 +328,7 @@ router.patch('/frontmen/:id', protect, editor, async (req, res) => {
     const fm = await Frontman.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!fm) return res.status(404).json({ error: 'Не найден' });
     res.json(fm);
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
 // DELETE /api/admin/frontmen/:id
@@ -336,7 +336,7 @@ router.delete('/frontmen/:id', protect, editor, async (req, res) => {
   try {
     await Frontman.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Catalog PDF (server-side, Cyrillic support) ───────────────────────────────
@@ -429,7 +429,7 @@ router.post('/pdf/catalog', protect, viewer, async (req, res) => {
     doc.end();
   } catch (e) {
     console.error('PDF error:', e);
-    if (!res.headersSent) res.status(500).json({ error: e.message });
+    if (!res.headersSent) res.status(500).json({ error: mongoErr(e) });
   }
 });
 
@@ -549,9 +549,26 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
     doc.end();
   } catch (e) {
     console.error('TZ PDF error:', e);
-    if (!res.headersSent) res.status(500).json({ error: e.message });
+    if (!res.headersSent) res.status(500).json({ error: mongoErr(e) });
   }
 });
+
+function mongoErr(e) {
+  const m = e.message || '';
+  if (m.includes('Cast to ObjectId failed'))
+    return 'Неверный идентификатор записи';
+  if (m.includes('E11000') || m.includes('duplicate key'))
+    return 'Запись с таким значением уже существует';
+  if (/validation failed/i.test(m)) {
+    const fields = Object.values(e.errors || {}).map(v => v.message).filter(Boolean);
+    return fields.length ? `Ошибка заполнения: ${fields.join('; ')}` : 'Ошибка валидации данных';
+  }
+  if (m.includes('required'))
+    return 'Не заполнено обязательное поле';
+  if (m.includes('ENOENT') || m.includes('EACCES'))
+    return 'Ошибка доступа к файлу на сервере';
+  return 'Внутренняя ошибка сервера';
+}
 
 function buildCols(priceMode, totalW) {
   // [key, width, align]
