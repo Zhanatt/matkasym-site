@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminStats } from '../../api/index';
+import { adminStats, adminGetProducts } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
 function StatCard({ label, value, sub, red, green, to, icon }) {
@@ -42,12 +42,53 @@ function StatCard({ label, value, sub, red, green, to, icon }) {
   return <div className="admin-stat-card" style={style}>{inner}</div>;
 }
 
+function ProductAlertList({ products, navigate }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+      {products.map(p => (
+        <div
+          key={p._id}
+          onClick={() => navigate(`/admin/products/${p._id}`)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '8px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.7)',
+            cursor: 'pointer', fontSize: 13, gap: 12,
+            border: '1px solid rgba(0,0,0,0.06)',
+            transition: 'background .15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.95)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.7)'}
+        >
+          <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {p.fullName || p.name}
+          </span>
+          <span style={{ color: 'var(--slate)', fontSize: 12, flexShrink: 0 }}>
+            {p.stock} шт. · {(p.price || 0).toLocaleString('ru')} сом
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--slate)', flexShrink: 0 }}>→</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState(null);
+  const navigate = useNavigate();
+  const [stats,        setStats]        = useState(null);
+  const [liquidItems,  setLiquidItems]  = useState([]);
+  const [illiquidItems, setIlliquidItems] = useState([]);
+  const [showAllLiquid,   setShowAllLiquid]   = useState(false);
+  const [showAllIlliquid, setShowAllIlliquid] = useState(false);
 
   useEffect(() => {
     adminStats().then(r => setStats(r.data)).catch(() => {});
+    adminGetProducts({ productStatus: 'liquidation', limit: 100 })
+      .then(r => setLiquidItems(r.data.products || []))
+      .catch(() => {});
+    adminGetProducts({ illiquid: 'true', limit: 100 })
+      .then(r => setIlliquidItems(r.data.products || []))
+      .catch(() => {});
   }, []);
 
   const inStockPct = stats && stats.products > 0
@@ -56,6 +97,10 @@ export default function AdminDashboard() {
 
   const isOwner = user?.role === 'owner';
   const canEdit = ['owner', 'editor'].includes(user?.role);
+
+  const PREVIEW = 5;
+  const liquidPreview  = showAllLiquid   ? liquidItems  : liquidItems.slice(0, PREVIEW);
+  const illiquidPreview = showAllIlliquid ? illiquidItems : illiquidItems.slice(0, PREVIEW);
 
   return (
     <div>
@@ -130,7 +175,91 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Pending users alert (owner only) */}
+      {/* ── ЛИКВИДАЦИЯ ── */}
+      {liquidItems.length > 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fff0f0 0%, #ffe8e8 100%)',
+          border: '2px solid #e74c3c',
+          borderRadius: 14,
+          padding: '18px 22px',
+          marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 28 }}>🔴</span>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: '#c0392b', letterSpacing: 0.3 }}>
+                  ЛИКВИДАЦИЯ — {liquidItems.length} {liquidItems.length === 1 ? 'товар' : liquidItems.length < 5 ? 'товара' : 'товаров'}
+                </div>
+                <div style={{ fontSize: 13, color: '#922b21', marginTop: 3, fontWeight: 600 }}>
+                  🚨 Эти товары снимаются с производства — нужно СРОЧНО продать остатки на складе!
+                </div>
+              </div>
+            </div>
+            <Link
+              to="/admin/products?productStatus=liquidation"
+              style={{ fontSize: 12, fontWeight: 700, color: '#c0392b', textDecoration: 'none', flexShrink: 0, padding: '6px 14px', border: '1.5px solid #c0392b', borderRadius: 8, background: '#fff' }}
+            >
+              Все →
+            </Link>
+          </div>
+
+          <ProductAlertList products={liquidPreview} navigate={navigate} />
+
+          {liquidItems.length > PREVIEW && (
+            <button
+              onClick={() => setShowAllLiquid(v => !v)}
+              style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#c0392b' }}
+            >
+              {showAllLiquid ? 'Свернуть ▲' : `Показать все ${liquidItems.length} ▼`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── НЕЛИКВИДЫ ── */}
+      {illiquidItems.length > 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fffbf0 0%, #fff8e6 100%)',
+          border: '2px solid #f0c060',
+          borderRadius: 14,
+          padding: '18px 22px',
+          marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 28 }}>📦</span>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: '#c47a00', letterSpacing: 0.3 }}>
+                  НЕЛИКВИДЫ — {illiquidItems.length} {illiquidItems.length === 1 ? 'товар' : illiquidItems.length < 5 ? 'товара' : 'товаров'}
+                </div>
+                <div style={{ fontSize: 13, color: '#7a5000', marginTop: 3, fontWeight: 600 }}>
+                  ⏳ Товары более 30 дней лежат на складе — нужно продать, пересмотреть цену или сделать акцию
+                </div>
+              </div>
+            </div>
+            <Link
+              to="/admin/products?illiquid=true"
+              style={{ fontSize: 12, fontWeight: 700, color: '#c47a00', textDecoration: 'none', flexShrink: 0, padding: '6px 14px', border: '1.5px solid #c47a00', borderRadius: 8, background: '#fff' }}
+            >
+              Все →
+            </Link>
+          </div>
+
+          <ProductAlertList products={illiquidPreview} navigate={navigate} />
+
+          {illiquidItems.length > PREVIEW && (
+            <button
+              onClick={() => setShowAllIlliquid(v => !v)}
+              style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#c47a00' }}
+            >
+              {showAllIlliquid ? 'Свернуть ▲' : `Показать все ${illiquidItems.length} ▼`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Pending users alert */}
       {isOwner && stats?.pending > 0 && (
         <Link to="/admin/users" style={{ textDecoration: 'none' }}>
           <div style={{

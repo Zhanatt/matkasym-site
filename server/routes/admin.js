@@ -36,17 +36,21 @@ router.use(protect, viewer);
 // ── Dashboard stats ──────────────────────────────
 router.get('/stats', async (req, res) => {
   try {
-    const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
+    const onlineThreshold  = new Date(Date.now() - 3 * 60 * 1000);
+    const illiquidThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 дней
     const adminRoles = ['owner', 'editor', 'viewer', 'banned'];
-    const [products, outOfStock, brands, users, usersOnline, pending] = await Promise.all([
+
+    const [products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid] = await Promise.all([
       Product.countDocuments(),
       Product.countDocuments({ inStock: false }),
       Brand.countDocuments(),
       User.countDocuments({ role: { $in: adminRoles } }),
       User.countDocuments({ role: { $in: adminRoles }, lastSeen: { $gte: onlineThreshold } }),
       User.countDocuments({ isPending: true }),
+      Product.countDocuments({ productStatus: 'liquidation' }),
+      Product.countDocuments({ stock: { $gt: 0 }, productStatus: 'for_sale', createdAt: { $lt: illiquidThreshold } }),
     ]);
-    res.json({ products, outOfStock, brands, users, usersOnline, pending });
+    res.json({ products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid });
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }
@@ -69,6 +73,11 @@ router.get('/products', async (req, res) => {
     if (inStock !== undefined) filter.inStock = inStock === 'true';
     if (productStatus) filter.productStatus = productStatus;
     if (stockStatus)   filter.stockStatus   = stockStatus;
+    if (req.query.illiquid === 'true') {
+      filter.stock         = { $gt: 0 };
+      filter.productStatus = 'for_sale';
+      filter.createdAt     = { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) };
+    }
 
     const [products, total] = await Promise.all([
       Product.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(Number(limit)),
