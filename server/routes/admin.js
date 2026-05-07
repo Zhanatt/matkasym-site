@@ -36,8 +36,7 @@ router.use(protect, viewer);
 // ── Dashboard stats ──────────────────────────────
 router.get('/stats', async (req, res) => {
   try {
-    const onlineThreshold  = new Date(Date.now() - 3 * 60 * 1000);
-    const illiquidThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 дней
+    const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
     const adminRoles = ['owner', 'editor', 'viewer', 'banned'];
 
     const [products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid] = await Promise.all([
@@ -48,7 +47,7 @@ router.get('/stats', async (req, res) => {
       User.countDocuments({ role: { $in: adminRoles }, lastSeen: { $gte: onlineThreshold } }),
       User.countDocuments({ isPending: true }),
       Product.countDocuments({ productStatus: 'liquidation' }),
-      Product.countDocuments({ stock: { $gt: 0 }, productStatus: 'for_sale', createdAt: { $lt: illiquidThreshold } }),
+      Product.countDocuments({ stock: { $gt: 0 }, productStatus: 'for_sale' }),
     ]);
     res.json({ products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid });
   } catch (e) {
@@ -60,7 +59,7 @@ router.get('/stats', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus } = req.query;
+    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort } = req.query;
     const filter = {};
     if (search) filter.$or = [
       { name: new RegExp(search, 'i') },
@@ -76,11 +75,13 @@ router.get('/products', async (req, res) => {
     if (req.query.illiquid === 'true') {
       filter.stock         = { $gt: 0 };
       filter.productStatus = 'for_sale';
-      filter.createdAt     = { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) };
     }
 
+    const sortMap = { stock_desc: { stock: -1 }, stock_asc: { stock: 1 } };
+    const sortObj = sortMap[sort] || { createdAt: -1 };
+
     const [products, total] = await Promise.all([
-      Product.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(Number(limit)),
+      Product.find(filter).sort(sortObj).skip((page - 1) * limit).limit(Number(limit)),
       Product.countDocuments(filter),
     ]);
     res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });

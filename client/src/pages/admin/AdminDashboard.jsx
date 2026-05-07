@@ -85,7 +85,7 @@ export default function AdminDashboard() {
     adminGetProducts({ productStatus: 'liquidation', limit: 100 })
       .then(r => setLiquidItems(r.data.products || []))
       .catch(() => {});
-    adminGetProducts({ illiquid: 'true', limit: 100 })
+    adminGetProducts({ illiquid: 'true', limit: 500, sort: 'stock_desc' })
       .then(r => setIlliquidItems(r.data.products || []))
       .catch(() => {});
   }, []);
