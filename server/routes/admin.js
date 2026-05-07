@@ -436,6 +436,19 @@ router.post('/pdf/catalog', protect, viewer, async (req, res) => {
   }
 });
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+function fetchBuffer(url) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith('https') ? require('https') : require('http');
+    lib.get(url, (r) => {
+      const chunks = [];
+      r.on('data', c => chunks.push(c));
+      r.on('end',  () => resolve(Buffer.concat(chunks)));
+      r.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
 // ── TZ PDF ───────────────────────────────────────────────────────────────────
 // GET /api/admin/pdf/tz/:id/:type  (type = 'development' | 'improvement')
 router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
@@ -448,6 +461,7 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
       return res.status(400).json({ error: 'Неверный тип ТЗ' });
 
     const PDFDocument = require('pdfkit');
+    const QRCode     = require('qrcode');
     const fontReg  = path.join(FONTS_DIR, 'Roboto-Regular.ttf');
     const fontBold = path.join(FONTS_DIR, 'Roboto-Bold.ttf');
     const fontMed  = path.join(FONTS_DIR, 'Roboto-Medium.ttf');
@@ -460,25 +474,45 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
     const statusLb = isdev ? 'В разработке' : 'На улучшении';
     const filename = `${isdev ? 'ТЗ_разработка' : 'ТЗ_улучшение'}_${(product.name || product._id).replace(/[^a-zA-Zа-яА-Я0-9]/g, '_')}.pdf`;
 
+    // Pre-fetch: product image + QR code (parallel, failures are non-fatal)
+    const productImgUrl = (product.images || [])[0];
+    const qrText = `matkasym-site — ${product.fullName || product.name} — ${product._id}`;
+
+    const [imgBuf, qrBuf] = await Promise.all([
+      productImgUrl ? fetchBuffer(productImgUrl).catch(() => null) : Promise.resolve(null),
+      QRCode.toBuffer(qrText, { errorCorrectionLevel: 'M', margin: 1, width: 80,
+        color: { dark: '#546e7a', light: '#ffffff' } }).catch(() => null),
+    ]);
+
     const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: filename.replace('.pdf', '') } });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
     doc.pipe(res);
 
     const PAGE_W = 595.28, PAGE_H = 841.89;
-    const BX = 22, BY = 22; // border inset
+    const BX = 22, BY = 22;
     const BW = PAGE_W - BX * 2, BH = PAGE_H - BY * 2;
-    const CX = BX + 20; // content X
-    const CW = BW - 40; // content width
+    const CX = BX + 20;
+    const PHOTO_SIZE = 90;
+    const CW = BW - 40 - (imgBuf ? PHOTO_SIZE + 16 : 0);
 
     // Border
     doc.roundedRect(BX, BY, BW, BH, 14).strokeColor('#b0bec5').lineWidth(0.8).stroke();
 
-    // Logo
+    // Logo top-left
     if (fs.existsSync(logoPath)) {
       doc.image(logoPath, CX, BY + 14, { height: 26 });
     } else {
       doc.font(fontBold).fontSize(13).fillColor([225, 5, 35]).text('MATKASYM', CX, BY + 18);
+    }
+
+    // Product photo top-right (inside border)
+    if (imgBuf) {
+      const photoX = BX + BW - PHOTO_SIZE - 20;
+      const photoY = BY + 10;
+      try {
+        doc.image(imgBuf, photoX, photoY, { width: PHOTO_SIZE, height: PHOTO_SIZE, fit: [PHOTO_SIZE, PHOTO_SIZE] });
+      } catch (_) {}
     }
 
     // Header separator
@@ -513,13 +547,14 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
       y += 18;
     }
 
+    const fullCW = BW - 40;
     const drawSection = (label, text) => {
-      doc.font(fontMed).fontSize(9).fillColor('#333333').text(label, CX, y, { width: CW });
+      doc.font(fontMed).fontSize(9).fillColor('#333333').text(label, CX, y, { width: fullCW });
       y += 14;
       const t = text || '—';
       doc.font(fontReg).fontSize(10).fillColor('#1a1a1a')
-        .text(t, CX + 4, y, { width: CW - 4, lineGap: 2 });
-      y += doc.heightOfString(t, { width: CW - 4, lineGap: 2 }) + 18;
+        .text(t, CX + 4, y, { width: fullCW - 4, lineGap: 2 });
+      y += doc.heightOfString(t, { width: fullCW - 4, lineGap: 2 }) + 18;
     };
 
     if (isdev) {
@@ -531,23 +566,32 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
 
     // Attached files
     if (tzData.files?.length > 0) {
-      doc.moveTo(CX, y).lineTo(CX + CW, y).strokeColor('#dde3ea').lineWidth(0.5).stroke();
+      doc.moveTo(CX, y).lineTo(CX + fullCW, y).strokeColor('#dde3ea').lineWidth(0.5).stroke();
       y += 14;
       doc.font(fontMed).fontSize(9).fillColor('#333333').text('ПРИКРЕПЛЁННЫЕ ФАЙЛЫ:', CX, y);
       y += 14;
       for (const f of tzData.files) {
         doc.font(fontReg).fontSize(9).fillColor('#3b5bdb')
-          .text(`• ${f.name}`, CX + 8, y, { width: CW - 8, lineBreak: false, ellipsis: true });
+          .text(`• ${f.name}`, CX + 8, y, { width: fullCW - 8, lineBreak: false, ellipsis: true });
         y += 13;
       }
     }
 
-    // Footer "20>27"
-    const footerY = PAGE_H - BY - 42;
-    doc.font(fontBold).fontSize(18).fillColor('#90a4ae')
-      .text('20', PAGE_W - BX - 62, footerY, { lineBreak: false });
-    doc.fillColor([225, 5, 35]).text('›', PAGE_W - BX - 40, footerY - 1, { lineBreak: false });
-    doc.fillColor('#1a1a1a').text('27', PAGE_W - BX - 26, footerY, { lineBreak: false });
+    // Footer: "20>27" + QR code bottom-right
+    const QR_SIZE = 52;
+    const footerY = PAGE_H - BY - QR_SIZE - 10;
+    const footerX = PAGE_W - BX - QR_SIZE - 16;
+
+    // QR code
+    if (qrBuf) {
+      try { doc.image(qrBuf, footerX, footerY + 6, { width: QR_SIZE, height: QR_SIZE }); } catch (_) {}
+    }
+
+    // "20>27" text above QR
+    doc.font(fontBold).fontSize(16).fillColor('#90a4ae')
+      .text('20', footerX, footerY - 22, { lineBreak: false });
+    doc.fillColor([225, 5, 35]).text('›', footerX + 24, footerY - 23, { lineBreak: false });
+    doc.fillColor('#1a1a1a').text('27', footerX + 34, footerY - 22, { lineBreak: false });
 
     doc.end();
   } catch (e) {
