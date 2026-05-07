@@ -1,5 +1,6 @@
 const router       = require('express').Router();
 const path         = require('path');
+const fs           = require('fs');
 const Product      = require('../models/Product');
 const Brand        = require('../models/Brand');
 const User         = require('../models/User');
@@ -15,6 +16,7 @@ const TRACKED_FIELDS = [
   'name','fullName','sku','price','priceWholesale','priceDealer','priceCost',
   'inStock','stock','stockStatus','productStatus','description','dimensions',
   'category','set','color','isNew','developmentStage',
+  'developmentTZ','improvementTZ',
 ];
 
 const FIELD_LABELS = {
@@ -427,6 +429,126 @@ router.post('/pdf/catalog', protect, viewer, async (req, res) => {
     doc.end();
   } catch (e) {
     console.error('PDF error:', e);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
+
+// ── TZ PDF ───────────────────────────────────────────────────────────────────
+// GET /api/admin/pdf/tz/:id/:type  (type = 'development' | 'improvement')
+router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Не найден' });
+
+    const type = req.params.type;
+    if (type !== 'development' && type !== 'improvement')
+      return res.status(400).json({ error: 'Неверный тип ТЗ' });
+
+    const PDFDocument = require('pdfkit');
+    const fontReg  = path.join(FONTS_DIR, 'Roboto-Regular.ttf');
+    const fontBold = path.join(FONTS_DIR, 'Roboto-Bold.ttf');
+    const fontMed  = path.join(FONTS_DIR, 'Roboto-Medium.ttf');
+    const logoPath = path.join(__dirname, '../../client/public/logos/logo-main.png');
+
+    const isdev    = type === 'development';
+    const tzData   = isdev ? (product.developmentTZ || {}) : (product.improvementTZ || {});
+    const title    = isdev ? 'ТЕХНИЧЕСКОЕ ЗАДАНИЕ' : 'УЛУЧШЕНИЕ ПРОДУКТА';
+    const accent   = isdev ? [124, 58, 237] : [196, 122, 0];
+    const statusLb = isdev ? 'В разработке' : 'На улучшении';
+    const filename = `${isdev ? 'ТЗ_разработка' : 'ТЗ_улучшение'}_${(product.name || product._id).replace(/[^a-zA-Zа-яА-Я0-9]/g, '_')}.pdf`;
+
+    const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: filename.replace('.pdf', '') } });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    doc.pipe(res);
+
+    const PAGE_W = 595.28, PAGE_H = 841.89;
+    const BX = 22, BY = 22; // border inset
+    const BW = PAGE_W - BX * 2, BH = PAGE_H - BY * 2;
+    const CX = BX + 20; // content X
+    const CW = BW - 40; // content width
+
+    // Border
+    doc.roundedRect(BX, BY, BW, BH, 14).strokeColor('#b0bec5').lineWidth(0.8).stroke();
+
+    // Logo
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, CX, BY + 14, { height: 26 });
+    } else {
+      doc.font(fontBold).fontSize(13).fillColor([225, 5, 35]).text('MATKASYM', CX, BY + 18);
+    }
+
+    // Header separator
+    doc.moveTo(BX + 1, BY + 52).lineTo(BX + BW - 1, BY + 52).strokeColor('#dde3ea').lineWidth(0.5).stroke();
+
+    // Title block
+    let y = BY + 68;
+    doc.font(fontBold).fontSize(15).fillColor(accent)
+      .text(title, CX, y, { width: CW });
+    y += 22;
+
+    doc.font(fontBold).fontSize(12).fillColor('#111111')
+      .text(product.fullName || product.name, CX, y, { width: CW });
+    y += 18;
+
+    const meta = [
+      `Статус: ${statusLb}`,
+      product.sku ? `SKU: ${product.sku}` : null,
+      product.category ? `Категория: ${product.category}` : null,
+      `Дата: ${new Date().toLocaleDateString('ru', { day: '2-digit', month: '2-digit', year: 'numeric' })}`,
+    ].filter(Boolean).join('   ·   ');
+
+    doc.font(fontReg).fontSize(8.5).fillColor('#607080').text(meta, CX, y, { width: CW });
+    y += 20;
+
+    doc.moveTo(CX, y).lineTo(CX + CW, y).strokeColor('#dde3ea').lineWidth(0.5).stroke();
+    y += 16;
+
+    if (isdev && product.developmentStage) {
+      doc.font(fontMed).fontSize(8.5).fillColor(accent)
+        .text(`ЭТАП: ${product.developmentStage.toUpperCase()}`, CX, y, { width: CW });
+      y += 18;
+    }
+
+    const drawSection = (label, text) => {
+      doc.font(fontMed).fontSize(9).fillColor('#333333').text(label, CX, y, { width: CW });
+      y += 14;
+      const t = text || '—';
+      doc.font(fontReg).fontSize(10).fillColor('#1a1a1a')
+        .text(t, CX + 4, y, { width: CW - 4, lineGap: 2 });
+      y += doc.heightOfString(t, { width: CW - 4, lineGap: 2 }) + 18;
+    };
+
+    if (isdev) {
+      drawSection('ОПИСАНИЕ ТЕХНИЧЕСКОГО ЗАДАНИЯ:', tzData.description);
+    } else {
+      drawSection('В ЧЕМ ПРОБЛЕМА?', tzData.problem);
+      drawSection('ВОЗМОЖНОЕ РЕШЕНИЕ:', tzData.solution);
+    }
+
+    // Attached files
+    if (tzData.files?.length > 0) {
+      doc.moveTo(CX, y).lineTo(CX + CW, y).strokeColor('#dde3ea').lineWidth(0.5).stroke();
+      y += 14;
+      doc.font(fontMed).fontSize(9).fillColor('#333333').text('ПРИКРЕПЛЁННЫЕ ФАЙЛЫ:', CX, y);
+      y += 14;
+      for (const f of tzData.files) {
+        doc.font(fontReg).fontSize(9).fillColor('#3b5bdb')
+          .text(`• ${f.name}`, CX + 8, y, { width: CW - 8, lineBreak: false, ellipsis: true });
+        y += 13;
+      }
+    }
+
+    // Footer "20>27"
+    const footerY = PAGE_H - BY - 42;
+    doc.font(fontBold).fontSize(18).fillColor('#90a4ae')
+      .text('20', PAGE_W - BX - 62, footerY, { lineBreak: false });
+    doc.fillColor([225, 5, 35]).text('›', PAGE_W - BX - 40, footerY - 1, { lineBreak: false });
+    doc.fillColor('#1a1a1a').text('27', PAGE_W - BX - 26, footerY, { lineBreak: false });
+
+    doc.end();
+  } catch (e) {
+    console.error('TZ PDF error:', e);
     if (!res.headersSent) res.status(500).json({ error: e.message });
   }
 });

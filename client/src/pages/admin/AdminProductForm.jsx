@@ -27,6 +27,9 @@ const BRAND_OPTIONS = [
 ];
 
 
+const CLOUD_NAME    = 'dnbg21ef8';
+const UPLOAD_PRESET = 'Matkasym';
+
 const EMPTY = {
   name: '', fullName: '', sku: '',
   brand: 'matkasym-home', set: '', setLevel: '', color: '',
@@ -37,7 +40,100 @@ const EMPTY = {
   description: '',
   images: [],
   inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', productStatus: 'for_sale', developmentStage: '',
+  developmentTZ: { description: '', files: [] },
+  improvementTZ: { problem: '', solution: '', files: [] },
 };
+
+function TZBlock({ label, accent, fields, data, onChange }) {
+  const [uploading, setUploading] = useState(false);
+
+  const setField = (key, value) => onChange({ ...data, [key]: value });
+
+  const removeFile = (idx) => {
+    onChange({ ...data, files: data.files.filter((_, i) => i !== idx) });
+  };
+
+  const handleFileInput = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', UPLOAD_PRESET);
+      fd.append('folder', 'matkasym-tz');
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: 'POST', body: fd });
+      const json = await r.json();
+      if (json.secure_url) {
+        onChange({ ...data, files: [...(data.files || []), { name: file.name, url: json.secure_url }] });
+      }
+    } catch (err) {
+      console.error('TZ file upload error:', err);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 20, padding: '16px 20px', borderRadius: 12, border: `1.5px solid ${accent}30`, background: `${accent}08` }}>
+      <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: accent, marginBottom: 14 }}>
+        {label}
+      </div>
+
+      {fields.map(f => (
+        <div key={f.key} className="admin-form-group" style={{ marginBottom: 12 }}>
+          <label style={{ color: accent }}>{f.label}</label>
+          <textarea
+            value={data[f.key] || ''}
+            onChange={e => setField(f.key, e.target.value)}
+            placeholder={f.placeholder}
+            rows={4}
+            style={{ borderColor: `${accent}40`, resize: 'vertical' }}
+          />
+        </div>
+      ))}
+
+      {/* Files */}
+      <div style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--slate)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Прикреплённые файлы
+        </div>
+
+        {(data.files || []).length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+            {data.files.map((f, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', padding: '7px 12px', borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 13 }}>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#333' }}>
+                  📎 {f.name}
+                </span>
+                <a href={f.url} target="_blank" rel="noreferrer" style={{ color: accent, fontSize: 12, fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+                  Открыть
+                </a>
+                <button
+                  type="button"
+                  onClick={() => removeFile(i)}
+                  style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <label style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '8px 16px', borderRadius: 8, cursor: uploading ? 'wait' : 'pointer',
+          border: `1.5px dashed ${accent}60`, background: '#fafafa',
+          fontSize: 13, fontWeight: 600, color: accent,
+          opacity: uploading ? 0.6 : 1,
+        }}>
+          <input type="file" style={{ display: 'none' }} onChange={handleFileInput} disabled={uploading} />
+          {uploading ? '⏳ Загрузка...' : '+ Прикрепить файл'}
+        </label>
+      </div>
+    </div>
+  );
+}
 
 const sectionLabel = (text) => (
   <div style={{ fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--slate)', marginBottom: -4 }}>
@@ -96,7 +192,17 @@ export default function AdminProductForm() {
       .then(r => {
         const p = r.data;
         const baseSpecs = p.specs || [];
-        setForm({ ...p, images: p.images || [], specs: baseSpecs, priceCost: p.priceCost ?? '', priceWholesale: p.priceWholesale ?? '', priceDealer: p.priceDealer ?? '', dimensions: p.dimensions || '' });
+        setForm({
+          ...p,
+          images:        p.images || [],
+          specs:         baseSpecs,
+          priceCost:     p.priceCost ?? '',
+          priceWholesale: p.priceWholesale ?? '',
+          priceDealer:   p.priceDealer ?? '',
+          dimensions:    p.dimensions || '',
+          developmentTZ: p.developmentTZ || { description: '', files: [] },
+          improvementTZ: p.improvementTZ || { problem: '', solution: '', files: [] },
+        });
 
         if (p.category) {
           adminGetCategorySpecs(p.category)
@@ -558,6 +664,7 @@ export default function AdminProductForm() {
                 { value: 'in_development', label: '🔨 В разработке',         bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
                 { value: 'improvement',    label: '🔧 На улучшении',         bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
                 { value: 'discontinued',   label: '🚫 Снят с производства',  bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
+                { value: 'liquidation',    label: '🔴 ЛИКВИДАЦИЯ',            bg: '#fff0f0', color: '#c0392b', border: '#e74c3c' },
               ].map(opt => (
                 <label key={opt.value} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -607,7 +714,29 @@ export default function AdminProductForm() {
                     );
                   })}
                 </div>
+
+                {/* TZ block for in_development */}
+                <TZBlock
+                  label="Техническое задание"
+                  accent="#7c3aed"
+                  fields={[{ key: 'description', label: 'Описание ТЗ', placeholder: 'Опишите техническое задание, требования, детали разработки...' }]}
+                  data={form.developmentTZ}
+                  onChange={val => set('developmentTZ', val)}
+                />
               </div>
+            )}
+
+            {form.productStatus === 'improvement' && (
+              <TZBlock
+                label="Задача на улучшение"
+                accent="#c47a00"
+                fields={[
+                  { key: 'problem',  label: 'В чем проблема?',   placeholder: 'Опишите текущую проблему продукта...' },
+                  { key: 'solution', label: 'Возможное решение', placeholder: 'Опишите возможные пути решения...' },
+                ]}
+                data={form.improvementTZ}
+                onChange={val => set('improvementTZ', val)}
+              />
             )}
           </div>
 

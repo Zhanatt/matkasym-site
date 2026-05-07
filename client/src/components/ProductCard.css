@@ -170,3 +170,68 @@
 .pc__action-btn--fill.in-cart {
   background: var(--green);
 }
+
+/* ── В ПЛАНЕ — blur ──────────────────────── */
+.pc--planned {
+  opacity: 0.85;
+}
+
+.pc__slide--blurred {
+  filter: blur(5px);
+  transform: scale(1.04);
+}
+
+.pc__badge-planned {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(59, 91, 219, 0.88);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 16px;
+  border-radius: 20px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  z-index: 3;
+  white-space: nowrap;
+  backdrop-filter: blur(2px);
+  border: 1.5px solid rgba(255,255,255,0.3);
+}
+
+/* ── ЛИКВИДАЦИЯ ───────────────────────────── */
+.pc--liquidation .pc__img-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(192, 57, 43, 0.08);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.pc__badge-liquidation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #c0392b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 5px 0;
+  text-align: center;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 3;
+  animation: liq-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes liq-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.75; }
+}
+
+.pc--liquidation .pc__price {
+  color: #c0392b;
+}

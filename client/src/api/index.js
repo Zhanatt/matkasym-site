@@ -59,5 +59,6 @@ export const adminCreateFrontman = (data)       => api.post('/admin/frontmen', d
 export const adminUpdateFrontman = (id, data)   => api.patch(`/admin/frontmen/${id}`, data);
 export const adminDeleteFrontman = (id)         => api.delete(`/admin/frontmen/${id}`);
 export const adminCatalogPdf    = (data)        => api.post('/admin/pdf/catalog', data, { responseType: 'blob' });
+export const adminTZPdf         = (id, type)    => api.get(`/admin/pdf/tz/${id}/${type}`, { responseType: 'blob' });
 
 export default api;

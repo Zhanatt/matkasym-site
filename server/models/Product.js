@@ -46,8 +46,21 @@ const productSchema = new mongoose.Schema({
   inStock:       { type: Boolean, default: true },
   stock:         { type: Number, default: 50 },
   stockStatus:      { type: String, enum: ['in_stock', 'out_of_stock', 'expected'], default: 'in_stock' },
-  productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development'], default: 'for_sale' },
+  productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development', 'liquidation'], default: 'for_sale' },
   developmentStage: { type: String, default: '' },  // e.g. 'производство', 'моделирование', 'чертеж'
+
+  // TZ data for in_development
+  developmentTZ: {
+    description: { type: String, default: '' },
+    files: [{ name: { type: String }, url: { type: String } }],
+  },
+
+  // TZ data for improvement
+  improvementTZ: {
+    problem:  { type: String, default: '' },
+    solution: { type: String, default: '' },
+    files: [{ name: { type: String }, url: { type: String } }],
+  },
 
   // Stats
   rating:      { type: Number, default: 0, min: 0, max: 5 },

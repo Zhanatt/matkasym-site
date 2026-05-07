@@ -17,8 +17,10 @@ function imgSrc(url, width = 600) {
 export default function ProductCard({ product }) {
   const { addItem, items } = useCart();
   const navigate = useNavigate();
-  const inCart  = items.some(i => i.product === product._id);
-  const images  = getImages(product);
+  const inCart   = items.some(i => i.product === product._id);
+  const images   = getImages(product);
+  const isPlanned      = product.productStatus === 'planned';
+  const isLiquidation  = product.productStatus === 'liquidation';
 
   const [activeIdx, setActiveIdx] = useState(0);
   const intervalRef = useRef(null);
@@ -41,7 +43,7 @@ export default function ProductCard({ product }) {
     : 0;
 
   return (
-    <div className="pc" onMouseEnter={startSlider} onMouseLeave={stopSlider}>
+    <div className={`pc${isPlanned ? ' pc--planned' : ''}${isLiquidation ? ' pc--liquidation' : ''}`} onMouseEnter={startSlider} onMouseLeave={stopSlider}>
 
       {/* Image */}
       <Link to={`/product/${product._id}`} className="pc__img-wrap">
@@ -52,14 +54,16 @@ export default function ProductCard({ product }) {
               src={imgSrc(url)}
               alt={product.name}
               loading="lazy"
-              className={`pc__slide ${i === activeIdx ? 'visible' : ''}`}
+              className={`pc__slide ${i === activeIdx ? 'visible' : ''}${isPlanned ? ' pc__slide--blurred' : ''}`}
             />
           ))
         ) : (
-          <div className="pc__no-img">📦</div>
+          <div className={`pc__no-img${isPlanned ? ' pc__slide--blurred' : ''}`}>📦</div>
         )}
 
-        {product.isNew && <span className="pc__badge-new">Новинка</span>}
+        {isPlanned      && <span className="pc__badge-planned">В ПЛАНЕ</span>}
+        {isLiquidation  && <span className="pc__badge-liquidation">ЛИКВИДАЦИЯ</span>}
+        {!isPlanned && !isLiquidation && product.isNew && <span className="pc__badge-new">Новинка</span>}
 
         {images.length > 1 && (
           <div className="pc__dots">

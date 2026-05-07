@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { adminGetProduct } from '../../api/index';
+import { adminGetProduct, adminTZPdf } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 import { CATEGORIES } from '../../config/categorySpecs';
 import { cloudinaryOpt } from '../../utils/drive';
@@ -12,6 +12,7 @@ const PRODUCT_STATUS_META = {
   in_development: { label: 'В разработке',        color: '#7c3aed' },
   improvement:    { label: 'На улучшении',        color: '#c47a00' },
   discontinued:   { label: 'Снят с производства', color: '#888'    },
+  liquidation:    { label: '🔴 ЛИКВИДАЦИЯ',       color: '#c0392b' },
 };
 const STOCK_STATUS_META = {
   in_stock:     { label: 'В наличии',     color: '#2d7a3a' },
@@ -29,9 +30,10 @@ export default function AdminProductView() {
   const { user } = useAuth();
   const canEdit = user?.role === 'owner' || user?.role === 'editor';
 
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [imgIdx,  setImgIdx]  = useState(0);
+  const [product,    setProduct]    = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [imgIdx,     setImgIdx]     = useState(0);
+  const [pdfLoading, setPdfLoading] = useState(null);
 
   useEffect(() => {
     adminGetProduct(id)
@@ -51,6 +53,23 @@ export default function AdminProductView() {
 
   const prevImg = () => setImgIdx(i => (i - 1 + images.length) % images.length);
   const nextImg = () => setImgIdx(i => (i + 1) % images.length);
+
+  const downloadTZ = async (type) => {
+    setPdfLoading(type);
+    try {
+      const r = await adminTZPdf(id, type);
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ТЗ_${product.name}_${type === 'development' ? 'разработка' : 'улучшение'}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Ошибка генерации PDF');
+    } finally {
+      setPdfLoading(null);
+    }
+  };
 
   return (
     <div>
@@ -199,6 +218,37 @@ export default function AdminProductView() {
             </div>
           )}
 
+          {/* TZ: В разработке */}
+          {product.productStatus === 'in_development' && (
+            <TZView
+              type="development"
+              data={product.developmentTZ}
+              accent="#7c3aed"
+              accentBg="#f3e8ff"
+              title="Техническое задание"
+              fields={[{ key: 'description', label: 'Описание ТЗ' }]}
+              onDownload={() => downloadTZ('development')}
+              loading={pdfLoading === 'development'}
+            />
+          )}
+
+          {/* TZ: На улучшении */}
+          {product.productStatus === 'improvement' && (
+            <TZView
+              type="improvement"
+              data={product.improvementTZ}
+              accent="#c47a00"
+              accentBg="#fff8e6"
+              title="Задача на улучшение"
+              fields={[
+                { key: 'problem',  label: 'В чем проблема?' },
+                { key: 'solution', label: 'Возможное решение' },
+              ]}
+              onDownload={() => downloadTZ('improvement')}
+              loading={pdfLoading === 'improvement'}
+            />
+          )}
+
           {/* Prices */}
           <div>
             <Label>Цены</Label>
@@ -235,6 +285,67 @@ export default function AdminProductView() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function TZView({ data, accent, accentBg, title, fields, onDownload, loading }) {
+  const hasContent = fields.some(f => data?.[f.key]?.trim()) || data?.files?.length > 0;
+
+  return (
+    <div style={{ padding: '16px 20px', borderRadius: 12, border: `1.5px solid ${accent}30`, background: accentBg + '55' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: accent }}>
+          {title}
+        </div>
+        <button
+          onClick={onDownload}
+          disabled={loading}
+          style={{
+            padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+            border: `1.5px solid ${accent}`, background: accent, color: '#fff',
+            cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          {loading ? '⏳' : '⬇'} Скачать ТЗ
+        </button>
+      </div>
+
+      {!hasContent && (
+        <p style={{ fontSize: 13, color: 'var(--slate)', margin: 0 }}>ТЗ не заполнено</p>
+      )}
+
+      {fields.map(f => data?.[f.key] ? (
+        <div key={f.key} style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: accent, marginBottom: 5 }}>
+            {f.label}
+          </div>
+          <p style={{ fontSize: 13, color: '#1a1a1a', lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap' }}>
+            {data[f.key]}
+          </p>
+        </div>
+      ) : null)}
+
+      {data?.files?.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: accent, marginBottom: 6 }}>
+            Прикреплённые файлы
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {data.files.map((f, i) => (
+              <a
+                key={i} href={f.url} target="_blank" rel="noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: accent, textDecoration: 'none', padding: '5px 10px', borderRadius: 7, background: '#fff', border: '1px solid var(--gray-200)' }}
+              >
+                <span>📎</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 700 }}>Открыть →</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
