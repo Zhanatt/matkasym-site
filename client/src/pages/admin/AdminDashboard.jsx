@@ -85,7 +85,7 @@ export default function AdminDashboard() {
     adminGetProducts({ productStatus: 'liquidation', limit: 100 })
       .then(r => setLiquidItems(r.data.products || []))
       .catch(() => {});
-    adminGetProducts({ category: 'Неликвид', limit: 500 })
+    adminGetProducts({ set: 'nelikvid', limit: 500 })
       .then(r => setIlliquidItems(r.data.products || []))
       .catch(() => {});
   }, []);
@@ -232,7 +232,7 @@ export default function AdminDashboard() {
                   НЕЛИКВИДЫ — {illiquidItems.length} {illiquidItems.length === 1 ? 'товар' : illiquidItems.length < 5 ? 'товара' : 'товаров'}
                 </div>
                 <div style={{ fontSize: 13, color: '#7a5000', marginTop: 3, fontWeight: 600 }}>
-                  ⏳ Товары более 30 дней лежат на складе — нужно продать, пересмотреть цену или сделать акцию
+                  ⏳ Товары уже много лежат на складе — нужно продать, пересмотреть цену или сделать акцию
                 </div>
               </div>
             </div>
