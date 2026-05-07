@@ -105,9 +105,10 @@ router.get('/products/facets', async (req, res) => {
 });
 
 router.get('/products/:id', async (req, res) => {
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
   try {
     const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Не найден' });
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
     res.json(product);
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
@@ -115,12 +116,13 @@ router.get('/products/:id', async (req, res) => {
 });
 
 // Editor+ required for mutations
-router.post('/products',       editor, async (req, res) => {
+router.post('/products', editor, async (req, res) => {
   try { res.status(201).json(await Product.create(req.body)); }
   catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
-router.patch('/products/:id',  editor, async (req, res) => {
+router.patch('/products/:id', editor, async (req, res) => {
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
   try {
     const old = await Product.findById(req.params.id);
     if (!old) return res.status(404).json({ error: 'Не найден' });
@@ -155,6 +157,7 @@ router.patch('/products/:id',  editor, async (req, res) => {
 });
 
 router.delete('/products/:id', editor, async (req, res) => {
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
   try { await Product.findByIdAndDelete(req.params.id); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
@@ -552,6 +555,11 @@ router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
     if (!res.headersSent) res.status(500).json({ error: mongoErr(e) });
   }
 });
+
+const mongoose = require('mongoose');
+function isValidId(id) {
+  return id && id !== 'undefined' && id !== 'null' && mongoose.Types.ObjectId.isValid(id);
+}
 
 function mongoErr(e) {
   const m = e.message || '';

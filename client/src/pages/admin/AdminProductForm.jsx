@@ -188,6 +188,10 @@ export default function AdminProductForm() {
   // Load product for edit
   useEffect(() => {
     if (isNew) return;
+    if (!id || id === 'undefined' || id === 'null') {
+      navigate('/admin/products');
+      return;
+    }
     adminGetProduct(id)
       .then(r => {
         const p = r.data;
@@ -330,11 +334,16 @@ export default function AdminProductForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isNew && (!id || id === 'undefined' || id === 'null')) {
+      setError('Неверный идентификатор товара — обновите страницу');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
+      const { _id, __v, id: _sid, ...rest } = form;
       const payload = {
-        ...form,
+        ...rest,
         priceCost:      Number(form.priceCost) || 0,
         priceWholesale: Number(form.priceWholesale) || 0,
         priceDealer:    Number(form.priceDealer) || 0,
