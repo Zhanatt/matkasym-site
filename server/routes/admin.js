@@ -47,7 +47,7 @@ router.get('/stats', async (req, res) => {
       User.countDocuments({ role: { $in: adminRoles }, lastSeen: { $gte: onlineThreshold } }),
       User.countDocuments({ isPending: true }),
       Product.countDocuments({ productStatus: 'liquidation' }),
-      Product.countDocuments({ stock: { $gt: 0 }, productStatus: 'for_sale' }),
+      Product.countDocuments({ category: 'Неликвид' }),
     ]);
     res.json({ products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid });
   } catch (e) {
@@ -72,10 +72,6 @@ router.get('/products', async (req, res) => {
     if (inStock !== undefined) filter.inStock = inStock === 'true';
     if (productStatus) filter.productStatus = productStatus;
     if (stockStatus)   filter.stockStatus   = stockStatus;
-    if (req.query.illiquid === 'true') {
-      filter.stock         = { $gt: 0 };
-      filter.productStatus = 'for_sale';
-    }
 
     const sortMap = { stock_desc: { stock: -1 }, stock_asc: { stock: 1 } };
     const sortObj = sortMap[sort] || { createdAt: -1 };
