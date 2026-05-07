@@ -78,8 +78,7 @@ export default function AdminDashboard() {
   const [stats,        setStats]        = useState(null);
   const [liquidItems,  setLiquidItems]  = useState([]);
   const [illiquidItems, setIlliquidItems] = useState([]);
-  const [showAllLiquid,   setShowAllLiquid]   = useState(false);
-  const [showAllIlliquid, setShowAllIlliquid] = useState(false);
+  const [showAllLiquid, setShowAllLiquid] = useState(false);
 
   useEffect(() => {
     adminStats().then(r => setStats(r.data)).catch(() => {});
@@ -99,8 +98,7 @@ export default function AdminDashboard() {
   const canEdit = ['owner', 'editor'].includes(user?.role);
 
   const PREVIEW = 5;
-  const liquidPreview  = showAllLiquid   ? liquidItems  : liquidItems.slice(0, PREVIEW);
-  const illiquidPreview = showAllIlliquid ? illiquidItems : illiquidItems.slice(0, PREVIEW);
+  const liquidPreview = showAllLiquid ? liquidItems : liquidItems.slice(0, PREVIEW);
 
   return (
     <div>
@@ -246,16 +244,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
 
-          <ProductAlertList products={illiquidPreview} navigate={navigate} />
-
-          {illiquidItems.length > PREVIEW && (
-            <button
-              onClick={() => setShowAllIlliquid(v => !v)}
-              style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#c47a00' }}
-            >
-              {showAllIlliquid ? 'Свернуть ▲' : `Показать все ${illiquidItems.length} ▼`}
-            </button>
-          )}
+          <ProductAlertList products={illiquidItems} navigate={navigate} />
         </div>
       )}
 
