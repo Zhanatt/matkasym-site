@@ -710,6 +710,61 @@ function getPrice(p, mode) {
   return null;
 }
 
+// ── UPLOAD STOCK EXCEL FROM ADMIN PANEL ─────────────────────────────────────
+const multer = require('multer');
+const xlsx   = require('xlsx');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+function normName(s = '') {
+  return s.toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
+}
+function toInt(v) {
+  if (v === undefined || v === null || v === '') return 0;
+  const n = Number(v);
+  return isNaN(n) ? 0 : Math.max(0, Math.floor(n));
+}
+
+// POST /api/admin/upload-stock  (multipart: field "file")
+router.post('/upload-stock', admin, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+
+  try {
+    const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const stockMap = new Map();
+    for (let i = 7; i < rows.length; i++) {
+      const row  = rows[i];
+      const name = String(row[0] || '').trim();
+      if (!name) continue;
+      if (row[4] === '' && row[24] === '') continue; // группа
+
+      const osnNum  = toInt(row[4]);
+      const kommRaw = Number(row[19]);
+      const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
+      stockMap.set(normName(name), osnNum + kommNum);
+    }
+
+    const products = await Product.find({});
+    let matched = 0, zeroed = 0;
+    for (const p of products) {
+      const key   = normName(p.fullName || p.name || '');
+      const stock = stockMap.has(key) ? stockMap.get(key) : 0;
+      const inStock = stock > 0;
+      await Product.updateOne({ _id: p._id }, {
+        $set: { stock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' }
+      });
+      if (stockMap.has(key)) matched++; else zeroed++;
+    }
+
+    console.log(`[upload-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
+    res.json({ success: true, matched, zeroed, total: matched + zeroed });
+  } catch (e) {
+    res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
+  }
+});
+
 // ── SYNC STOCK FROM 1C (PowerShell на wins1 отправляет сюда данные) ──────────
 const SYNC_KEY = process.env.SYNC_API_KEY || 'matkasym-sync-2026';
 

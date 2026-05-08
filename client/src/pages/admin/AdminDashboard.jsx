@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminStats, adminGetProducts } from '../../api/index';
+import { adminStats, adminGetProducts, adminUploadStock } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
 function StatCard({ label, value, sub, red, green, to, icon }) {
@@ -79,6 +79,8 @@ export default function AdminDashboard() {
   const [liquidItems,  setLiquidItems]  = useState([]);
   const [illiquidItems, setIlliquidItems] = useState([]);
   const [showAllLiquid, setShowAllLiquid] = useState(false);
+  const [syncLoading,   setSyncLoading]   = useState(false);
+  const [syncResult,    setSyncResult]    = useState(null);
 
   useEffect(() => {
     adminStats().then(r => setStats(r.data)).catch(() => {});
@@ -96,6 +98,23 @@ export default function AdminDashboard() {
 
   const isOwner = user?.role === 'owner';
   const canEdit = ['owner', 'editor'].includes(user?.role);
+
+  const handleStockUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setSyncLoading(true);
+    setSyncResult(null);
+    try {
+      const r = await adminUploadStock(file);
+      setSyncResult({ ok: true, ...r.data });
+      adminStats().then(r => setStats(r.data)).catch(() => {});
+    } catch (err) {
+      setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка загрузки' });
+    } finally {
+      setSyncLoading(false);
+      e.target.value = '';
+    }
+  };
 
   const PREVIEW = 5;
   const liquidPreview = showAllLiquid ? liquidItems : liquidItems.slice(0, PREVIEW);
@@ -162,6 +181,18 @@ export default function AdminDashboard() {
           <Link to="/admin/products" className="btn btn-outline">
             Все товары
           </Link>
+          {canEdit && (
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              padding: '9px 18px', borderRadius: 8, cursor: syncLoading ? 'wait' : 'pointer',
+              background: syncLoading ? '#e8f5e9' : '#fff',
+              border: '1.5px solid #2d7a3a', color: '#2d7a3a',
+              fontWeight: 700, fontSize: 14, transition: 'background .15s',
+            }}>
+              <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleStockUpload} disabled={syncLoading} />
+              {syncLoading ? '⏳ Загружаю...' : '📥 Загрузить остатки из 1С'}
+            </label>
+          )}
           <Link to="/admin/map" className="btn btn-outline">
             🗺 Product Map
           </Link>
@@ -172,6 +203,23 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Результат загрузки остатков */}
+      {syncResult && (
+        <div style={{
+          marginBottom: 20, padding: '12px 18px', borderRadius: 10,
+          background: syncResult.ok ? '#f0faf2' : '#fff0f0',
+          border: `1.5px solid ${syncResult.ok ? '#2d7a3a' : '#e74c3c'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: syncResult.ok ? '#2d7a3a' : '#c0392b' }}>
+            {syncResult.ok
+              ? `✅ Остатки обновлены — совпало: ${syncResult.matched}, обнулено: ${syncResult.zeroed}, всего: ${syncResult.total}`
+              : `❌ ${syncResult.error}`}
+          </span>
+          <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5 }}>×</button>
+        </div>
+      )}
 
       {/* ── ЛИКВИДАЦИЯ ── */}
       {liquidItems.length > 0 && (
