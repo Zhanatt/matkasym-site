@@ -81,7 +81,8 @@ export default function AdminDashboard() {
   const [showAllLiquid, setShowAllLiquid] = useState(false);
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
-  const [priceLoading,  setPriceLoading]  = useState(null); // 'retail'|'wholesale'|null
+  const [priceLoading,  setPriceLoading]  = useState(null);
+  const [uploadProgress, setUploadProgress] = useState({}); // { stock: 0-100, retail: 0-100, wholesale: 0-100 }
 
   useEffect(() => {
     adminStats().then(r => setStats(r.data)).catch(() => {});
@@ -100,18 +101,22 @@ export default function AdminDashboard() {
   const isOwner = user?.role === 'owner';
   const canEdit = ['owner', 'editor'].includes(user?.role);
 
+  const setProgress = (key, val) => setUploadProgress(p => ({ ...p, [key]: val }));
+
   const handlePriceUpload = async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
     setPriceLoading(type);
+    setProgress(type, 0);
     setSyncResult(null);
     try {
-      const r = await adminUploadPrices(file, type);
+      const r = await adminUploadPrices(file, type, pct => setProgress(type, pct));
       setSyncResult({ ok: true, msg: `✅ ${type === 'retail' ? 'Розничные' : 'Оптовые'} цены обновлены — совпало: ${r.data.matched}, пропущено: ${r.data.skipped}` });
     } catch (err) {
       setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка загрузки' });
     } finally {
       setPriceLoading(null);
+      setProgress(type, 0);
       e.target.value = '';
     }
   };
@@ -120,15 +125,17 @@ export default function AdminDashboard() {
     const file = e.target.files[0];
     if (!file) return;
     setSyncLoading(true);
+    setProgress('stock', 0);
     setSyncResult(null);
     try {
-      const r = await adminUploadStock(file);
+      const r = await adminUploadStock(file, pct => setProgress('stock', pct));
       setSyncResult({ ok: true, ...r.data });
       adminStats().then(r => setStats(r.data)).catch(() => {});
     } catch (err) {
       setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка загрузки' });
     } finally {
       setSyncLoading(false);
+      setProgress('stock', 0);
       e.target.value = '';
     }
   };
@@ -198,42 +205,26 @@ export default function AdminDashboard() {
           <Link to="/admin/products" className="btn btn-outline">
             Все товары
           </Link>
-          {canEdit && (
-            <label style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              padding: '9px 18px', borderRadius: 8, cursor: syncLoading ? 'wait' : 'pointer',
-              background: syncLoading ? '#e8f5e9' : '#fff',
-              border: '1.5px solid #2d7a3a', color: '#2d7a3a',
-              fontWeight: 700, fontSize: 14, transition: 'background .15s',
-            }}>
-              <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleStockUpload} disabled={syncLoading} />
-              {syncLoading ? '⏳ Загружаю...' : '📥 Остатки из 1С'}
-            </label>
-          )}
-          {canEdit && (
-            <label style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              padding: '9px 18px', borderRadius: 8, cursor: priceLoading === 'retail' ? 'wait' : 'pointer',
-              background: priceLoading === 'retail' ? '#e8f0ff' : '#fff',
-              border: '1.5px solid #3b5bdb', color: '#3b5bdb',
-              fontWeight: 700, fontSize: 14, transition: 'background .15s',
-            }}>
-              <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={e => handlePriceUpload(e, 'retail')} disabled={!!priceLoading} />
-              {priceLoading === 'retail' ? '⏳ Загружаю...' : '💰 Розничные цены'}
-            </label>
-          )}
-          {canEdit && (
-            <label style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              padding: '9px 18px', borderRadius: 8, cursor: priceLoading === 'wholesale' ? 'wait' : 'pointer',
-              background: priceLoading === 'wholesale' ? '#fff8e1' : '#fff',
-              border: '1.5px solid #c47a00', color: '#c47a00',
-              fontWeight: 700, fontSize: 14, transition: 'background .15s',
-            }}>
-              <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={e => handlePriceUpload(e, 'wholesale')} disabled={!!priceLoading} />
-              {priceLoading === 'wholesale' ? '⏳ Загружаю...' : '💰 Оптовые цены'}
-            </label>
-          )}
+          {canEdit && [
+            { key: 'stock',     label: '📥 Остатки из 1С',   color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading,             onChange: handleStockUpload },
+            { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail') },
+            { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale') },
+          ].map(({ key, label, color, bg, disabled, onChange }) => {
+            const pct = uploadProgress[key] || 0;
+            const active = key === 'stock' ? syncLoading : priceLoading === key;
+            return (
+              <label key={key} style={{ position: 'relative', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px 18px', borderRadius: 8, cursor: disabled ? 'wait' : 'pointer', border: `1.5px solid ${color}`, color, fontWeight: 700, fontSize: 14, minWidth: 160, background: '#fff', userSelect: 'none' }}>
+                <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={onChange} disabled={disabled} />
+                {/* progress fill */}
+                {active && (
+                  <span style={{ position: 'absolute', inset: 0, background: bg, width: `${pct}%`, transition: 'width .2s', borderRadius: 6 }} />
+                )}
+                <span style={{ position: 'relative', zIndex: 1 }}>
+                  {active ? `${pct < 100 ? `${pct}%` : '⏳ Обрабатываю...'}` : label}
+                </span>
+              </label>
+            );
+          })}
           <Link to="/admin/map" className="btn btn-outline">
             🗺 Product Map
           </Link>
