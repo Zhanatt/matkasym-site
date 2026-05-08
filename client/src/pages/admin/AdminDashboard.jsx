@@ -131,6 +131,20 @@ export default function AdminDashboard() {
       const r = await adminUploadStock(file, pct => setProgress('stock', pct));
       setSyncResult({ ok: true, ...r.data });
       adminStats().then(r => setStats(r.data)).catch(() => {});
+      if (r.data.excelBase64) {
+        const binary = atob(r.data.excelBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `пропущенные_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch (err) {
       setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка загрузки' });
     } finally {

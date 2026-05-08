@@ -752,19 +752,39 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       stockMap.set(normName(name), osnNum + kommNum);
     }
 
-    const products = await Product.find({}, '_id fullName name');
+    const products = await Product.find({}, '_id fullName name sku category price priceWholesale');
     let matched = 0, zeroed = 0;
+    const notFoundRows = [];
     const ops = products.map(p => {
       const key     = normName(p.fullName || p.name || '');
       const stock   = stockMap.has(key) ? stockMap.get(key) : 0;
       const inStock = stock > 0;
-      if (stockMap.has(key)) matched++; else zeroed++;
+      if (stockMap.has(key)) {
+        matched++;
+      } else {
+        zeroed++;
+        notFoundRows.push({
+          'Название':    p.fullName || p.name || '',
+          'Артикул':     p.sku || '',
+          'Категория':   p.category || '',
+          'Цена розн.':  p.price || 0,
+          'Цена опт.':   p.priceWholesale || 0,
+        });
+      }
       return { updateOne: { filter: { _id: p._id }, update: { $set: { stock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' } } } };
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
 
+    let excelBase64 = null;
+    if (notFoundRows.length > 0) {
+      const wb2 = xlsx.utils.book_new();
+      const ws2 = xlsx.utils.json_to_sheet(notFoundRows);
+      xlsx.utils.book_append_sheet(wb2, ws2, 'Пропущенные');
+      excelBase64 = xlsx.write(wb2, { type: 'base64', bookType: 'xlsx' });
+    }
+
     console.log(`[upload-stock] ${new Date().toISOString()} fmt=${isNewFmt?'new':'old'} colOsn=${colOsn} colKomm=${colKomm} matched=${matched} zeroed=${zeroed}`);
-    res.json({ success: true, matched, zeroed, total: matched + zeroed });
+    res.json({ success: true, matched, zeroed, total: matched + zeroed, excelBase64 });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }
