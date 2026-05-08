@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminStats, adminGetProducts, adminUploadStock } from '../../api/index';
+import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
 function StatCard({ label, value, sub, red, green, to, icon }) {
@@ -81,6 +81,7 @@ export default function AdminDashboard() {
   const [showAllLiquid, setShowAllLiquid] = useState(false);
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
+  const [priceLoading,  setPriceLoading]  = useState(null); // 'retail'|'wholesale'|null
 
   useEffect(() => {
     adminStats().then(r => setStats(r.data)).catch(() => {});
@@ -98,6 +99,22 @@ export default function AdminDashboard() {
 
   const isOwner = user?.role === 'owner';
   const canEdit = ['owner', 'editor'].includes(user?.role);
+
+  const handlePriceUpload = async (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPriceLoading(type);
+    setSyncResult(null);
+    try {
+      const r = await adminUploadPrices(file, type);
+      setSyncResult({ ok: true, msg: `✅ ${type === 'retail' ? 'Розничные' : 'Оптовые'} цены обновлены — совпало: ${r.data.matched}, пропущено: ${r.data.skipped}` });
+    } catch (err) {
+      setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка загрузки' });
+    } finally {
+      setPriceLoading(null);
+      e.target.value = '';
+    }
+  };
 
   const handleStockUpload = async (e) => {
     const file = e.target.files[0];
@@ -190,7 +207,31 @@ export default function AdminDashboard() {
               fontWeight: 700, fontSize: 14, transition: 'background .15s',
             }}>
               <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleStockUpload} disabled={syncLoading} />
-              {syncLoading ? '⏳ Загружаю...' : '📥 Загрузить остатки из 1С'}
+              {syncLoading ? '⏳ Загружаю...' : '📥 Остатки из 1С'}
+            </label>
+          )}
+          {canEdit && (
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              padding: '9px 18px', borderRadius: 8, cursor: priceLoading === 'retail' ? 'wait' : 'pointer',
+              background: priceLoading === 'retail' ? '#e8f0ff' : '#fff',
+              border: '1.5px solid #3b5bdb', color: '#3b5bdb',
+              fontWeight: 700, fontSize: 14, transition: 'background .15s',
+            }}>
+              <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={e => handlePriceUpload(e, 'retail')} disabled={!!priceLoading} />
+              {priceLoading === 'retail' ? '⏳ Загружаю...' : '💰 Розничные цены'}
+            </label>
+          )}
+          {canEdit && (
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              padding: '9px 18px', borderRadius: 8, cursor: priceLoading === 'wholesale' ? 'wait' : 'pointer',
+              background: priceLoading === 'wholesale' ? '#fff8e1' : '#fff',
+              border: '1.5px solid #c47a00', color: '#c47a00',
+              fontWeight: 700, fontSize: 14, transition: 'background .15s',
+            }}>
+              <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={e => handlePriceUpload(e, 'wholesale')} disabled={!!priceLoading} />
+              {priceLoading === 'wholesale' ? '⏳ Загружаю...' : '💰 Оптовые цены'}
             </label>
           )}
           <Link to="/admin/map" className="btn btn-outline">
@@ -214,7 +255,7 @@ export default function AdminDashboard() {
         }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: syncResult.ok ? '#2d7a3a' : '#c0392b' }}>
             {syncResult.ok
-              ? `✅ Остатки обновлены — совпало: ${syncResult.matched}, обнулено: ${syncResult.zeroed}, всего: ${syncResult.total}`
+              ? (syncResult.msg || `✅ Остатки обновлены — совпало: ${syncResult.matched}, обнулено: ${syncResult.zeroed}, всего: ${syncResult.total}`)
               : `❌ ${syncResult.error}`}
           </span>
           <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5 }}>×</button>

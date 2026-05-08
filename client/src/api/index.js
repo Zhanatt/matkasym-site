@@ -60,6 +60,11 @@ export const adminUpdateFrontman = (id, data)   => api.patch(`/admin/frontmen/${
 export const adminDeleteFrontman = (id)         => api.delete(`/admin/frontmen/${id}`);
 export const adminCatalogPdf    = (data)        => api.post('/admin/pdf/catalog', data, { responseType: 'blob' });
 export const adminTZPdf         = (id, type)    => api.get(`/admin/pdf/tz/${id}/${type}`, { responseType: 'blob' });
+export const adminUploadPrices  = (file, type)  => {
+  const fd = new FormData();
+  fd.append('file', file);
+  return api.post(`/admin/upload-prices?type=${type}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
 export const adminUploadStock   = (file)        => {
   const fd = new FormData();
   fd.append('file', file);

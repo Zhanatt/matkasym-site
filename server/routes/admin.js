@@ -765,6 +765,48 @@ router.post('/upload-stock', admin, upload.single('file'), async (req, res) => {
   }
 });
 
+// ── UPLOAD PRICE LIST ────────────────────────────────────────────────────────
+// POST /api/admin/upload-prices?type=retail|wholesale|dealer|cost
+router.post('/upload-prices', admin, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+
+  const type = req.query.type || 'retail';
+  const fieldMap = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer', cost: 'priceCost' };
+  const field = fieldMap[type];
+  if (!field) return res.status(400).json({ error: 'Неверный тип цены' });
+
+  try {
+    const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    // col 3 = name, col 32 = price, data from row 6
+    const priceMap = new Map();
+    for (let i = 6; i < rows.length; i++) {
+      const row   = rows[i];
+      const name  = String(row[3] || '').trim();
+      const price = Number(row[32]);
+      if (!name || isNaN(price) || price <= 0) continue;
+      priceMap.set(normName(name), Math.round(price));
+    }
+
+    const products = await Product.find({});
+    let matched = 0, skipped = 0;
+    for (const p of products) {
+      const key   = normName(p.fullName || p.name || '');
+      const price = priceMap.get(key);
+      if (price === undefined) { skipped++; continue; }
+      await Product.updateOne({ _id: p._id }, { $set: { [field]: price } });
+      matched++;
+    }
+
+    console.log(`[upload-prices] type=${type} field=${field} matched=${matched} skipped=${skipped}`);
+    res.json({ success: true, type, field, matched, skipped });
+  } catch (e) {
+    res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
+  }
+});
+
 // ── SYNC STOCK FROM 1C (PowerShell на wins1 отправляет сюда данные) ──────────
 const SYNC_KEY = process.env.SYNC_API_KEY || 'matkasym-sync-2026';
 
