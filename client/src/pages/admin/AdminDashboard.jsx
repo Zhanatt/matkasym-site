@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices } from '../../api/index';
+import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
 function StatCard({ label, value, sub, red, green, to, icon }) {
@@ -82,7 +82,8 @@ export default function AdminDashboard() {
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
   const [priceLoading,  setPriceLoading]  = useState(null);
-  const [uploadProgress, setUploadProgress] = useState({}); // { stock: 0-100, retail: 0-100, wholesale: 0-100 }
+  const [photoLoading,  setPhotoLoading]  = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({});
 
   useEffect(() => {
     adminStats().then(r => setStats(r.data)).catch(() => {});
@@ -154,6 +155,38 @@ export default function AdminDashboard() {
     }
   };
 
+  const handlePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setPhotoLoading(true);
+    setProgress('photos', 0);
+    setSyncResult(null);
+    try {
+      const r = await adminUploadPhotos(files, pct => setProgress('photos', pct));
+      setSyncResult({ ok: true, msg: `✅ Фото загружены — совпало: ${r.data.matched}, не найдено: ${r.data.notFound}, всего: ${r.data.total}` });
+      if (r.data.excelBase64) {
+        const binary = atob(r.data.excelBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `фото_не_найдены_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка загрузки' });
+    } finally {
+      setPhotoLoading(false);
+      setProgress('photos', 0);
+      e.target.value = '';
+    }
+  };
+
   const PREVIEW = 5;
   const liquidPreview = showAllLiquid ? liquidItems : liquidItems.slice(0, PREVIEW);
 
@@ -220,15 +253,16 @@ export default function AdminDashboard() {
             Все товары
           </Link>
           {canEdit && [
-            { key: 'stock',     label: '📥 Остатки из 1С',   color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading,             onChange: handleStockUpload },
-            { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail') },
-            { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale') },
-          ].map(({ key, label, color, bg, disabled, onChange }) => {
+            { key: 'stock',     label: '📥 Остатки из 1С',   color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading,             onChange: handleStockUpload,                         accept: '.xlsx' },
+            { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail'),        accept: '.xlsx' },
+            { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale'),     accept: '.xlsx' },
+            { key: 'photos',    label: '🖼 Фото',             color: '#7b2d8b', bg: '#f8e8ff', disabled: photoLoading,            onChange: handlePhotoUpload,                          accept: 'image/*', multiple: true },
+          ].map(({ key, label, color, bg, disabled, onChange, accept, multiple }) => {
             const pct = uploadProgress[key] || 0;
-            const active = key === 'stock' ? syncLoading : priceLoading === key;
+            const active = key === 'stock' ? syncLoading : key === 'photos' ? photoLoading : priceLoading === key;
             return (
               <label key={key} style={{ position: 'relative', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px 18px', borderRadius: 8, cursor: disabled ? 'wait' : 'pointer', border: `1.5px solid ${color}`, color, fontWeight: 700, fontSize: 14, minWidth: 160, background: '#fff', userSelect: 'none' }}>
-                <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={onChange} disabled={disabled} />
+                <input type="file" accept={accept} multiple={multiple} style={{ display: 'none' }} onChange={onChange} disabled={disabled} />
                 {/* progress fill */}
                 {active && (
                   <span style={{ position: 'absolute', inset: 0, background: bg, width: `${pct}%`, transition: 'width .2s', borderRadius: 6 }} />

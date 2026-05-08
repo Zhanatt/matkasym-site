@@ -74,5 +74,12 @@ export const adminUploadStock   = (file, onProgress)        => {
     onUploadProgress: e => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
   });
 };
+export const adminUploadPhotos  = (files, onProgress)       => {
+  const fd = new FormData();
+  for (const f of files) fd.append('files', f);
+  return api.post('/admin/upload-photos', fd, {
+    onUploadProgress: e => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
+  });
+};
 
 export default api;

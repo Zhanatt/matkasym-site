@@ -834,6 +834,74 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
   }
 });
 
+// ── BULK PHOTO UPLOAD ────────────────────────────────────────────────────────
+// POST /api/admin/upload-photos  (multipart: field "files", multiple images)
+router.post('/upload-photos', editor, upload.array('files', 500), async (req, res) => {
+  if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'Файлы не загружены' });
+
+  try {
+    const products = await Product.find({}, '_id name fullName sku images');
+
+    const bySkuMap  = new Map();
+    const byNameMap = new Map();
+    for (const p of products) {
+      if (p.sku) bySkuMap.set(p.sku.trim().toLowerCase(), p);
+      const key = normName(p.fullName || p.name || '');
+      if (key) byNameMap.set(key, p);
+    }
+
+    const uploadOne = (buf, mime, publicId) => new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'matkasym', public_id: publicId, overwrite: true, resource_type: 'image' },
+        (err, r) => err ? reject(err) : resolve(r)
+      );
+      stream.end(buf);
+    });
+
+    let matched = 0;
+    const notFoundRows = [];
+    const ops = [];
+
+    // Process in batches of 5 to avoid Cloudinary rate limits
+    const BATCH = 5;
+    for (let i = 0; i < req.files.length; i += BATCH) {
+      const batch = req.files.slice(i, i + BATCH);
+      await Promise.all(batch.map(async file => {
+        const baseName = path.basename(file.originalname, path.extname(file.originalname)).trim();
+        const product  = bySkuMap.get(baseName.toLowerCase()) || byNameMap.get(normName(baseName));
+
+        if (!product) {
+          notFoundRows.push({ 'Файл': file.originalname, 'Причина': 'Товар не найден в БД' });
+          return;
+        }
+
+        try {
+          const result = await uploadOne(file.buffer, file.mimetype, `product_${product._id}`);
+          ops.push({ updateOne: { filter: { _id: product._id }, update: { $set: { images: [result.secure_url] } } } });
+          matched++;
+        } catch (e) {
+          notFoundRows.push({ 'Файл': file.originalname, 'Причина': 'Ошибка Cloudinary: ' + e.message });
+        }
+      }));
+    }
+
+    if (ops.length) await Product.bulkWrite(ops, { ordered: false });
+
+    let excelBase64 = null;
+    if (notFoundRows.length > 0) {
+      const wb2 = xlsx.utils.book_new();
+      const ws2 = xlsx.utils.json_to_sheet(notFoundRows);
+      xlsx.utils.book_append_sheet(wb2, ws2, 'Не найдены');
+      excelBase64 = xlsx.write(wb2, { type: 'base64', bookType: 'xlsx' });
+    }
+
+    console.log(`[upload-photos] matched=${matched} notFound=${notFoundRows.length} total=${req.files.length}`);
+    res.json({ success: true, matched, notFound: notFoundRows.length, total: req.files.length, excelBase64 });
+  } catch (e) {
+    res.status(500).json({ error: 'Ошибка: ' + e.message });
+  }
+});
+
 // ── SYNC STOCK FROM 1C (PowerShell на wins1 отправляет сюда данные) ──────────
 const SYNC_KEY = process.env.SYNC_API_KEY || 'matkasym-sync-2026';
 
