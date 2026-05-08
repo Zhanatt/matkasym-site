@@ -710,4 +710,56 @@ function getPrice(p, mode) {
   return null;
 }
 
+// ── SYNC STOCK FROM 1C (PowerShell на wins1 отправляет сюда данные) ──────────
+const SYNC_KEY = process.env.SYNC_API_KEY || 'matkasym-sync-2026';
+
+function normName(s = '') {
+  return s.toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
+}
+function toInt(v) {
+  if (v === undefined || v === null || v === '') return 0;
+  const n = Number(v);
+  return isNaN(n) ? 0 : Math.max(0, Math.floor(n));
+}
+
+// POST /api/admin/sync-stock
+// Body: { apiKey?, stocks: [{name, osnovnoy, kommercheskiy}] }
+// Header: x-api-key: <SYNC_KEY>
+router.post('/sync-stock', async (req, res) => {
+  const key = req.headers['x-api-key'] || req.body.apiKey;
+  if (key !== SYNC_KEY) return res.status(401).json({ error: 'Неверный API ключ' });
+
+  const { stocks } = req.body;
+  if (!Array.isArray(stocks) || stocks.length === 0) {
+    return res.status(400).json({ error: 'stocks должен быть непустым массивом' });
+  }
+
+  // Build map: norm(name) → stock
+  const stockMap = new Map();
+  for (const item of stocks) {
+    const name = String(item.name || '').trim();
+    if (!name) continue;
+    const osnNum  = toInt(item.osnovnoy);
+    const kommRaw = Number(item.kommercheskiy);
+    const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
+    stockMap.set(normName(name), osnNum + kommNum);
+  }
+
+  const products = await Product.find({});
+  let matched = 0, zeroed = 0;
+
+  for (const p of products) {
+    const key2 = normName(p.fullName || p.name || '');
+    const stock = stockMap.has(key2) ? stockMap.get(key2) : 0;
+    const inStock = stock > 0;
+    await Product.updateOne({ _id: p._id }, {
+      $set: { stock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' }
+    });
+    if (stockMap.has(key2)) matched++; else zeroed++;
+  }
+
+  console.log(`[sync-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
+  res.json({ success: true, matched, zeroed, total: matched + zeroed, date: new Date().toISOString() });
+});
+
 module.exports = router;
