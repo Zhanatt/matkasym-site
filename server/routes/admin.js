@@ -733,15 +733,21 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
+    // Auto-detect column layout (new compact format: col3+col5; old wide format: col4+col19)
+    const hr6 = rows[6] || [];
+    const isNewFmt = String(hr6[3] || '').toLowerCase().includes('основной');
+    const colOsn   = isNewFmt ? 3 : 4;
+    const colKomm  = isNewFmt ? 5 : 19;
+    const dataStart = isNewFmt ? 8 : 7;
+
     const stockMap = new Map();
-    for (let i = 7; i < rows.length; i++) {
+    for (let i = dataStart; i < rows.length; i++) {
       const row  = rows[i];
       const name = String(row[0] || '').trim();
       if (!name) continue;
-      if (row[4] === '' && row[24] === '') continue; // группа
 
-      const osnNum  = toInt(row[4]);
-      const kommRaw = Number(row[19]);
+      const osnNum  = toInt(row[colOsn]);
+      const kommRaw = Number(row[colKomm]);
       const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
       stockMap.set(normName(name), osnNum + kommNum);
     }
@@ -757,7 +763,7 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
 
-    console.log(`[upload-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
+    console.log(`[upload-stock] ${new Date().toISOString()} fmt=${isNewFmt?'new':'old'} colOsn=${colOsn} colKomm=${colKomm} matched=${matched} zeroed=${zeroed}`);
     res.json({ success: true, matched, zeroed, total: matched + zeroed });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
