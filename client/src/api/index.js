@@ -63,12 +63,12 @@ export const adminTZPdf         = (id, type)    => api.get(`/admin/pdf/tz/${id}/
 export const adminUploadPrices  = (file, type)  => {
   const fd = new FormData();
   fd.append('file', file);
-  return api.post(`/admin/upload-prices?type=${type}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  return api.post(`/admin/upload-prices?type=${type}`, fd);
 };
 export const adminUploadStock   = (file)        => {
   const fd = new FormData();
   fd.append('file', file);
-  return api.post('/admin/upload-stock', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  return api.post('/admin/upload-stock', fd);
 };
 
 export default api;
