@@ -725,7 +725,7 @@ function toInt(v) {
 }
 
 // POST /api/admin/upload-stock  (multipart: field "file")
-router.post('/upload-stock', admin, upload.single('file'), async (req, res) => {
+router.post('/upload-stock', editor, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
 
   try {
@@ -767,7 +767,7 @@ router.post('/upload-stock', admin, upload.single('file'), async (req, res) => {
 
 // ── UPLOAD PRICE LIST ────────────────────────────────────────────────────────
 // POST /api/admin/upload-prices?type=retail|wholesale|dealer|cost
-router.post('/upload-prices', admin, upload.single('file'), async (req, res) => {
+router.post('/upload-prices', editor, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
 
   const type = req.query.type || 'retail';
