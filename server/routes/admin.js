@@ -746,17 +746,16 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       stockMap.set(normName(name), osnNum + kommNum);
     }
 
-    const products = await Product.find({});
+    const products = await Product.find({}, '_id fullName name');
     let matched = 0, zeroed = 0;
-    for (const p of products) {
-      const key   = normName(p.fullName || p.name || '');
-      const stock = stockMap.has(key) ? stockMap.get(key) : 0;
+    const ops = products.map(p => {
+      const key     = normName(p.fullName || p.name || '');
+      const stock   = stockMap.has(key) ? stockMap.get(key) : 0;
       const inStock = stock > 0;
-      await Product.updateOne({ _id: p._id }, {
-        $set: { stock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' }
-      });
       if (stockMap.has(key)) matched++; else zeroed++;
-    }
+      return { updateOne: { filter: { _id: p._id }, update: { $set: { stock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' } } } };
+    });
+    if (ops.length) await Product.bulkWrite(ops, { ordered: false });
 
     console.log(`[upload-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
     res.json({ success: true, matched, zeroed, total: matched + zeroed });
@@ -790,15 +789,17 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
       priceMap.set(normName(name), Math.round(price));
     }
 
-    const products = await Product.find({});
+    const products = await Product.find({}, '_id fullName name');
     let matched = 0, skipped = 0;
+    const ops = [];
     for (const p of products) {
       const key   = normName(p.fullName || p.name || '');
       const price = priceMap.get(key);
       if (price === undefined) { skipped++; continue; }
-      await Product.updateOne({ _id: p._id }, { $set: { [field]: price } });
+      ops.push({ updateOne: { filter: { _id: p._id }, update: { $set: { [field]: price } } } });
       matched++;
     }
+    if (ops.length) await Product.bulkWrite(ops, { ordered: false });
 
     console.log(`[upload-prices] type=${type} field=${field} matched=${matched} skipped=${skipped}`);
     res.json({ success: true, type, field, matched, skipped });
