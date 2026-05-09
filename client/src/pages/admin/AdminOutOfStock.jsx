@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { adminGetProducts } from '../../api';
 import AdminProductModal from './AdminProductModal';
 import { downloadCatalogPDF } from './CatalogPDF';
+import AdminProductCard from './AdminProductCard';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -130,74 +131,17 @@ export default function AdminOutOfStock() {
         </div>
       ) : viewMode === 'list' ? (
           <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
-            {models.map(([name, variants]) => {
-              const primary = variants[0];
-              const img     = primary.images?.[0] || NO_PHOTO;
-              const price   = getPrice(primary, priceMode);
-              return (
-                <div key={name} onClick={() => setDetailProduct(primary)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px',
-                    borderBottom: '1px solid #f0f0f0', background: '#fff', cursor: 'pointer' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                >
-                  <img src={img} alt={name}
-                    style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
-                    onError={e => { e.target.src = NO_PHOTO; }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {primary.fullName || name}
-                    </div>
-                    {primary.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{primary.sku}</div>}
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#c0392b', flexShrink: 0 }}>
-                    {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
-                  </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-                    background: '#fce8e8', color: '#c00', flexShrink: 0 }}>
-                    Нет
-                  </div>
-                </div>
-              );
-            })}
+            {models.map(([name, variants]) => (
+              <AdminProductCard key={name} product={variants[0]} priceMode={priceMode}
+                accent="#c0392b" onOpen={setDetailProduct} viewMode="list" />
+            ))}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, overflowY: 'auto', paddingBottom: 24 }}>
-            {models.map(([name, variants]) => {
-              const primary = variants[0];
-              const img     = primary.images?.[0] || NO_PHOTO;
-              const price   = getPrice(primary, priceMode);
-              return (
-                <div key={name} onClick={() => setDetailProduct(primary)}
-                  style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
-                    background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                    cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
-                >
-                  <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8' }}>
-                    <img src={img} alt={name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={e => { e.target.src = NO_PHOTO; }} />
-                  </div>
-                  <div style={{ padding: '10px 11px' }}>
-                    {primary.sku && <div style={{ fontSize: 9, color: '#bbb', marginBottom: 3 }}>{primary.sku}</div>}
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                      {primary.fullName || name}
-                    </div>
-                    {variants.length > 1 && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#c0392b' }}>
-                        {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
-                      </div>
-                      <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-                        background: '#fce8e8', color: '#c00' }}>Нет</div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, paddingBottom: 24 }}>
+            {models.map(([name, variants]) => (
+              <AdminProductCard key={name} product={variants[0]} priceMode={priceMode}
+                accent="#c0392b" onOpen={setDetailProduct} viewMode="grid" />
+            ))}
           </div>
         )}
 
