@@ -356,7 +356,8 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
                     {fm.instagram && <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{fm.instagram}</div>}
                     <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {fm.sets.map(s => (
-                        <div key={s} style={{ fontSize: 11, color: fm.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div key={s} onClick={() => setCatalog(s)}
+                          style={{ fontSize: 11, color: fm.color, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
                           <span style={{ width: 4, height: 4, borderRadius: '50%', background: fm.color, flexShrink: 0, display: 'inline-block' }} />
                           {toTitle(s)}
                         </div>
