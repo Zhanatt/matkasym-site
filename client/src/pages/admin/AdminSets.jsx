@@ -31,6 +31,12 @@ const SET_NAMES = {
   'bilim-kelechek':  'Bilim Kelechek',
   'kooz-koopsuzduk': 'Kooz Koopsuzduk',
   'uzak-koldon':     'Uzak Koldon',
+  'nelikvid':        'Неликвид',
+  'samples':         'Образцы',
+  'small-batch':     'Малосерийные',
+  'misc':            'Разное',
+  'equipment':       'Оборудование и сырьё',
+  'other':           'Прочее',
 };
 
 const EXCLUDE = new Set(['nelikvid', 'samples', 'small-batch', 'misc', 'equipment', 'other']);
@@ -971,16 +977,21 @@ export default function AdminSets() {
         ? <div style={{ color: '#aaa', fontSize: 14 }}>Загрузка…</div>
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {Object.entries(BRAND_META).map(([key, meta]) => (
-              <BrandSection
-                key={key}
-                brandKey={key}
-                sets={meta.staticSets || sets[key] || []}
-                accent={meta.accent}
-                subItems={SET_SUB_ITEMS}
-              />
-            ))}
-            <ProchiyeSection />
+            {Object.entries(BRAND_META).map(([key, meta]) => {
+              const baseSets = meta.staticSets || sets[key] || [];
+              const allSets  = key === 'matkasym-home'
+                ? [...baseSets, ...PROCHIYE.map(p => p.slug)]
+                : baseSets;
+              return (
+                <BrandSection
+                  key={key}
+                  brandKey={key}
+                  sets={allSets}
+                  accent={meta.accent}
+                  subItems={SET_SUB_ITEMS}
+                />
+              );
+            })}
           </div>
         )
       }
