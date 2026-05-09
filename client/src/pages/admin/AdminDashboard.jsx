@@ -243,9 +243,6 @@ export default function AdminDashboard() {
               + Добавить товар
             </Link>
           )}
-          <Link to="/admin/products" className="btn btn-outline">
-            Все товары
-          </Link>
           {canEdit && [
             { key: 'stock',     label: '📥 Остатки из 1С',   color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading,             onChange: handleStockUpload,                         accept: '.xlsx' },
             { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail'),        accept: '.xlsx' },
