@@ -4,6 +4,57 @@ import { adminGetProducts } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
+const CATEGORY_NAMES = {
+  'ac-basket':              'Корзина для кондиционера',
+  'ac-mount':               'Кронштейн для кондиционера',
+  'antenna-indoor':         'Антенна комнатная',
+  'antenna-outdoor':        'Антенна наружная',
+  'bath-accessories':       'Аксессуары для ванной',
+  'bath-mat':               'Коврик для ванной',
+  'bbq-grill':              'Мангал / Гриль',
+  'cleaning-set':           'Набор для уборки',
+  'clothes-dryer':          'Сушилка для белья',
+  'electric-panel-floor':   'Электропанель напольная',
+  'electric-panel-gas':     'Электропанель газовая',
+  'electric-panel-mount':   'Электропанель настенная',
+  'electric-panel-outdoor': 'Электропанель уличная',
+  'electric-panel-plumbing':'Электропанель сантехника',
+  'floor-hanger':           'Напольная вешалка',
+  'hanger-clip':            'Зажим для вешалки',
+  'hook':                   'Крючок',
+  'industrial-shelf':       'Стеллаж промышленный',
+  'ironing-board':          'Гладильная доска',
+  'ironing-board-ext':      'Гладильная доска расширенная',
+  'ladder':                 'Лестница',
+  'laundry-basket':         'Корзина для белья',
+  'mirror-floor':           'Зеркало напольное',
+  'mop':                    'Швабра',
+  'organizer-kitchen':      'Органайзер кухонный',
+  'other':                  'Другое',
+  'school-desk':            'Парта школьная',
+  'shelf-corner':           'Угловая полка',
+  'shelf-flowers':          'Полка для цветов',
+  'shelf-toilet':           'Полка для туалета',
+  'shelf-washer':           'Полка для стиральной машины',
+  'shoe-bench':             'Банкетка для обуви',
+  'shoe-rack':              'Полка для обуви',
+  'storage-cabinet':        'Шкаф для хранения',
+  'storage-tumba':          'Тумба',
+  'street-bench':           'Уличная скамейка',
+  'street-light':           'Уличный фонарь',
+  'toilet-brush':           'Ёршик для туалета',
+  'tv-mount':               'Кронштейн для телевизора',
+  'wall-hanger':            'Настенная вешалка',
+  'wardrobe-rack':          'Стойка для одежды',
+  'waste-bin':              'Мусорное ведро',
+  'waste-bin-eco':          'Мусорное ведро эко',
+  'waste-container':        'Мусорный контейнер',
+};
+
+function catLabel(slug) {
+  return CATEGORY_NAMES[slug] || slug;
+}
+
 const SET_NAMES = {
   'önügüü-set':      'Önügüü Set',
   'dayar-tütük':     'Dayar Tütük',
@@ -145,11 +196,28 @@ export default function AdminAllCatalog() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Unique values for filter dropdowns
-  const brands     = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
-  const sets       = useMemo(() => [...new Set(products.map(p => p.set).filter(Boolean))].sort(), [products]);
-  const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products]);
-  const statuses   = useMemo(() => [...new Set(products.map(p => p.productStatus).filter(Boolean))].sort(), [products]);
+  // Cascading filter options
+  const brands = useMemo(() =>
+    [...new Set(products.map(p => p.brand).filter(Boolean))].sort(),
+  [products]);
+
+  const availableSets = useMemo(() => {
+    const base = fBrand ? products.filter(p => p.brand === fBrand) : products;
+    return [...new Set(base.map(p => p.set).filter(Boolean))]
+      .sort((a, b) => (SET_NAMES[a] || a).localeCompare(SET_NAMES[b] || b, 'ru'));
+  }, [products, fBrand]);
+
+  const availableCategories = useMemo(() => {
+    let base = products;
+    if (fBrand) base = base.filter(p => p.brand === fBrand);
+    if (fSet)   base = base.filter(p => p.set === fSet);
+    return [...new Set(base.map(p => p.category).filter(Boolean))]
+      .sort((a, b) => catLabel(a).localeCompare(catLabel(b), 'ru'));
+  }, [products, fBrand, fSet]);
+
+  const statuses = useMemo(() =>
+    [...new Set(products.map(p => p.productStatus).filter(Boolean))].sort(),
+  [products]);
 
   const activeFilters = [fBrand, fSet, fCategory, fStock, fStatus, sortStock].filter(Boolean).length;
 
@@ -222,19 +290,19 @@ export default function AdminAllCatalog() {
 
         {/* Row 2: filters */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
-          <select value={fBrand} onChange={e => setFBrand(e.target.value)} style={SEL}>
+          <select value={fBrand} onChange={e => { setFBrand(e.target.value); setFSet(''); setFCategory(''); }} style={SEL}>
             <option value="">Все бренды</option>
             {brands.map(b => <option key={b} value={b}>{BRAND_META[b]?.label || b}</option>)}
           </select>
 
-          <select value={fSet} onChange={e => setFSet(e.target.value)} style={SEL}>
+          <select value={fSet} onChange={e => { setFSet(e.target.value); setFCategory(''); }} style={SEL}>
             <option value="">Все сеты</option>
-            {sets.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
+            {availableSets.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
           </select>
 
           <select value={fCategory} onChange={e => setFCategory(e.target.value)} style={SEL}>
             <option value="">Все категории</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            {availableCategories.map(c => <option key={c} value={c}>{catLabel(c)}</option>)}
           </select>
 
           <select value={fStock} onChange={e => setFStock(e.target.value)} style={SEL}>
