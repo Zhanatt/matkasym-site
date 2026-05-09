@@ -660,7 +660,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const [loading,   setLoading]           = useState(true);
   const [pdfLoading, setPdfLoading]       = useState(false);
   const [detailProduct, setDetailProduct] = useState(null);
+  const [viewMode,  setViewMode]  = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
   const isMobile = useIsMobile();
+
+  const toggleView = () => {
+    const next = viewMode === 'grid' ? 'list' : 'grid';
+    setViewMode(next);
+    localStorage.setItem('adminCatalogView', next);
+  };
 
   // Lock body scroll while panel is open
   useEffect(() => {
@@ -755,6 +762,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             ))}
           </div>
 
+          {/* View toggle */}
+          <button onClick={toggleView} title={viewMode === 'grid' ? 'Список' : 'Сетка'} style={{
+            padding: '5px 10px', borderRadius: 6, border: '1.5px solid #e0e0e0',
+            background: '#fff', cursor: 'pointer', fontSize: 16, color: '#555', lineHeight: 1, flexShrink: 0,
+          }}>
+            {viewMode === 'grid' ? '☰' : '⊞'}
+          </button>
+
           {/* PDF button */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <button onClick={() => setShowPdf(s => !s)} disabled={pdfLoading}
@@ -802,12 +817,45 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
           ) : models.length === 0 ? (
             <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Нет товаров</div>
+          ) : viewMode === 'list' ? (
+            <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
+              {models.map(([name, variants]) => {
+                const primary  = variants[0];
+                const img      = primary.images?.[0] || NO_PHOTO;
+                const price    = getPrice(primary, priceMode);
+                const hasStock = primary.stock > 0 || primary.inStock;
+                const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
+                return (
+                  <div key={name} onClick={() => setDetailProduct(primary)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px',
+                      borderBottom: '1px solid #f0f0f0', background: '#fff', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                  >
+                    <img src={img} alt={name}
+                      style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+                      onError={e => { e.target.src = NO_PHOTO; }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {name}
+                      </div>
+                      {primary.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{primary.sku}</div>}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: accent, flexShrink: 0 }}>
+                      {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
+                      background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+                      {stockLabel}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isMobile
-                ? 'repeat(2, 1fr)'
-                : 'repeat(auto-fill, minmax(200px, 1fr))',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))',
               gap: isMobile ? 10 : 16,
             }}>
               {models.map(([name, variants]) => {
@@ -815,36 +863,26 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 const img        = primary.images?.[0] || NO_PHOTO;
                 const price      = getPrice(primary, priceMode);
                 const hasStock   = primary.stock > 0 || primary.inStock;
-                const stockLabel = primary.stock > 0
-                  ? `${primary.stock} шт.`
-                  : (primary.inStock ? 'Есть' : 'Нет');
+                const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
                 return (
-                  <div key={name}
-                    onClick={() => setDetailProduct(primary)}
-                    style={{
-                      border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
+                  <div key={name} onClick={() => setDetailProduct(primary)}
+                    style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                       background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                      cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
-                    }}
+                      cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8' }}>
                       <img src={img} alt={name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={e => { e.target.src = NO_PHOTO; }}
-                      />
+                        onError={e => { e.target.src = NO_PHOTO; }} />
                     </div>
                     <div style={{ padding: '10px 11px' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
                         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {name}
                       </div>
-                      {variants.length > 1 && (
-                        <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>
-                          {variants.length} вариантов
-                        </div>
-                      )}
+                      {variants.length > 1 && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
                       {primary.specs?.slice(0, 2).map(s => (
                         <div key={s.key} style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.2 }}>
                           <span style={{ color: '#bbb' }}>{s.key}:</span> {s.value}
@@ -852,24 +890,17 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       ))}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
                         <div>
-                          <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>
-                            {priceLabel}
-                          </div>
+                          <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
                           <div style={{ fontSize: 14, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
                             {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
                           </div>
                         </div>
-                        <div style={{
-                          fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-                          background: hasStock ? '#e8f5e9' : '#fce8e8',
-                          color:      hasStock ? '#2d7a3a' : '#c00',
-                        }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
+                          background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
                           {stockLabel}
                         </div>
                       </div>
-                      {primary.sku && (
-                        <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>
-                      )}
+                      {primary.sku && <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>}
                     </div>
                   </div>
                 );

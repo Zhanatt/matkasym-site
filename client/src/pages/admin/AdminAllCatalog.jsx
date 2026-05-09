@@ -121,20 +121,46 @@ const SEL = {
   color: '#333', fontWeight: 500,
 };
 
-function ProductCard({ product, priceMode, accent, navigate }) {
+function ProductCard({ product, priceMode, accent, navigate, viewMode = 'grid' }) {
   const img        = product.images?.[0] || NO_PHOTO;
   const price      = getPrice(product, priceMode);
   const hasStock   = product.stock > 0 || product.inStock;
   const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
+  const onClick    = () => navigate(`/admin/products/${product._id}`);
+
+  if (viewMode === 'list') {
+    return (
+      <div onClick={onClick}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px',
+          borderBottom: '1px solid #f0f0f0', background: '#fff', cursor: 'pointer' }}
+        onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
+        onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+      >
+        <img src={img} alt={product.name}
+          style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+          onError={e => { e.target.src = NO_PHOTO; }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {product.name}
+          </div>
+          {product.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{product.sku}</div>}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 800, color: accent, flexShrink: 0 }}>
+          {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+        </div>
+        <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
+          background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+          {stockLabel}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      onClick={() => navigate(`/admin/products/${product._id}`)}
-      style={{
-        border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
+    <div onClick={onClick}
+      style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
         background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-        cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
-      }}
+        cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
     >
@@ -144,29 +170,24 @@ function ProductCard({ product, priceMode, accent, navigate }) {
           onError={e => { e.target.src = NO_PHOTO; }}
         />
         {product.sku && (
-          <div style={{
-            position: 'absolute', bottom: 6, left: 6,
+          <div style={{ position: 'absolute', bottom: 6, left: 6,
             background: 'rgba(255,255,255,0.92)', borderRadius: 4,
-            fontSize: 9, fontWeight: 700, padding: '2px 5px', color: '#555',
-          }}>{product.sku}</div>
+            fontSize: 9, fontWeight: 700, padding: '2px 5px', color: '#555' }}>
+            {product.sku}
+          </div>
         )}
       </div>
       <div style={{ padding: '10px 11px' }}>
-        <div style={{
-          fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-        }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {product.name}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: accent }}>
             {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
           </div>
-          <div style={{
-            fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-            background: hasStock ? '#e8f5e9' : '#fce8e8',
-            color:      hasStock ? '#2d7a3a' : '#c00',
-          }}>
+          <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
+            background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
             {stockLabel}
           </div>
         </div>
@@ -181,6 +202,13 @@ export default function AdminAllCatalog() {
   const [loading,   setLoading]   = useState(true);
   const [priceMode, setPriceMode] = useState('retail');
   const [search,    setSearch]    = useState('');
+  const [viewMode,  setViewMode]  = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
+
+  const toggleView = () => {
+    const next = viewMode === 'grid' ? 'list' : 'grid';
+    setViewMode(next);
+    localStorage.setItem('adminCatalogView', next);
+  };
 
   // Filters
   const [fBrand,    setFBrand]    = useState('');
@@ -276,6 +304,12 @@ export default function AdminAllCatalog() {
               }}>{m.label}</button>
             ))}
           </div>
+          <button onClick={toggleView} title={viewMode === 'grid' ? 'Список' : 'Сетка'} style={{
+            padding: '5px 10px', borderRadius: 6, border: '1.5px solid #e0e0e0',
+            background: '#fff', cursor: 'pointer', fontSize: 16, color: '#555', lineHeight: 1,
+          }}>
+            {viewMode === 'grid' ? '☰' : '⊞'}
+          </button>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Поиск…"
@@ -355,11 +389,19 @@ export default function AdminAllCatalog() {
                         <span>{setLabel(setSlug)}</span>
                         <span style={{ fontWeight: 400, fontSize: 11, color: '#aaa' }}>{prods.length} тов.</span>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
-                        {Object.entries(grouped).map(([name, variants]) => (
-                          <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} navigate={navigate} />
-                        ))}
-                      </div>
+                      {viewMode === 'list' ? (
+                        <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
+                          {Object.entries(grouped).map(([name, variants]) => (
+                            <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} navigate={navigate} viewMode="list" />
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+                          {Object.entries(grouped).map(([name, variants]) => (
+                            <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} navigate={navigate} viewMode="grid" />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
