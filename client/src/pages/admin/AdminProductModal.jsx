@@ -98,7 +98,7 @@ export default function AdminProductModal({ product, onClose }) {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {canEdit && (
-                <button onClick={() => navigate(`/admin/products/${product._id}/edit`)}
+                <button onClick={() => { document.body.style.overflow = ''; navigate(`/admin/products/${product._id}/edit`); }}
                   style={{ padding: '7px 16px', borderRadius: 8, background: '#111', color: '#fff',
                     border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   ✏️ Редактировать

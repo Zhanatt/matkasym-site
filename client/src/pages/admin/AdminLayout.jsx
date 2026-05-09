@@ -19,6 +19,11 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
+  // Reset body overflow on every navigation (guard against modal scroll-lock leaking)
+  useEffect(() => {
+    document.body.style.overflow = '';
+  }, [location.pathname]);
+
   useEffect(() => {
     if (!user) return;
     const load = () => adminStats().then(r => setPendingCount(r.data.pending || 0)).catch(() => {});
