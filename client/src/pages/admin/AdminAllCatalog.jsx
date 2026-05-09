@@ -236,22 +236,17 @@ export default function AdminAllCatalog() {
     return list;
   }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, sortStock]);
 
-  // Group by brand → set
-  const { tree, noBrand } = useMemo(() => {
-    const tree = {}, noBrand = {};
+  // Group by brand → set (no brand → HOME)
+  const { tree } = useMemo(() => {
+    const tree = {};
     filtered.forEach(p => {
-      const brand = p.brand || '';
+      const brand = p.brand || 'matkasym-home';
       const set   = p.set   || 'other';
-      if (brand) {
-        if (!tree[brand]) tree[brand] = {};
-        if (!tree[brand][set]) tree[brand][set] = [];
-        tree[brand][set].push(p);
-      } else {
-        if (!noBrand[set]) noBrand[set] = [];
-        noBrand[set].push(p);
-      }
+      if (!tree[brand]) tree[brand] = {};
+      if (!tree[brand][set]) tree[brand][set] = [];
+      tree[brand][set].push(p);
     });
-    return { tree, noBrand };
+    return { tree };
   }, [filtered]);
 
   const brandOrder = ['matkasym-home', 'matkasym-shaar', 'matkasym-kyzmat'];
@@ -372,30 +367,6 @@ export default function AdminAllCatalog() {
             );
           })}
 
-          {Object.keys(noBrand).length > 0 && (
-            <div style={{ marginBottom: 40 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, borderLeft: '4px solid #888', paddingLeft: 12 }}>
-                <span style={{ fontWeight: 900, fontSize: 16, color: '#888', letterSpacing: 1 }}>ПРОЧИЕ</span>
-              </div>
-              {Object.entries(noBrand).sort(([a], [b]) => a.localeCompare(b)).map(([setSlug, prods]) => {
-                const grouped = {};
-                prods.forEach(p => { const k = p.name || p._id; if (!grouped[k]) grouped[k] = []; grouped[k].push(p); });
-                return (
-                  <div key={setSlug} style={{ marginBottom: 28 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#666', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span>{setLabel(setSlug)}</span>
-                      <span style={{ fontWeight: 400, fontSize: 11, color: '#aaa' }}>{prods.length} тов.</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
-                      {Object.entries(grouped).map(([name, variants]) => (
-                        <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent="#555" navigate={navigate} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
     </div>
