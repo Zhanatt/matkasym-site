@@ -219,12 +219,6 @@ export default function AdminDashboard() {
           icon="⚠️"
           to="/admin/out-of-stock"
         />
-        <StatCard
-          label="Бренды"
-          value={stats?.brands}
-          icon="🏷"
-          to={canEdit ? "/admin/brands" : undefined}
-        />
         {isOwner && (
           <StatCard
             label="Пользователи"
