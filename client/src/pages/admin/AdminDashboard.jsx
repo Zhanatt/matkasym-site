@@ -208,7 +208,7 @@ export default function AdminDashboard() {
           value={stats?.products}
           sub={inStockPct !== null ? `${inStockPct}% в наличии` : undefined}
           icon="📦"
-          to="/admin/products"
+          to="/admin/all-catalog"
         />
         <StatCard
           label="Нет в наличии"
