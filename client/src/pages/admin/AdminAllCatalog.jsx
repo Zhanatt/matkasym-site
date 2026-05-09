@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminGetProducts } from '../../api';
 
@@ -45,6 +45,14 @@ const PRICE_MODES = [
   { key: 'dealer',    label: 'Дил.'  },
 ];
 
+const STATUS_LABELS = {
+  for_sale:       'В продаже',
+  planned:        'В плане',
+  in_development: 'В разработке',
+  improvement:    'На улучшении',
+  discontinued:   'Снят с производства',
+};
+
 function getPrice(p, mode) {
   if (mode === 'retail')    return p.price;
   if (mode === 'wholesale') return p.priceWholesale;
@@ -56,13 +64,15 @@ function setLabel(slug) {
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function brandAccent(brandKey) {
-  return BRAND_META[brandKey]?.accent || '#555';
-}
+const SEL = {
+  padding: '6px 10px', borderRadius: 7, border: '1.5px solid #e0e0e0',
+  fontSize: 12, background: '#fff', cursor: 'pointer', outline: 'none',
+  color: '#333', fontWeight: 500,
+};
 
 function ProductCard({ product, priceMode, accent, navigate }) {
-  const img   = product.images?.[0] || NO_PHOTO;
-  const price = getPrice(product, priceMode);
+  const img        = product.images?.[0] || NO_PHOTO;
+  const price      = getPrice(product, priceMode);
   const hasStock   = product.stock > 0 || product.inStock;
   const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
 
@@ -121,60 +131,78 @@ export default function AdminAllCatalog() {
   const [priceMode, setPriceMode] = useState('retail');
   const [search,    setSearch]    = useState('');
 
+  // Filters
+  const [fBrand,    setFBrand]    = useState('');
+  const [fSet,      setFSet]      = useState('');
+  const [fCategory, setFCategory] = useState('');
+  const [fStock,    setFStock]    = useState(''); // '' | 'in' | 'out'
+  const [fStatus,   setFStatus]   = useState('');
+  const [sortStock, setSortStock] = useState(''); // '' | 'asc' | 'desc'
+
   useEffect(() => {
     adminGetProducts({ limit: 1000 })
       .then(r => setProducts(r.data.products || []))
       .finally(() => setLoading(false));
   }, []);
 
-  const q = search.trim().toLowerCase();
-  const filtered = q
-    ? products.filter(p =>
-        (p.name || '').toLowerCase().includes(q) ||
-        (p.fullName || '').toLowerCase().includes(q) ||
-        (p.sku || '').toLowerCase().includes(q)
-      )
-    : products;
+  // Unique values for filter dropdowns
+  const brands     = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
+  const sets       = useMemo(() => [...new Set(products.map(p => p.set).filter(Boolean))].sort(), [products]);
+  const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products]);
+  const statuses   = useMemo(() => [...new Set(products.map(p => p.productStatus).filter(Boolean))].sort(), [products]);
+
+  const activeFilters = [fBrand, fSet, fCategory, fStock, fStatus, sortStock].filter(Boolean).length;
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = products;
+    if (q)        list = list.filter(p => (p.name || '').toLowerCase().includes(q) || (p.fullName || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q));
+    if (fBrand)   list = list.filter(p => p.brand === fBrand);
+    if (fSet)     list = list.filter(p => p.set === fSet);
+    if (fCategory)list = list.filter(p => p.category === fCategory);
+    if (fStock === 'in')  list = list.filter(p => p.inStock || p.stock > 0);
+    if (fStock === 'out') list = list.filter(p => !p.inStock && !(p.stock > 0));
+    if (fStatus)  list = list.filter(p => p.productStatus === fStatus);
+    if (sortStock === 'asc')  list = [...list].sort((a, b) => (a.stock || 0) - (b.stock || 0));
+    if (sortStock === 'desc') list = [...list].sort((a, b) => (b.stock || 0) - (a.stock || 0));
+    return list;
+  }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, sortStock]);
 
   // Group by brand → set
-  const tree = {}; // { brandKey: { setSlug: [products] } }
-  const noBrand = {}; // { setSlug: [products] }
-
-  filtered.forEach(p => {
-    const brand = p.brand || '';
-    const set   = p.set   || 'other';
-    if (brand) {
-      if (!tree[brand]) tree[brand] = {};
-      if (!tree[brand][set]) tree[brand][set] = [];
-      tree[brand][set].push(p);
-    } else {
-      if (!noBrand[set]) noBrand[set] = [];
-      noBrand[set].push(p);
-    }
-  });
+  const { tree, noBrand } = useMemo(() => {
+    const tree = {}, noBrand = {};
+    filtered.forEach(p => {
+      const brand = p.brand || '';
+      const set   = p.set   || 'other';
+      if (brand) {
+        if (!tree[brand]) tree[brand] = {};
+        if (!tree[brand][set]) tree[brand][set] = [];
+        tree[brand][set].push(p);
+      } else {
+        if (!noBrand[set]) noBrand[set] = [];
+        noBrand[set].push(p);
+      }
+    });
+    return { tree, noBrand };
+  }, [filtered]);
 
   const brandOrder = ['matkasym-home', 'matkasym-shaar', 'matkasym-kyzmat'];
 
+  const resetFilters = () => { setFBrand(''); setFSet(''); setFCategory(''); setFStock(''); setFStatus(''); setSortStock(''); setSearch(''); };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      {/* Sticky header */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 10,
-        background: '#f7f8fa', paddingBottom: 16, marginBottom: 4,
-        borderBottom: '1px solid #eee',
-      }}>
+      {/* Header */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f7f8fa', paddingBottom: 12, marginBottom: 4, borderBottom: '1px solid #eee' }}>
+        {/* Row 1: title + price + search */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingTop: 4 }}>
-          <button
-            onClick={() => navigate(-1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '0 4px', color: '#888' }}
-          >←</button>
+          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '0 4px', color: '#888' }}>←</button>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>📦 Все товары</div>
             <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>
-              {loading ? '…' : `${products.length} товаров`}
+              {loading ? '…' : `${filtered.length} из ${products.length} товаров`}
             </div>
           </div>
-
           <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
             {PRICE_MODES.map(m => (
               <button key={m.key} onClick={() => setPriceMode(m.key)} style={{
@@ -185,82 +213,88 @@ export default function AdminAllCatalog() {
               }}>{m.label}</button>
             ))}
           </div>
-
           <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Поиск…"
-            style={{
-              padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0',
-              fontSize: 13, width: 200, outline: 'none', background: '#fff',
-            }}
+            style={{ padding: '7px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, width: 180, outline: 'none', background: '#fff' }}
           />
+        </div>
+
+        {/* Row 2: filters */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
+          <select value={fBrand} onChange={e => setFBrand(e.target.value)} style={SEL}>
+            <option value="">Все бренды</option>
+            {brands.map(b => <option key={b} value={b}>{BRAND_META[b]?.label || b}</option>)}
+          </select>
+
+          <select value={fSet} onChange={e => setFSet(e.target.value)} style={SEL}>
+            <option value="">Все сеты</option>
+            {sets.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
+          </select>
+
+          <select value={fCategory} onChange={e => setFCategory(e.target.value)} style={SEL}>
+            <option value="">Все категории</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          <select value={fStock} onChange={e => setFStock(e.target.value)} style={SEL}>
+            <option value="">Любой склад</option>
+            <option value="in">В наличии</option>
+            <option value="out">Нет в наличии</option>
+          </select>
+
+          <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={SEL}>
+            <option value="">Все статусы</option>
+            {statuses.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
+          </select>
+
+          <select value={sortStock} onChange={e => setSortStock(e.target.value)} style={SEL}>
+            <option value="">Сортировка склада</option>
+            <option value="desc">Склад: много → мало</option>
+            <option value="asc">Склад: мало → много</option>
+          </select>
+
+          {activeFilters > 0 && (
+            <button onClick={resetFilters} style={{
+              padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
+              background: '#fee', color: '#c00', fontSize: 12, fontWeight: 700,
+            }}>
+              ✕ Сбросить ({activeFilters})
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Grid */}
       {loading ? (
         <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
       ) : filtered.length === 0 ? (
         <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Ничего не найдено</div>
       ) : (
         <div style={{ paddingBottom: 40 }}>
-          {/* Brands */}
           {brandOrder.map(brandKey => {
             const sets = tree[brandKey];
             if (!sets || Object.keys(sets).length === 0) return null;
-            const accent = brandAccent(brandKey);
-            const brandInfo = BRAND_META[brandKey];
+            const accent = BRAND_META[brandKey]?.accent || '#555';
             return (
               <div key={brandKey} style={{ marginBottom: 40 }}>
-                {/* Brand header */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
-                  borderLeft: `4px solid ${accent}`, paddingLeft: 12,
-                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, borderLeft: `4px solid ${accent}`, paddingLeft: 12 }}>
                   <span style={{ fontWeight: 900, fontSize: 16, color: accent, letterSpacing: 1 }}>
-                    {brandInfo?.label || brandKey.toUpperCase()}
+                    {BRAND_META[brandKey]?.label || brandKey.toUpperCase()}
                   </span>
                 </div>
-
-                {/* Sets within brand */}
                 {Object.entries(sets).sort(([a], [b]) => a.localeCompare(b)).map(([setSlug, prods]) => {
-                  // Group by name within set
                   const grouped = {};
-                  prods.forEach(p => {
-                    const k = p.name || p._id;
-                    if (!grouped[k]) grouped[k] = [];
-                    grouped[k].push(p);
-                  });
-                  const models = Object.entries(grouped);
-
+                  prods.forEach(p => { const k = p.name || p._id; if (!grouped[k]) grouped[k] = []; grouped[k].push(p); });
                   return (
                     <div key={setSlug} style={{ marginBottom: 28 }}>
-                      {/* Set header */}
-                      <div style={{
-                        fontSize: 13, fontWeight: 800, color: '#444',
-                        textTransform: 'uppercase', letterSpacing: 0.8,
-                        marginBottom: 12,
-                        display: 'flex', alignItems: 'center', gap: 8,
-                      }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#444', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span>{setLabel(setSlug)}</span>
-                        <span style={{ fontWeight: 400, fontSize: 11, color: '#aaa' }}>
-                          {prods.length} тов.
-                        </span>
+                        <span style={{ fontWeight: 400, fontSize: 11, color: '#aaa' }}>{prods.length} тов.</span>
                       </div>
-
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-                        gap: 12,
-                      }}>
-                        {models.map(([name, variants]) => (
-                          <ProductCard
-                            key={name}
-                            product={variants[0]}
-                            priceMode={priceMode}
-                            accent={accent}
-                            navigate={navigate}
-                          />
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+                        {Object.entries(grouped).map(([name, variants]) => (
+                          <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} navigate={navigate} />
                         ))}
                       </div>
                     </div>
@@ -270,47 +304,23 @@ export default function AdminAllCatalog() {
             );
           })}
 
-          {/* Products without brand */}
           {Object.keys(noBrand).length > 0 && (
             <div style={{ marginBottom: 40 }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
-                borderLeft: '4px solid #888', paddingLeft: 12,
-              }}>
-                <span style={{ fontWeight: 900, fontSize: 16, color: '#888', letterSpacing: 1 }}>
-                  ПРОЧИЕ
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, borderLeft: '4px solid #888', paddingLeft: 12 }}>
+                <span style={{ fontWeight: 900, fontSize: 16, color: '#888', letterSpacing: 1 }}>ПРОЧИЕ</span>
               </div>
               {Object.entries(noBrand).sort(([a], [b]) => a.localeCompare(b)).map(([setSlug, prods]) => {
                 const grouped = {};
-                prods.forEach(p => {
-                  const k = p.name || p._id;
-                  if (!grouped[k]) grouped[k] = [];
-                  grouped[k].push(p);
-                });
+                prods.forEach(p => { const k = p.name || p._id; if (!grouped[k]) grouped[k] = []; grouped[k].push(p); });
                 return (
                   <div key={setSlug} style={{ marginBottom: 28 }}>
-                    <div style={{
-                      fontSize: 13, fontWeight: 800, color: '#666',
-                      textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12,
-                      display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#666', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{setLabel(setSlug)}</span>
                       <span style={{ fontWeight: 400, fontSize: 11, color: '#aaa' }}>{prods.length} тов.</span>
                     </div>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-                      gap: 12,
-                    }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
                       {Object.entries(grouped).map(([name, variants]) => (
-                        <ProductCard
-                          key={name}
-                          product={variants[0]}
-                          priceMode={priceMode}
-                          accent="#555"
-                          navigate={navigate}
-                        />
+                        <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent="#555" navigate={navigate} />
                       ))}
                     </div>
                   </div>
