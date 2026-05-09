@@ -217,7 +217,7 @@ export default function AdminDashboard() {
           red={stats?.outOfStock > 0}
           green={stats?.outOfStock === 0}
           icon="⚠️"
-          to="/admin/products"
+          to="/admin/out-of-stock"
         />
         <StatCard
           label="Бренды"
