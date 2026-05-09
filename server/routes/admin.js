@@ -733,12 +733,22 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-    // Auto-detect column layout (new compact format: col3+col5; old wide format: col4+col19)
-    const hr6 = rows[6] || [];
-    const isNewFmt = String(hr6[3] || '').toLowerCase().includes('основной');
-    const colOsn   = isNewFmt ? 3 : 4;
-    const colKomm  = isNewFmt ? 5 : 19;
-    const dataStart = isNewFmt ? 8 : 7;
+    // Auto-detect: scan rows 5-10 for warehouse headers, then find sub-header row
+    let colOsn = 4, colKomm = 19, dataStart = 7;
+    for (let ri = 5; ri <= 10; ri++) {
+      const hr = rows[ri] || [];
+      for (let c = 0; c < hr.length; c++) {
+        const cell = String(hr[c] || '').toLowerCase();
+        if (cell.includes('основной'))     colOsn  = c;
+        if (cell.includes('коммерческий')) colKomm = c;
+      }
+    }
+    for (let ri = 6; ri <= 12; ri++) {
+      if (String((rows[ri] || [])[colOsn] || '').toLowerCase().includes('остаток')) {
+        dataStart = ri + 1;
+        break;
+      }
+    }
 
     const stockMap = new Map();
     for (let i = dataStart; i < rows.length; i++) {
@@ -783,7 +793,7 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       excelBase64 = xlsx.write(wb2, { type: 'base64', bookType: 'xlsx' });
     }
 
-    console.log(`[upload-stock] ${new Date().toISOString()} fmt=${isNewFmt?'new':'old'} colOsn=${colOsn} colKomm=${colKomm} matched=${matched} zeroed=${zeroed}`);
+    console.log(`[upload-stock] ${new Date().toISOString()} colOsn=${colOsn} colKomm=${colKomm} dataStart=${dataStart} matched=${matched} zeroed=${zeroed}`);
     res.json({ success: true, matched, zeroed, total: matched + zeroed, excelBase64 });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
