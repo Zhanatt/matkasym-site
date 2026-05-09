@@ -108,8 +108,7 @@ export default function AdminOutOfStock() {
         <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>
           {search ? 'Ничего не найдено' : 'Все товары в наличии 🎉'}
         </div>
-      ) : (
-        {viewMode === 'list' ? (
+      ) : viewMode === 'list' ? (
           <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
             {models.map(([name, variants]) => {
               const primary = variants[0];
@@ -181,7 +180,6 @@ export default function AdminOutOfStock() {
             })}
           </div>
         )}
-      )}
     </div>
   );
 }
