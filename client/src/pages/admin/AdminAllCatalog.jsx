@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminGetProducts } from '../../api';
+import AdminProductModal from './AdminProductModal';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -121,12 +122,15 @@ const SEL = {
   color: '#333', fontWeight: 500,
 };
 
-function ProductCard({ product, priceMode, accent, navigate, viewMode = 'grid' }) {
+const PRICE_LABELS = { retail: 'Розничная', wholesale: 'Оптовая', dealer: 'Дилерская' };
+
+function ProductCard({ product, priceMode, accent, onOpen, viewMode = 'grid' }) {
   const img        = product.images?.[0] || NO_PHOTO;
   const price      = getPrice(product, priceMode);
   const hasStock   = product.stock > 0 || product.inStock;
   const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
-  const onClick    = () => navigate(`/admin/products/${product._id}`);
+  const priceLabel = PRICE_LABELS[priceMode] || '';
+  const onClick    = () => onOpen(product);
 
   if (viewMode === 'list') {
     return (
@@ -183,8 +187,11 @@ function ProductCard({ product, priceMode, accent, navigate, viewMode = 'grid' }
           {product.name}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: accent }}>
-            {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+          <div>
+            <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
+              {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+            </div>
           </div>
           <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
             background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
@@ -198,7 +205,8 @@ function ProductCard({ product, priceMode, accent, navigate, viewMode = 'grid' }
 
 export default function AdminAllCatalog() {
   const navigate = useNavigate();
-  const [products,  setProducts]  = useState([]);
+  const [products,      setProducts]      = useState([]);
+  const [detailProduct, setDetailProduct] = useState(null);
   const [loading,   setLoading]   = useState(true);
   const [priceMode, setPriceMode] = useState('retail');
   const [search,    setSearch]    = useState('');
@@ -392,13 +400,13 @@ export default function AdminAllCatalog() {
                       {viewMode === 'list' ? (
                         <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
                           {Object.entries(grouped).map(([name, variants]) => (
-                            <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} navigate={navigate} viewMode="list" />
+                            <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} onOpen={setDetailProduct} viewMode="list" />
                           ))}
                         </div>
                       ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
                           {Object.entries(grouped).map(([name, variants]) => (
-                            <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} navigate={navigate} viewMode="grid" />
+                            <ProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} onOpen={setDetailProduct} viewMode="grid" />
                           ))}
                         </div>
                       )}
@@ -410,6 +418,10 @@ export default function AdminAllCatalog() {
           })}
 
         </div>
+      )}
+
+      {detailProduct && (
+        <AdminProductModal product={detailProduct} onClose={() => setDetailProduct(null)} />
       )}
     </div>
   );

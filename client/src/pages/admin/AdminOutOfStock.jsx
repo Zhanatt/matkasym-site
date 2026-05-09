@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminGetProducts } from '../../api';
+import AdminProductModal from './AdminProductModal';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -19,11 +20,12 @@ function getPrice(p, mode) {
 
 export default function AdminOutOfStock() {
   const navigate = useNavigate();
-  const [products,  setProducts]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [priceMode, setPriceMode] = useState('retail');
-  const [search,    setSearch]    = useState('');
-  const [viewMode,  setViewMode]  = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
+  const [products,      setProducts]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [priceMode,     setPriceMode]     = useState('retail');
+  const [search,        setSearch]        = useState('');
+  const [viewMode,      setViewMode]      = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
+  const [detailProduct, setDetailProduct] = useState(null);
 
   const toggleView = () => {
     const next = viewMode === 'grid' ? 'list' : 'grid';
@@ -115,7 +117,7 @@ export default function AdminOutOfStock() {
               const img     = primary.images?.[0] || NO_PHOTO;
               const price   = getPrice(primary, priceMode);
               return (
-                <div key={name} onClick={() => navigate(`/admin/products/${primary._id}`)}
+                <div key={name} onClick={() => setDetailProduct(primary)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px',
                     borderBottom: '1px solid #f0f0f0', background: '#fff', cursor: 'pointer' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
@@ -148,7 +150,7 @@ export default function AdminOutOfStock() {
               const img     = primary.images?.[0] || NO_PHOTO;
               const price   = getPrice(primary, priceMode);
               return (
-                <div key={name} onClick={() => navigate(`/admin/products/${primary._id}`)}
+                <div key={name} onClick={() => setDetailProduct(primary)}
                   style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                     background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
                     cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
@@ -180,6 +182,10 @@ export default function AdminOutOfStock() {
             })}
           </div>
         )}
+
+      {detailProduct && (
+        <AdminProductModal product={detailProduct} onClose={() => setDetailProduct(null)} />
+      )}
     </div>
   );
 }
