@@ -72,10 +72,10 @@ export default function AdminProductModal({ product, onClose }) {
   return createPortal(
     <>
       <div onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1200 }} />
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1600 }} />
 
       <div style={{
-        position: 'fixed', inset: 0, zIndex: 1201,
+        position: 'fixed', inset: 0, zIndex: 1601,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: isMobile ? 0 : 24, pointerEvents: 'none',
       }}>
