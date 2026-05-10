@@ -6,8 +6,8 @@ import AdminProductModal from './AdminProductModal';
 import {
   adminGetFacets, adminGetProducts,
   adminGetFrontmen, adminCreateFrontman, adminUpdateFrontman, adminDeleteFrontman,
-  adminCatalogPdf,
 } from '../../api';
+import AdminPdfButton from './AdminPdfButton';
 
 // ── constants ──────────────────────────────────────────────────────────────────
 
@@ -411,26 +411,12 @@ function getPriceLabel(mode) {
   return PRICE_MODES.find(m => m.key === mode)?.label || '';
 }
 
-async function downloadCatalogPdf(products, priceMode, setTitle, brandLabel, accent) {
-  const blob = await adminCatalogPdf({ products, priceMode, setTitle, brandLabel, accent })
-    .then(r => r.data);
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `${brandLabel}_${setTitle}.pdf`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride }) {
   const accent      = accentOverride || BRAND_META[brandKey]?.accent || '#555';
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
   const [priceMode, setPriceMode]         = useState(defaultMode);
-  const [pdfMode,   setPdfMode]           = useState(defaultMode);
-  const [showPdfOpts, setShowPdf]         = useState(false);
   const [products,  setProducts]          = useState([]);
   const [loading,   setLoading]           = useState(true);
-  const [pdfLoading, setPdfLoading]       = useState(false);
   const [detailProduct, setDetailProduct] = useState(null);
   const [viewMode,  setViewMode]  = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
   const isMobile = useIsMobile();
@@ -464,14 +450,6 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     grouped[p.name].push(p);
   });
   const models = Object.entries(grouped);
-
-  async function handleDownload() {
-    setPdfLoading(true);
-    setShowPdf(false);
-    try {
-      await downloadCatalogPdf(products, pdfMode, toTitle(setSlug), BRAND_META[brandKey]?.label || '', accent);
-    } finally { setPdfLoading(false); }
-  }
 
   const priceLabel = getPriceLabel(priceMode);
 
@@ -543,37 +521,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
           </button>
 
           {/* PDF button */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setShowPdf(s => !s)} disabled={pdfLoading}
-              style={{ padding: '6px 14px', borderRadius: 8, border: `1.5px solid ${accent}`,
-                background: 'transparent', color: accent, fontWeight: 700, fontSize: 12,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-              {pdfLoading ? '⏳' : '⬇'} PDF
-            </button>
-            {showPdfOpts && (
-              <div onClick={e => e.stopPropagation()}
-                style={{ position: 'absolute', top: '110%', right: 0, background: '#fff',
-                  border: '1px solid #eee', borderRadius: 10,
-                  boxShadow: '0 4px 24px rgba(0,0,0,.14)',
-                  padding: 14, zIndex: 10, minWidth: 210 }}>
-                <div style={{ fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 8 }}>Цены в PDF:</div>
-                {PRICE_MODES.map(m => (
-                  <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '5px 4px', cursor: 'pointer', fontSize: 13 }}>
-                    <input type="radio" name="pdfMode" value={m.key}
-                      checked={pdfMode === m.key} onChange={() => setPdfMode(m.key)} />
-                    {m.label}
-                  </label>
-                ))}
-                <button onClick={handleDownload}
-                  style={{ marginTop: 10, width: '100%', padding: '8px', borderRadius: 7,
-                    background: accent, color: '#fff', border: 'none', fontWeight: 700,
-                    fontSize: 13, cursor: 'pointer' }}>
-                  Скачать PDF
-                </button>
-              </div>
-            )}
-          </div>
+          <AdminPdfButton products={products} label={titleOverride || toTitle(setSlug)} />
         </div>
 
         {/* Product grid — scrollable */}

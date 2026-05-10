@@ -3,6 +3,14 @@ const NO_PHOTO = '/logos/no-photo.png';
 const PRICE_FIELDS = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer' };
 const PRICE_LABELS = { retail: 'Розничная', wholesale: 'Оптовая', dealer: 'Дилерская' };
 
+const STATUS_BADGE = {
+  for_sale:       null,
+  planned:        { icon: '📋', label: 'В плане',        bg: '#e8f0fe', color: '#1a73e8' },
+  in_development: { icon: '🔧', label: 'В разработке',   bg: '#fff3e0', color: '#e65100' },
+  improvement:    { icon: '⬆', label: 'На улучшении',   bg: '#f3e5f5', color: '#7b1fa2' },
+  discontinued:   { icon: '🚫', label: 'Снят',           bg: '#f5f5f5', color: '#9e9e9e' },
+};
+
 function getPrice(p, mode) {
   const field = PRICE_FIELDS[mode];
   return field ? p[field] : null;
@@ -15,6 +23,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
   const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
   const priceLabel = PRICE_LABELS[priceMode] || '';
   const onClick    = () => onOpen(product);
+  const badge      = STATUS_BADGE[product.productStatus] ?? null;
 
   if (viewMode === 'list') {
     return (
@@ -24,9 +33,19 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
         onMouseLeave={e => e.currentTarget.style.background = '#fff'}
       >
-        <img src={img} alt={product.name}
-          style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
-          onError={e => { e.target.src = NO_PHOTO; }} />
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <img src={img} alt={product.name}
+            style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }}
+            onError={e => { e.target.src = NO_PHOTO; }} />
+          {badge && (
+            <div title={badge.label} style={{
+              position: 'absolute', top: -4, right: -4,
+              background: badge.bg, borderRadius: '50%',
+              width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 9, lineHeight: 1, border: '1px solid rgba(0,0,0,.08)',
+            }}>{badge.icon}</div>
+          )}
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {product.fullName || product.name}
@@ -59,6 +78,21 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         <img src={img} alt={product.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           onError={e => { e.target.src = NO_PHOTO; }} />
+        {/* Status badge — top-right corner of image */}
+        {badge && (
+          <div title={badge.label} style={{
+            position: 'absolute', top: 6, right: 6,
+            background: badge.bg, color: badge.color,
+            borderRadius: 6, padding: '3px 6px',
+            fontSize: 10, fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: 3,
+            boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+            backdropFilter: 'blur(4px)',
+          }}>
+            <span>{badge.icon}</span>
+            <span>{badge.label}</span>
+          </div>
+        )}
         {product.sku && (
           <div style={{ position: 'absolute', bottom: 6, left: 6,
             background: 'rgba(255,255,255,0.92)', borderRadius: 4,

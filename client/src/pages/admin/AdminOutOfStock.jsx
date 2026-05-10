@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminGetProducts } from '../../api';
 import AdminProductModal from './AdminProductModal';
-import { downloadCatalogPDF } from './CatalogPDF';
 import AdminProductCard from './AdminProductCard';
+import AdminPdfButton from './AdminPdfButton';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -28,7 +28,6 @@ export default function AdminOutOfStock() {
   const [search,        setSearch]        = useState('');
   const [viewMode,      setViewMode]      = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
   const [detailProduct, setDetailProduct] = useState(null);
-  const [pdfPriceType,  setPdfPriceType]  = useState('price');
 
   const toggleView = () => {
     const next = viewMode === 'grid' ? 'list' : 'grid';
@@ -87,22 +86,7 @@ export default function AdminOutOfStock() {
             }}>{m.label}</button>
           ))}
         </div>
-        {filtered.length > 0 && (
-          <>
-            <select value={pdfPriceType} onChange={e => setPdfPriceType(e.target.value)}
-              style={{ padding: '5px 8px', borderRadius: 6, border: '1.5px solid #e0e0e0', fontSize: 12, background: '#fff', cursor: 'pointer', outline: 'none' }}>
-              <option value="price">Розничная</option>
-              <option value="priceWholesale">Оптовая</option>
-              <option value="priceDealer">Дилерская</option>
-              <option value="none">Без цены</option>
-            </select>
-            <button onClick={() => downloadCatalogPDF(filtered, 'Нет в наличии', pdfPriceType)}
-              style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                background: '#1a73e8', color: '#fff', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap' }}>
-              📄 PDF
-            </button>
-          </>
-        )}
+        <AdminPdfButton products={filtered} label="Нет в наличии" />
         <button onClick={toggleView} title={viewMode === 'grid' ? 'Список' : 'Сетка'} style={{
           padding: '5px 10px', borderRadius: 6, border: '1.5px solid #e0e0e0',
           background: '#fff', cursor: 'pointer', fontSize: 16, color: '#555', lineHeight: 1,
