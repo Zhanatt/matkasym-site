@@ -71,6 +71,7 @@ const SET_NAMES = {
   'korkom-aiym':     'Korkom Aiym',
   'kosh-keliniz':    'Kosh Keliniz',
   'onoi-sakta':      'Onoi Sakta',
+  'baary-oorunda':   'Baary Oorunda',
   'sanarip-tv':      'Sanarip TV',
   'shirin-balalyk':  'Shirin Balalyk',
   'taza-kiym':       'Taza Kiym',

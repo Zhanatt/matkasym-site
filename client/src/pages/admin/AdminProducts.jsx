@@ -30,6 +30,7 @@ const SET_LABELS_RU = {
   'taza-kiym':   'TAZA KIYM',
   'jenil-ashkana':'JENIL ASHKANA',
   'onoi-sakta':  'ONOI SAKTA',
+  'baary-oorunda': 'BAARY OORUNDA',
   'bilim-kelechek':'BILIM KELECHEK',
   'uzak-koldon': 'UZAK KOLDON',
   'bekem-fasad':    'BEKEM FASAD',
