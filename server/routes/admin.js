@@ -197,26 +197,6 @@ router.delete('/images', editor, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
-// ── One-time migration: split onoi-sakta ─────────
-// POST /api/admin/migrate/split-onoi-sakta  (owner only, safe to run multiple times)
-router.post('/migrate/split-onoi-sakta', admin, async (req, res) => {
-  try {
-    const r1 = await Product.updateMany(
-      { set: 'onoi-sakta', fullName: /промышленный/i },
-      { $set: { brand: 'matkasym-shaar' } }
-    );
-    const r2 = await Product.updateMany(
-      { set: 'onoi-sakta', fullName: { $not: /промышленный/i } },
-      { $set: { brand: 'matkasym-home', set: 'baary-oorunda' } }
-    );
-    const check = await Product.find(
-      { set: { $in: ['onoi-sakta', 'baary-oorunda'] } },
-      'fullName brand set'
-    ).lean();
-    res.json({ shaar_onoi_sakta: r1.modifiedCount, home_baary_oorunda: r2.modifiedCount, result: check });
-  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
-});
-
 // ── Brands ───────────────────────────────────────
 router.get('/brands', async (req, res) => {
   try { res.json(await Brand.find().sort('order')); }
