@@ -9,6 +9,7 @@ import {
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
+import { cloudinaryOpt } from '../../utils/drive';
 
 // ── constants ──────────────────────────────────────────────────────────────────
 
@@ -545,7 +546,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
               {visible.map(([name, variants]) => {
                 const primary  = variants[0];
-                const img      = primary.images?.[0] || NO_PHOTO;
+                const img      = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 80);
                 const price    = getPrice(primary, priceMode);
                 const hasStock = primary.stock > 0 || primary.inStock;
                 const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
@@ -585,7 +586,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             }}>
               {visible.map(([name, variants]) => {
                 const primary    = variants[0];
-                const img        = primary.images?.[0] || NO_PHOTO;
+                const img        = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400);
                 const price      = getPrice(primary, priceMode);
                 const hasStock   = primary.stock > 0 || primary.inStock;
                 const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');

@@ -1,3 +1,5 @@
+import { cloudinaryOpt } from '../../utils/drive';
+
 const NO_PHOTO = '/logos/no-photo.png';
 
 const PRICE_FIELDS = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer' };
@@ -17,7 +19,7 @@ function getPrice(p, mode) {
 }
 
 export default function AdminProductCard({ product, priceMode = 'retail', accent = '#DC1E24', onOpen, viewMode = 'grid' }) {
-  const img        = product.images?.[0] || NO_PHOTO;
+  const img        = cloudinaryOpt(product.images?.[0] || NO_PHOTO, viewMode === 'list' ? 80 : 400);
   const price      = getPrice(product, priceMode);
   const hasStock   = product.stock > 0 || product.inStock;
   const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
