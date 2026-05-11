@@ -4,6 +4,8 @@ import { adminGetProducts } from '../../api';
 import AdminProductModal from './AdminProductModal';
 import AdminProductCard from './AdminProductCard';
 import AdminPdfButton from './AdminPdfButton';
+import { useScrollRestore } from '../../hooks/useScrollRestore';
+import { useLazyItems } from '../../hooks/useLazyItems';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -208,6 +210,23 @@ export default function AdminAllCatalog() {
 
   const brandOrder = ['matkasym-home', 'matkasym-shaar', 'matkasym-kyzmat'];
 
+  // Flatten tree into sections for lazy rendering
+  const sections = useMemo(() => {
+    const result = [];
+    brandOrder.forEach(brandKey => {
+      const sets = tree[brandKey];
+      if (!sets) return;
+      Object.entries(sets).sort(([a], [b]) => a.localeCompare(b)).forEach(([setSlug, prods]) => {
+        result.push({ brandKey, setSlug, prods });
+      });
+    });
+    return result;
+  }, [tree]);
+
+  const { visible: visibleSections, sentinelRef, hasMore } = useLazyItems(sections, 8);
+
+  useScrollRestore(loading);
+
   const resetFilters = () => { setFBrand(''); setFSet(''); setFCategory(''); setFStock(''); setFStatus(''); setSortStock(''); setSearch(''); };
 
   return (
@@ -302,46 +321,43 @@ export default function AdminAllCatalog() {
         <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Ничего не найдено</div>
       ) : (
         <div style={{ paddingBottom: 40 }}>
-          {brandOrder.map(brandKey => {
-            const sets = tree[brandKey];
-            if (!sets || Object.keys(sets).length === 0) return null;
-            const accent = BRAND_META[brandKey]?.accent || '#555';
+          {visibleSections.map(({ brandKey, setSlug, prods }, idx) => {
+            const accent  = BRAND_META[brandKey]?.accent || '#555';
+            const isFirst = idx === 0 || visibleSections[idx - 1].brandKey !== brandKey;
+            const grouped = {};
+            prods.forEach(p => { const k = p.name || p._id; if (!grouped[k]) grouped[k] = []; grouped[k].push(p); });
             return (
-              <div key={brandKey} style={{ marginBottom: 40 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, borderLeft: `4px solid ${accent}`, paddingLeft: 12 }}>
-                  <span style={{ fontWeight: 900, fontSize: 16, color: accent, letterSpacing: 1 }}>
-                    {BRAND_META[brandKey]?.label || brandKey.toUpperCase()}
-                  </span>
-                </div>
-                {Object.entries(sets).sort(([a], [b]) => a.localeCompare(b)).map(([setSlug, prods]) => {
-                  const grouped = {};
-                  prods.forEach(p => { const k = p.name || p._id; if (!grouped[k]) grouped[k] = []; grouped[k].push(p); });
-                  return (
-                    <div key={setSlug} style={{ marginBottom: 28 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#444', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>{setLabel(setSlug)}</span>
-                        <span style={{ fontWeight: 400, fontSize: 11, color: '#aaa' }}>{prods.length} тов.</span>
-                      </div>
-                      {viewMode === 'list' ? (
-                        <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
-                          {Object.entries(grouped).map(([name, variants]) => (
-                            <AdminProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} onOpen={setDetailProduct} viewMode="list" />
-                          ))}
-                        </div>
-                      ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
-                          {Object.entries(grouped).map(([name, variants]) => (
-                            <AdminProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} onOpen={setDetailProduct} viewMode="grid" />
-                          ))}
-                        </div>
-                      )}
+              <div key={`${brandKey}_${setSlug}`}>
+                {isFirst && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: idx === 0 ? 0 : 28, borderLeft: `4px solid ${accent}`, paddingLeft: 12 }}>
+                    <span style={{ fontWeight: 900, fontSize: 16, color: accent, letterSpacing: 1 }}>
+                      {BRAND_META[brandKey]?.label || brandKey.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <div style={{ marginBottom: 28 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#444', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{setLabel(setSlug)}</span>
+                    <span style={{ fontWeight: 400, fontSize: 11, color: '#aaa' }}>{prods.length} тов.</span>
+                  </div>
+                  {viewMode === 'list' ? (
+                    <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
+                      {Object.entries(grouped).map(([name, variants]) => (
+                        <AdminProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} onOpen={setDetailProduct} viewMode="list" />
+                      ))}
                     </div>
-                  );
-                })}
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+                      {Object.entries(grouped).map(([name, variants]) => (
+                        <AdminProductCard key={name} product={variants[0]} priceMode={priceMode} accent={accent} onOpen={setDetailProduct} viewMode="grid" />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
-
+          {hasMore && <div ref={sentinelRef} style={{ height: 40 }} />}
         </div>
       )}
 

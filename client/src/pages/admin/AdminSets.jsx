@@ -8,6 +8,7 @@ import {
   adminGetFrontmen, adminCreateFrontman, adminUpdateFrontman, adminDeleteFrontman,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
+import { useLazyItems } from '../../hooks/useLazyItems';
 
 // ── constants ──────────────────────────────────────────────────────────────────
 
@@ -417,6 +418,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const [priceMode, setPriceMode]         = useState(defaultMode);
   const [products,  setProducts]          = useState([]);
   const [loading,   setLoading]           = useState(true);
+  const scrollRef = useRef(null);
   const [detailProduct, setDetailProduct] = useState(null);
   const [viewMode,  setViewMode]  = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
   const isMobile = useIsMobile();
@@ -450,6 +452,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     grouped[p.name].push(p);
   });
   const models = Object.entries(grouped);
+
+  const { visible, sentinelRef, hasMore } = useLazyItems(models, 24, scrollRef.current);
 
   const priceLabel = getPriceLabel(priceMode);
 
@@ -525,7 +529,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         </div>
 
         {/* Product grid — scrollable */}
-        <div style={{
+        <div ref={scrollRef} style={{
           flex: 1,
           minHeight: 0,
           overflowY: 'auto',
@@ -539,7 +543,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Нет товаров</div>
           ) : viewMode === 'list' ? (
             <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
-              {models.map(([name, variants]) => {
+              {visible.map(([name, variants]) => {
                 const primary  = variants[0];
                 const img      = primary.images?.[0] || NO_PHOTO;
                 const price    = getPrice(primary, priceMode);
@@ -571,6 +575,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   </div>
                 );
               })}
+              {hasMore && <div ref={sentinelRef} style={{ height: 20 }} />}
             </div>
           ) : (
             <div style={{
@@ -578,7 +583,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))',
               gap: isMobile ? 10 : 16,
             }}>
-              {models.map(([name, variants]) => {
+              {visible.map(([name, variants]) => {
                 const primary    = variants[0];
                 const img        = primary.images?.[0] || NO_PHOTO;
                 const price      = getPrice(primary, priceMode);
@@ -625,6 +630,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   </div>
                 );
               })}
+              {hasMore && <div ref={sentinelRef} style={{ height: 20, gridColumn: '1 / -1' }} />}
             </div>
           )}
         </div>

@@ -36,7 +36,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <img src={img} alt={product.name}
             style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }}
-            onError={e => { e.target.src = NO_PHOTO; }} />
+            loading="lazy" onError={e => { e.target.src = NO_PHOTO; }} />
           {badge && (
             <div title={badge.label} style={{
               position: 'absolute', top: -4, right: -4,
@@ -77,7 +77,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
       <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative' }}>
         <img src={img} alt={product.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          onError={e => { e.target.src = NO_PHOTO; }} />
+          loading="lazy" onError={e => { e.target.src = NO_PHOTO; }} />
         {/* Status badge — top-right corner of image */}
         {badge && (
           <div title={badge.label} style={{
