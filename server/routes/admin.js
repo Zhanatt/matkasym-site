@@ -211,6 +211,34 @@ router.patch('/brands/:key', editor, async (req, res) => {
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
+// Add a custom set to a brand
+router.post('/brands/:key/sets', editor, async (req, res) => {
+  try {
+    const { slug, label } = req.body;
+    if (!slug || !label) return res.status(400).json({ error: 'slug и label обязательны' });
+    const brand = await Brand.findOneAndUpdate(
+      { key: req.params.key },
+      { $push: { sets: { key: slug, label } } },
+      { new: true }
+    );
+    if (!brand) return res.status(404).json({ error: 'Бренд не найден' });
+    res.json(brand);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
+// Remove a custom set from a brand
+router.delete('/brands/:key/sets/:slug', editor, async (req, res) => {
+  try {
+    const brand = await Brand.findOneAndUpdate(
+      { key: req.params.key },
+      { $pull: { sets: { key: req.params.slug } } },
+      { new: true }
+    );
+    if (!brand) return res.status(404).json({ error: 'Бренд не найден' });
+    res.json(brand);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
 // ── Changelog (admin only) ───────────────────────
 router.get('/changelog', admin, async (req, res) => {
   try {

@@ -6,6 +6,7 @@ import AdminProductModal from './AdminProductModal';
 import {
   adminGetFacets, adminGetProducts,
   adminGetFrontmen, adminCreateFrontman, adminUpdateFrontman, adminDeleteFrontman,
+  adminGetBrands, adminAddBrandSet, adminDeleteBrandSet,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
@@ -101,6 +102,13 @@ function useIsMobile() {
 
 // ── BrandSection ──────────────────────────────────────────────────────────────
 
+function slugify(name) {
+  return name.trim().toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 function BrandSection({ brandKey, sets, accent, subItems = {} }) {
   const [frontmen, setFrontmen]   = useState([]);
   const [editing, setEditing]     = useState(false);
@@ -113,6 +121,40 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
   const [lines, setLines] = useState([]);
   const linesSig     = useRef('');
   const isMobile     = useIsMobile();
+
+  // Custom sets stored in Brand model
+  const [customSets,   setCustomSets]   = useState([]);
+  const [showAddSet,   setShowAddSet]   = useState(false);
+  const [newSetName,   setNewSetName]   = useState('');
+  const [addingSet,    setAddingSet]    = useState(false);
+
+  useEffect(() => {
+    adminGetBrands().then(r => {
+      const brand = r.data.find(b => b.key === brandKey);
+      if (brand) setCustomSets(brand.sets || []);
+    });
+  }, [brandKey]);
+
+  const allSets = [...new Set([...sets, ...customSets.map(s => s.key)])];
+
+  async function handleAddSet() {
+    const name = newSetName.trim();
+    if (!name) return;
+    const slug = slugify(name);
+    setAddingSet(true);
+    try {
+      const res = await adminAddBrandSet(brandKey, slug, name);
+      setCustomSets(res.data.sets || []);
+      setNewSetName('');
+      setShowAddSet(false);
+    } finally { setAddingSet(false); }
+  }
+
+  async function handleDeleteSet(slug) {
+    if (!window.confirm(`Удалить сет «${slug}»?`)) return;
+    const res = await adminDeleteBrandSet(brandKey, slug);
+    setCustomSets(res.data.sets || []);
+  }
 
   const loadFrontmen = useCallback(() => {
     adminGetFrontmen(brandKey).then(r => setFrontmen(r.data));
@@ -216,6 +258,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
           {editing ? (
             <>
               <button onClick={addFrontman} style={btn('#f0f4ff','#3463A3')}>+ Фронтмен</button>
+              <button onClick={() => setShowAddSet(v => !v)} style={btn('#f0fff4','#267846')}>+ Сет</button>
               <button onClick={cancelEdit}  style={btn('#f5f5f5','#555')}>Отмена</button>
               <button onClick={saveEdit} disabled={saving} style={btn(accent,'#fff',true)}>
                 {saving ? '…' : 'Сохранить'}
@@ -226,6 +269,33 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
           )}
         </div>
       </div>
+
+      {/* Add-set form */}
+      {editing && showAddSet && (
+        <div style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+          background: '#f0fff4', borderRadius: 8, padding: '10px 12px', border: '1px solid #c8ecd4' }}>
+          <input
+            value={newSetName}
+            onChange={e => setNewSetName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAddSet()}
+            placeholder="Название сета"
+            autoFocus
+            style={{ flex: 1, minWidth: 160, fontSize: 13, border: '1px solid #b2d8c0',
+              borderRadius: 6, padding: '6px 10px', outline: 'none' }}
+          />
+          {newSetName.trim() && (
+            <span style={{ fontSize: 11, color: '#888', flexShrink: 0, fontFamily: 'monospace' }}>
+              /{slugify(newSetName.trim())}
+            </span>
+          )}
+          <button onClick={handleAddSet} disabled={addingSet || !newSetName.trim()}
+            style={btn('#267846','#fff',true)}>
+            {addingSet ? '…' : 'Добавить'}
+          </button>
+          <button onClick={() => { setShowAddSet(false); setNewSetName(''); }}
+            style={btn('#f5f5f5','#555')}>Отмена</button>
+        </div>
+      )}
 
       {/* Body */}
       <div ref={containerRef} style={{ position: 'relative' }}>
@@ -252,7 +322,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
 
           {/* Sets column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {sets.map((slug, i) => {
+            {allSets.map((slug, i) => {
               const fmIds  = activeAssignMap[slug] || [];
               const colors = fmIds.map(id => activeFrontmen.find(f => f._id === id)?.color).filter(Boolean);
               const even   = i % 2 === 0;
@@ -276,6 +346,16 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
                         textDecorationStyle: 'dotted', textDecorationColor: '#bbb',
                       }}
                     >{toTitle(slug)}</span>
+
+                    {/* Edit mode: delete button for custom sets */}
+                    {editing && customSets.some(cs => cs.key === slug) && (
+                      <button onClick={() => handleDeleteSet(slug)}
+                        title="Удалить сет"
+                        style={{ color: '#c00', background: 'none', border: 'none',
+                          cursor: 'pointer', fontSize: 13, padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>
+                        ✕
+                      </button>
+                    )}
 
                     {/* View mode: color dots for each assigned frontman */}
                     {!editing && colors.length > 0 && (
