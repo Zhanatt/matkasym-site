@@ -59,13 +59,11 @@ mongoose
         console.log(`✅ Migration split-onoi-sakta products: shaar=${r1.modifiedCount} home=${r2.modifiedCount}`);
       }
 
-      // Frontmen: replace onoi-sakta → baary-oorunda in sets array
-      const fmResult = await Frontman.updateMany(
-        { sets: 'onoi-sakta' },
-        { $addToSet: { sets: 'baary-oorunda' }, $pull: { sets: 'onoi-sakta' } }
-      );
-      if (fmResult.modifiedCount > 0) {
-        console.log(`✅ Migration split-onoi-sakta frontmen: updated=${fmResult.modifiedCount}`);
+      // Frontmen: replace onoi-sakta → baary-oorunda in sets array (two steps — can't combine $addToSet + $pull)
+      await Frontman.updateMany({ sets: 'onoi-sakta' }, { $addToSet: { sets: 'baary-oorunda' } });
+      const fmPull = await Frontman.updateMany({ sets: 'onoi-sakta' }, { $pull: { sets: 'onoi-sakta' } });
+      if (fmPull.modifiedCount > 0) {
+        console.log(`✅ Migration split-onoi-sakta frontmen: pulled onoi-sakta from ${fmPull.modifiedCount}`);
       }
     } catch (e) {
       console.error('⚠️ Migration split-onoi-sakta failed:', e.message);
