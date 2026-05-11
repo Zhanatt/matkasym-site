@@ -42,7 +42,10 @@ mongoose
 
     // Migration: split onoi-sakta into SHAAR/onoi-sakta + HOME/baary-oorunda
     try {
-      const Product = require('./models/Product');
+      const Product  = require('./models/Product');
+      const Frontman = require('./models/Frontman');
+
+      // Products
       const needsMigration = await Product.exists({ set: 'onoi-sakta', fullName: /промышленный/i, brand: { $ne: 'matkasym-shaar' } });
       if (needsMigration) {
         const r1 = await Product.updateMany(
@@ -53,7 +56,16 @@ mongoose
           { set: 'onoi-sakta', fullName: { $not: /промышленный/i } },
           { $set: { brand: 'matkasym-home', set: 'baary-oorunda' } }
         );
-        console.log(`✅ Migration split-onoi-sakta: shaar=${r1.modifiedCount} home=${r2.modifiedCount}`);
+        console.log(`✅ Migration split-onoi-sakta products: shaar=${r1.modifiedCount} home=${r2.modifiedCount}`);
+      }
+
+      // Frontmen: replace onoi-sakta → baary-oorunda in sets array
+      const fmResult = await Frontman.updateMany(
+        { sets: 'onoi-sakta' },
+        { $addToSet: { sets: 'baary-oorunda' }, $pull: { sets: 'onoi-sakta' } }
+      );
+      if (fmResult.modifiedCount > 0) {
+        console.log(`✅ Migration split-onoi-sakta frontmen: updated=${fmResult.modifiedCount}`);
       }
     } catch (e) {
       console.error('⚠️ Migration split-onoi-sakta failed:', e.message);
