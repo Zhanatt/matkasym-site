@@ -189,7 +189,7 @@ export default function AdminProductForm() {
   useEffect(() => {
     if (isNew) return;
     if (!id || id === 'undefined' || id === 'null') {
-      navigate('/admin/products');
+      navigate(-1);
       return;
     }
     adminGetProduct(id)
@@ -352,7 +352,7 @@ export default function AdminProductForm() {
       };
       if (isNew) await adminCreateProduct(payload);
       else       await adminUpdateProduct(id, payload);
-      navigate(isNew ? '/admin/products' : `/admin/products/${id}`);
+      navigate(-1);
     } catch (err) {
       setError(err.response?.data?.error || 'Ошибка сохранения');
     } finally {
@@ -366,7 +366,7 @@ export default function AdminProductForm() {
     <div>
       <div className="admin-page-header">
         <h1 className="admin-page-title">{isNew ? 'Новый товар' : 'Редактировать товар'}</h1>
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate(isNew ? '/admin/products' : `/admin/products/${id}`)}>← Назад</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>← Назад</button>
       </div>
 
       <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--gray-200)', padding: 32, maxWidth: 720 }}>
@@ -772,7 +772,7 @@ export default function AdminProductForm() {
             <button type="submit" className="btn btn-primary" disabled={saving}>
               {saving ? 'Сохранение...' : isNew ? 'Создать товар' : 'Сохранить изменения'}
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => navigate(isNew ? '/admin/products' : `/admin/products/${id}`)}>
+            <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>
               Отмена
             </button>
           </div>

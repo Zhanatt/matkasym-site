@@ -38,7 +38,7 @@ export default function AdminProductView() {
   useEffect(() => {
     adminGetProduct(id)
       .then(r => setProduct(r.data))
-      .catch(() => navigate('/admin/products'))
+      .catch(() => navigate(-1))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -75,7 +75,7 @@ export default function AdminProductView() {
     <div>
       {/* Header */}
       <div className="admin-page-header" style={{ marginBottom: 24 }}>
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/admin/products')}>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
           ← Назад
         </button>
         {canEdit && (
