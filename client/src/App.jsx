@@ -5,9 +5,7 @@ import AdminLayout        from './pages/admin/AdminLayout';
 import AdminLogin         from './pages/admin/AdminLogin';
 import AdminResetPassword from './pages/admin/AdminResetPassword';
 import AdminDashboard     from './pages/admin/AdminDashboard';
-import AdminProducts      from './pages/admin/AdminProducts';
 import AdminProductForm   from './pages/admin/AdminProductForm';
-import AdminProductMap    from './pages/admin/AdminProductMap';
 import AdminUsers         from './pages/admin/AdminUsers';
 import AdminChangelog     from './pages/admin/AdminChangelog';
 import AdminStockLog     from './pages/admin/AdminStockLog';
@@ -38,11 +36,9 @@ export default function App() {
         <Route path="/admin/reset-password/:token" element={<AdminResetPassword />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          <Route path="products" element={<AdminProducts />} />
           <Route path="products/new" element={<AdminProductForm />} />
           <Route path="products/:id" element={<AdminProductView />} />
           <Route path="products/:id/edit" element={<AdminProductForm />} />
-          <Route path="map" element={<AdminProductMap />} />
           <Route path="sets" element={<AdminSets />} />
           <Route path="out-of-stock" element={<AdminOutOfStock />} />
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
