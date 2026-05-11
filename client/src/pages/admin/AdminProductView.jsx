@@ -79,7 +79,7 @@ export default function AdminProductView() {
           ← Назад
         </button>
         {canEdit && (
-          <button className="btn btn-primary btn-sm" onClick={() => navigate(`/admin/products/${id}/edit`)}>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate(`/admin/products/${id}/edit`, { replace: true })}>
             Редактировать
           </button>
         )}
