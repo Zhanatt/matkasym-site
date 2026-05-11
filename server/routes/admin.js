@@ -5,6 +5,7 @@ const Product      = require('../models/Product');
 const Brand        = require('../models/Brand');
 const User         = require('../models/User');
 const ChangeLog    = require('../models/ChangeLog');
+const StockLog     = require('../models/StockLog');
 const CategorySpec = require('../models/CategorySpec');
 const Frontman     = require('../models/Frontman');
 const cloudinary   = require('../lib/cloudinary');
@@ -156,6 +157,22 @@ router.patch('/products/:id', editor, async (req, res) => {
         changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
         changes,
       });
+
+      const stockChange = changes.find(c => c.field === (FIELD_LABELS.stock || 'Количество'));
+      if (stockChange) {
+        const fromStock = Number(stockChange.from) || 0;
+        const toStock   = Number(stockChange.to)   || 0;
+        await StockLog.create({
+          productId:   p._id,
+          productName: p.fullName || p.name,
+          sku:         p.sku || '',
+          delta:       toStock - fromStock,
+          fromStock,
+          toStock,
+          source:      'manual',
+          changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
+        });
+      }
     }
 
     res.json(p);
@@ -762,13 +779,15 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       stockMap.set(normName(name), osnNum + kommNum);
     }
 
-    const products = await Product.find({}, '_id fullName name sku category price priceWholesale');
+    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock');
     let matched = 0, zeroed = 0;
     const notFoundRows = [];
+    const stockLogDocs = [];
     const ops = products.map(p => {
-      const key     = normName(p.fullName || p.name || '');
-      const stock   = stockMap.has(key) ? stockMap.get(key) : 0;
-      const inStock = stock > 0;
+      const key      = normName(p.fullName || p.name || '');
+      const newStock = stockMap.has(key) ? stockMap.get(key) : 0;
+      const inStock  = newStock > 0;
+      const oldStock = p.stock || 0;
       if (stockMap.has(key)) {
         matched++;
       } else {
@@ -781,9 +800,22 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
           'Цена опт.':   p.priceWholesale || 0,
         });
       }
-      return { updateOne: { filter: { _id: p._id }, update: { $set: { stock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' } } } };
+      if (newStock !== oldStock) {
+        stockLogDocs.push({
+          productId:   p._id,
+          productName: p.fullName || p.name || '',
+          sku:         p.sku || '',
+          delta:       newStock - oldStock,
+          fromStock:   oldStock,
+          toStock:     newStock,
+          source:      'excel',
+          changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
+        });
+      }
+      return { updateOne: { filter: { _id: p._id }, update: { $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' } } } };
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
+    if (stockLogDocs.length) await StockLog.insertMany(stockLogDocs, { ordered: false });
 
     let excelBase64 = null;
     if (notFoundRows.length > 0) {
@@ -949,19 +981,58 @@ router.post('/sync-stock', async (req, res) => {
 
   const products = await Product.find({});
   let matched = 0, zeroed = 0;
+  const stockLogDocs = [];
 
   for (const p of products) {
-    const key2 = normName(p.fullName || p.name || '');
-    const stock = stockMap.has(key2) ? stockMap.get(key2) : 0;
-    const inStock = stock > 0;
+    const key2     = normName(p.fullName || p.name || '');
+    const newStock = stockMap.has(key2) ? stockMap.get(key2) : 0;
+    const inStock  = newStock > 0;
+    const oldStock = p.stock || 0;
     await Product.updateOne({ _id: p._id }, {
-      $set: { stock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' }
+      $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' }
     });
     if (stockMap.has(key2)) matched++; else zeroed++;
+    if (newStock !== oldStock) {
+      stockLogDocs.push({
+        productId:   p._id,
+        productName: p.fullName || p.name || '',
+        sku:         p.sku || '',
+        delta:       newStock - oldStock,
+        fromStock:   oldStock,
+        toStock:     newStock,
+        source:      'sync_1c',
+        changedBy:   {},
+      });
+    }
   }
+  if (stockLogDocs.length) await StockLog.insertMany(stockLogDocs, { ordered: false });
 
   console.log(`[sync-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
   res.json({ success: true, matched, zeroed, total: matched + zeroed, date: new Date().toISOString() });
+});
+
+// ── Stock Log ────────────────────────────────────────────────────────────────
+// GET /api/admin/stock-log?productId=&source=&page=1&limit=50&dateFrom=&dateTo=
+router.get('/stock-log', editor, async (req, res) => {
+  try {
+    const { productId, source, page = 1, limit = 50, dateFrom, dateTo, search } = req.query;
+    const filter = {};
+    if (productId) filter.productId = productId;
+    if (source)    filter.source = source;
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo)   filter.createdAt.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
+    }
+    if (search) filter.productName = { $regex: search, $options: 'i' };
+
+    const skip  = (Number(page) - 1) * Number(limit);
+    const [logs, total] = await Promise.all([
+      StockLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+      StockLog.countDocuments(filter),
+    ]);
+    res.json({ logs, total, pages: Math.ceil(total / Number(limit)) });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 module.exports = router;

@@ -10,6 +10,7 @@ import AdminProductForm   from './pages/admin/AdminProductForm';
 import AdminProductMap    from './pages/admin/AdminProductMap';
 import AdminUsers         from './pages/admin/AdminUsers';
 import AdminChangelog     from './pages/admin/AdminChangelog';
+import AdminStockLog     from './pages/admin/AdminStockLog';
 import AdminProductView   from './pages/admin/AdminProductView';
 import AdminSets          from './pages/admin/AdminSets';
 import AdminOutOfStock    from './pages/admin/AdminOutOfStock';
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="out-of-stock" element={<AdminOutOfStock />} />
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="stock-log" element={<AdminStockLog />} />
           <Route path="changelog" element={<AdminChangelog />} />
         </Route>
       </Routes>
