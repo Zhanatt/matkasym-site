@@ -520,10 +520,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   useEffect(() => {
     setLoading(true);
-    adminGetProducts({
-      ...(brandKey ? { brand: brandKey } : {}),
-      set: setSlug, limit: 500, page: 1,
-    })
+    adminGetProducts({ set: setSlug, limit: 1000, page: 1 })
       .then(r => { setProducts(r.data.products || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [brandKey, setSlug]);
