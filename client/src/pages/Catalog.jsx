@@ -14,9 +14,10 @@ const CATEGORY_LABELS = {
 };
 
 const SORTS = [
-  { value: 'newest',     label: 'Новинки' },
+  { value: 'stock_desc', label: 'По наличию' },
   { value: 'price_asc',  label: 'Цена: по возрастанию' },
   { value: 'price_desc', label: 'Цена: по убыванию' },
+  { value: 'newest',     label: 'Новинки' },
   { value: 'rating',     label: 'По рейтингу' },
 ];
 
@@ -27,7 +28,7 @@ export default function Catalog() {
   const [loading,  setLoading]  = useState(true);
 
   const category = params.get('category') || '';
-  const sort     = params.get('sort')     || 'newest';
+  const sort     = params.get('sort')     || 'stock_desc';
   const search   = params.get('search')   || '';
 
   useEffect(() => {

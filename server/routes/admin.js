@@ -74,8 +74,8 @@ router.get('/products', async (req, res) => {
     if (productStatus) filter.productStatus = productStatus;
     if (stockStatus)   filter.stockStatus   = stockStatus;
 
-    const sortMap = { stock_desc: { stock: -1 }, stock_asc: { stock: 1 } };
-    const sortObj = sortMap[sort] || { createdAt: -1 };
+    const sortMap = { stock_desc: { stock: -1, createdAt: -1 }, stock_asc: { stock: 1, createdAt: -1 }, newest: { createdAt: -1 } };
+    const sortObj = sortMap[sort] || { stock: -1, createdAt: -1 };
 
     const [products, total] = await Promise.all([
       Product.find(filter).sort(sortObj).skip((page - 1) * limit).limit(Number(limit)),

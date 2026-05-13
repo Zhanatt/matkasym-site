@@ -24,8 +24,10 @@ router.get('/', async (req, res) => {
       price_desc: { price: -1 },
       rating:     { rating: -1 },
       newest:     { createdAt: -1 },
+      stock_desc: { stock: -1, createdAt: -1 },
+      stock_asc:  { stock:  1, createdAt: -1 },
     };
-    const sortObj = sortMap[sort] || { createdAt: -1 };
+    const sortObj = sortMap[sort] || { stock: -1, createdAt: -1 };
 
     const skip  = (Number(page) - 1) * Number(limit);
     const total = await Product.countDocuments(filter);

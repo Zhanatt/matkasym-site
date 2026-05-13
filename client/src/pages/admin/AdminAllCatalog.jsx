@@ -148,7 +148,7 @@ export default function AdminAllCatalog() {
   const [fCategory, setFCategory] = useState('');
   const [fStock,    setFStock]    = useState(''); // '' | 'in' | 'out'
   const [fStatus,   setFStatus]   = useState('');
-  const [sortStock, setSortStock] = useState(''); // '' | 'asc' | 'desc'
+  const [sortStock, setSortStock] = useState('desc'); // '' | 'asc' | 'desc'
 
   useEffect(() => {
     adminGetProducts({ limit: 1000 })
