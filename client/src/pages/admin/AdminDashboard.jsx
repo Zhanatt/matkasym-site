@@ -264,6 +264,9 @@ export default function AdminDashboard() {
               </label>
             );
           })}
+          <Link to="/admin/sets" className="btn btn-outline">
+            📦 Товары и фронтмены
+          </Link>
           <Link to="/admin/map" className="btn btn-outline">
             🗺 Product Map
           </Link>
