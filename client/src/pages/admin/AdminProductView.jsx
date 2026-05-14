@@ -51,6 +51,31 @@ export default function AdminProductView() {
 
   const imgSrc = (url) => url?.includes('cloudinary.com') ? cloudinaryOpt(url, 600) : url;
 
+  // Strip Cloudinary transforms to get original full-resolution URL
+  const imgOriginal = (url) => {
+    if (!url) return url;
+    if (url.includes('cloudinary.com')) return url.replace(/\/upload\/[^/]+\//, '/upload/');
+    return url;
+  };
+
+  const downloadImage = async (url, index) => {
+    const orig = imgOriginal(url);
+    const name = `${product.name || 'photo'}_${index + 1}.jpg`.replace(/[\\/:*?"<>|]/g, '_');
+    try {
+      const resp = await fetch(orig);
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(orig, '_blank');
+    }
+  };
+
+  const downloadAll = () => images.forEach((url, i) => downloadImage(url, i));
+
   const prevImg = () => setImgIdx(i => (i - 1 + images.length) % images.length);
   const nextImg = () => setImgIdx(i => (i + 1) % images.length);
 
@@ -128,24 +153,69 @@ export default function AdminProductView() {
             )}
           </div>
 
+          {/* Download buttons */}
+          {images.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button
+                onClick={() => downloadImage(images[imgIdx], imgIdx)}
+                style={{
+                  flex: 1, padding: '7px 0', borderRadius: 8, border: '1.5px solid #e0e0e0',
+                  background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#333',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                ↓ Скачать фото
+              </button>
+              {images.length > 1 && (
+                <button
+                  onClick={downloadAll}
+                  style={{
+                    flex: 1, padding: '7px 0', borderRadius: 8, border: '1.5px solid #e0e0e0',
+                    background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#333',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}
+                >
+                  ↓ Все ({images.length})
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Thumbnails */}
           {images.length > 1 && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
               {images.map((url, i) => (
                 <div
                   key={i}
+                  style={{ position: 'relative', flexShrink: 0 }}
                   onClick={() => setImgIdx(i)}
-                  style={{
+                >
+                  <div style={{
                     width: 60, height: 60, borderRadius: 8, overflow: 'hidden',
                     border: i === imgIdx ? '2px solid #000' : '2px solid transparent',
-                    cursor: 'pointer', background: '#f7f8fa', flexShrink: 0,
-                  }}
-                >
-                  <img
-                    src={imgSrc(url)}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                    cursor: 'pointer', background: '#f7f8fa',
+                  }}>
+                    <img
+                      src={imgSrc(url)}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  {/* Download icon on thumbnail */}
+                  <button
+                    onClick={e => { e.stopPropagation(); downloadImage(url, i); }}
+                    title="Скачать"
+                    style={{
+                      position: 'absolute', bottom: 2, right: 2,
+                      width: 18, height: 18, borderRadius: 4,
+                      background: 'rgba(0,0,0,0.55)', border: 'none',
+                      color: '#fff', fontSize: 10, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      lineHeight: 1,
+                    }}
+                  >
+                    ↓
+                  </button>
                 </div>
               ))}
             </div>
