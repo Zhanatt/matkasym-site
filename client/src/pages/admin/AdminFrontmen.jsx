@@ -7,25 +7,38 @@ import {
 } from '../../api/index';
 
 const BRAND_META = {
-  'matkasym-home':  { label: 'HOME',  accent: '#DC1E24' },
-  'matkasym-shaar': { label: 'SHAAR', accent: '#3463A3' },
+  'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
+  'matkasym-shaar':  { label: 'SHAAR',  accent: '#3463A3' },
+  'matkasym-kyzmat': { label: 'KYZMAT', accent: '#267846' },
 };
 
 const PALETTE = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E'];
 
 const SET_NAMES = {
-  'taza-kiym':      'Taza Kiym',
-  'kosh-keliniz':   'Kosh Keliniz',
-  'achyk-asman':    'Achyk Asman',
-  'den-sooluk':     'Den Sooluk',
-  'baary-oorunda':  'Baary Oorunda',
-  'jenil-ashkana':  'Jenil Ashkana',
-  'konok-keldi':    'Konok Keldi',
-  'korkom-aiym':    'Korkom Aiym',
-  'shirin-balalyk': 'Shirin Balalyk',
-  'uydo-ishtoo':    'Uydo Ishtoo',
-  'green-omir':     'Green Omir',
-  'sanarip-tv':     'Sanarip TV',
+  // HOME
+  'achyk-asman':     'Achyk Asman',
+  'baary-oorunda':   'Baary Oorunda',
+  'den-sooluk':      'Den Sooluk',
+  'jenil-ashkana':   'Jenil Ashkana',
+  'konok-keldi':     'Konok Keldi',
+  'korkom-aiym':     'Korkom Aiym',
+  'kosh-keliniz':    'Kosh Keliniz',
+  'sanarip-tv':      'Sanarip TV',
+  'shirin-balalyk':  'Shirin Balalyk',
+  'taza-kiym':       'Taza Kiym',
+  'uydo-ishtoo':     'Uydo Ishtoo',
+  'zhashyl-ömür':    'Zhashyl Ömür',
+  // SHAAR
+  'bekem-fasad':     'Bekem Fasad',
+  'bilim-kelechek':  'Bilim Kelechek',
+  'kooz-koopsuzduk': 'Kooz Koopsuzduk',
+  'mazza-seiyl':     'Mazza Seiyl',
+  'onoi-sakta':      'Onoi Sakta',
+  'uzak-koldon':     'Uzak Koldon',
+  // KYZMAT
+  '0-tashtandy':     '0-Tashtandy',
+  'dayar-tütük':     'Dayar Tütük',
+  'önügüü-set':      'Önügüü Set',
 };
 const setLabel = s => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
