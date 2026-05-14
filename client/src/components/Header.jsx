@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import './Header.css';
 
 const NAV = [
@@ -14,9 +15,36 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { count } = useCart();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen]   = useState(false);
+  const [menuOpen, setMenuOpen]     = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery]           = useState('');
+
+  /* ── Голосовой поиск ── */
+  const { listening, error: voiceError, isSupported, start: startVoice } = useVoiceSearch({
+    lang: 'ru-RU',
+    onResult: (transcript) => {
+      setQuery(transcript);
+      // Небольшая задержка — чтобы пользователь увидел текст перед поиском
+      setTimeout(() => {
+        navigate(`/catalog?search=${encodeURIComponent(transcript)}`);
+        setQuery('');
+        setSearchOpen(false);
+      }, 600);
+    },
+  });
+
+  // Открываем поиск автоматически при нажатии на микрофон
+  const handleVoiceClick = () => {
+    if (!searchOpen) setSearchOpen(true);
+    startVoice();
+  };
+
+  // Закрываем voiceError через 3 сек
+  useEffect(() => {
+    if (!voiceError) return;
+    const t = setTimeout(() => {}, 3000);
+    return () => clearTimeout(t);
+  }, [voiceError]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -62,7 +90,7 @@ export default function Header() {
           {/* Actions */}
           <div className="header-actions">
 
-            {/* Search */}
+            {/* Search form */}
             <form
               className={`header-search ${searchOpen ? 'open' : ''}`}
               onSubmit={handleSearch}
@@ -71,9 +99,38 @@ export default function Header() {
                 className="header-search__input"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Поиск товаров..."
+                placeholder={listening ? '🎙 Говорите...' : 'Поиск товаров...'}
                 autoFocus={searchOpen}
               />
+
+              {/* Кнопка микрофона — только если браузер поддерживает */}
+              {isSupported && (
+                <button
+                  type="button"
+                  className={`header-search__mic ${listening ? 'listening' : ''}`}
+                  onClick={handleVoiceClick}
+                  title={listening ? 'Остановить' : 'Голосовой поиск'}
+                  aria-label="Голосовой поиск"
+                >
+                  {listening ? (
+                    /* Анимированный микрофон — пульсирует */
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="9" y="2" width="6" height="12" rx="3"/>
+                      <path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                      <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="8"  y1="22" x2="16" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <rect x="9" y="2" width="6" height="12" rx="3"/>
+                      <path d="M5 10a7 7 0 0 0 14 0"/>
+                      <line x1="12" y1="19" x2="12" y2="22"/>
+                      <line x1="8"  y1="22" x2="16" y2="22"/>
+                    </svg>
+                  )}
+                </button>
+              )}
+
               <button type="submit" className="header-search__submit" aria-label="Найти">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -81,6 +138,7 @@ export default function Header() {
               </button>
             </form>
 
+            {/* Иконка открытия поиска */}
             <button
               className="icon-btn"
               title="Поиск"
@@ -127,6 +185,18 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Голосовые подсказки */}
+      {voiceError && (
+        <div className="voice-toast voice-toast--error">
+          🎙 {voiceError}
+        </div>
+      )}
+      {listening && (
+        <div className="voice-toast voice-toast--listening">
+          🎙 Слушаю… говорите название товара
+        </div>
+      )}
     </header>
   );
 }

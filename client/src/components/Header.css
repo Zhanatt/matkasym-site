@@ -71,7 +71,7 @@
   flex-shrink: 0;
 }
 
-/* Search */
+/* ─── Search ─── */
 .header-search {
   display: flex;
   align-items: center;
@@ -83,7 +83,7 @@
   border-radius: var(--radius);
 }
 .header-search.open {
-  width: 240px;
+  width: 260px;
   opacity: 1;
 }
 .header-search__input {
@@ -95,8 +95,10 @@
   font-family: inherit;
   color: var(--black);
   outline: none;
+  min-width: 0;
 }
 .header-search__input::placeholder { color: var(--gray-500); }
+
 .header-search__submit {
   padding: 8px 10px;
   background: none;
@@ -105,9 +107,70 @@
   color: var(--dark);
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 .header-search__submit:hover { color: var(--red); }
 
+/* ─── Микрофон ─── */
+.header-search__mic {
+  padding: 7px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gray-500);
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  transition: color .15s, background .15s;
+}
+.header-search__mic:hover {
+  color: var(--red);
+  background: var(--gray-200);
+}
+/* Состояние «слушает» */
+.header-search__mic.listening {
+  color: var(--red);
+  animation: mic-pulse 1s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%       { transform: scale(1.2); opacity: 0.7; }
+}
+
+/* ─── Toast уведомления ─── */
+.voice-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 9999;
+  white-space: nowrap;
+  animation: toast-in .2s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+}
+.voice-toast--listening {
+  background: var(--black);
+  color: #fff;
+  border: 2px solid var(--red);
+}
+.voice-toast--error {
+  background: #fff0f0;
+  color: var(--red);
+  border: 1.5px solid var(--red);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0);    }
+}
+
+/* ─── Icon buttons ─── */
 .icon-btn {
   position: relative;
   width: 40px; height: 40px;
@@ -160,6 +223,7 @@
   border-radius: 2px;
 }
 
+/* ─── Responsive ─── */
 @media (max-width: 900px) {
   .nav {
     display: none;
@@ -185,8 +249,9 @@
   .header-top { display: none; }
   .header-inner { height: 60px; gap: 8px; }
   .logo-img { height: 30px; }
-  .header-search.open { width: 140px; }
+  .header-search.open { width: 150px; }
   .icon-btn { width: 36px; height: 36px; }
+  .voice-toast { font-size: 12px; padding: 8px 16px; bottom: 16px; }
   /* Show login link inside nav on mobile */
   .nav.open .nav-mobile-login {
     display: flex;
