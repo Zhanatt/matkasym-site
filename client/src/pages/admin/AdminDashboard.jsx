@@ -219,6 +219,13 @@ export default function AdminDashboard() {
           icon="⚠️"
           to="/admin/out-of-stock"
         />
+        <StatCard
+          label="Товары и фронтмены"
+          value="→"
+          sub="Линейки, сеты, каталог"
+          icon="📋"
+          to="/admin/sets"
+        />
         {isOwner && (
           <StatCard
             label="Пользователи"
