@@ -36,7 +36,6 @@ export default function App() {
         <Route path="/admin/reset-password/:token" element={<AdminResetPassword />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          <Route path="products/new" element={<AdminProductForm />} />
           <Route path="products/:id" element={<AdminProductView />} />
           <Route path="products/:id/edit" element={<AdminProductForm />} />
           <Route path="sets" element={<AdminSets />} />
