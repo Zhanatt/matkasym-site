@@ -169,7 +169,7 @@ export default function AdminProductForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const isNew = id === 'new';
+  const isNew = !id || id === 'new';
 
   const dupData = isNew ? location.state?.duplicate : null;
   const [form, setForm]     = useState(dupData ? { ...EMPTY, ...dupData } : EMPTY);
