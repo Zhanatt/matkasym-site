@@ -127,6 +127,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
   const [showAddSet,   setShowAddSet]   = useState(false);
   const [newSetName,   setNewSetName]   = useState('');
   const [addingSet,    setAddingSet]    = useState(false);
+  const [addSetError,  setAddSetError]  = useState('');
 
   useEffect(() => {
     adminGetBrands().then(r => {
@@ -142,11 +143,14 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
     if (!name) return;
     const slug = slugify(name);
     setAddingSet(true);
+    setAddSetError('');
     try {
       const res = await adminAddBrandSet(brandKey, slug, name);
       setCustomSets(res.data.sets || []);
       setNewSetName('');
       setShowAddSet(false);
+    } catch (e) {
+      setAddSetError(e?.response?.data?.error || 'Ошибка при добавлении сета');
     } finally { setAddingSet(false); }
   }
 
@@ -292,8 +296,11 @@ function BrandSection({ brandKey, sets, accent, subItems = {} }) {
             style={btn('#267846','#fff',true)}>
             {addingSet ? '…' : 'Добавить'}
           </button>
-          <button onClick={() => { setShowAddSet(false); setNewSetName(''); }}
+          <button onClick={() => { setShowAddSet(false); setNewSetName(''); setAddSetError(''); }}
             style={btn('#f5f5f5','#555')}>Отмена</button>
+          {addSetError && (
+            <span style={{ fontSize: 11, color: '#c00', width: '100%' }}>{addSetError}</span>
+          )}
         </div>
       )}
 

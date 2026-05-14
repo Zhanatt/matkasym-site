@@ -212,17 +212,17 @@ router.patch('/brands/:key', editor, async (req, res) => {
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
-// Add a custom set to a brand
+// Add a custom set to a brand (upserts the brand document if missing)
 router.post('/brands/:key/sets', editor, async (req, res) => {
   try {
     const { slug, label } = req.body;
     if (!slug || !label) return res.status(400).json({ error: 'slug и label обязательны' });
+    const defaultLabel = req.params.key.replace('matkasym-', '').toUpperCase();
     const brand = await Brand.findOneAndUpdate(
       { key: req.params.key },
-      { $push: { sets: { key: slug, label } } },
-      { new: true }
+      { $push: { sets: { key: slug, label } }, $setOnInsert: { label: defaultLabel } },
+      { new: true, upsert: true }
     );
-    if (!brand) return res.status(404).json({ error: 'Бренд не найден' });
     res.json(brand);
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
