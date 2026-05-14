@@ -17,11 +17,13 @@ Font.registerHyphenationCallback(w => [w]);
 const RED      = '#D8232A';
 const INK      = '#1A1A1A';
 const GRAY     = '#6E7378';
-const HAIRLINE = '#D9DCDE';
+const HAIRLINE = '#E4E6E8';
 const STEEL    = '#8FA3B0';
 const WHITE    = '#FFFFFF';
 const YELLOW   = '#F2C84A';
 const ORANGE   = '#E89B3C';
+const BG_SPEC  = '#F7F8F9';
+const RED_SOFT = '#FFF0F0';
 
 const LOGO      = '/logos/logo-main.png';
 const NO_PHOTO  = '/logos/no-photo.png';
@@ -140,107 +142,125 @@ const S = StyleSheet.create({
   },
 
   // ── 2×2 grid ───────────────────────────────────────────────────────────────
-  // A4 content width = 595.28 - 56 = 539.28pt
-  // 2 cards + 14pt gap → each card = (539.28 - 14) / 2 = 262.64pt
-  // A4 content height = 841.89 - 64 = 777.89pt; header ~40pt → grid = 737pt
-  // 2 rows + 14pt gap → each row = (737 - 14) / 2 = 361.5pt
   grid: {
     flexDirection: 'column',
-    gap: 14,
+    gap: 12,
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 14,
+    gap: 12,
   },
+
+  // ── Card ───────────────────────────────────────────────────────────────────
   card: {
-    width: 262,
+    width: 263,
+    borderWidth: 0.75,
+    borderColor: HAIRLINE,
+    borderRadius: 4,
+    overflow: 'hidden',
+    backgroundColor: WHITE,
   },
 
   // ── Image area ─────────────────────────────────────────────────────────────
   imageWrap: {
-    width: 262,
-    height: 190,
-    backgroundColor: '#f8f8f8',
-    marginBottom: 8,
+    width: 263,
+    height: 186,
+    backgroundColor: WHITE,
     position: 'relative',
+    borderBottomWidth: 0.75,
+    borderBottomColor: HAIRLINE,
   },
   productImg: {
-    width: 262,
-    height: 190,
+    width: 263,
+    height: 186,
     objectFit: 'contain',
   },
   noImageWrap: {
-    width: 262,
-    height: 190,
-    backgroundColor: '#1A1A1A',
-    marginBottom: 8,
+    width: 263,
+    height: 186,
+    backgroundColor: '#F2F3F5',
     alignItems: 'center',
     justifyContent: 'center',
+    borderBottomWidth: 0.75,
+    borderBottomColor: HAIRLINE,
   },
   noImageText: {
     fontSize: 7,
-    color: '#444',
+    color: '#aaa',
     fontWeight: 400,
-  },
-  swatchRow: {
-    position: 'absolute',
-    bottom: 5,
-    right: 5,
-    flexDirection: 'row',
-    gap: 3,
-  },
-  swatch: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
   },
 
   // ── Card body ─────────────────────────────────────────────────────────────
+  cardBody: {
+    paddingHorizontal: 9,
+    paddingTop: 7,
+    paddingBottom: 6,
+  },
   kicker: {
-    fontSize: 8,
-    color: GRAY,
-    fontWeight: 400,
+    fontSize: 7,
+    color: STEEL,
+    fontWeight: 500,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
     marginBottom: 3,
-    lineHeight: 1.2,
   },
   productName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 700,
     color: INK,
-    marginBottom: 5,
-    lineHeight: 1.2,
-  },
-  nameHairline: {
-    height: 0.75,
-    backgroundColor: HAIRLINE,
-    marginBottom: 0,
+    marginBottom: 7,
+    lineHeight: 1.25,
   },
 
-  // price row
-  priceRow: {
+  // price block
+  priceBlock: {
+    backgroundColor: RED_SOFT,
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
-    borderBottomWidth: 0.5,
-    borderBottomColor: HAIRLINE,
+    marginBottom: 6,
   },
   priceLabel: {
-    fontSize: 8,
-    color: GRAY,
-    fontWeight: 400,
+    fontSize: 7.5,
+    color: RED,
+    fontWeight: 500,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   priceValue: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: 700,
     color: RED,
   },
+  priceSom: {
+    fontSize: 8,
+    fontWeight: 400,
+    color: RED,
+  },
 
-  // spec row
+  // spec rows
+  specsBlock: {
+    gap: 0,
+  },
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 3.5,
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 2,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
+  },
+  specRowAlt: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 2,
+    backgroundColor: BG_SPEC,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
@@ -248,13 +268,13 @@ const S = StyleSheet.create({
     fontSize: 7.5,
     color: GRAY,
     fontWeight: 400,
-    width: '55%',
+    width: '53%',
   },
   specVal: {
     fontSize: 7.5,
     color: INK,
-    fontWeight: 400,
-    width: '43%',
+    fontWeight: 500,
+    width: '45%',
     textAlign: 'right',
   },
 
@@ -421,63 +441,74 @@ const PRICE_LABELS = {
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product, priceType }) {
-  const imageUrl  = pdfImg(product.images?.[0]);
-  const noPhoto   = !imageUrl;
-  const specs     = (product.specs || []).filter(s => s.value).slice(0, 4);
-  const catLabel  = CATEGORY_LABELS[product.category] || 'товар для дома';
+  const imageUrl   = pdfImg(product.images?.[0]);
+  const noPhoto    = !imageUrl;
+  const catLabel   = CATEGORY_LABELS[product.category] || 'товар для дома';
 
-  const swatches = [];
-  if (product.color) {
-    const c = product.color.toLowerCase();
-    if (COLOR_HEX[c]) swatches.push(c);
-  }
+  // Merge dimensions as first spec if present
+  const rawSpecs = (product.specs || []).filter(s => s.value);
+  const allSpecs = [];
+  if (product.dimensions) allSpecs.push({ key: 'Размеры', value: product.dimensions });
+  if (product.color && product.color !== '') allSpecs.push({ key: 'Цвет', value: product.color });
+  rawSpecs.forEach(s => {
+    if (!allSpecs.find(a => a.key === s.key)) allSpecs.push(s);
+  });
+  const specs = allSpecs.slice(0, 5);
 
-  const priceVal  = priceType !== 'none' ? (product[priceType] || 0) : null;
-  const priceStr  = priceVal > 0 ? `${priceVal.toLocaleString('ru')} сом` : (priceType !== 'none' ? 'по запросу' : null);
+  const priceVal   = priceType !== 'none' ? (product[priceType] || 0) : null;
+  const priceNum   = priceVal > 0 ? priceVal.toLocaleString('ru') : null;
   const priceLabel = PRICE_LABELS[priceType] || '';
 
   return (
     <View style={S.card}>
       {/* Image */}
-      <View style={S.imageWrap}>
-        <Image src={noPhoto ? NO_PHOTO : imageUrl} style={S.productImg} />
-        {!noPhoto && swatches.length > 0 && (
-          <View style={S.swatchRow}>
-            {swatches.map((c, i) => (
-              <View key={i} style={[S.swatch, {
-                backgroundColor: COLOR_HEX[c],
-                borderWidth: c === 'white' ? 0.5 : 0,
-                borderColor: HAIRLINE,
-              }]} />
+      {noPhoto ? (
+        <View style={S.noImageWrap}>
+          <Text style={S.noImageText}>нет фото</Text>
+        </View>
+      ) : (
+        <View style={S.imageWrap}>
+          <Image src={imageUrl} style={S.productImg} />
+        </View>
+      )}
+
+      {/* Card body */}
+      <View style={S.cardBody}>
+        {/* Category kicker */}
+        <Text style={S.kicker}>{catLabel}</Text>
+
+        {/* Name */}
+        <Text style={S.productName}>{product.name || product.fullName}</Text>
+
+        {/* Price block */}
+        {priceType !== 'none' && priceNum && (
+          <View style={S.priceBlock}>
+            <Text style={S.priceLabel}>{priceLabel}</Text>
+            <Text style={S.priceValue}>
+              {priceNum}{' '}
+              <Text style={S.priceSom}>сом</Text>
+            </Text>
+          </View>
+        )}
+        {priceType !== 'none' && !priceNum && (
+          <View style={S.priceBlock}>
+            <Text style={S.priceLabel}>{priceLabel}</Text>
+            <Text style={S.priceValue}>по запросу</Text>
+          </View>
+        )}
+
+        {/* Specs */}
+        {specs.length > 0 && (
+          <View style={S.specsBlock}>
+            {specs.map((s, i) => (
+              <View key={i} style={i % 2 === 0 ? S.specRow : S.specRowAlt}>
+                <Text style={S.specKey}>{s.key}</Text>
+                <Text style={S.specVal}>{s.value}{s.unit ? ` ${s.unit}` : ''}</Text>
+              </View>
             ))}
           </View>
         )}
       </View>
-
-      {/* Kicker */}
-      <Text style={S.kicker}>{catLabel}</Text>
-
-      {/* Name */}
-      <Text style={S.productName}>{product.name || product.fullName}</Text>
-
-      {/* Hairline */}
-      <View style={S.nameHairline} />
-
-      {/* Price — hidden if priceType === 'none' */}
-      {priceType !== 'none' && (
-        <View style={S.priceRow}>
-          <Text style={S.priceLabel}>{priceLabel}</Text>
-          <Text style={S.priceValue}>{priceStr}</Text>
-        </View>
-      )}
-
-      {/* Specs */}
-      {specs.map((s, i) => (
-        <View key={i} style={S.specRow}>
-          <Text style={S.specKey}>{s.key}</Text>
-          <Text style={S.specVal}>{s.value}{s.unit ? ` ${s.unit}` : ''}</Text>
-        </View>
-      ))}
     </View>
   );
 }
