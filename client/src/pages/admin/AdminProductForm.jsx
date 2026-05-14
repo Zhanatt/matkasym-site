@@ -23,9 +23,45 @@ export const CRM_STAGES = [
 ];
 
 const BRAND_OPTIONS = [
-  { value: 'matkasym-home',  label: 'MATKASYM HOME' },
-  { value: 'matkasym-shaar', label: 'MATKASYM SHAAR' },
+  { value: 'matkasym-home',   label: 'MATKASYM HOME' },
+  { value: 'matkasym-shaar',  label: 'MATKASYM SHAAR' },
+  { value: 'matkasym-kyzmat', label: 'MATKASYM KYZMAT' },
 ];
+
+// Master list of all sets — synced with AdminSets SET_NAMES
+const STATIC_SET_NAMES = {
+  // HOME
+  'achyk-asman':     'Achyk Asman',
+  'baary-oorunda':   'Baary Oorunda',
+  'den-sooluk':      'DEN SOOLUK — Здоровье',
+  'jenil-ashkana':   'Jenil Ashkana',
+  'konok-keldi':     'Konok Keldi',
+  'korkom-aiym':     'Korkom Aiym',
+  'kosh-keliniz':    'KOSH KELINIZ — Кош келиниз',
+  'sanarip-tv':      'Sanarip TV',
+  'shirin-balalyk':  'Shirin Balalyk',
+  'taza-kiym':       'TAZA KIYM — Чистая одежда',
+  'uydo-ishtoo':     'Uydo Ishtoo',
+  'zhashyl-ömür':    'Zhashyl ÖMüR',
+  // SHAAR
+  'bekem-fasad':     'Bekem Fasad',
+  'bilim-kelechek':  'Bilim Kelechek',
+  'kooz-koopsuzduk': 'Kooz Koopsuzduk',
+  'mazza-seiyl':     'Mazza Seiyl',
+  'onoi-sakta':      'Onoi Sakta',
+  'uzak-koldon':     'Uzak Koldon',
+  // KYZMAT
+  '0-tashtandy':     '0-Tashtandy',
+  'dayar-tütük':     'Dayar Tütük',
+  'önügüü-set':      'Önügüü Set',
+  // Прочие
+  'nelikvid':        'Неликвид',
+  'samples':         'Образцы',
+  'small-batch':     'Малосерийные',
+  'misc':            'Разное',
+  'equipment':       'Оборудование и сырьё',
+  'other':           'Прочее',
+};
 
 const COLOR_OPTIONS = [
   { value: 'white',  label: 'Белый',      hex: '#ffffff', border: '#ddd' },
@@ -305,10 +341,11 @@ export default function AdminProductForm() {
     }
   };
 
-  // ── Set options: merge Brand.sets + facetSets (no duplicates) ──────────────
+  // ── Set options: merge Brand.sets + facetSets + static master list ─────────
   const currentBrand = brandsData.find(b => b.key === form.brand);
   const brandSetMap  = Object.fromEntries((currentBrand?.sets || []).map(s => [s.key, s]));
   const mergedSlugs  = [...new Set([
+    ...Object.keys(STATIC_SET_NAMES),
     ...(currentBrand?.sets || []).map(s => s.key),
     ...facetSets,
   ])];
@@ -317,7 +354,7 @@ export default function AdminProductForm() {
       const s = brandSetMap[slug];
       const label = s
         ? `${s.label}${s.labelRu ? ` — ${s.labelRu}` : ''}`
-        : slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        : (STATIC_SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
       return { value: slug, label };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
