@@ -33,6 +33,23 @@ export default function AdminProductModal({ product, onClose }) {
   const images = (product.images || []).filter(Boolean);
   const img    = images[imgIdx] || NO_PHOTO;
 
+  const downloadImage = async (url, index) => {
+    const orig = url.includes('cloudinary.com')
+      ? url.replace(/\/upload\/[^/]+\//, '/upload/')
+      : url;
+    const name = `${product.name || 'photo'}_${index + 1}.jpg`.replace(/[\\/:*?"<>|]/g, '_');
+    try {
+      const blob = await fetch(orig).then(r => r.blob());
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(orig, '_blank');
+    }
+  };
+
   const prices = [
     { label: 'Розничная',     value: product.price },
     { label: 'Оптовая',       value: product.priceWholesale },
@@ -126,6 +143,25 @@ export default function AdminProductModal({ product, onClose }) {
                 <img src={img} alt={product.name}
                   style={{ maxWidth: '100%', maxHeight: isMobile ? 280 : 380, objectFit: 'contain', display: 'block', padding: 16 }}
                   onError={e => { e.target.src = NO_PHOTO; }} />
+
+                {/* Download icon — top-right corner */}
+                {img !== NO_PHOTO && (
+                  <button
+                    onClick={() => downloadImage(img, imgIdx)}
+                    title="Скачать фото"
+                    style={{
+                      position: 'absolute', top: 8, right: 8,
+                      width: 32, height: 32, borderRadius: 8,
+                      background: 'rgba(0,0,0,0.45)', border: 'none',
+                      color: '#fff', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 15, lineHeight: 1, backdropFilter: 'blur(2px)',
+                    }}
+                  >
+                    ↓
+                  </button>
+                )}
+
                 {images.length > 1 && (
                   <>
                     <button onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
