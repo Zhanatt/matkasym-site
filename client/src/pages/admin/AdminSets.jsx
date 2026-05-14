@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -525,12 +525,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       .catch(() => setLoading(false));
   }, [brandKey, setSlug]);
 
-  const grouped = {};
-  products.forEach(p => {
-    if (!grouped[p.name]) grouped[p.name] = [];
-    grouped[p.name].push(p);
-  });
-  const models = Object.entries(grouped);
+  const models = useMemo(() => {
+    const grouped = {};
+    products.forEach(p => {
+      if (!grouped[p.name]) grouped[p.name] = [];
+      grouped[p.name].push(p);
+    });
+    return Object.entries(grouped);
+  }, [products]);
 
   const { visible, sentinelRef, hasMore } = useLazyItems(models, 24, scrollRef.current);
 
