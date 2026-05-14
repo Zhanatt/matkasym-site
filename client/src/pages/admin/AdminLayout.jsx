@@ -9,8 +9,9 @@ const NAV_ALL = [
   { to: '/admin/sets',     label: 'Товары и фронтмены',  icon: '🗂', roles: ['owner','editor','viewer'] },
   { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'] },
-  { to: '/admin/stock-log', label: 'История остатков',   icon: '📦', roles: ['owner','editor'] },
-  { to: '/admin/changelog', label: 'История изменений',  icon: '📋', roles: ['owner'] },
+  { to: '/admin/stock-log',  label: 'История остатков',  icon: '📦', roles: ['owner','editor'] },
+  { to: '/admin/price-log',  label: 'История цен',       icon: '💰', roles: ['owner','editor'] },
+  { to: '/admin/changelog',  label: 'История изменений', icon: '📋', roles: ['owner'] },
 ];
 
 export default function AdminLayout() {

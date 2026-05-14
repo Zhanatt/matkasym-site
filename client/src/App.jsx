@@ -9,6 +9,7 @@ import AdminProductForm   from './pages/admin/AdminProductForm';
 import AdminUsers         from './pages/admin/AdminUsers';
 import AdminChangelog     from './pages/admin/AdminChangelog';
 import AdminStockLog     from './pages/admin/AdminStockLog';
+import AdminPriceLog     from './pages/admin/AdminPriceLog';
 import AdminProductView   from './pages/admin/AdminProductView';
 import AdminSets          from './pages/admin/AdminSets';
 import AdminFrontmen      from './pages/admin/AdminFrontmen';
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="stock-log" element={<AdminStockLog />} />
+          <Route path="price-log" element={<AdminPriceLog />} />
           <Route path="changelog" element={<AdminChangelog />} />
         </Route>
       </Routes>

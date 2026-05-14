@@ -9,6 +9,7 @@ const stockLogSchema = new Schema({
   fromStock:   { type: Number, default: 0 },
   toStock:     { type: Number, default: 0 },
   source:      { type: String, enum: ['manual', 'excel', 'sync_1c'], default: 'manual' },
+  sourceUrl:   { type: String, default: '' },
   changedBy: {
     id:    { type: Schema.Types.ObjectId, ref: 'User' },
     name:  { type: String },

@@ -6,12 +6,27 @@ const Brand        = require('../models/Brand');
 const User         = require('../models/User');
 const ChangeLog    = require('../models/ChangeLog');
 const StockLog     = require('../models/StockLog');
+const PriceLog     = require('../models/PriceLog');
 const CategorySpec = require('../models/CategorySpec');
 const Frontman     = require('../models/Frontman');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer } = require('../middleware/auth');
 
 const FONTS_DIR = path.join(__dirname, '../fonts');
+
+// Upload a buffer to Cloudinary as a raw file, returns secure_url
+function uploadRawBuffer(buffer, folder, filename) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, resource_type: 'raw', public_id: filename, overwrite: true },
+      (err, result) => err ? reject(err) : resolve(result.secure_url)
+    );
+    stream.end(buffer);
+  });
+}
+
+const PRICE_FIELDS = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer', cost: 'priceCost' };
+const PRICE_FIELD_TO_TYPE = Object.fromEntries(Object.entries(PRICE_FIELDS).map(([t, f]) => [f, t]));
 
 const TRACKED_FIELDS = [
   'name','fullName','sku','price','priceWholesale','priceDealer','priceCost',
@@ -173,6 +188,27 @@ router.patch('/products/:id', editor, async (req, res) => {
           source:      'manual',
           changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
         });
+      }
+
+      const priceChanges = changes.filter(c => {
+        const field = Object.keys(FIELD_LABELS).find(k => FIELD_LABELS[k] === c.field);
+        return field && PRICE_FIELD_TO_TYPE[field];
+      });
+      if (priceChanges.length > 0) {
+        const priceLogs = priceChanges.map(c => {
+          const field = Object.keys(FIELD_LABELS).find(k => FIELD_LABELS[k] === c.field);
+          return {
+            productId:   p._id,
+            productName: p.fullName || p.name,
+            sku:         p.sku || '',
+            priceType:   PRICE_FIELD_TO_TYPE[field],
+            fromPrice:   Number(c.from) || 0,
+            toPrice:     Number(c.to)   || 0,
+            source:      'manual',
+            changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
+          };
+        });
+        await PriceLog.insertMany(priceLogs);
       }
     }
 
@@ -844,7 +880,17 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       return { updateOne: { filter: { _id: p._id }, update: { $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' } } } };
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
-    if (stockLogDocs.length) await StockLog.insertMany(stockLogDocs, { ordered: false });
+
+    // Upload Excel to Cloudinary for source link, then save logs
+    let excelSourceUrl = '';
+    try {
+      const ts = Date.now();
+      excelSourceUrl = await uploadRawBuffer(req.file.buffer, 'matkasym/stock-uploads', `stock_${ts}`);
+    } catch (_) {}
+    if (stockLogDocs.length) {
+      const docsWithUrl = stockLogDocs.map(d => ({ ...d, sourceUrl: excelSourceUrl }));
+      await StockLog.insertMany(docsWithUrl, { ordered: false });
+    }
 
     let excelBase64 = null;
     if (notFoundRows.length > 0) {
@@ -886,17 +932,40 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
       priceMap.set(normName(name), Math.round(price));
     }
 
-    const products = await Product.find({}, '_id fullName name');
+    const products = await Product.find({}, `_id fullName name sku ${field}`);
     let matched = 0, skipped = 0;
     const ops = [];
+    const priceLogDocs = [];
     for (const p of products) {
-      const key   = normName(p.fullName || p.name || '');
-      const price = priceMap.get(key);
-      if (price === undefined) { skipped++; continue; }
-      ops.push({ updateOne: { filter: { _id: p._id }, update: { $set: { [field]: price } } } });
+      const key      = normName(p.fullName || p.name || '');
+      const newPrice = priceMap.get(key);
+      if (newPrice === undefined) { skipped++; continue; }
+      const oldPrice = Number(p[field]) || 0;
+      ops.push({ updateOne: { filter: { _id: p._id }, update: { $set: { [field]: newPrice } } } });
+      if (newPrice !== oldPrice) {
+        priceLogDocs.push({
+          productId:   p._id,
+          productName: p.fullName || p.name || '',
+          sku:         p.sku || '',
+          priceType:   type,
+          fromPrice:   oldPrice,
+          toPrice:     newPrice,
+          source:      'excel',
+          changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
+        });
+      }
       matched++;
     }
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
+
+    // Upload Excel to Cloudinary and attach URL to log entries
+    let sourceUrl = '';
+    try {
+      sourceUrl = await uploadRawBuffer(req.file.buffer, 'matkasym/price-uploads', `price_${type}_${Date.now()}`);
+    } catch (_) {}
+    if (priceLogDocs.length) {
+      await PriceLog.insertMany(priceLogDocs.map(d => ({ ...d, sourceUrl })), { ordered: false });
+    }
 
     console.log(`[upload-prices] type=${type} field=${field} matched=${matched} skipped=${skipped}`);
     res.json({ success: true, type, field, matched, skipped });
@@ -1059,6 +1128,29 @@ router.get('/stock-log', editor, async (req, res) => {
     const [logs, total] = await Promise.all([
       StockLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
       StockLog.countDocuments(filter),
+    ]);
+    res.json({ logs, total, pages: Math.ceil(total / Number(limit)) });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// ── Price Log ────────────────────────────────────────────────────────────────
+// GET /api/admin/price-log?priceType=&source=&page=1&limit=50&dateFrom=&dateTo=&search=
+router.get('/price-log', editor, async (req, res) => {
+  try {
+    const { priceType, source, page = 1, limit = 50, dateFrom, dateTo, search } = req.query;
+    const filter = {};
+    if (priceType) filter.priceType = priceType;
+    if (source)    filter.source    = source;
+    if (search)    filter.productName = { $regex: search, $options: 'i' };
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo)   filter.createdAt.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
+    }
+    const skip = (Number(page) - 1) * Number(limit);
+    const [logs, total] = await Promise.all([
+      PriceLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+      PriceLog.countDocuments(filter),
     ]);
     res.json({ logs, total, pages: Math.ceil(total / Number(limit)) });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }

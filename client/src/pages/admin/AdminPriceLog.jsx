@@ -1,16 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminGetStockLog } from '../../api';
+import { adminGetPriceLog } from '../../api';
+
+const PRICE_TYPE_META = {
+  retail:    { label: 'Розничная',   bg: '#e8f0fe', color: '#1a73e8' },
+  wholesale: { label: 'Оптовая',     bg: '#fff3e0', color: '#e65100' },
+  dealer:    { label: 'Дилерская',   bg: '#f3e8ff', color: '#7c3aed' },
+  cost:      { label: 'Себестоимость', bg: '#fce8e8', color: '#c00' },
+};
 
 const SOURCE_LABEL = {
-  manual:   { label: 'Вручную',  bg: '#e8f0fe', color: '#1a73e8' },
-  excel:    { label: 'Excel',    bg: '#e6f4ea', color: '#1e7e34' },
-  sync_1c:  { label: '1С Синк', bg: '#fff3e0', color: '#e65100' },
+  manual: { label: 'Вручную', bg: '#f5f5f5', color: '#666' },
+  excel:  { label: 'Excel',   bg: '#e6f4ea', color: '#1e7e34' },
 };
 
 function fmt(d) {
   const dt = new Date(d);
   return dt.toLocaleString('ru', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtPrice(n) {
+  return n > 0 ? `${Number(n).toLocaleString('ru')} с` : '—';
 }
 
 const SEL = {
@@ -20,7 +30,7 @@ const SEL = {
 
 const LIMIT = 50;
 
-export default function AdminStockLog() {
+export default function AdminPriceLog() {
   const navigate = useNavigate();
 
   const [logs,    setLogs]    = useState([]);
@@ -28,28 +38,30 @@ export default function AdminStockLog() {
   const [pages,   setPages]   = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const [search,   setSearch]   = useState('');
-  const [source,   setSource]   = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo,   setDateTo]   = useState('');
-  const [page,     setPage]     = useState(1);
+  const [search,    setSearch]    = useState('');
+  const [priceType, setPriceType] = useState('');
+  const [source,    setSource]    = useState('');
+  const [dateFrom,  setDateFrom]  = useState('');
+  const [dateTo,    setDateTo]    = useState('');
+  const [page,      setPage]      = useState(1);
 
   const load = useCallback(() => {
     setLoading(true);
     const params = { page, limit: LIMIT };
-    if (search)   params.search   = search;
-    if (source)   params.source   = source;
-    if (dateFrom) params.dateFrom = dateFrom;
-    if (dateTo)   params.dateTo   = dateTo;
-    adminGetStockLog(params)
+    if (search)    params.search    = search;
+    if (priceType) params.priceType = priceType;
+    if (source)    params.source    = source;
+    if (dateFrom)  params.dateFrom  = dateFrom;
+    if (dateTo)    params.dateTo    = dateTo;
+    adminGetPriceLog(params)
       .then(r => { setLogs(r.data.logs); setTotal(r.data.total); setPages(r.data.pages || 1); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [page, search, source, dateFrom, dateTo]);
+  }, [page, search, priceType, source, dateFrom, dateTo]);
 
   useEffect(() => { load(); }, [load]);
 
-  const reset = () => { setSearch(''); setSource(''); setDateFrom(''); setDateTo(''); setPage(1); };
+  const reset = () => { setSearch(''); setPriceType(''); setSource(''); setDateFrom(''); setDateTo(''); setPage(1); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -57,11 +69,26 @@ export default function AdminStockLog() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 18, borderBottom: '1px solid #eee', marginBottom: 20 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '0 4px', color: '#888' }}>←</button>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>📦 История остатков</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>💰 История цен</div>
           <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>
             {loading ? '…' : `${total} записей`}
           </div>
         </div>
+      </div>
+
+      {/* Price type tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[{ value: '', label: 'Все цены' }, ...Object.entries(PRICE_TYPE_META).map(([k, v]) => ({ value: k, label: v.label }))].map(opt => (
+          <button key={opt.value} onClick={() => { setPriceType(opt.value); setPage(1); }}
+            style={{
+              padding: '7px 16px', borderRadius: 8, border: `2px solid ${priceType === opt.value ? (PRICE_TYPE_META[opt.value]?.color || '#111') : '#e0e0e0'}`,
+              background: priceType === opt.value ? (PRICE_TYPE_META[opt.value]?.bg || '#f0f0f0') : '#fff',
+              color: priceType === opt.value ? (PRICE_TYPE_META[opt.value]?.color || '#111') : '#555',
+              cursor: 'pointer', fontWeight: priceType === opt.value ? 700 : 500, fontSize: 13,
+            }}>
+            {opt.value === 'retail' ? '💰 ' : opt.value === 'wholesale' ? '💰 ' : opt.value === 'dealer' ? '💰 ' : ''}{opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
@@ -76,7 +103,6 @@ export default function AdminStockLog() {
           <option value="">Все источники</option>
           <option value="manual">Вручную</option>
           <option value="excel">Excel</option>
-          <option value="sync_1c">1С Синк</option>
         </select>
         <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} style={SEL} />
         <span style={{ color: '#aaa', fontSize: 12 }}>—</span>
@@ -99,7 +125,7 @@ export default function AdminStockLog() {
             {/* Table header */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '140px 1fr 80px 110px 90px 120px',
+              gridTemplateColumns: '140px 1fr 100px 140px 90px 120px',
               padding: '8px 14px',
               background: '#f7f8fa',
               borderBottom: '1px solid #eee',
@@ -107,20 +133,21 @@ export default function AdminStockLog() {
             }}>
               <span>Дата</span>
               <span>Товар</span>
-              <span style={{ textAlign: 'center' }}>Движение</span>
+              <span style={{ textAlign: 'center' }}>Тип</span>
               <span style={{ textAlign: 'center' }}>Было → Стало</span>
               <span style={{ textAlign: 'center' }}>Источник</span>
               <span>Кто</span>
             </div>
 
             {logs.map(log => {
-              const src = SOURCE_LABEL[log.source] || { label: log.source, bg: '#f5f5f5', color: '#666' };
-              const isPlus = log.delta >= 0;
+              const pt  = PRICE_TYPE_META[log.priceType] || { label: log.priceType, bg: '#f5f5f5', color: '#666' };
+              const src = SOURCE_LABEL[log.source]       || { label: log.source,    bg: '#f5f5f5', color: '#666' };
+              const isRise = log.toPrice >= log.fromPrice;
               return (
                 <div key={log._id}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '140px 1fr 80px 110px 90px 120px',
+                    gridTemplateColumns: '140px 1fr 100px 140px 90px 120px',
                     padding: '9px 14px',
                     borderBottom: '1px solid #f5f5f5',
                     alignItems: 'center',
@@ -137,30 +164,25 @@ export default function AdminStockLog() {
                     {log.sku && <div style={{ fontSize: 10, color: '#bbb' }}>{log.sku}</div>}
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <span style={{
-                      fontWeight: 800, fontSize: 14,
-                      color: isPlus ? '#1e7e34' : '#c0392b',
-                    }}>
-                      {isPlus ? '+' : ''}{log.delta} шт.
+                    <span style={{ padding: '3px 8px', borderRadius: 5, fontSize: 11, fontWeight: 700, background: pt.bg, color: pt.color }}>
+                      {pt.label}
                     </span>
                   </div>
-                  <div style={{ textAlign: 'center', fontSize: 12, color: '#555' }}>
-                    <span>{log.fromStock ?? '?'}</span>
+                  <div style={{ textAlign: 'center', fontSize: 12 }}>
+                    <span style={{ color: '#888' }}>{fmtPrice(log.fromPrice)}</span>
                     <span style={{ color: '#ccc', margin: '0 4px' }}>→</span>
-                    <span style={{ fontWeight: 700 }}>{log.toStock ?? '?'}</span>
+                    <span style={{ fontWeight: 700, color: isRise ? '#1e7e34' : '#c0392b' }}>{fmtPrice(log.toPrice)}</span>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     {log.sourceUrl ? (
                       <a href={log.sourceUrl} target="_blank" rel="noreferrer" style={{
                         padding: '3px 8px', borderRadius: 5, fontSize: 11, fontWeight: 700,
-                        background: src.bg, color: src.color, textDecoration: 'none',
-                        cursor: 'pointer', display: 'inline-block',
+                        background: src.bg, color: src.color, textDecoration: 'none', display: 'inline-block',
                       }}>{src.label} ↗</a>
                     ) : (
-                      <span style={{
-                        padding: '3px 8px', borderRadius: 5, fontSize: 11, fontWeight: 700,
-                        background: src.bg, color: src.color,
-                      }}>{src.label}</span>
+                      <span style={{ padding: '3px 8px', borderRadius: 5, fontSize: 11, fontWeight: 700, background: src.bg, color: src.color }}>
+                        {src.label}
+                      </span>
                     )}
                   </div>
                   <span style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
