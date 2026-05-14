@@ -268,11 +268,32 @@ export default function AdminProductModal({ product, onClose }) {
               )}
 
               {/* Dimensions */}
-              {product.dimensions && (
-                <div style={{ fontSize: 13, color: '#888' }}>
-                  <span style={{ color: '#bbb' }}>Габариты:</span> {product.dimensions}
-                </div>
-              )}
+              {product.dimensions && (() => {
+                const raw = product.dimensions.trim();
+                const unitMatch = raw.match(/[а-яёa-z]+\.?$/i);
+                const unit = unitMatch ? unitMatch[0] : '';
+                const numStr = raw.replace(/[а-яёa-z]+\.?$/i, '').trim();
+                const parts = numStr.split(/[×x\*]/i).map(s => s.trim()).filter(Boolean);
+                if (parts.length === 3) {
+                  return (
+                    <div style={{ fontSize: 13 }}>
+                      <span style={{ color: '#bbb', marginRight: 6 }}>Габариты:</span>
+                      {[['Д', parts[0]], ['Ш', parts[1]], ['В', parts[2]]].map(([lbl, val], i) => (
+                        <span key={lbl} style={{ marginRight: i < 2 ? 10 : 0 }}>
+                          <span style={{ color: '#bbb', fontSize: 11, marginRight: 2 }}>{lbl}</span>
+                          <span style={{ color: '#555', fontWeight: 600 }}>{val}</span>
+                        </span>
+                      ))}
+                      {unit && <span style={{ color: '#aaa', fontSize: 11, marginLeft: 4 }}>{unit}</span>}
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ fontSize: 13, color: '#888' }}>
+                    <span style={{ color: '#bbb' }}>Габариты:</span> {raw}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
