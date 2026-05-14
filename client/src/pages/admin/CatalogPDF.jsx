@@ -141,7 +141,10 @@ const S = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // ── 2×2 grid ───────────────────────────────────────────────────────────────
+  // ── 2×2 grid — exact static layout ────────────────────────────────────────
+  // A4 841.89pt − padding(64) − header(42) − footer(14) = 721.89pt
+  // CARD_H = (721.89 − 12gap) / 2 = 354.9 ≈ 355
+  // CARD_W = (539.28 − 12gap) / 2 = 263.6 ≈ 263
   grid: {
     flexDirection: 'column',
     gap: 12,
@@ -151,33 +154,32 @@ const S = StyleSheet.create({
     gap: 12,
   },
 
-  // ── Card ───────────────────────────────────────────────────────────────────
+  // ── Card — fixed 263 × 355 ─────────────────────────────────────────────────
   card: {
     width: 263,
+    height: 355,
     borderWidth: 0.75,
     borderColor: HAIRLINE,
-    borderRadius: 4,
     overflow: 'hidden',
     backgroundColor: WHITE,
   },
 
-  // ── Image area ─────────────────────────────────────────────────────────────
+  // ── Image — fixed 263 × 193 ────────────────────────────────────────────────
   imageWrap: {
     width: 263,
-    height: 186,
+    height: 193,
     backgroundColor: WHITE,
-    position: 'relative',
     borderBottomWidth: 0.75,
     borderBottomColor: HAIRLINE,
   },
   productImg: {
     width: 263,
-    height: 186,
+    height: 193,
     objectFit: 'contain',
   },
   noImageWrap: {
     width: 263,
-    height: 186,
+    height: 193,
     backgroundColor: '#F2F3F5',
     alignItems: 'center',
     justifyContent: 'center',
@@ -190,75 +192,83 @@ const S = StyleSheet.create({
     fontWeight: 400,
   },
 
-  // ── Card body ─────────────────────────────────────────────────────────────
+  // ── Card body — fixed 263 × 161 ────────────────────────────────────────────
+  // 355 − 193 − 0.75border ≈ 161
+  // paddingH 9, paddingTop 7, paddingBottom 6 → inner 148pt
+  // kicker 10 + gap2 + name 28 + gap4 + price 26 + gap3 + 4×specs 18 = 145pt ✓
   cardBody: {
+    width: 263,
+    height: 161,
     paddingHorizontal: 9,
     paddingTop: 7,
     paddingBottom: 6,
   },
+
   kicker: {
+    height: 10,
     fontSize: 7,
     color: STEEL,
     fontWeight: 500,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
-    marginBottom: 3,
+    marginBottom: 2,
+  },
+
+  nameWrap: {
+    height: 28,
+    overflow: 'hidden',
+    marginBottom: 4,
   },
   productName: {
     fontSize: 11,
     fontWeight: 700,
     color: INK,
-    marginBottom: 7,
     lineHeight: 1.25,
   },
 
-  // price block
+  // price block — fixed height 26
   priceBlock: {
+    height: 26,
     backgroundColor: RED_SOFT,
-    borderRadius: 3,
     paddingHorizontal: 8,
-    paddingVertical: 5,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 3,
   },
   priceLabel: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: RED,
     fontWeight: 500,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
   priceValue: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 700,
     color: RED,
   },
   priceSom: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontWeight: 400,
     color: RED,
   },
 
-  // spec rows
-  specsBlock: {
-    gap: 0,
-  },
+  // spec row — fixed height 18 each
   specRow: {
+    height: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 3,
     paddingHorizontal: 2,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
   specRowAlt: {
+    height: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 3,
     paddingHorizontal: 2,
     backgroundColor: BG_SPEC,
     borderBottomWidth: 0.5,
@@ -439,21 +449,23 @@ const PRICE_LABELS = {
   priceDealer:    'дил. цена',
 };
 
+const SPEC_ROWS = 4;
+
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product, priceType }) {
-  const imageUrl   = pdfImg(product.images?.[0]);
-  const noPhoto    = !imageUrl;
-  const catLabel   = CATEGORY_LABELS[product.category] || 'товар для дома';
+  const imageUrl = pdfImg(product.images?.[0]);
+  const noPhoto  = !imageUrl;
+  const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
 
-  // Merge dimensions as first spec if present
+  // Build spec list (dimensions + color + specs), max SPEC_ROWS
   const rawSpecs = (product.specs || []).filter(s => s.value);
-  const allSpecs = [];
-  if (product.dimensions) allSpecs.push({ key: 'Размеры', value: product.dimensions });
-  if (product.color && product.color !== '') allSpecs.push({ key: 'Цвет', value: product.color });
-  rawSpecs.forEach(s => {
-    if (!allSpecs.find(a => a.key === s.key)) allSpecs.push(s);
-  });
-  const specs = allSpecs.slice(0, 5);
+  const filled = [];
+  if (product.dimensions) filled.push({ key: 'Размеры', value: product.dimensions });
+  if (product.color && product.color !== '') filled.push({ key: 'Цвет', value: product.color });
+  rawSpecs.forEach(s => { if (!filled.find(a => a.key === s.key)) filled.push(s); });
+
+  // Always exactly SPEC_ROWS rows — pad with empty if needed
+  const specs = Array.from({ length: SPEC_ROWS }, (_, i) => filled[i] || { key: '', value: '' });
 
   const priceVal   = priceType !== 'none' ? (product[priceType] || 0) : null;
   const priceNum   = priceVal > 0 ? priceVal.toLocaleString('ru') : null;
@@ -461,53 +473,45 @@ function ProductCard({ product, priceType }) {
 
   return (
     <View style={S.card}>
-      {/* Image */}
+      {/* Image — fixed height */}
       {noPhoto ? (
-        <View style={S.noImageWrap}>
-          <Text style={S.noImageText}>нет фото</Text>
-        </View>
+        <View style={S.noImageWrap}><Text style={S.noImageText}>нет фото</Text></View>
       ) : (
         <View style={S.imageWrap}>
           <Image src={imageUrl} style={S.productImg} />
         </View>
       )}
 
-      {/* Card body */}
+      {/* Body — fixed height */}
       <View style={S.cardBody}>
-        {/* Category kicker */}
         <Text style={S.kicker}>{catLabel}</Text>
 
-        {/* Name */}
-        <Text style={S.productName}>{product.name || product.fullName}</Text>
+        <View style={S.nameWrap}>
+          <Text style={S.productName}>{product.name || product.fullName}</Text>
+        </View>
 
-        {/* Price block */}
-        {priceType !== 'none' && priceNum && (
-          <View style={S.priceBlock}>
-            <Text style={S.priceLabel}>{priceLabel}</Text>
-            <Text style={S.priceValue}>
-              {priceNum}{' '}
-              <Text style={S.priceSom}>сом</Text>
-            </Text>
-          </View>
-        )}
-        {priceType !== 'none' && !priceNum && (
-          <View style={S.priceBlock}>
-            <Text style={S.priceLabel}>{priceLabel}</Text>
-            <Text style={S.priceValue}>по запросу</Text>
-          </View>
-        )}
+        {/* Price — always shown (blank if none) */}
+        <View style={S.priceBlock}>
+          {priceType !== 'none' ? (
+            <>
+              <Text style={S.priceLabel}>{priceLabel}</Text>
+              <Text style={S.priceValue}>
+                {priceNum || '—'}{priceNum ? ' ' : ''}
+                {priceNum && <Text style={S.priceSom}>сом</Text>}
+              </Text>
+            </>
+          ) : (
+            <Text style={S.priceLabel}> </Text>
+          )}
+        </View>
 
-        {/* Specs */}
-        {specs.length > 0 && (
-          <View style={S.specsBlock}>
-            {specs.map((s, i) => (
-              <View key={i} style={i % 2 === 0 ? S.specRow : S.specRowAlt}>
-                <Text style={S.specKey}>{s.key}</Text>
-                <Text style={S.specVal}>{s.value}{s.unit ? ` ${s.unit}` : ''}</Text>
-              </View>
-            ))}
+        {/* Always exactly SPEC_ROWS rows */}
+        {specs.map((s, i) => (
+          <View key={i} style={i % 2 === 0 ? S.specRow : S.specRowAlt}>
+            <Text style={S.specKey}>{s.key}</Text>
+            <Text style={S.specVal}>{s.value}{s.unit ? ` ${s.unit}` : ''}</Text>
           </View>
-        )}
+        ))}
       </View>
     </View>
   );
