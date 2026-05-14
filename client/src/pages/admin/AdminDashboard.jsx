@@ -226,6 +226,13 @@ export default function AdminDashboard() {
           icon="📋"
           to="/admin/sets"
         />
+        <StatCard
+          label="Фронтмены"
+          value={stats?.frontmen ?? '→'}
+          sub="Представители брендов"
+          icon="👤"
+          to="/admin/frontmen"
+        />
         {isOwner && (
           <StatCard
             label="Пользователи"

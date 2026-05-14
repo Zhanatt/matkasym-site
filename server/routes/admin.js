@@ -40,7 +40,7 @@ router.get('/stats', async (req, res) => {
     const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
     const adminRoles = ['owner', 'editor', 'viewer', 'banned'];
 
-    const [products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid] = await Promise.all([
+    const [products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid, frontmen] = await Promise.all([
       Product.countDocuments(),
       Product.countDocuments({ inStock: false }),
       Brand.countDocuments(),
@@ -49,8 +49,9 @@ router.get('/stats', async (req, res) => {
       User.countDocuments({ isPending: true }),
       Product.countDocuments({ productStatus: 'liquidation' }),
       Product.countDocuments({ category: 'Неликвид' }),
+      Frontman.countDocuments(),
     ]);
-    res.json({ products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid });
+    res.json({ products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid, frontmen });
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }
