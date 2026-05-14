@@ -61,6 +61,7 @@ export const CATEGORIES = [
   { value: 'cleaning-set',        label: 'Щётка с совком / стекломойка' },
   { value: 'bath-mat',            label: 'Коврик для ванной' },
   { value: 'entrance-mat',        label: 'Коврик для прихожей' },
+  { value: 'entrance-rugs',       label: 'Ковры для прихожей' },
   { value: 'bath-accessories',    label: 'Аксессуары для ванны' },
   { value: 'bath-curtain-rod',    label: 'Карниз для шторки' },
   { value: 'bath-shower-curtain', label: 'Шторка для душа' },
