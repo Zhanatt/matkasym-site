@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   adminGetFrontmen, adminCreateFrontman,
   adminUpdateFrontman, adminDeleteFrontman,
+  adminGetUsers,
 } from '../../api/index';
 
 const BRAND_META = {
@@ -33,47 +34,80 @@ export default function AdminFrontmen() {
   const canEdit = user?.role === 'owner' || user?.role === 'editor';
 
   const [frontmen, setFrontmen] = useState([]);
+  const [users,    setUsers]    = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [editId,   setEditId]   = useState(null); // _id being edited, or 'new'
+  const [editId,   setEditId]   = useState(null);
   const [form,     setForm]     = useState({});
   const [saving,   setSaving]   = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
-    adminGetFrontmen()
-      .then(r => setFrontmen(r.data))
+    Promise.all([adminGetFrontmen(), adminGetUsers()])
+      .then(([fmRes, usersRes]) => {
+        setFrontmen(fmRes.data);
+        setUsers(usersRes.data.filter(u => ['owner', 'editor', 'viewer'].includes(u.role)));
+      })
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
+  // Sort: current user's frontman first, then by order/createdAt
+  function sortItems(items) {
+    return [...items].sort((a, b) => {
+      const aIsMe = a.userId?._id === user?._id || a.userId === user?._id;
+      const bIsMe = b.userId?._id === user?._id || b.userId === user?._id;
+      if (aIsMe && !bIsMe) return -1;
+      if (!aIsMe && bIsMe) return 1;
+      return 0;
+    });
+  }
+
   const grouped = Object.entries(BRAND_META).map(([key, meta]) => ({
     brandKey: key,
     meta,
-    items: frontmen.filter(f => f.brand === key),
+    items: sortItems(frontmen.filter(f => f.brand === key)),
   }));
 
   function startNew(brandKey) {
     const color = PALETTE[frontmen.length % PALETTE.length];
-    setForm({ name: '', brand: brandKey, instagram: '', sets: [], color });
+    setForm({ userId: '', name: '', brand: brandKey, instagram: '', sets: [], color });
     setEditId('new');
   }
 
   function startEdit(fm) {
-    setForm({ name: fm.name, brand: fm.brand, instagram: fm.instagram || '', sets: [...fm.sets], color: fm.color });
+    setForm({
+      userId: fm.userId?._id || fm.userId || '',
+      name: fm.name,
+      brand: fm.brand,
+      instagram: fm.instagram || '',
+      sets: [...fm.sets],
+      color: fm.color,
+    });
     setEditId(fm._id);
   }
 
   function cancelEdit() { setEditId(null); setForm({}); }
 
+  function handleUserSelect(userId) {
+    const selected = users.find(u => u._id === userId);
+    setForm(f => ({
+      ...f,
+      userId,
+      name: selected ? selected.name : f.name,
+      instagram: selected?.instagram || f.instagram,
+    }));
+  }
+
   async function save() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
+      const payload = { ...form, userId: form.userId || null };
       if (editId === 'new') {
-        await adminCreateFrontman(form);
+        await adminCreateFrontman(payload);
       } else {
-        await adminUpdateFrontman(editId, form);
+        await adminUpdateFrontman(editId, payload);
       }
       await load();
       setEditId(null);
@@ -105,7 +139,6 @@ export default function AdminFrontmen() {
           background: '#fff', borderRadius: 12, padding: '28px 32px',
           boxShadow: '0 1px 4px rgba(0,0,0,.07)', marginBottom: 20,
         }}>
-          {/* Brand header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
               <div style={{ fontSize: 36, fontWeight: 800, color: '#1c1c1c', letterSpacing: -1, lineHeight: 1 }}>
@@ -127,47 +160,60 @@ export default function AdminFrontmen() {
             )}
           </div>
 
-          {/* Cards grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-            {items.map(fm => (
-              <div key={fm._id} style={{
-                borderRadius: 10, border: `2px solid ${fm.color}30`,
-                background: `${fm.color}08`, padding: '14px 16px', position: 'relative',
-              }}>
-                {/* Color stripe */}
-                <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: fm.color, borderRadius: '10px 0 0 10px' }} />
-                <div style={{ paddingLeft: 8 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#1c1c1c' }}>{fm.name}</div>
-                  {fm.instagram && (
-                    <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{fm.instagram}</div>
+            {items.map(fm => {
+              const isMe = fm.userId?._id === user?._id || fm.userId === user?._id;
+              return (
+                <div key={fm._id} style={{
+                  borderRadius: 10,
+                  border: isMe ? `2px solid ${fm.color}` : `2px solid ${fm.color}30`,
+                  background: `${fm.color}08`, padding: '14px 16px', position: 'relative',
+                }}>
+                  {isMe && (
+                    <div style={{
+                      position: 'absolute', top: 8, right: 8,
+                      fontSize: 9, fontWeight: 700, color: fm.color,
+                      background: fm.color + '18', borderRadius: 8, padding: '2px 6px',
+                      letterSpacing: 0.5,
+                    }}>ВЫ</div>
                   )}
-                  {fm.sets.length > 0 && (
-                    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {fm.sets.map(s => (
-                        <span key={s} style={{
-                          fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
-                          background: fm.color + '22', color: fm.color,
-                        }}>
-                          {setLabel(s)}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {canEdit && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      <button onClick={() => startEdit(fm)} style={{
-                        fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #e0e0e0',
-                        background: '#fff', cursor: 'pointer', color: '#555', fontWeight: 600,
-                      }}>Изменить</button>
-                      <button onClick={() => del(fm._id)} style={{
-                        fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #fcc',
-                        background: '#fff8f8', cursor: 'pointer', color: '#c00', fontWeight: 600,
-                      }}>Удалить</button>
-                    </div>
-                  )}
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: fm.color, borderRadius: '10px 0 0 10px' }} />
+                  <div style={{ paddingLeft: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1c1c1c' }}>{fm.name}</div>
+                    {fm.userId?.email && (
+                      <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>{fm.userId.email}</div>
+                    )}
+                    {fm.instagram && (
+                      <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{fm.instagram}</div>
+                    )}
+                    {fm.sets.length > 0 && (
+                      <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {fm.sets.map(s => (
+                          <span key={s} style={{
+                            fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
+                            background: fm.color + '22', color: fm.color,
+                          }}>
+                            {setLabel(s)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {canEdit && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <button onClick={() => startEdit(fm)} style={{
+                          fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #e0e0e0',
+                          background: '#fff', cursor: 'pointer', color: '#555', fontWeight: 600,
+                        }}>Изменить</button>
+                        <button onClick={() => del(fm._id)} style={{
+                          fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #fcc',
+                          background: '#fff8f8', cursor: 'pointer', color: '#c00', fontWeight: 600,
+                        }}>Удалить</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {items.length === 0 && (
               <div style={{ fontSize: 13, color: '#ccc', padding: '20px 0' }}>Нет фронтменов</div>
@@ -186,13 +232,32 @@ export default function AdminFrontmen() {
         >
           <div style={{
             background: '#fff', borderRadius: 14, padding: '28px 32px',
-            width: 380, maxWidth: '90vw', boxShadow: '0 8px 40px rgba(0,0,0,.18)',
+            width: 400, maxWidth: '90vw', boxShadow: '0 8px 40px rgba(0,0,0,.18)',
           }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 20px' }}>
               {editId === 'new' ? 'Новый фронтмен' : 'Редактировать'}
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              {/* User selector */}
+              <div>
+                <div style={{ fontSize: 11, color: '#888', fontWeight: 600, marginBottom: 6 }}>ПОЛЬЗОВАТЕЛЬ</div>
+                <select
+                  value={form.userId}
+                  onChange={e => handleUserSelect(e.target.value)}
+                  style={{ width: '100%', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 8, padding: '8px 12px', outline: 'none' }}
+                >
+                  <option value="">— Не привязан —</option>
+                  {users.map(u => (
+                    <option key={u._id} value={u._id}>
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Color + Name */}
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <input type="color" value={form.color}
                   onChange={e => setForm(f => ({ ...f, color: e.target.value }))}

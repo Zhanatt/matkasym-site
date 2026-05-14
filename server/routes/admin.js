@@ -364,7 +364,7 @@ router.delete('/category-specs/:category/:key', protect, editor, async (req, res
 router.get('/frontmen', protect, viewer, async (req, res) => {
   try {
     const q = req.query.brand ? { brand: req.query.brand } : {};
-    const list = await Frontman.find(q).sort({ order: 1, createdAt: 1 });
+    const list = await Frontman.find(q).populate('userId', 'name email').sort({ order: 1, createdAt: 1 });
     res.json(list);
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });

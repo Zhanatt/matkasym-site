@@ -7,6 +7,7 @@ const FrontmanSchema = new Schema({
   instagram: { type: String, default: '' },
   color:     { type: String, default: '#888888' },
   order:     { type: Number, default: 0 },
+  userId:    { type: Schema.Types.ObjectId, ref: 'User', default: null },
 }, { timestamps: true });
 
 module.exports = model('Frontman', FrontmanSchema);
