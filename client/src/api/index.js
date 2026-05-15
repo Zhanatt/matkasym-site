@@ -58,6 +58,7 @@ export const adminDeleteCategorySpec  = (cat, key)  => api.delete(`/admin/catego
 export const adminGetChangelog  = (params) => api.get('/admin/changelog',  { params });
 export const adminGetStockLog   = (params) => api.get('/admin/stock-log',  { params });
 export const adminGetPriceLog   = (params) => api.get('/admin/price-log',  { params });
+export const adminGetSalesChart = (params) => api.get('/admin/sales-chart', { params });
 export const adminGetFrontmen    = (brand)      => api.get('/admin/frontmen', { params: brand ? { brand } : {} });
 export const adminCreateFrontman = (data)       => api.post('/admin/frontmen', data);
 export const adminUpdateFrontman = (id, data)   => api.patch(`/admin/frontmen/${id}`, data);

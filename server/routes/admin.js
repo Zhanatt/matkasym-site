@@ -1156,4 +1156,62 @@ router.get('/price-log', editor, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// GET /api/admin/sales-chart?period=day|week|month&dateFrom=&dateTo=&brand=
+router.get('/sales-chart', editor, async (req, res) => {
+  try {
+    const { period = 'day', dateFrom, dateTo, brand } = req.query;
+
+    const match = { delta: { $lt: 0 } };
+    if (dateFrom || dateTo) {
+      match.createdAt = {};
+      if (dateFrom) match.createdAt.$gte = new Date(dateFrom);
+      if (dateTo)   match.createdAt.$lte = new Date(dateTo + 'T23:59:59Z');
+    }
+
+    const fmtMap = { day: '%Y-%m-%d', week: '%Y-%V', month: '%Y-%m' };
+    const fmt    = fmtMap[period] || fmtMap.day;
+
+    const pipeline = [
+      { $match: match },
+      { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: 'prod' } },
+      { $unwind: { path: '$prod', preserveNullAndEmpty: false } },
+    ];
+
+    if (brand) pipeline.push({ $match: { 'prod.brand': brand } });
+
+    pipeline.push(
+      { $group: {
+        _id: {
+          period: { $dateToString: { format: fmt, date: '$createdAt', timezone: '+06:00' } },
+          set:    { $ifNull: ['$prod.set', '__none__'] },
+        },
+        sales: { $sum: { $abs: '$delta' } },
+      }},
+      { $sort: { '_id.period': 1 } },
+    );
+
+    const rows = await StockLog.aggregate(pipeline);
+
+    // Build sorted label list
+    const labelSet = [...new Set(rows.map(r => r._id.period))].sort();
+    const setKeys  = [...new Set(rows.map(r => r._id.set))].filter(s => s !== '__none__').sort();
+
+    // map: set → { period → sales }
+    const bySet = {};
+    rows.forEach(r => {
+      const s = r._id.set;
+      if (s === '__none__') return;
+      if (!bySet[s]) bySet[s] = {};
+      bySet[s][r._id.period] = r.sales;
+    });
+
+    const datasets = setKeys.map(s => ({
+      set:  s,
+      data: labelSet.map(l => bySet[s]?.[l] || 0),
+    }));
+
+    res.json({ labels: labelSet, datasets });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
 module.exports = router;
