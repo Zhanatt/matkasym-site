@@ -264,13 +264,37 @@ export default function AdminProductModal({ product, onClose }) {
 
                 // Build filtered spec rows
                 const seen = new Set();
-                const visibleSpecs = (product.specs || []).filter(s => {
-                  if (!s.value || /^габарит/i.test(s.key)) return false;
-                  const norm = s.key.trim().toLowerCase();
-                  if (seen.has(norm)) return false;
-                  seen.add(norm);
-                  return true;
-                });
+                // Priority order for common spec keys (normalized lowercase)
+                const SPEC_PRIORITY = [
+                  'конструкция', 'тип конструкции',
+                  'материал', 'материал корпуса',
+                  'покрытие', 'цвет',
+                  'размещение',
+                  'макс. нагрузка', 'максимальная нагрузка', 'нагрузка',
+                  'вес товара', 'вес',
+                  'вес товара в упаковке', 'вес в упаковке',
+                  'количество', 'кол-во',
+                ];
+
+                const specPriority = k => {
+                  const idx = SPEC_PRIORITY.indexOf(k.trim().toLowerCase());
+                  return idx === -1 ? SPEC_PRIORITY.length : idx;
+                };
+
+                const visibleSpecs = (product.specs || [])
+                  .filter(s => {
+                    if (!s.value || /^габарит/i.test(s.key)) return false;
+                    const norm = s.key.trim().toLowerCase();
+                    if (seen.has(norm)) return false;
+                    seen.add(norm);
+                    return true;
+                  })
+                  .sort((a, b) => {
+                    const pa = specPriority(a.key);
+                    const pb = specPriority(b.key);
+                    if (pa !== pb) return pa - pb;
+                    return a.key.localeCompare(b.key, 'ru');
+                  });
 
                 const hasContent = dimRow || visibleSpecs.length > 0;
                 if (!hasContent) return null;
