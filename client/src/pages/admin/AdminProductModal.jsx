@@ -238,36 +238,34 @@ export default function AdminProductModal({ product, onClose }) {
                 </div>
               )}
 
-              {/* Specs */}
-              {product.specs?.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    Характеристики
+              {/* Specs — skip empty values, Габарит* keys, and duplicate keys */}
+              {(() => {
+                const seen = new Set();
+                const visibleSpecs = (product.specs || []).filter(s => {
+                  if (!s.value || /^габарит/i.test(s.key)) return false;
+                  if (seen.has(s.key)) return false;
+                  seen.add(s.key);
+                  return true;
+                });
+                if (!visibleSpecs.length) return null;
+                return (
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                      Характеристики
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {visibleSpecs.map((s, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, paddingBottom: 5, borderBottom: '1px solid #f5f5f5' }}>
+                          <span style={{ color: '#aaa', minWidth: 110, flexShrink: 0 }}>{s.key}</span>
+                          <span style={{ color: '#1c1c1c', fontWeight: 600 }}>{s.value}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    {product.specs.map((s, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, paddingBottom: 5, borderBottom: '1px solid #f5f5f5' }}>
-                        <span style={{ color: '#aaa', minWidth: 110, flexShrink: 0 }}>{s.key}</span>
-                        <span style={{ color: '#1c1c1c', fontWeight: 600 }}>{s.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
-              {/* Description */}
-              {product.description && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    Описание
-                  </div>
-                  <div style={{ fontSize: 13, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                    {product.description}
-                  </div>
-                </div>
-              )}
-
-              {/* Dimensions */}
+              {/* Dimensions — shown before description */}
               {product.dimensions && (() => {
                 const raw = product.dimensions.trim();
                 const unitMatch = raw.match(/[а-яёa-z]+\.?$/i);
@@ -294,6 +292,18 @@ export default function AdminProductModal({ product, onClose }) {
                   </div>
                 );
               })()}
+
+              {/* Description */}
+              {product.description && (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Описание
+                  </div>
+                  <div style={{ fontSize: 13, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                    {product.description}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
