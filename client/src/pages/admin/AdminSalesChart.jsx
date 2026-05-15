@@ -263,7 +263,7 @@ export default function AdminSalesChart() {
           {totalBySets.length > 0 && (
             <div style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
               <div style={{
-                display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px 130px',
+                display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px',
                 padding: '8px 14px', background: '#f7f8fa', borderBottom: '1px solid #eee',
                 fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5,
               }}>
@@ -271,14 +271,13 @@ export default function AdminSalesChart() {
                 <span>Сет</span>
                 <span style={{ textAlign: 'right' }}>% от итога</span>
                 <span style={{ textAlign: 'right' }}>Продано, шт</span>
-                <span style={{ textAlign: 'right' }}>Сумма, с</span>
               </div>
               {totalBySets.map((item, i) => {
                 const pct = grandTotal > 0 ? Math.round(item.total / grandTotal * 100) : 0;
                 return (
                   <div key={item.set}
                     onClick={() => navigate(`/admin/sales-chart/${item.set}`)}
-                    style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px 130px', padding: '9px 14px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center', cursor: 'pointer' }}
+                    style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '9px 14px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
                     onMouseLeave={e => e.currentTarget.style.background = ''}>
                     <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
@@ -293,14 +292,12 @@ export default function AdminSalesChart() {
                       </div>
                     </div>
                     <span style={{ textAlign: 'right', fontWeight: 700, color: '#1e7e34' }}>{item.total.toLocaleString('ru')} шт</span>
-                    <span style={{ textAlign: 'right', fontWeight: 600, color: '#1565c0' }}>{item.revenue.toLocaleString('ru')} с</span>
                   </div>
                 );
               })}
-              <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px 130px', padding: '10px 14px', background: '#f7f8fa', fontSize: 13 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '10px 14px', background: '#f7f8fa', fontSize: 13 }}>
                 <span /><span style={{ fontWeight: 700, color: '#111' }}>Итого</span><span />
                 <span style={{ textAlign: 'right', fontWeight: 800, fontSize: 15, color: '#1e7e34' }}>{grandTotal.toLocaleString('ru')} шт</span>
-                <span style={{ textAlign: 'right', fontWeight: 800, fontSize: 15, color: '#1565c0' }}>{(data?.grandRevenue || 0).toLocaleString('ru')} с</span>
               </div>
             </div>
           )}
