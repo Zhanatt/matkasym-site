@@ -494,7 +494,7 @@ const PRICE_MODES = [
 
 function getPrice(product, mode) {
   if (mode === 'retail')      return product.price;
-  if (mode === 'navigation')  return product.priceNavigation;
+  if (mode === 'navigation')  return product.priceNavigation || Math.round((product.price || 0) * 1.2);
   if (mode === 'wholesale')   return product.priceWholesale;
   if (mode === 'dealer')      return product.priceDealer;
   return null;

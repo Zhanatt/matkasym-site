@@ -113,7 +113,7 @@ const STATUS_LABELS = {
 
 function getPrice(p, mode) {
   if (mode === 'retail')     return p.price;
-  if (mode === 'navigation') return p.priceNavigation;
+  if (mode === 'navigation') return p.priceNavigation || Math.round((p.price || 0) * 1.2);
   if (mode === 'wholesale')  return p.priceWholesale;
   if (mode === 'dealer')     return p.priceDealer;
   return null;
