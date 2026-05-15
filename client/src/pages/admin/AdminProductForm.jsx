@@ -11,6 +11,10 @@ import ImageUploader  from '../../components/ImageUploader';
 import SelectWithAdd  from '../../components/SelectWithAdd';
 import { CATEGORIES, CATEGORY_SPECS } from '../../config/categorySpecs';
 
+// Spec keys that duplicate top-level fields (dimensions, color) — skip in specs grid
+const SKIP_SPEC_KEYS = new Set(['Цвет']);
+const isDimensionKey = k => /^габарит/i.test(k.trim());
+
 export const CRM_STAGES = [
   'Новая заявка',
   'Разработка Тех. листа',
@@ -274,7 +278,7 @@ export default function AdminProductForm() {
             .then(catR => {
               setSavedCatSpecs(catR.data || []);
               const existingKeys = new Set(baseSpecs.map(s => s.key));
-              const missing = (catR.data || []).filter(s => !existingKeys.has(s.key));
+              const missing = (catR.data || []).filter(s => !existingKeys.has(s.key) && !isDimensionKey(s.key));
               if (missing.length > 0) {
                 setForm(f => ({
                   ...f,
@@ -291,7 +295,7 @@ export default function AdminProductForm() {
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
   const handleCategoryChange = (value) => {
-    const staticSpecs = (CATEGORY_SPECS[value] || []).filter(t => t.key !== 'Цвет');
+    const staticSpecs = (CATEGORY_SPECS[value] || []).filter(t => t.key !== 'Цвет' && !isDimensionKey(t.key));
     adminGetCategorySpecs(value)
       .then(r => {
         setSavedCatSpecs(r.data);
@@ -554,7 +558,10 @@ export default function AdminProductForm() {
           </div>
           <div className="admin-specs-grid">
             {form.specs.map((spec, idx) => {
-              if (spec.key === 'Цвет') return null;
+              if (SKIP_SPEC_KEYS.has(spec.key) || isDimensionKey(spec.key)) return null;
+              // Hide duplicate keys — only show first occurrence
+              const firstIdx = form.specs.findIndex(s => s.key === spec.key);
+              if (firstIdx !== idx) return null;
               const template = (CATEGORY_SPECS[form.category] || []).find(t => t.key === spec.key);
               const isCustom = !template;
               const isSelect = template?.type === 'select' || (isCustom && spec.options?.length > 0);
