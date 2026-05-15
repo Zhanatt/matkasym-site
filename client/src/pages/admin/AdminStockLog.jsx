@@ -20,17 +20,30 @@ const SEL = {
 
 const LIMIT = 50;
 
+function fileDisplayName(url) {
+  const raw = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'file';
+  const tsMatch = raw.match(/(\d{10,13})/);
+  if (tsMatch) {
+    const ts = Number(tsMatch[1]);
+    const ms = ts > 1e12 ? ts : ts * 1000;
+    const d  = new Date(ms);
+    const pad = n => String(n).padStart(2, '0');
+    const date = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+    const time = `${pad(d.getHours())}-${pad(d.getMinutes())}`;
+    return `остаток_на_${date}_${time}.xlsx`;
+  }
+  return /\.(xlsx|xls|csv)$/i.test(raw) ? raw : raw + '.xlsx';
+}
+
 async function downloadFile(url) {
   const forceUrl = url.includes('cloudinary.com')
     ? url.replace('/raw/upload/', '/raw/upload/fl_attachment/')
     : url;
   try {
     const blob = await fetch(forceUrl).then(r => r.blob());
-    let name = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'file';
-    if (!/\.(xlsx|xls|csv)$/i.test(name)) name += '.xlsx';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = name;
+    a.download = fileDisplayName(url);
     a.click();
     URL.revokeObjectURL(a.href);
   } catch {
