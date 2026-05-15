@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -119,7 +119,8 @@ export default function AdminSalesChart() {
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo,   setDateTo]   = useState(defaultTo);
   const [hidden,   setHidden]   = useState(new Set());
-  const [drillSet, setDrillSet] = useState(null); // slug of set being drilled into
+  const [drillSet, setDrillSet] = useState(null);
+  const drillRef = useRef(null);
 
   const [data,      setData]      = useState(null);
   const [drillData, setDrillData] = useState(null);
@@ -143,6 +144,8 @@ export default function AdminSalesChart() {
   const openDrill = useCallback((slug) => {
     setDrillSet(slug);
     setDrillData(null);
+    // scroll to panel immediately (it renders with Загрузка…)
+    setTimeout(() => drillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     const params = { period };
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo)   params.dateTo   = dateTo;
@@ -336,7 +339,7 @@ export default function AdminSalesChart() {
 
           {/* Drill-down: products inside a set */}
           {drillSet && (
-            <div style={{ marginTop: 8, border: '1.5px solid #e0e0e0', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+            <div ref={drillRef} style={{ marginTop: 8, border: '2px solid #3463A3', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#f7f8fa', borderBottom: '1px solid #eee' }}>
                 <button onClick={() => { setDrillSet(null); setDrillData(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#888', lineHeight: 1 }}>←</button>
                 <div style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>📦 {setLabel(drillSet)}</div>
