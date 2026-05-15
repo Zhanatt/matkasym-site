@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   adminGetFrontmen, adminCreateFrontman,
@@ -44,6 +45,7 @@ const setLabel = s => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, c =>
 
 export default function AdminFrontmen() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const canEdit = user?.role === 'owner' || user?.role === 'editor';
 
   const [frontmen, setFrontmen] = useState([]);
@@ -202,12 +204,15 @@ export default function AdminFrontmen() {
                     {fm.sets.length > 0 && (
                       <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {fm.sets.map(s => (
-                          <span key={s} style={{
-                            fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
-                            background: fm.color + '22', color: fm.color,
-                          }}>
+                          <button key={s}
+                            onClick={() => navigate('/admin/sets', { state: { autoOpen: { brand: fm.brand, set: s } } })}
+                            style={{
+                              fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
+                              background: fm.color + '22', color: fm.color,
+                              border: 'none', cursor: 'pointer',
+                            }}>
                             {setLabel(s)}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     )}

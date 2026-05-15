@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AdminProductModal from './AdminProductModal';
 import {
@@ -109,12 +109,12 @@ function slugify(name) {
     .replace(/-+/g, '-');
 }
 
-function BrandSection({ brandKey, sets, accent, subItems = {} }) {
+function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
   const [frontmen, setFrontmen]   = useState([]);
   const [editing, setEditing]     = useState(false);
   const [draft, setDraft]         = useState([]);
   const [saving, setSaving]       = useState(false);
-  const [catalogSlug, setCatalog] = useState(null);
+  const [catalogSlug, setCatalog] = useState(() => autoOpenSet || null);
   const containerRef = useRef();
   const setRefs      = useRef({});
   const fmRefs       = useRef({});
@@ -805,6 +805,8 @@ function btn(bg, color, bold) {
 export default function AdminSets() {
   const [sets, setSets]     = useState({});
   const [loading, setLoad]  = useState(true);
+  const location            = useLocation();
+  const autoOpen            = location.state?.autoOpen;
 
   useEffect(() => {
     const dynamicBrands = Object.entries(BRAND_META).filter(([, m]) => !m.staticSets);
@@ -837,6 +839,7 @@ export default function AdminSets() {
                   sets={allSets}
                   accent={meta.accent}
                   subItems={SET_SUB_ITEMS}
+                  autoOpenSet={autoOpen?.brand === key ? autoOpen.set : null}
                 />
               );
             })}
