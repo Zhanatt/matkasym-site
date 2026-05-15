@@ -310,13 +310,15 @@ export default function AdminSalesChart() {
                 const pct = grandTotal > 0 ? Math.round(item.total / grandTotal * 100) : 0;
                 return (
                   <div key={item.set}
-                    style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '9px 14px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                    onClick={() => navigate(`/admin/sales-chart/${item.set}`)}
+                    style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '9px 14px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
                     onMouseLeave={e => e.currentTarget.style.background = ''}>
                     <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ width: 10, height: 10, borderRadius: '50%', background: LINE_COLORS[i % LINE_COLORS.length], flexShrink: 0 }} />
                       <span style={{ fontWeight: 500 }}>{setLabel(item.set)}</span>
+                      <span style={{ fontSize: 10, color: '#aaa' }}>↗</span>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span style={{ fontSize: 11, color: '#aaa' }}>{pct}%</span>
