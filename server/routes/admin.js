@@ -1223,4 +1223,45 @@ router.get('/sales-chart', editor, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// ── Tenders ──────────────────────────────────────────────────────────────────
+// GET /api/admin/tenders?status=&brand=&search=
+router.get('/tenders', editor, async (req, res) => {
+  try {
+    const { status, brand, search } = req.query;
+    const filter = { productStatus: { $in: ['improvement', 'in_development'] } };
+    if (status && ['improvement', 'in_development'].includes(status)) filter.productStatus = status;
+    if (brand)  filter.brand  = brand;
+    if (search) filter.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { fullName: { $regex: search, $options: 'i' } },
+    ];
+    const products = await Product.find(filter)
+      .select('name fullName sku brand set productStatus developmentStage developmentTZ improvementTZ tenderAssignee images driveImages')
+      .sort({ productStatus: 1, fullName: 1 })
+      .lean();
+    res.json(products);
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// PATCH /api/admin/tenders/:id/assign  { userId } or { userId: null } to unassign
+router.patch('/tenders/:id/assign', editor, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    let assignee = { userId: null, userName: '', userEmail: '', assignedAt: null };
+    if (userId) {
+      const User = require('../models/User');
+      const user = await User.findById(userId).lean();
+      if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+      assignee = { userId: user._id, userName: user.name, userEmail: user.email, assignedAt: new Date() };
+    }
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: { tenderAssignee: assignee } },
+      { new: true, select: 'tenderAssignee' }
+    );
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+    res.json(product.tenderAssignee);
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
 module.exports = router;

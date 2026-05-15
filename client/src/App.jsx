@@ -16,6 +16,7 @@ import AdminProductView   from './pages/admin/AdminProductView';
 import AdminSets          from './pages/admin/AdminSets';
 import AdminFrontmen      from './pages/admin/AdminFrontmen';
 import AdminOutOfStock    from './pages/admin/AdminOutOfStock';
+import AdminTenders       from './pages/admin/AdminTenders';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="sets" element={<AdminSets />} />
           <Route path="frontmen" element={<AdminFrontmen />} />
           <Route path="out-of-stock" element={<AdminOutOfStock />} />
+          <Route path="tenders"     element={<AdminTenders />} />
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="stock-log"    element={<AdminStockLog />} />

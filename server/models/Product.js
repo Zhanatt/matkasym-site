@@ -62,6 +62,14 @@ const productSchema = new mongoose.Schema({
     files: [{ name: { type: String }, url: { type: String } }],
   },
 
+  // Tender assignee
+  tenderAssignee: {
+    userId:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    userName:   { type: String, default: '' },
+    userEmail:  { type: String, default: '' },
+    assignedAt: { type: Date, default: null },
+  },
+
   // Stats
   rating:      { type: Number, default: 0, min: 0, max: 5 },
   reviewCount: { type: Number, default: 0 },

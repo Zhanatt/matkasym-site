@@ -64,6 +64,8 @@ export const adminGetFrontmen    = (brand)      => api.get('/admin/frontmen', { 
 export const adminCreateFrontman = (data)       => api.post('/admin/frontmen', data);
 export const adminUpdateFrontman = (id, data)   => api.patch(`/admin/frontmen/${id}`, data);
 export const adminDeleteFrontman = (id)         => api.delete(`/admin/frontmen/${id}`);
+export const adminGetTenders     = (params)      => api.get('/admin/tenders', { params });
+export const adminAssignTender   = (id, userId)  => api.patch(`/admin/tenders/${id}/assign`, { userId });
 export const adminCatalogPdf    = (data)        => api.post('/admin/pdf/catalog', data, { responseType: 'blob' });
 export const adminTZPdf         = (id, type)    => api.get(`/admin/pdf/tz/${id}/${type}`, { responseType: 'blob' });
 export const adminUploadPrices  = (file, type, onProgress)  => {
