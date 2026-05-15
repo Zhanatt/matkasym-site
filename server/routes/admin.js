@@ -1156,10 +1156,10 @@ router.get('/price-log', editor, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
-// GET /api/admin/sales-chart?period=day|week|month&dateFrom=&dateTo=&brand=
+// GET /api/admin/sales-chart?period=day|week|month&dateFrom=&dateTo=&brand=&set=&groupBy=set|product
 router.get('/sales-chart', editor, async (req, res) => {
   try {
-    const { period = 'day', dateFrom, dateTo, brand } = req.query;
+    const { period = 'day', dateFrom, dateTo, brand, set, groupBy = 'set' } = req.query;
 
     const match = { delta: { $lt: 0 } };
     if (dateFrom || dateTo) {
@@ -1178,12 +1178,17 @@ router.get('/sales-chart', editor, async (req, res) => {
     ];
 
     if (brand) pipeline.push({ $match: { 'prod.brand': brand } });
+    if (set)   pipeline.push({ $match: { 'prod.set': set } });
+
+    const groupKey = groupBy === 'product'
+      ? { $ifNull: ['$prod.name', '__none__'] }
+      : { $ifNull: ['$prod.set',  '__none__'] };
 
     pipeline.push(
       { $group: {
         _id: {
           period: { $dateToString: { format: fmt, date: '$createdAt', timezone: '+06:00' } },
-          set:    { $ifNull: ['$prod.set', '__none__'] },
+          key:    groupKey,
         },
         sales: { $sum: { $abs: '$delta' } },
       }},
@@ -1192,22 +1197,20 @@ router.get('/sales-chart', editor, async (req, res) => {
 
     const rows = await StockLog.aggregate(pipeline);
 
-    // Build sorted label list
     const labelSet = [...new Set(rows.map(r => r._id.period))].sort();
-    const setKeys  = [...new Set(rows.map(r => r._id.set))].filter(s => s !== '__none__').sort();
+    const keys     = [...new Set(rows.map(r => r._id.key))].filter(k => k !== '__none__').sort();
 
-    // map: set → { period → sales }
-    const bySet = {};
+    const byKey = {};
     rows.forEach(r => {
-      const s = r._id.set;
-      if (s === '__none__') return;
-      if (!bySet[s]) bySet[s] = {};
-      bySet[s][r._id.period] = r.sales;
+      const k = r._id.key;
+      if (k === '__none__') return;
+      if (!byKey[k]) byKey[k] = {};
+      byKey[k][r._id.period] = r.sales;
     });
 
-    const datasets = setKeys.map(s => ({
-      set:  s,
-      data: labelSet.map(l => bySet[s]?.[l] || 0),
+    const datasets = keys.map(k => ({
+      set:  k,
+      data: labelSet.map(l => byKey[k]?.[l] || 0),
     }));
 
     res.json({ labels: labelSet, datasets });

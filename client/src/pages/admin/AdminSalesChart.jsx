@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Label,
 } from 'recharts';
-import { adminGetSalesChart } from '../../api';
+import { adminGetSalesChart, adminGetSalesChartSet } from '../../api';
 
 const SET_NAMES = {
   'achyk-asman':     'Achyk Asman',
@@ -119,10 +119,12 @@ export default function AdminSalesChart() {
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo,   setDateTo]   = useState(defaultTo);
   const [hidden,   setHidden]   = useState(new Set());
+  const [drillSet, setDrillSet] = useState(null); // slug of set being drilled into
 
-  const [data,    setData]    = useState(null);
-  const [error,   setError]   = useState('');
-  const [loading, setLoading] = useState(false);
+  const [data,      setData]      = useState(null);
+  const [drillData, setDrillData] = useState(null);
+  const [error,     setError]     = useState('');
+  const [loading,   setLoading]   = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -137,6 +139,17 @@ export default function AdminSalesChart() {
   }, [period, brand, dateFrom, dateTo]);
 
   useEffect(() => { load(); }, [load]);
+
+  const openDrill = useCallback((slug) => {
+    setDrillSet(slug);
+    setDrillData(null);
+    const params = { period };
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo)   params.dateTo   = dateTo;
+    adminGetSalesChartSet(slug, params)
+      .then(r => setDrillData(r.data))
+      .catch(() => setDrillData({ labels: [], datasets: [] }));
+  }, [period, dateFrom, dateTo]);
 
   const chartRows = data
     ? data.labels.map((lbl, i) => {
@@ -210,19 +223,28 @@ export default function AdminSalesChart() {
               const color = LINE_COLORS[i % LINE_COLORS.length];
               const isHidden = hidden.has(item.set);
               return (
-                <button key={item.set} onClick={() => toggleSet(item.set)} style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '4px 10px', borderRadius: 20,
-                  border: `1.5px solid ${isHidden ? '#e0e0e0' : color}`,
-                  background: isHidden ? '#f9f9f9' : color + '15',
-                  color: isHidden ? '#bbb' : '#222',
-                  cursor: 'pointer', fontSize: 11, fontWeight: 600,
-                  transition: 'opacity .15s',
-                }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: isHidden ? '#ccc' : color, flexShrink: 0 }} />
-                  {setLabel(item.set)}
-                  <span style={{ color: isHidden ? '#ccc' : color, fontWeight: 700 }}>{item.total.toLocaleString('ru')} шт</span>
-                </button>
+                <div key={item.set} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                  <button onClick={() => toggleSet(item.set)} style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '4px 8px 4px 10px', borderRadius: '20px 0 0 20px',
+                    border: `1.5px solid ${isHidden ? '#e0e0e0' : color}`,
+                    borderRight: 'none',
+                    background: isHidden ? '#f9f9f9' : color + '15',
+                    color: isHidden ? '#bbb' : '#222',
+                    cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: isHidden ? '#ccc' : color, flexShrink: 0 }} />
+                    {setLabel(item.set)}
+                    <span style={{ color: isHidden ? '#ccc' : color, fontWeight: 700 }}>{item.total.toLocaleString('ru')} шт</span>
+                  </button>
+                  <button onClick={() => openDrill(item.set)} title="Товары внутри сета" style={{
+                    padding: '4px 7px', borderRadius: '0 20px 20px 0',
+                    border: `1.5px solid ${isHidden ? '#e0e0e0' : color}`,
+                    background: drillSet === item.set ? color : (isHidden ? '#f9f9f9' : color + '15'),
+                    color: drillSet === item.set ? '#fff' : (isHidden ? '#ccc' : color),
+                    cursor: 'pointer', fontSize: 11, fontWeight: 700, lineHeight: 1,
+                  }}>↗</button>
+                </div>
               );
             })}
           </div>
@@ -309,6 +331,100 @@ export default function AdminSalesChart() {
                 <span />
                 <span style={{ textAlign: 'right', fontWeight: 800, fontSize: 15, color: '#1e7e34' }}>{grandTotal.toLocaleString('ru')} шт</span>
               </div>
+            </div>
+          )}
+
+          {/* Drill-down: products inside a set */}
+          {drillSet && (
+            <div style={{ marginTop: 8, border: '1.5px solid #e0e0e0', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#f7f8fa', borderBottom: '1px solid #eee' }}>
+                <button onClick={() => { setDrillSet(null); setDrillData(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#888', lineHeight: 1 }}>←</button>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>📦 {setLabel(drillSet)}</div>
+                <div style={{ fontSize: 12, color: '#aaa' }}>Товары внутри сета</div>
+              </div>
+
+              {!drillData && <div style={{ color: '#aaa', fontSize: 13, textAlign: 'center', padding: 40 }}>Загрузка…</div>}
+
+              {drillData && (() => {
+                const drillTotals = drillData.datasets
+                  .map(ds => ({ name: ds.set, total: ds.data.reduce((a, b) => a + b, 0) }))
+                  .filter(x => x.total > 0)
+                  .sort((a, b) => b.total - a.total);
+                const drillTotal = drillTotals.reduce((s, x) => s + x.total, 0);
+                const drillRows  = drillData.labels.map((lbl, i) => {
+                  const row = { _label: fmtLabel(lbl, period) };
+                  drillData.datasets.forEach(ds => { row[ds.set] = ds.data[i]; });
+                  return row;
+                });
+                const drillTick = drillRows.length > 30 ? Math.floor(drillRows.length / 15) : 0;
+
+                return (
+                  <>
+                    {drillRows.length === 0
+                      ? <div style={{ color: '#bbb', fontSize: 13, textAlign: 'center', padding: 40 }}>Нет данных</div>
+                      : (
+                        <div style={{ padding: '16px 8px 8px 4px' }}>
+                          <ResponsiveContainer width="100%" height={320}>
+                            <LineChart data={drillRows} margin={{ top: 4, right: 16, left: 16, bottom: 36 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                              <XAxis dataKey="_label" tick={{ fontSize: 10, fill: '#aaa' }} interval={drillTick}
+                                angle={drillRows.length > 20 ? -35 : 0}
+                                textAnchor={drillRows.length > 20 ? 'end' : 'middle'}
+                                height={drillRows.length > 20 ? 50 : 36}>
+                                <Label value="Дата" position="insideBottom" offset={-10} style={{ fontSize: 11, fill: '#bbb', fontWeight: 600 }} />
+                              </XAxis>
+                              <YAxis tick={{ fontSize: 10, fill: '#aaa' }} width={56}>
+                                <Label value="Количество, шт" angle={-90} position="insideLeft" offset={16} style={{ fontSize: 11, fill: '#bbb', fontWeight: 600 }} />
+                              </YAxis>
+                              <Tooltip content={<CustomTooltip />} />
+                              {drillTotals.map((item, i) => (
+                                <Line key={item.name} type="linear" dataKey={item.name}
+                                  stroke={LINE_COLORS[i % LINE_COLORS.length]} strokeWidth={2}
+                                  dot={drillRows.length <= 14 ? { r: 3, strokeWidth: 0 } : false}
+                                  activeDot={{ r: 5, strokeWidth: 0 }} connectNulls />
+                              ))}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )
+                    }
+
+                    {/* Product table */}
+                    {drillTotals.length > 0 && (
+                      <div style={{ borderTop: '1px solid #eee' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '8px 14px', background: '#f7f8fa', borderBottom: '1px solid #eee', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                          <span>#</span><span>Товар</span><span style={{ textAlign: 'right' }}>%</span><span style={{ textAlign: 'right' }}>Продано, шт</span>
+                        </div>
+                        {drillTotals.map((item, i) => {
+                          const pct = drillTotal > 0 ? Math.round(item.total / drillTotal * 100) : 0;
+                          return (
+                            <div key={item.name} style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '8px 14px', borderBottom: '1px solid #f5f5f5', fontSize: 12, alignItems: 'center' }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                              onMouseLeave={e => e.currentTarget.style.background = ''}>
+                              <span style={{ fontSize: 10, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: LINE_COLORS[i % LINE_COLORS.length], flexShrink: 0 }} />
+                                <span style={{ fontWeight: 500, color: '#333' }}>{item.name}</span>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontSize: 10, color: '#aaa' }}>{pct}%</span>
+                                <div style={{ height: 3, background: '#f0f0f0', borderRadius: 2, marginTop: 3 }}>
+                                  <div style={{ width: `${pct}%`, height: '100%', background: LINE_COLORS[i % LINE_COLORS.length], borderRadius: 2 }} />
+                                </div>
+                              </div>
+                              <span style={{ textAlign: 'right', fontWeight: 700, color: '#1e7e34' }}>{item.total.toLocaleString('ru')} шт</span>
+                            </div>
+                          );
+                        })}
+                        <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '10px 14px', background: '#f7f8fa', fontSize: 13 }}>
+                          <span /><span style={{ fontWeight: 700, color: '#111' }}>Итого</span><span />
+                          <span style={{ textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#1e7e34' }}>{drillTotal.toLocaleString('ru')} шт</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
         </>
