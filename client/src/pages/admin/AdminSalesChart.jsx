@@ -166,9 +166,17 @@ export default function AdminSalesChart() {
           <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>Кол-во проданных единиц (на основе уменьшений остатков)</div>
         </div>
         {grandTotal > 0 && (
-          <div style={{ background: '#e8f5e9', borderRadius: 10, padding: '6px 14px', textAlign: 'right' }}>
-            <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600, textTransform: 'uppercase' }}>За период</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#1e7e34' }}>{grandTotal.toLocaleString('ru')} шт</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ background: '#e8f5e9', borderRadius: 10, padding: '6px 14px', textAlign: 'right' }}>
+              <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600, textTransform: 'uppercase' }}>За период</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#1e7e34' }}>{grandTotal.toLocaleString('ru')} шт</div>
+            </div>
+            {data?.grandRevenue > 0 && (
+              <div style={{ background: '#e3f2fd', borderRadius: 10, padding: '6px 14px', textAlign: 'right' }}>
+                <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600, textTransform: 'uppercase' }}>Сумма продаж</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#1565c0' }}>{data.grandRevenue.toLocaleString('ru')} с</div>
+              </div>
+            )}
           </div>
         )}
       </div>
