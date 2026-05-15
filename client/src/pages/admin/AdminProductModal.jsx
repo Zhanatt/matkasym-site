@@ -238,57 +238,64 @@ export default function AdminProductModal({ product, onClose }) {
                 </div>
               )}
 
-              {/* Specs — skip empty values, Габарит* keys, and duplicate keys */}
+              {/* Specs + Dimensions combined — dimensions first, then specs */}
               {(() => {
+                // Build dimensions row
+                let dimRow = null;
+                if (product.dimensions) {
+                  const raw = product.dimensions.trim();
+                  const unitMatch = raw.match(/[а-яёa-z]+\.?$/i);
+                  const unit = unitMatch ? unitMatch[0] : 'см';
+                  const numStr = raw.replace(/[а-яёa-z]+\.?$/i, '').trim();
+                  const parts = numStr.split(/[×x*]/i).map(s => s.trim()).filter(Boolean);
+                  const dimValue = parts.length === 3
+                    ? <span>
+                        {[['Д', parts[0]], ['Ш', parts[1]], ['В', parts[2]]].map(([lbl, val], i) => (
+                          <span key={lbl} style={{ marginRight: i < 2 ? 12 : 0 }}>
+                            <span style={{ color: '#bbb', fontSize: 11, marginRight: 2 }}>{lbl}</span>
+                            <span style={{ fontWeight: 700 }}>{val}</span>
+                          </span>
+                        ))}
+                        <span style={{ color: '#aaa', fontSize: 11, marginLeft: 4 }}>{unit}</span>
+                      </span>
+                    : <span style={{ fontWeight: 700 }}>{raw}</span>;
+                  dimRow = { key: 'Габариты', valueNode: dimValue };
+                }
+
+                // Build filtered spec rows
                 const seen = new Set();
                 const visibleSpecs = (product.specs || []).filter(s => {
                   if (!s.value || /^габарит/i.test(s.key)) return false;
-                  if (seen.has(s.key)) return false;
-                  seen.add(s.key);
+                  const norm = s.key.trim().toLowerCase();
+                  if (seen.has(norm)) return false;
+                  seen.add(norm);
                   return true;
                 });
-                if (!visibleSpecs.length) return null;
+
+                const hasContent = dimRow || visibleSpecs.length > 0;
+                if (!hasContent) return null;
+
+                const capFirst = str => str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+
                 return (
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                       Характеристики
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {dimRow && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '7px 0', borderBottom: '1px solid #f5f5f5' }}>
+                          <span style={{ color: '#aaa', minWidth: 130, flexShrink: 0 }}>{dimRow.key}</span>
+                          <span style={{ color: '#1c1c1c' }}>{dimRow.valueNode}</span>
+                        </div>
+                      )}
                       {visibleSpecs.map((s, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13, paddingBottom: 5, borderBottom: '1px solid #f5f5f5' }}>
-                          <span style={{ color: '#aaa', minWidth: 110, flexShrink: 0 }}>{s.key}</span>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '7px 0', borderBottom: '1px solid #f5f5f5' }}>
+                          <span style={{ color: '#aaa', minWidth: 130, flexShrink: 0 }}>{capFirst(s.key)}</span>
                           <span style={{ color: '#1c1c1c', fontWeight: 600 }}>{s.value}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
-                );
-              })()}
-
-              {/* Dimensions — shown before description */}
-              {product.dimensions && (() => {
-                const raw = product.dimensions.trim();
-                const unitMatch = raw.match(/[а-яёa-z]+\.?$/i);
-                const unit = unitMatch ? unitMatch[0] : '';
-                const numStr = raw.replace(/[а-яёa-z]+\.?$/i, '').trim();
-                const parts = numStr.split(/[×x\*]/i).map(s => s.trim()).filter(Boolean);
-                if (parts.length === 3) {
-                  return (
-                    <div style={{ fontSize: 13 }}>
-                      <span style={{ color: '#bbb', marginRight: 6 }}>Габариты:</span>
-                      {[['Д', parts[0]], ['Ш', parts[1]], ['В', parts[2]]].map(([lbl, val], i) => (
-                        <span key={lbl} style={{ marginRight: i < 2 ? 10 : 0 }}>
-                          <span style={{ color: '#bbb', fontSize: 11, marginRight: 2 }}>{lbl}</span>
-                          <span style={{ color: '#555', fontWeight: 600 }}>{val}</span>
-                        </span>
-                      ))}
-                      {unit && <span style={{ color: '#aaa', fontSize: 11, marginLeft: 4 }}>{unit}</span>}
-                    </div>
-                  );
-                }
-                return (
-                  <div style={{ fontSize: 13, color: '#888' }}>
-                    <span style={{ color: '#bbb' }}>Габариты:</span> {raw}
                   </div>
                 );
               })()}
