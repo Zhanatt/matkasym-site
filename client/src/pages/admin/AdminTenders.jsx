@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminGetTenders, adminAssignTender, adminGetUsers } from '../../api';
+import { adminGetTenders, adminAssignTender, adminGetUsers, adminUpdateProduct } from '../../api';
 
 const STATUS_META = {
   improvement:    { label: 'На улучшении',  color: '#F39C12', bg: '#fff8e1' },
@@ -173,6 +173,13 @@ export default function AdminTenders() {
     }).catch(() => {});
   }, []);
 
+  const handleComplete = async (productId) => {
+    try {
+      await adminUpdateProduct(productId, { productStatus: 'for_sale' });
+      setTenders(prev => prev.filter(p => p._id !== productId));
+    } catch {}
+  };
+
   const handleAssigned = (productId, userId) => {
     setTenders(prev => prev.map(p => {
       if (p._id !== productId) return p;
@@ -314,6 +321,19 @@ export default function AdminTenders() {
 
                 {/* Assignee */}
                 <AssigneeBlock product={product} users={users} onAssigned={handleAssigned} />
+
+                {/* Complete button */}
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f0f0f0' }}>
+                  <button onClick={() => handleComplete(product._id)} style={{
+                    width: '100%', padding: '8px 0', borderRadius: 8, border: 'none',
+                    background: '#e8f5e9', color: '#1e7e34', fontWeight: 700, fontSize: 13,
+                    cursor: 'pointer', letterSpacing: 0.2,
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#c8e6c9'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#e8f5e9'}>
+                    ✓ Завершить
+                  </button>
+                </div>
               </div>
             );
           })}
