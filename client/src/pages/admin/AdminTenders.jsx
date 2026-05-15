@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminGetTenders, adminAssignTender, adminGetUsers, adminUpdateProduct } from '../../api';
+import { adminGetTenders, adminAssignTender, adminGetUsers, adminCompleteTender } from '../../api';
 
 const STATUS_META = {
   improvement:    { label: 'На улучшении',  color: '#F39C12', bg: '#fff8e1' },
@@ -146,21 +146,26 @@ function AssigneeBlock({ product, users, onAssigned }) {
 
 export default function AdminTenders() {
   const navigate = useNavigate();
-  const [tenders,   setTenders]   = useState([]);
-  const [users,     setUsers]     = useState([]);
-  const [loading,   setLoading]   = useState(false);
-  const [filter,    setFilter]    = useState('all');   // all | improvement | in_development
-  const [search,    setSearch]    = useState('');
-  const [searchVal, setSearchVal] = useState('');
+  const [tenders,    setTenders]    = useState([]);
+  const [completed,  setCompleted]  = useState([]);
+  const [users,      setUsers]      = useState([]);
+  const [loading,    setLoading]    = useState(false);
+  const [showDone,   setShowDone]   = useState(false);
+  const [filter,     setFilter]     = useState('all');
+  const [search,     setSearch]     = useState('');
+  const [searchVal,  setSearchVal]  = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
     const params = {};
     if (filter !== 'all') params.status = filter;
     if (search) params.search = search;
-    adminGetTenders(params)
-      .then(r => setTenders(r.data))
-      .catch(() => setTenders([]))
+    Promise.all([
+      adminGetTenders(params),
+      adminGetTenders({ completed: 'true' }),
+    ])
+      .then(([active, done]) => { setTenders(active.data); setCompleted(done.data); })
+      .catch(() => { setTenders([]); setCompleted([]); })
       .finally(() => setLoading(false));
   }, [filter, search]);
 
@@ -173,10 +178,12 @@ export default function AdminTenders() {
     }).catch(() => {});
   }, []);
 
-  const handleComplete = async (productId) => {
+  const handleComplete = async (product) => {
     try {
-      await adminUpdateProduct(productId, { productStatus: 'for_sale' });
-      setTenders(prev => prev.filter(p => p._id !== productId));
+      await adminCompleteTender(product._id);
+      const now = new Date();
+      setTenders(prev => prev.filter(p => p._id !== product._id));
+      setCompleted(prev => [{ ...product, productStatus: 'for_sale', tenderCompleted: true, tenderCompletedAt: now }, ...prev]);
     } catch {}
   };
 
@@ -324,7 +331,7 @@ export default function AdminTenders() {
 
                 {/* Complete button */}
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f0f0f0' }}>
-                  <button onClick={() => handleComplete(product._id)} style={{
+                  <button onClick={() => handleComplete(product)} style={{
                     width: '100%', padding: '8px 0', borderRadius: 8, border: 'none',
                     background: '#e8f5e9', color: '#1e7e34', fontWeight: 700, fontSize: 13,
                     cursor: 'pointer', letterSpacing: 0.2,
@@ -337,6 +344,61 @@ export default function AdminTenders() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Completed tenders section */}
+      {completed.length > 0 && (
+        <div style={{ marginTop: 32 }}>
+          <button onClick={() => setShowDone(v => !v)} style={{
+            display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+            border: 'none', cursor: 'pointer', padding: '12px 16px', borderRadius: 10,
+            background: '#f7f8fa',
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#555' }}>
+              {showDone ? '▾' : '▸'} Завершённые тендеры
+            </span>
+            <span style={{ background: '#1e7e34', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 12, padding: '2px 9px' }}>
+              {completed.length}
+            </span>
+          </button>
+
+          {showDone && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16, marginTop: 12 }}>
+              {completed.map(product => {
+                const img = product.driveImages?.[0]
+                  ? `https://drive.google.com/thumbnail?id=${product.driveImages[0]}&sz=w120`
+                  : product.images?.[0] || null;
+                const completedDate = product.tenderCompletedAt
+                  ? new Date(product.tenderCompletedAt).toLocaleDateString('ru', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                  : '';
+                return (
+                  <div key={product._id} style={{ background: '#f9fdf9', border: '1.5px solid #c8e6c9', borderRadius: 14, padding: 16 }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      {img && <img src={img} alt="" style={{ width: 44, height: 44, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: '#e8f5e9', color: '#1e7e34' }}>
+                            ✓ Завершён
+                          </span>
+                          {completedDate && <span style={{ fontSize: 10, color: '#aaa' }}>{completedDate}</span>}
+                        </div>
+                        <div onClick={() => navigate(`/admin/products/${product._id}`)}
+                          style={{ fontSize: 13, fontWeight: 700, color: '#333', cursor: 'pointer', lineHeight: 1.3 }}>
+                          {product.fullName || product.name}
+                        </div>
+                        {product.tenderAssignee?.userName && (
+                          <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
+                            Ответственный: {product.tenderAssignee.userName}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1224,22 +1224,40 @@ router.get('/sales-chart', editor, async (req, res) => {
 });
 
 // ── Tenders ──────────────────────────────────────────────────────────────────
-// GET /api/admin/tenders?status=&brand=&search=
+// GET /api/admin/tenders?status=&brand=&search=&completed=true
 router.get('/tenders', editor, async (req, res) => {
   try {
-    const { status, brand, search } = req.query;
-    const filter = { productStatus: { $in: ['improvement', 'in_development'] } };
-    if (status && ['improvement', 'in_development'].includes(status)) filter.productStatus = status;
-    if (brand)  filter.brand  = brand;
+    const { status, brand, search, completed } = req.query;
+    let filter;
+    if (completed === 'true') {
+      filter = { tenderCompleted: true };
+    } else {
+      filter = { productStatus: { $in: ['improvement', 'in_development'] } };
+      if (status && ['improvement', 'in_development'].includes(status)) filter.productStatus = status;
+    }
+    if (brand)  filter.brand = brand;
     if (search) filter.$or = [
       { name: { $regex: search, $options: 'i' } },
       { fullName: { $regex: search, $options: 'i' } },
     ];
     const products = await Product.find(filter)
-      .select('name fullName sku brand set productStatus developmentStage developmentTZ improvementTZ tenderAssignee images driveImages')
-      .sort({ productStatus: 1, fullName: 1 })
+      .select('name fullName sku brand set productStatus developmentStage developmentTZ improvementTZ tenderAssignee tenderCompleted tenderCompletedAt images driveImages')
+      .sort(completed === 'true' ? { tenderCompletedAt: -1 } : { productStatus: 1, fullName: 1 })
       .lean();
     res.json(products);
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// PATCH /api/admin/tenders/:id/complete
+router.patch('/tenders/:id/complete', editor, async (req, res) => {
+  try {
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: { productStatus: 'for_sale', tenderCompleted: true, tenderCompletedAt: new Date() } },
+      { new: true, select: 'productStatus tenderCompleted tenderCompletedAt' }
+    );
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+    res.json(product);
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 

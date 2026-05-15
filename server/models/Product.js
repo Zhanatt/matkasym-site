@@ -62,7 +62,9 @@ const productSchema = new mongoose.Schema({
     files: [{ name: { type: String }, url: { type: String } }],
   },
 
-  // Tender assignee
+  // Tender
+  tenderCompleted:   { type: Boolean, default: false },
+  tenderCompletedAt: { type: Date,    default: null  },
   tenderAssignee: {
     userId:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     userName:   { type: String, default: '' },
