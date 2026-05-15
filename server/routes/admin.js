@@ -1202,18 +1202,21 @@ router.get('/sales-chart', editor, async (req, res) => {
     const keys     = [...new Set(rows.map(r => r._id.key))].filter(k => k !== '__none__').sort();
 
     const byKey = {};
+    const revByKey = {};
     let grandRevenue = 0;
     rows.forEach(r => {
       const k = r._id.key;
       if (k === '__none__') return;
       if (!byKey[k]) byKey[k] = {};
       byKey[k][r._id.period] = r.sales;
+      revByKey[k] = (revByKey[k] || 0) + (r.revenue || 0);
       grandRevenue += r.revenue || 0;
     });
 
     const datasets = keys.map(k => ({
-      set:  k,
-      data: labelSet.map(l => byKey[k]?.[l] || 0),
+      set:     k,
+      data:    labelSet.map(l => byKey[k]?.[l] || 0),
+      revenue: Math.round(revByKey[k] || 0),
     }));
 
     res.json({ labels: labelSet, datasets, grandRevenue: Math.round(grandRevenue) });
