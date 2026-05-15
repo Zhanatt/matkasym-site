@@ -301,6 +301,18 @@ export default function AdminProductModal({ product, onClose }) {
 
                 const capFirst = str => str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
 
+                const guessUnit = (key, value) => {
+                  const k = key.trim().toLowerCase();
+                  const v = String(value || '');
+                  // don't add unit if value already contains letters (unit embedded)
+                  if (/[а-яёa-z]/i.test(v)) return '';
+                  if (/вес/.test(k))      return 'кг';
+                  if (/нагрузк/.test(k))  return 'кг';
+                  if (/высот/.test(k) || /ширин/.test(k) || /длин/.test(k) || /глубин/.test(k)) return 'см';
+                  if (/количеств|кол-?во/.test(k)) return 'шт';
+                  return '';
+                };
+
                 return (
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
@@ -318,7 +330,7 @@ export default function AdminProductModal({ product, onClose }) {
                           <span style={{ color: '#aaa', minWidth: 130, flexShrink: 0 }}>{capFirst(s.key)}</span>
                           <span style={{ color: '#1c1c1c', fontWeight: 600 }}>
                             {s.value}
-                            {s.unit && <span style={{ color: '#aaa', fontSize: 11, marginLeft: 3 }}>{s.unit}</span>}
+                            {(() => { const u = s.unit || guessUnit(s.key, s.value); return u ? <span style={{ color: '#aaa', fontSize: 11, marginLeft: 3 }}>{u}</span> : null; })()}
                           </span>
                         </div>
                       ))}
