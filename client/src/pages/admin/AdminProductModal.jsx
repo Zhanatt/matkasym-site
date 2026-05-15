@@ -52,7 +52,6 @@ export default function AdminProductModal({ product, onClose }) {
 
   const prices = [
     { label: 'Розничная',     value: product.price },
-    { label: 'Навигационная', value: product.brand === 'matkasym-home' ? product.priceNavigation : 0 },
     { label: 'Оптовая',       value: product.priceWholesale },
     { label: 'Дилерская',     value: product.priceDealer },
     { label: 'Себестоимость', value: product.priceCost },

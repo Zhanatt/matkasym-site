@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { adminGetPriceLog } from '../../api';
 
 const PRICE_TYPE_META = {
-  retail:     { label: 'Розничная',     bg: '#e8f0fe', color: '#1a73e8' },
-  navigation: { label: 'Навигационная', bg: '#e6f4ea', color: '#1e7e34' },
-  wholesale:  { label: 'Оптовая',       bg: '#fff3e0', color: '#e65100' },
-  dealer:     { label: 'Дилерская',     bg: '#f3e8ff', color: '#7c3aed' },
-  cost:       { label: 'Себестоимость', bg: '#fce8e8', color: '#c00' },
+  retail:    { label: 'Розничная',   bg: '#e8f0fe', color: '#1a73e8' },
+  wholesale: { label: 'Оптовая',     bg: '#fff3e0', color: '#e65100' },
+  dealer:    { label: 'Дилерская',   bg: '#f3e8ff', color: '#7c3aed' },
+  cost:      { label: 'Себестоимость', bg: '#fce8e8', color: '#c00' },
 };
 
 const SOURCE_LABEL = {

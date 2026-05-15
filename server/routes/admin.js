@@ -25,11 +25,11 @@ function uploadRawBuffer(buffer, folder, filename) {
   });
 }
 
-const PRICE_FIELDS = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer', cost: 'priceCost', navigation: 'priceNavigation' };
+const PRICE_FIELDS = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer', cost: 'priceCost' };
 const PRICE_FIELD_TO_TYPE = Object.fromEntries(Object.entries(PRICE_FIELDS).map(([t, f]) => [f, t]));
 
 const TRACKED_FIELDS = [
-  'name','fullName','sku','price','priceWholesale','priceDealer','priceCost','priceNavigation',
+  'name','fullName','sku','price','priceWholesale','priceDealer','priceCost',
   'inStock','stock','stockStatus','productStatus','description','dimensions',
   'category','set','color','isNew','developmentStage',
   'developmentTZ','improvementTZ',

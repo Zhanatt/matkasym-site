@@ -97,10 +97,9 @@ const BRAND_META = {
 };
 
 const PRICE_MODES = [
-  { key: 'retail',     label: 'Розн.' },
-  { key: 'navigation', label: 'Нав.'  },
-  { key: 'wholesale',  label: 'Опт.'  },
-  { key: 'dealer',     label: 'Дил.'  },
+  { key: 'retail',    label: 'Розн.' },
+  { key: 'wholesale', label: 'Опт.'  },
+  { key: 'dealer',    label: 'Дил.'  },
 ];
 
 const STATUS_LABELS = {
@@ -112,10 +111,9 @@ const STATUS_LABELS = {
 };
 
 function getPrice(p, mode) {
-  if (mode === 'retail')     return p.price;
-  if (mode === 'navigation') return p.priceNavigation || Math.round((p.price || 0) * 1.2);
-  if (mode === 'wholesale')  return p.priceWholesale;
-  if (mode === 'dealer')     return p.priceDealer;
+  if (mode === 'retail')    return p.price;
+  if (mode === 'wholesale') return p.priceWholesale;
+  if (mode === 'dealer')    return p.priceDealer;
   return null;
 }
 

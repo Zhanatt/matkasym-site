@@ -89,7 +89,7 @@ const EMPTY = {
   category: '',
   dimensions: '',
   specs: [],
-  priceCost: '', priceWholesale: '', priceDealer: '', price: '', priceNavigation: '',
+  priceCost: '', priceWholesale: '', priceDealer: '', price: '',
   description: '',
   images: [],
   inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', productStatus: 'for_sale', developmentStage: '',
@@ -266,11 +266,10 @@ export default function AdminProductForm() {
           ...p,
           images:         p.images || [],
           specs:          baseSpecs,
-          priceCost:        p.priceCost ?? '',
-          priceWholesale:   p.priceWholesale ?? '',
-          priceDealer:      p.priceDealer ?? '',
-          priceNavigation:  p.priceNavigation ?? '',
-          dimensions:       p.dimensions || '',
+          priceCost:      p.priceCost ?? '',
+          priceWholesale: p.priceWholesale ?? '',
+          priceDealer:    p.priceDealer ?? '',
+          dimensions:     p.dimensions || '',
           developmentTZ:  p.developmentTZ || { description: '', files: [] },
           improvementTZ:  p.improvementTZ || { problem: '', solution: '', files: [] },
         });
@@ -403,11 +402,10 @@ export default function AdminProductForm() {
       const { _id, __v, id: _sid, ...rest } = form;
       const payload = {
         ...rest,
-        priceCost:        Number(form.priceCost) || 0,
-        priceWholesale:   Number(form.priceWholesale) || 0,
-        priceDealer:      Number(form.priceDealer) || 0,
-        price:            Number(form.price),
-        priceNavigation:  form.brand === 'matkasym-home' ? (Number(form.priceNavigation) || 0) : 0,
+        priceCost:      Number(form.priceCost) || 0,
+        priceWholesale: Number(form.priceWholesale) || 0,
+        priceDealer:    Number(form.priceDealer) || 0,
+        price:          Number(form.price),
         stock:          Number(form.stock) || 0,
         inStock:        form.stockStatus === 'in_stock',
       };
@@ -714,23 +712,8 @@ export default function AdminProductForm() {
             </div>
             <div className="admin-form-group">
               <label>Розничная *</label>
-              <input required type="number" min="0" value={form.price} onChange={e => {
-                set('price', e.target.value);
-                if (form.brand === 'matkasym-home') {
-                  const nav = Math.round(Number(e.target.value) * 1.2);
-                  set('priceNavigation', nav > 0 ? nav : '');
-                }
-              }} placeholder="0" />
+              <input required type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="0" />
             </div>
-            {form.brand === 'matkasym-home' && (
-              <div className="admin-form-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Навигационная
-                  <span style={{ fontSize: 10, color: '#aaa', fontWeight: 400 }}>+20% от розничной</span>
-                </label>
-                <input type="number" min="0" value={form.priceNavigation} onChange={e => set('priceNavigation', e.target.value)} placeholder={form.price ? Math.round(Number(form.price) * 1.2) : '0'} />
-              </div>
-            )}
           </div>
         </Card>
 
