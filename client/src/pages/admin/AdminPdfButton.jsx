@@ -40,6 +40,7 @@ export default function AdminPdfButton({ products, label = 'Каталог' }) {
           fontSize: 12, background: '#fff', cursor: 'pointer', outline: 'none' }}
       >
         <option value="price">Розничная</option>
+        <option value="priceNavigation">Навигационная</option>
         <option value="priceWholesale">Оптовая</option>
         <option value="priceDealer">Дилерская</option>
         <option value="none">Без цены</option>

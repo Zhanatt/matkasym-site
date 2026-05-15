@@ -485,16 +485,18 @@ const RETAIL_BRANDS = new Set(['matkasym-home', 'matkasym-shaar']);
 const NO_PHOTO      = '/logos/no-photo.png';
 
 const PRICE_MODES = [
-  { key: 'retail',     label: 'Розничная',  short: 'Розн.' },
-  { key: 'wholesale',  label: 'Оптовая',    short: 'Опт.'  },
-  { key: 'dealer',     label: 'Дилерская',  short: 'Дил.'  },
-  { key: 'none',       label: 'Без цен',    short: 'Без'   },
+  { key: 'retail',      label: 'Розничная',     short: 'Розн.' },
+  { key: 'navigation',  label: 'Навигационная', short: 'Нав.',  homeOnly: true },
+  { key: 'wholesale',   label: 'Оптовая',       short: 'Опт.'  },
+  { key: 'dealer',      label: 'Дилерская',     short: 'Дил.'  },
+  { key: 'none',        label: 'Без цен',       short: 'Без'   },
 ];
 
 function getPrice(product, mode) {
-  if (mode === 'retail')    return product.price;
-  if (mode === 'wholesale') return product.priceWholesale;
-  if (mode === 'dealer')    return product.priceDealer;
+  if (mode === 'retail')      return product.price;
+  if (mode === 'navigation')  return product.priceNavigation;
+  if (mode === 'wholesale')   return product.priceWholesale;
+  if (mode === 'dealer')      return product.priceDealer;
   return null;
 }
 function getPriceLabel(mode) {
@@ -594,7 +596,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
           {/* Price toggle */}
           <div style={{ display: 'flex', gap: 0, background: '#f5f5f5', borderRadius: 8, padding: 3, flexShrink: 0 }}>
-            {PRICE_MODES.filter(m => m.key !== 'none').map(m => (
+            {PRICE_MODES.filter(m => m.key !== 'none' && (!m.homeOnly || brandKey === 'matkasym-home')).map(m => (
               <button key={m.key} onClick={() => setPriceMode(m.key)} style={{
                 padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
                 fontSize: 11, fontWeight: 600,
