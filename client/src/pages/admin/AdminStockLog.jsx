@@ -26,9 +26,11 @@ async function downloadFile(url) {
     : url;
   try {
     const blob = await fetch(forceUrl).then(r => r.blob());
+    let name = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'file';
+    if (!/\.(xlsx|xls|csv)$/i.test(name)) name += '.xlsx';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'file.xlsx';
+    a.download = name;
     a.click();
     URL.revokeObjectURL(a.href);
   } catch {
