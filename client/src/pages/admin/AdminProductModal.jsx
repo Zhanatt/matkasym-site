@@ -316,7 +316,10 @@ export default function AdminProductModal({ product, onClose }) {
                       {visibleSpecs.map((s, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '7px 0', borderBottom: '1px solid #f5f5f5' }}>
                           <span style={{ color: '#aaa', minWidth: 130, flexShrink: 0 }}>{capFirst(s.key)}</span>
-                          <span style={{ color: '#1c1c1c', fontWeight: 600 }}>{s.value}</span>
+                          <span style={{ color: '#1c1c1c', fontWeight: 600 }}>
+                            {s.value}
+                            {s.unit && <span style={{ color: '#aaa', fontSize: 11, marginLeft: 3 }}>{s.unit}</span>}
+                          </span>
                         </div>
                       ))}
                     </div>

@@ -20,6 +20,22 @@ const SEL = {
 
 const LIMIT = 50;
 
+async function downloadFile(url) {
+  const forceUrl = url.includes('cloudinary.com')
+    ? url.replace('/raw/upload/', '/raw/upload/fl_attachment/')
+    : url;
+  try {
+    const blob = await fetch(forceUrl).then(r => r.blob());
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'file.xlsx';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch {
+    window.open(url, '_blank');
+  }
+}
+
 export default function AdminStockLog() {
   const navigate = useNavigate();
 
@@ -151,11 +167,11 @@ export default function AdminStockLog() {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     {log.sourceUrl ? (
-                      <a href={log.sourceUrl} target="_blank" rel="noreferrer" style={{
+                      <button onClick={() => downloadFile(log.sourceUrl)} title="Скачать файл" style={{
                         padding: '3px 8px', borderRadius: 5, fontSize: 11, fontWeight: 700,
-                        background: src.bg, color: src.color, textDecoration: 'none',
-                        cursor: 'pointer', display: 'inline-block',
-                      }}>{src.label} ↗</a>
+                        background: src.bg, color: src.color, border: 'none',
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3,
+                      }}>{src.label} ↓</button>
                     ) : (
                       <span style={{
                         padding: '3px 8px', borderRadius: 5, fontSize: 11, fontWeight: 700,
