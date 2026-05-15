@@ -323,7 +323,7 @@ export default function AdminProductForm() {
   };
 
   const addCustomSpec = () => {
-    setForm(f => ({ ...f, specs: [...f.specs, { key: '', value: '', options: [] }] }));
+    setForm(f => ({ ...f, specs: [...f.specs, { key: '', value: '', options: [], unit: '' }] }));
   };
 
   const removeSpec = (idx) => {
@@ -337,7 +337,9 @@ export default function AdminProductForm() {
     try {
       const type = spec.options?.length > 0 ? 'select' : 'text';
       const result = await adminSaveCategorySpec(form.category, {
-        key: spec.key.trim(), type, options: spec.options?.filter(Boolean) || [],
+        key: spec.key.trim(), type,
+        unit: spec.unit || '',
+        options: spec.options?.filter(Boolean) || [],
       });
       setSavedCatSpecs(result.data);
     } finally {
@@ -569,56 +571,67 @@ export default function AdminProductForm() {
               return (
                 <div className="admin-form-group" key={idx} style={{ position: 'relative' }}>
                   {isCustom ? (
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <input
                         value={spec.key}
                         onChange={e => setSpec(idx, 'key', e.target.value)}
-                        placeholder="Название свойства"
-                        style={{ flex: 1, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--slate)', border: '1px dashed var(--gray-300)', borderRadius: 6, padding: '3px 8px', background: '#fafafa' }}
+                        placeholder="НАЗВАНИЕ"
+                        style={{
+                          flex: 1, fontSize: 11, fontWeight: 700,
+                          textTransform: 'uppercase', letterSpacing: 0.5,
+                          color: 'var(--slate)', border: 'none',
+                          borderBottom: '1.5px solid var(--gray-200)',
+                          padding: '2px 0', background: 'transparent', outline: 'none',
+                        }}
                       />
+                      <select
+                        value={spec.unit || ''}
+                        onChange={e => setSpec(idx, 'unit', e.target.value)}
+                        style={{
+                          fontSize: 11, border: '1px solid var(--gray-200)', borderRadius: 4,
+                          padding: '1px 4px', color: 'var(--slate)', background: '#f7f8fa',
+                          cursor: 'pointer', flexShrink: 0,
+                        }}
+                      >
+                        <option value="">—</option>
+                        <option value="см">см</option>
+                        <option value="мм">мм</option>
+                        <option value="кг">кг</option>
+                        <option value="г">г</option>
+                        <option value="м">м</option>
+                        <option value="л">л</option>
+                        <option value="мл">мл</option>
+                        <option value="шт">шт</option>
+                      </select>
                       {spec.key.trim() && form.category && !savedCatSpecs.some(s => s.key === spec.key.trim()) && (
                         <button type="button" onClick={() => saveSpecToCategory(idx)} disabled={savingSpec === idx}
                           style={{
-                            fontSize: 11, padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
-                            border: '1.5px solid #2d7a3a',
+                            fontSize: 11, padding: '2px 7px', borderRadius: 4, cursor: 'pointer',
+                            border: '1px solid #2d7a3a',
                             background: savingSpec === idx ? '#e6f4ea' : '#2d7a3a',
                             color: savingSpec === idx ? '#2d7a3a' : '#fff',
                             fontWeight: 700, flexShrink: 0,
                           }}
                           title="Сохранить в шаблон категории">
-                          {savingSpec === idx ? '...' : 'ОК'}
+                          {savingSpec === idx ? '…' : '✓'}
                         </button>
                       )}
                       {spec.key.trim() && savedCatSpecs.some(s => s.key === spec.key.trim()) && (
-                        <span style={{ fontSize: 11, color: '#2d7a3a', fontWeight: 700, flexShrink: 0 }}>✓</span>
+                        <span style={{ fontSize: 12, color: '#2d7a3a', fontWeight: 700, flexShrink: 0 }}>✓</span>
                       )}
                       <button type="button" onClick={() => removeSpec(idx)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: 16, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}
                         title="Удалить">×</button>
                     </div>
                   ) : (
                     <label>
                       {spec.key}
-                      {template?.unit && <span style={{ color: 'var(--slate)', fontWeight: 400, marginLeft: 4 }}>({template.unit})</span>}
+                      {(template?.unit || spec.unit) && (
+                        <span style={{ color: 'var(--slate)', fontWeight: 400, marginLeft: 4 }}>
+                          ({template?.unit || spec.unit})
+                        </span>
+                      )}
                     </label>
-                  )}
-
-                  {isCustom && (
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                      {['text', 'select'].map(t => (
-                        <button key={t} type="button"
-                          onClick={() => setSpec(idx, 'options', t === 'select' ? (spec.options?.length ? spec.options : ['']) : [])}
-                          style={{
-                            fontSize: 11, padding: '2px 10px', borderRadius: 12, cursor: 'pointer',
-                            border: `1.5px solid ${(t === 'select') === isSelect ? 'var(--primary)' : 'var(--gray-200)'}`,
-                            background: (t === 'select') === isSelect ? 'var(--primary)' : '#fff',
-                            color: (t === 'select') === isSelect ? '#fff' : 'var(--slate)',
-                            fontWeight: 600,
-                          }}>
-                          {t === 'text' ? 'Текст' : 'Список'}
-                        </button>
-                      ))}
-                    </div>
                   )}
 
                   {isCustom && isSelect && (
