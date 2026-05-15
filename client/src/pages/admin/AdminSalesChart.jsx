@@ -91,6 +91,7 @@ export default function AdminSalesChart() {
   const [hidden,   setHidden]   = useState(new Set());
 
   const [data,    setData]    = useState(null);
+  const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(() => {
@@ -100,8 +101,8 @@ export default function AdminSalesChart() {
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo)   params.dateTo   = dateTo;
     adminGetSalesChart(params)
-      .then(r => setData(r.data))
-      .catch(() => setData(null))
+      .then(r => { setData(r.data); setError(''); })
+      .catch(e => { setData(null); setError(e.response?.data?.error || 'Ошибка загрузки'); })
       .finally(() => setLoading(false));
   }, [period, brand, dateFrom, dateTo]);
 
@@ -164,6 +165,7 @@ export default function AdminSalesChart() {
       </div>
 
       {loading && <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>Загрузка…</div>}
+      {!loading && error && <div style={{ color: '#c00', fontSize: 13, textAlign: 'center', paddingTop: 40 }}>{error}</div>}
 
       {!loading && data && (
         <>

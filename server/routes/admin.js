@@ -1174,7 +1174,7 @@ router.get('/sales-chart', editor, async (req, res) => {
     const pipeline = [
       { $match: match },
       { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: 'prod' } },
-      { $unwind: { path: '$prod', preserveNullAndEmpty: false } },
+      { $unwind: '$prod' },
     ];
 
     if (brand) pipeline.push({ $match: { 'prod.brand': brand } });
