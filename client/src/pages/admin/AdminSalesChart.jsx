@@ -76,14 +76,10 @@ function fmtLabel(str, period) {
   return str;
 }
 
-function defaultFrom() {
-  const d = new Date();
-  d.setDate(d.getDate() - 30);
-  return d.toISOString().slice(0, 10);
-}
-function defaultTo() {
-  return new Date().toISOString().slice(0, 10);
-}
+const STOCK_START_DATE = '2025-07-11'; // первый день когда добавили учёт остатков
+
+function defaultFrom() { return STOCK_START_DATE; }
+function defaultTo()   { return new Date().toISOString().slice(0, 10); }
 
 // Custom tooltip
 function CustomTooltip({ active, payload, label }) {
