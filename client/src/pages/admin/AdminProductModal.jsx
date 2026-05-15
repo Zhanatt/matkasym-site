@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { adminDeleteProduct } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -23,12 +24,28 @@ function useIsMobile() {
   return mob;
 }
 
-export default function AdminProductModal({ product, onClose }) {
-  const { user }  = useAuth();
-  const navigate  = useNavigate();
-  const isMobile  = useIsMobile();
-  const canEdit   = user?.role === 'owner' || user?.role === 'editor';
-  const [imgIdx, setImgIdx] = useState(0);
+export default function AdminProductModal({ product, onClose, onDeleted }) {
+  const { user }    = useAuth();
+  const navigate    = useNavigate();
+  const isMobile    = useIsMobile();
+  const canEdit     = user?.role === 'owner' || user?.role === 'editor';
+  const canDelete   = user?.role === 'owner';
+  const [imgIdx,    setImgIdx]    = useState(0);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting,   setDeleting]   = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await adminDeleteProduct(product._id);
+      document.body.style.overflow = '';
+      if (onDeleted) onDeleted(product._id);
+      else onClose();
+    } catch {
+      setDeleting(false);
+      setConfirming(false);
+    }
+  };
 
   const images = (product.images || []).filter(Boolean);
   const img    = images[imgIdx] || NO_PHOTO;
@@ -114,6 +131,13 @@ export default function AdminProductModal({ product, onClose }) {
               Карточка товара
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {canDelete && (
+                <button onClick={() => setConfirming(true)}
+                  style={{ padding: '7px 14px', borderRadius: 8, background: '#fff0f0', color: '#c00',
+                    border: '1.5px solid #f5c6cb', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                  🗑 Удалить
+                </button>
+              )}
               {canEdit && (
                 <button onClick={() => { document.body.style.overflow = ''; navigate(`/admin/products/${product._id}/edit`, { replace: true }); }}
                   style={{ padding: '7px 16px', borderRadius: 8, background: '#111', color: '#fff',
@@ -354,6 +378,36 @@ export default function AdminProductModal({ product, onClose }) {
           </div>
         </div>
       </div>
+      {/* Delete confirmation dialog */}
+      {confirming && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1700 }} />
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 1701,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: '28px 28px 24px', maxWidth: 380, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,.18)' }}>
+              <div style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>⚠️</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#111', textAlign: 'center', marginBottom: 8 }}>
+                Удалить товар?
+              </div>
+              <div style={{ fontSize: 13, color: '#666', textAlign: 'center', lineHeight: 1.6, marginBottom: 24 }}>
+                «{product.fullName || product.name}» будет удалён из всех каталогов. Это действие нельзя отменить.
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setConfirming(false)} disabled={deleting}
+                  style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid #e0e0e0', background: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer', color: '#444' }}>
+                  Отмена
+                </button>
+                <button onClick={handleDelete} disabled={deleting}
+                  style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#c00', color: '#fff', fontWeight: 700, fontSize: 14, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.7 : 1 }}>
+                  {deleting ? 'Удаление…' : 'Да, удалить'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>,
     document.body
   );

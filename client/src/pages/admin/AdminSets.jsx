@@ -726,7 +726,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
       {/* Product detail modal */}
       {detailProduct && (
-        <AdminProductModal product={detailProduct} onClose={() => setDetailProduct(null)} />
+        <AdminProductModal product={detailProduct} onClose={() => setDetailProduct(null)}
+          onDeleted={id => { setProducts(p => p.filter(x => x._id !== id)); setDetailProduct(null); }} />
       )}
     </>,
     document.body
