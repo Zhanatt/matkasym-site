@@ -233,7 +233,7 @@ export default function AdminSalesChart() {
               <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', padding: 60 }}>Нет данных за выбранный период</div>
             ) : (
               <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={chartRows} margin={{ top: 4, right: 16, left: 8, bottom: 20 }}>
+                <LineChart data={chartRows} margin={{ top: 4, right: 16, left: 16, bottom: 36 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                   <XAxis
                     dataKey="_label"
@@ -241,10 +241,13 @@ export default function AdminSalesChart() {
                     interval={tickInterval}
                     angle={chartRows.length > 20 ? -35 : 0}
                     textAnchor={chartRows.length > 20 ? 'end' : 'middle'}
-                    height={chartRows.length > 20 ? 40 : 24}
-                  />
-                  <YAxis tick={{ fontSize: 10, fill: '#aaa' }} width={44}>
-                    <Label value="шт" angle={-90} position="insideLeft" offset={10}
+                    height={chartRows.length > 20 ? 50 : 36}
+                  >
+                    <Label value="Дата" position="insideBottom" offset={-10}
+                      style={{ fontSize: 11, fill: '#bbb', fontWeight: 600 }} />
+                  </XAxis>
+                  <YAxis tick={{ fontSize: 10, fill: '#aaa' }} width={56}>
+                    <Label value="Количество, шт" angle={-90} position="insideLeft" offset={16}
                       style={{ fontSize: 11, fill: '#bbb', fontWeight: 600 }} />
                   </YAxis>
                   <Tooltip content={<CustomTooltip />} />
