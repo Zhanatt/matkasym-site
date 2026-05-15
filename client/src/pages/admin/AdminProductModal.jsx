@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminDeleteProduct } from '../../api';
+import { adminDeleteProduct, adminCreateProduct } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -33,6 +33,46 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const [imgIdx,    setImgIdx]    = useState(0);
   const [confirming, setConfirming] = useState(false);
   const [deleting,   setDeleting]   = useState(false);
+  const [copying,    setCopying]    = useState(false);
+
+  const handleCopy = async () => {
+    setCopying(true);
+    try {
+      const copy = {
+        name:             (product.name     || '') + ' - копия',
+        fullName:         (product.fullName || '') + ' - копия',
+        sku:              '',
+        brand:            product.brand            || '',
+        set:              product.set              || '',
+        setLevel:         product.setLevel         || '',
+        color:            product.color            || '',
+        category:         product.category         || 'other',
+        priceCost:        product.priceCost        || 0,
+        priceWholesale:   product.priceWholesale   || 0,
+        priceDealer:      product.priceDealer      || 0,
+        price:            product.price            || 0,
+        dimensions:       product.dimensions       || '',
+        specs:            product.specs            || [],
+        description:      product.description      || '',
+        tags:             product.tags             || [],
+        images:           product.images           || [],
+        driveImages:      product.driveImages      || [],
+        productStatus:    product.productStatus    || 'for_sale',
+        developmentStage: product.developmentStage || '',
+        developmentTZ:    product.developmentTZ    || {},
+        improvementTZ:    product.improvementTZ    || {},
+        stock:       0,
+        inStock:     false,
+        stockStatus: 'out_of_stock',
+        isNew:       false,
+      };
+      const res = await adminCreateProduct(copy);
+      document.body.style.overflow = '';
+      navigate(`/admin/products/${res.data._id}/edit`, { replace: true });
+    } catch {
+      setCopying(false);
+    }
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -136,6 +176,14 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                   style={{ padding: '7px 14px', borderRadius: 8, background: '#fff0f0', color: '#c00',
                     border: '1.5px solid #f5c6cb', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                   🗑 Удалить
+                </button>
+              )}
+              {canEdit && (
+                <button onClick={handleCopy} disabled={copying}
+                  style={{ padding: '7px 14px', borderRadius: 8, background: '#f0f7ff', color: '#3463A3',
+                    border: '1.5px solid #b8d0f0', fontWeight: 700, fontSize: 13,
+                    cursor: copying ? 'not-allowed' : 'pointer', opacity: copying ? 0.7 : 1 }}>
+                  {copying ? '⏳ Копирование…' : '📋 Копировать'}
                 </button>
               )}
               {canEdit && (
