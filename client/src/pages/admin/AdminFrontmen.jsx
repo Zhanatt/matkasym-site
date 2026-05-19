@@ -202,15 +202,20 @@ export default function AdminFrontmen() {
                       <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{fm.instagram}</div>
                     )}
                     {fm.sets.length > 0 && (
-                      <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {fm.sets.map(s => (
                           <button key={s}
                             onClick={() => navigate('/admin/sets', { state: { autoOpen: { brand: fm.brand, set: s } } })}
                             style={{
-                              fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
-                              background: fm.color + '22', color: fm.color,
-                              border: 'none', cursor: 'pointer',
-                            }}>
+                              fontSize: 13, fontWeight: 600, padding: '8px 14px', borderRadius: 8,
+                              background: fm.color + '18', color: fm.color,
+                              border: `1.5px solid ${fm.color}40`, cursor: 'pointer',
+                              transition: 'background .15s, transform .1s',
+                              lineHeight: 1,
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = fm.color + '35'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = fm.color + '18'; e.currentTarget.style.transform = 'none'; }}
+                          >
                             {setLabel(s)}
                           </button>
                         ))}
