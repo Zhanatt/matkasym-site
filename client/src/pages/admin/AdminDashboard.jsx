@@ -220,7 +220,7 @@ export default function AdminDashboard() {
           to="/admin/out-of-stock"
         />
         <StatCard
-          label="Товары и фронтмены"
+          label="Каталог по сетам"
           value="→"
           sub="Линейки, сеты, каталог"
           icon="📋"
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
             );
           })}
           <Link to="/admin/sets" className="btn btn-outline">
-            📦 Товары и фронтмены
+            📦 Каталог по сетам
           </Link>
           <Link to="/admin/map" className="btn btn-outline">
             🗺 Product Map
