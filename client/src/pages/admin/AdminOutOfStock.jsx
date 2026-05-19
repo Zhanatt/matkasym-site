@@ -41,15 +41,9 @@ export default function AdminOutOfStock() {
     ? products.filter(p => (p.fullName || p.name || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q))
     : products;
 
-  const grouped = {};
-  filtered.forEach(p => {
-    const key = p.name || p.fullName || p._id;
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(p);
-  });
-  const models = Object.entries(grouped);
+  const models = filtered.map(p => [p.fullName || p.name || p._id, [p]]);
 
-  const { visible, sentinelRef, hasMore } = useLazyItems(models, 30);
+  const { visible, sentinelRef, hasMore } = useLazyItems(models, 40);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
