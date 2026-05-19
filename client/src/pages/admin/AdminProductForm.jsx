@@ -351,7 +351,6 @@ export default function AdminProductForm() {
   const currentBrand = brandsData.find(b => b.key === form.brand);
   const brandSetMap  = Object.fromEntries((currentBrand?.sets || []).map(s => [s.key, s]));
   const mergedSlugs  = [...new Set([
-    ...Object.keys(STATIC_SET_NAMES),
     ...(currentBrand?.sets || []).map(s => s.key),
     ...facetSets,
   ])];
