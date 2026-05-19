@@ -204,14 +204,14 @@ export default function AdminDashboard() {
       {/* Stats grid */}
       <div className="admin-stats">
         <StatCard
-          label="Всего товаров"
+          label="Каталог всех товаров"
           value={stats?.products}
           sub={inStockPct !== null ? `${inStockPct}% в наличии` : undefined}
           icon="📦"
           to="/admin/all-catalog"
         />
         <StatCard
-          label="Нет в наличии"
+          label="Товары которых нет в наличии"
           value={stats?.outOfStock}
           sub={stats?.outOfStock > 0 ? 'Требуют внимания' : 'Всё есть'}
           red={stats?.outOfStock > 0}
