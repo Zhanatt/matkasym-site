@@ -932,16 +932,16 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
   }
 });
 
-// ── IMPORT NOMENCLATURE FROM 1С ─────────────────────────────────────────────
-// POST /api/admin/import-nomenclature  (multipart: field "file")
-router.post('/import-nomenclature', editor, upload.single('file'), async (req, res) => {
+// ── PREVIEW NOMENCLATURE FROM 1С (no DB writes) ──────────────────────────────
+// POST /api/admin/preview-nomenclature  (multipart: field "file")
+router.post('/preview-nomenclature', editor, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
   try {
-    const wb   = xlsx.read(req.file.buffer, { type: 'buffer', cellStyles: true });
+    const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-    // Same auto-detection as upload-stock
+    // Auto-detect columns
     let colOsn = 4, colKomm = 19, dataStart = 7;
     for (let ri = 5; ri <= 10; ri++) {
       const hr = rows[ri] || [];
@@ -958,53 +958,6 @@ router.post('/import-nomenclature', editor, upload.single('file'), async (req, r
       }
     }
 
-    // Helper: check if cell has a colored (non-white) background — group rows in 1C are yellow
-    function cellIsColored(rowIdx, colIdx) {
-      const ref  = xlsx.utils.encode_cell({ r: rowIdx, c: colIdx });
-      const cell = ws[ref];
-      if (!cell || !cell.s) return false;
-      const fg = cell.s.fgColor || cell.s.bgColor;
-      if (!fg) return false;
-      // RGB format "AARRGGBB" — white = FFFFFFFF or 00000000 (transparent)
-      if (fg.rgb) {
-        const rgb = fg.rgb.toUpperCase();
-        return rgb !== 'FFFFFFFF' && rgb !== '00000000' && rgb.length >= 6;
-      }
-      // theme/indexed color → also treat as colored
-      if (fg.theme !== undefined || fg.indexed !== undefined) return true;
-      return false;
-    }
-
-    // Build Excel name→stock map — skip colored rows (1C group headers are yellow)
-    const excelMap = new Map();
-    for (let i = dataStart; i < rows.length; i++) {
-      const row  = rows[i];
-      const name = String(row[0] || '').trim();
-      if (!name) continue;
-      if (cellIsColored(i, 0)) continue; // skip group/header rows
-      const osn  = toInt(row[colOsn]);
-      const kommRaw = Number(row[colKomm]);
-      const komm = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
-      excelMap.set(normName(name), { originalName: name, stock: osn + komm });
-    }
-
-    // Build set of existing product normNames
-    const existing = await Product.find({}, 'fullName name').lean();
-    const existingSet = new Set(existing.map(p => normName(p.fullName || p.name || '')));
-
-    // Find new nomenclatures
-    const toAdd = [];
-    for (const [normed, data] of excelMap) {
-      if (!existingSet.has(normed)) {
-        toAdd.push(data);
-      }
-    }
-
-    if (toAdd.length === 0) {
-      return res.json({ added: 0, skipped: excelMap.size, products: [] });
-    }
-
-    // Detect brand from name
     function detectBrand(name) {
       const n = name.toLowerCase();
       if (n.includes('shaar') || n.includes('шаар')) return 'matkasym-shaar';
@@ -1012,46 +965,64 @@ router.post('/import-nomenclature', editor, upload.single('file'), async (req, r
       return 'matkasym-home';
     }
 
-    // Create new products
-    const created = [];
-    const logDocs = [];
-    for (const item of toAdd) {
-      const stock = item.stock;
+    // Parse all non-empty rows
+    const excelMap = new Map();
+    for (let i = dataStart; i < rows.length; i++) {
+      const row  = rows[i];
+      const name = String(row[0] || '').trim();
+      if (!name) continue;
+      const osn     = toInt(row[colOsn]);
+      const kommRaw = Number(row[colKomm]);
+      const komm    = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
+      excelMap.set(normName(name), { name, stock: osn + komm, brand: detectBrand(name) });
+    }
+
+    // Find names not already in DB
+    const existing    = await Product.find({}, 'fullName name').lean();
+    const existingSet = new Set(existing.map(p => normName(p.fullName || p.name || '')));
+
+    const items = [];
+    for (const [normed, data] of excelMap) {
+      if (!existingSet.has(normed)) items.push(data);
+    }
+
+    res.json({ items, total: excelMap.size });
+  } catch (e) { res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message }); }
+});
+
+// ── CONFIRM NOMENCLATURE (create selected items) ──────────────────────────────
+// POST /api/admin/confirm-nomenclature  body: { items: [{name, stock, brand}] }
+router.post('/confirm-nomenclature', editor, async (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Нет товаров для добавления' });
+  try {
+    const created  = [];
+    const logDocs  = [];
+    for (const item of items) {
+      const name    = String(item.name  || '').trim();
+      const stock   = Number(item.stock || 0);
+      const brand   = String(item.brand || 'matkasym-home');
+      if (!name) continue;
       const inStock = stock > 0;
-      const brand = detectBrand(item.originalName);
       try {
         const p = await Product.create({
-          name:          item.originalName,
-          fullName:      item.originalName,
-          brand,
-          price:         0,
-          category:      'other',
-          stock,
-          inStock,
+          name, fullName: name, brand,
+          price: 0, category: 'other',
+          stock, inStock,
           stockStatus:   inStock ? 'in_stock' : 'out_of_stock',
           productStatus: 'for_sale',
         });
         created.push(p);
         logDocs.push({
-          action:      'added',
-          productId:   p._id,
-          productName: p.fullName,
-          sku:         '',
-          brand,
-          source:      'sync_1c',
-          changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
+          action: 'added', productId: p._id, productName: p.fullName,
+          sku: '', brand, source: 'sync_1c',
+          changedBy: req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
         });
       } catch (_) {}
     }
-
     if (logDocs.length) await ProductLog.insertMany(logDocs, { ordered: false });
-
-    res.json({
-      added:    created.length,
-      skipped:  excelMap.size - created.length,
-      products: created.map(p => p.fullName),
-    });
-  } catch (e) { res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message }); }
+    res.json({ added: created.length });
+  } catch (e) { res.status(500).json({ error: 'Ошибка создания товаров: ' + e.message }); }
 });
 
 // ── UPLOAD PRICE LIST ────────────────────────────────────────────────────────

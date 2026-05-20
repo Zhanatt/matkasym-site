@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminImportNomenclature } from '../../api/index';
+import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
 function StatCard({ label, value, sub, red, green, to, icon }) {
@@ -84,6 +84,9 @@ export default function AdminDashboard() {
   const [priceLoading,  setPriceLoading]  = useState(null);
   const [photoLoading,       setPhotoLoading]       = useState(false);
   const [nomenclatureLoading, setNomenclatureLoading] = useState(false);
+  const [previewItems,       setPreviewItems]        = useState(null);
+  const [previewChecked,     setPreviewChecked]       = useState([]);
+  const [confirmLoading,     setConfirmLoading]       = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
 
   useEffect(() => {
@@ -188,20 +191,38 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleNomenclatureImport = async (e) => {
+  const handleNomenclaturePreview = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setNomenclatureLoading(true);
     setSyncResult(null);
     try {
-      const r = await adminImportNomenclature(file);
-      setSyncResult({ ok: true, msg: `✅ Импорт завершён — добавлено: ${r.data.added}, уже есть: ${r.data.skipped}` });
+      const r = await adminPreviewNomenclature(file);
+      const items = r.data.items || [];
+      setPreviewItems(items);
+      setPreviewChecked(items.map((_, i) => i));
+    } catch (err) {
+      setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка чтения файла' });
+    } finally {
+      setNomenclatureLoading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleNomenclatureConfirm = async () => {
+    const selected = previewChecked.map(i => previewItems[i]).filter(Boolean);
+    if (!selected.length) return;
+    setConfirmLoading(true);
+    try {
+      const r = await adminConfirmNomenclature(selected);
+      setPreviewItems(null);
+      setPreviewChecked([]);
+      setSyncResult({ ok: true, msg: `✅ Добавлено ${r.data.added} товаров из 1С` });
       adminStats().then(r => setStats(r.data)).catch(() => {});
     } catch (err) {
       setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка импорта' });
     } finally {
-      setNomenclatureLoading(false);
-      e.target.value = '';
+      setConfirmLoading(false);
     }
   };
 
@@ -280,7 +301,7 @@ export default function AdminDashboard() {
             { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail'),        accept: '.xlsx' },
             { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale'),     accept: '.xlsx' },
             { key: 'photos',    label: '🖼 Фото',             color: '#7b2d8b', bg: '#f8e8ff', disabled: photoLoading,            onChange: handlePhotoUpload,                          accept: 'image/*', multiple: true },
-            { key: 'nomenclature', label: '📥 Новые из 1С',  color: '#7c3aed', bg: '#f3e8ff', disabled: nomenclatureLoading,        onChange: handleNomenclatureImport,                   accept: '.xlsx' },
+            { key: 'nomenclature', label: '📥 Новые из 1С',  color: '#7c3aed', bg: '#f3e8ff', disabled: nomenclatureLoading,        onChange: handleNomenclaturePreview,                  accept: '.xlsx' },
           ].map(({ key, label, color, bg, disabled, onChange, accept, multiple }) => {
             const pct = uploadProgress[key] || 0;
             const active = key === 'stock' ? syncLoading : key === 'photos' ? photoLoading : key === 'nomenclature' ? nomenclatureLoading : priceLoading === key;
@@ -400,6 +421,107 @@ export default function AdminDashboard() {
           </div>
 
           <ProductAlertList products={illiquidItems} navigate={navigate} />
+        </div>
+      )}
+
+      {/* ── NOMENCLATURE PREVIEW MODAL ── */}
+      {previewItems !== null && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #eee' }}>
+              <div style={{ fontWeight: 800, fontSize: 17, color: '#111' }}>📥 Новые товары из 1С</div>
+              <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
+                {previewItems.length === 0
+                  ? 'Новых товаров не найдено — все уже в базе'
+                  : `Найдено ${previewItems.length} новых товаров. Снимите галочки с групп и разделителей перед добавлением.`}
+              </div>
+              {previewItems.length > 0 && (
+                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                  <button
+                    onClick={() => setPreviewChecked(previewItems.map((_, i) => i))}
+                    style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1.5px solid #d0d0d0', background: '#f5f5f5', cursor: 'pointer', fontWeight: 600 }}
+                  >Выбрать все</button>
+                  <button
+                    onClick={() => setPreviewChecked([])}
+                    style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1.5px solid #d0d0d0', background: '#f5f5f5', cursor: 'pointer', fontWeight: 600 }}
+                  >Снять все</button>
+                  <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888', alignSelf: 'center' }}>
+                    Выбрано: {previewChecked.length} из {previewItems.length}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* List */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+              {previewItems.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 32, color: '#aaa', fontSize: 14 }}>Нет новых товаров</div>
+              ) : (
+                previewItems.map((item, i) => {
+                  const checked = previewChecked.includes(i);
+                  const toggle = () => setPreviewChecked(prev =>
+                    prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
+                  );
+                  const brandLabel = item.brand === 'matkasym-shaar' ? 'SHAAR' : item.brand === 'matkasym-kyzmat' ? 'KYZMAT' : 'HOME';
+                  return (
+                    <div
+                      key={i}
+                      onClick={toggle}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '8px 24px', cursor: 'pointer',
+                        background: checked ? '#fafbff' : '#fff',
+                        borderBottom: '1px solid #f5f5f5',
+                        transition: 'background .1s',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={toggle}
+                        onClick={e => e.stopPropagation()}
+                        style={{ width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+                      />
+                      <span style={{ flex: 1, fontSize: 13, color: checked ? '#1c1c1c' : '#aaa', fontWeight: checked ? 500 : 400 }}>
+                        {item.name}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#888', flexShrink: 0 }}>
+                        {item.stock} шт.
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, flexShrink: 0,
+                        background: item.brand === 'matkasym-shaar' ? '#fff3e0' : item.brand === 'matkasym-kyzmat' ? '#e8f5e9' : '#e8f0fe',
+                        color:      item.brand === 'matkasym-shaar' ? '#e65100' : item.brand === 'matkasym-kyzmat' ? '#1e7e34' : '#1a73e8',
+                      }}>{brandLabel}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #eee', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setPreviewItems(null); setPreviewChecked([]); }}
+                style={{ padding: '9px 22px', borderRadius: 8, border: '1.5px solid #d0d0d0', background: '#f5f5f5', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
+              >Отмена</button>
+              {previewItems.length > 0 && (
+                <button
+                  onClick={handleNomenclatureConfirm}
+                  disabled={confirmLoading || previewChecked.length === 0}
+                  style={{
+                    padding: '9px 22px', borderRadius: 8, border: 'none',
+                    background: previewChecked.length === 0 ? '#ccc' : '#7c3aed',
+                    color: '#fff', fontWeight: 700, fontSize: 14,
+                    cursor: previewChecked.length === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {confirmLoading ? 'Добавляю...' : `Добавить ${previewChecked.length} товаров`}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

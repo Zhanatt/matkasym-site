@@ -91,14 +91,17 @@ export const adminUploadPhotos  = (files, onProgress)       => {
   });
 };
 
-export const adminImportNomenclature = (file, onProgress) => {
+export const adminPreviewNomenclature = (file, onProgress) => {
   const fd = new FormData();
   fd.append('file', file);
-  return api.post('/admin/import-nomenclature', fd, {
+  return api.post('/admin/preview-nomenclature', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: e => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
   });
 };
+
+export const adminConfirmNomenclature = (items) =>
+  api.post('/admin/confirm-nomenclature', { items });
 
 export const adminGetProductLog = (params) => api.get('/admin/product-log', { params });
 
