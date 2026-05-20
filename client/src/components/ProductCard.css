@@ -235,3 +235,24 @@
 .pc--liquidation .pc__price {
   color: #c0392b;
 }
+
+/* ── НЕЛИКВИД ───────────────────────────── */
+.pc__badge-nelikvid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #92400e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 5px 0;
+  text-align: center;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 3;
+}
+
+.pc--nelikvid .pc__price {
+  color: #92400e;
+}

@@ -13,6 +13,7 @@ const PRODUCT_STATUS_META = {
   improvement:    { label: 'На улучшении',        color: '#c47a00' },
   discontinued:   { label: 'Снят с производства', color: '#888'    },
   liquidation:    { label: '🔴 ЛИКВИДАЦИЯ',       color: '#c0392b' },
+  nelikvid:       { label: '🗑️ НЕЛИКВИД',         color: '#92400e' },
 };
 const STOCK_STATUS_META = {
   in_stock:     { label: 'В наличии',     color: '#2d7a3a' },

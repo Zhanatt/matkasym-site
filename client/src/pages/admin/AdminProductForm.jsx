@@ -731,6 +731,7 @@ export default function AdminProductForm() {
                 { value: 'improvement',    label: '🔧 На улучшении',  bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
                 { value: 'discontinued',   label: '🚫 Снят',          bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
                 { value: 'liquidation',    label: '🔴 Ликвидация',    bg: '#fff0f0', color: '#c0392b', border: '#e74c3c' },
+                { value: 'nelikvid',       label: '🗑️ Неликвид',      bg: '#fef3c7', color: '#92400e', border: '#d97706' },
               ].map(opt => (
                 <label key={opt.value} style={{
                   display: 'flex', alignItems: 'center', gap: 6,

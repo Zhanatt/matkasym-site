@@ -21,6 +21,7 @@ export default function ProductCard({ product }) {
   const images   = getImages(product);
   const isPlanned      = product.productStatus === 'planned';
   const isLiquidation  = product.productStatus === 'liquidation';
+  const isNelikvid     = product.productStatus === 'nelikvid';
 
   const [activeIdx, setActiveIdx] = useState(0);
   const intervalRef = useRef(null);
@@ -43,7 +44,7 @@ export default function ProductCard({ product }) {
     : 0;
 
   return (
-    <div className={`pc${isPlanned ? ' pc--planned' : ''}${isLiquidation ? ' pc--liquidation' : ''}`} onMouseEnter={startSlider} onMouseLeave={stopSlider}>
+    <div className={`pc${isPlanned ? ' pc--planned' : ''}${isLiquidation ? ' pc--liquidation' : ''}${isNelikvid ? ' pc--nelikvid' : ''}`} onMouseEnter={startSlider} onMouseLeave={stopSlider}>
 
       {/* Image */}
       <Link to={`/product/${product._id}`} className="pc__img-wrap">
@@ -63,7 +64,8 @@ export default function ProductCard({ product }) {
 
         {isPlanned      && <span className="pc__badge-planned">В ПЛАНЕ</span>}
         {isLiquidation  && <span className="pc__badge-liquidation">ЛИКВИДАЦИЯ</span>}
-        {!isPlanned && !isLiquidation && product.isNew && <span className="pc__badge-new">Новинка</span>}
+        {isNelikvid     && <span className="pc__badge-nelikvid">НЕЛИКВИД</span>}
+        {!isPlanned && !isLiquidation && !isNelikvid && product.isNew && <span className="pc__badge-new">Новинка</span>}
 
         {images.length > 1 && (
           <div className="pc__dots">
