@@ -198,26 +198,6 @@ export default function AdminSalesChart() {
 
       {!loading && data && (
         <>
-          {/* Set chips — click to open set chart page */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
-            {totalBySets.map((item, i) => {
-              const color = LINE_COLORS[i % LINE_COLORS.length];
-              return (
-                <button key={item.set} onClick={() => navigate(`/admin/sales-chart/${item.set}`)} style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '4px 10px', borderRadius: 20,
-                  border: `1.5px solid ${color}`,
-                  background: color + '15', color: '#222',
-                  cursor: 'pointer', fontSize: 11, fontWeight: 600,
-                }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                  {setLabel(item.set)}
-                  <span style={{ color, fontWeight: 700 }}>{item.total.toLocaleString('ru')} шт</span>
-                </button>
-              );
-            })}
-          </div>
-
           {/* Chart */}
           <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #eee', padding: '20px 12px 12px 4px', marginBottom: 24 }}>
             {chartRows.length === 0 ? (

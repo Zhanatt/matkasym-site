@@ -77,7 +77,6 @@ export default function AdminSetSalesChart() {
   const [period,   setPeriod]   = useState('day');
   const [dateFrom, setDateFrom] = useState(STOCK_START);
   const [dateTo,   setDateTo]   = useState(() => new Date().toISOString().slice(0,10));
-  const [hidden,   setHidden]   = useState(new Set());
   const [data,     setData]     = useState(null);
   const [loading,  setLoading]  = useState(false);
 
@@ -113,7 +112,6 @@ export default function AdminSetSalesChart() {
     : [];
 
   const tickInterval = chartRows.length > 30 ? Math.floor(chartRows.length / 15) : 0;
-  const toggle = (n) => setHidden(prev => { const s=new Set(prev); s.has(n)?s.delete(n):s.add(n); return s; });
 
   return (
     <div style={{ display:'flex', flexDirection:'column', minHeight:'100%' }}>
@@ -154,28 +152,6 @@ export default function AdminSetSalesChart() {
 
       {!loading && data && (
         <>
-          {/* Product toggles */}
-          <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:12 }}>
-            {totals.map((item,i) => {
-              const color = LINE_COLORS[i % LINE_COLORS.length];
-              const isHidden = hidden.has(item.name);
-              return (
-                <button key={item.name} onClick={() => toggle(item.name)} style={{
-                  display:'flex', alignItems:'center', gap:5,
-                  padding:'4px 10px', borderRadius:20,
-                  border:`1.5px solid ${isHidden ? '#e0e0e0' : color}`,
-                  background: isHidden ? '#f9f9f9' : color+'15',
-                  color: isHidden ? '#bbb' : '#222',
-                  cursor:'pointer', fontSize:11, fontWeight:600,
-                }}>
-                  <span style={{ width:8, height:8, borderRadius:'50%', background: isHidden ? '#ccc' : color, flexShrink:0 }} />
-                  {item.name}
-                  <span style={{ color: isHidden ? '#ccc' : color, fontWeight:700 }}>{item.total.toLocaleString('ru')} шт</span>
-                </button>
-              );
-            })}
-          </div>
-
           {/* Chart */}
           <div style={{ background:'#fff', borderRadius:12, border:'1px solid #eee', padding:'20px 12px 12px 4px', marginBottom:24 }}>
             {chartRows.length === 0
@@ -194,7 +170,7 @@ export default function AdminSetSalesChart() {
                       <Label value="Количество, шт" angle={-90} position="insideLeft" offset={16} style={{ fontSize:11, fill:'#bbb', fontWeight:600 }} />
                     </YAxis>
                     <Tooltip content={<CustomTooltip />} />
-                    {totals.map((item,i) => !hidden.has(item.name) && (
+                    {totals.map((item,i) => (
                       <Line key={item.name} type="linear" dataKey={item.name}
                         stroke={LINE_COLORS[i % LINE_COLORS.length]} strokeWidth={2}
                         dot={chartRows.length<=14 ? {r:3,strokeWidth:0} : false}
