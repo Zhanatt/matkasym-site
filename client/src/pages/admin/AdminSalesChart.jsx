@@ -146,12 +146,31 @@ export default function AdminSalesChart() {
 
   const totalBySets = data
     ? data.datasets
-        .map(ds => ({ set: ds.set, total: ds.data.reduce((a, b) => a + b, 0), revenue: ds.revenue || 0 }))
+        .map(ds => ({ set: ds.set, total: ds.data.reduce((a, b) => a + b, 0), revenue: ds.revenue || 0, brand: ds.brand || '' }))
         .filter(x => x.total > 0)
         .sort((a, b) => b.total - a.total)
     : [];
 
   const grandTotal = totalBySets.reduce((s, x) => s + x.total, 0);
+
+  const BRAND_SECTIONS = [
+    { key: 'matkasym-home',  label: 'HOME',  accent: '#DC1E24' },
+    { key: 'matkasym-shaar', label: 'SHAAR', accent: '#3463A3' },
+  ];
+
+  // When a specific brand is selected — flat list; when all — split by brand
+  const tableGroups = brand
+    ? [{ label: null, items: totalBySets }]
+    : (() => {
+        const groups = BRAND_SECTIONS.map(b => ({
+          label: b.label, accent: b.accent,
+          items: totalBySets.filter(x => x.brand === b.key),
+        })).filter(g => g.items.length > 0);
+        const covered = new Set(BRAND_SECTIONS.map(b => b.key));
+        const rest = totalBySets.filter(x => !covered.has(x.brand));
+        if (rest.length) groups.push({ label: 'Прочее', accent: '#888', items: rest });
+        return groups;
+      })();
 
   // Decide how many X ticks to show based on data length
   const tickInterval = chartRows.length > 30 ? Math.floor(chartRows.length / 15) : 0;
@@ -239,45 +258,56 @@ export default function AdminSalesChart() {
             )}
           </div>
 
-          {/* Summary table */}
+          {/* Summary table — grouped by brand */}
           {totalBySets.length > 0 && (
-            <div style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
-              <div style={{
-                display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px',
-                padding: '8px 14px', background: '#f7f8fa', borderBottom: '1px solid #eee',
-                fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5,
-              }}>
-                <span>#</span>
-                <span>Сет</span>
-                <span style={{ textAlign: 'right' }}>% от итога</span>
-                <span style={{ textAlign: 'right' }}>Продано, шт</span>
-              </div>
-              {totalBySets.map((item, i) => {
-                const pct = grandTotal > 0 ? Math.round(item.total / grandTotal * 100) : 0;
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {tableGroups.map(group => {
+                const groupTotal = group.items.reduce((s, x) => s + x.total, 0);
                 return (
-                  <div key={item.set}
-                    onClick={() => navigate(`/admin/sales-chart/${item.set}`)}
-                    style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '9px 14px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center', cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}>
-                    <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: LINE_COLORS[i % LINE_COLORS.length], flexShrink: 0 }} />
-                      <span style={{ fontWeight: 500 }}>{setLabel(item.set)}</span>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: 11, color: '#aaa' }}>{pct}%</span>
-                      <div style={{ height: 3, background: '#f0f0f0', borderRadius: 2, marginTop: 3 }}>
-                        <div style={{ width: `${pct}%`, height: '100%', background: LINE_COLORS[i % LINE_COLORS.length], borderRadius: 2 }} />
+                  <div key={group.label || 'all'} style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+                    {/* Section header */}
+                    {group.label && (
+                      <div style={{ padding: '8px 14px', background: group.accent + '12', borderBottom: `2px solid ${group.accent}30`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: group.accent, textTransform: 'uppercase', letterSpacing: 1 }}>{group.label}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: group.accent }}>{groupTotal.toLocaleString('ru')} шт</span>
                       </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '7px 14px', background: '#f7f8fa', borderBottom: '1px solid #eee', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      <span>#</span><span>Сет</span>
+                      <span style={{ textAlign: 'right' }}>% от итога</span>
+                      <span style={{ textAlign: 'right' }}>Продано, шт</span>
                     </div>
-                    <span style={{ textAlign: 'right', fontWeight: 700, color: '#1e7e34' }}>{item.total.toLocaleString('ru')} шт</span>
+                    {group.items.map((item, i) => {
+                      const globalIdx = totalBySets.indexOf(item);
+                      const pct = grandTotal > 0 ? Math.round(item.total / grandTotal * 100) : 0;
+                      return (
+                        <div key={item.set}
+                          onClick={() => navigate(`/admin/sales-chart/${item.set}`)}
+                          style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '9px 14px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center', cursor: 'pointer' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
+                          onMouseLeave={e => e.currentTarget.style.background = ''}>
+                          <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: LINE_COLORS[globalIdx % LINE_COLORS.length], flexShrink: 0 }} />
+                            <span style={{ fontWeight: 500 }}>{setLabel(item.set)}</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: 11, color: '#aaa' }}>{pct}%</span>
+                            <div style={{ height: 3, background: '#f0f0f0', borderRadius: 2, marginTop: 3 }}>
+                              <div style={{ width: `${pct}%`, height: '100%', background: LINE_COLORS[globalIdx % LINE_COLORS.length], borderRadius: 2 }} />
+                            </div>
+                          </div>
+                          <span style={{ textAlign: 'right', fontWeight: 700, color: '#1e7e34' }}>{item.total.toLocaleString('ru')} шт</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
-              <div style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '10px 14px', background: '#f7f8fa', fontSize: 13 }}>
-                <span /><span style={{ fontWeight: 700, color: '#111' }}>Итого</span><span />
-                <span style={{ textAlign: 'right', fontWeight: 800, fontSize: 15, color: '#1e7e34' }}>{grandTotal.toLocaleString('ru')} шт</span>
+              {/* Grand total */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 14px', background: '#f7f8fa', borderRadius: 10, border: '1px solid #eee' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#111', marginRight: 24 }}>Итого</span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: '#1e7e34' }}>{grandTotal.toLocaleString('ru')} шт</span>
               </div>
             </div>
           )}

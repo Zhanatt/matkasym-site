@@ -1334,6 +1334,7 @@ router.get('/sales-chart', editor, async (req, res) => {
         },
         sales:   { $sum: { $abs: '$delta' } },
         revenue: { $sum: { $multiply: [{ $abs: '$delta' }, { $ifNull: ['$prod.price', 0] }] } },
+        brand:   { $first: '$prod.brand' },
       }},
       { $sort: { '_id.period': 1 } },
     );
@@ -1345,6 +1346,7 @@ router.get('/sales-chart', editor, async (req, res) => {
 
     const byKey = {};
     const revByKey = {};
+    const brandByKey = {};
     let grandRevenue = 0;
     rows.forEach(r => {
       const k = r._id.key;
@@ -1353,12 +1355,14 @@ router.get('/sales-chart', editor, async (req, res) => {
       byKey[k][r._id.period] = r.sales;
       revByKey[k] = (revByKey[k] || 0) + (r.revenue || 0);
       grandRevenue += r.revenue || 0;
+      if (!brandByKey[k]) brandByKey[k] = r.brand || '';
     });
 
     const datasets = keys.map(k => ({
       set:     k,
       data:    labelSet.map(l => byKey[k]?.[l] || 0),
       revenue: Math.round(revByKey[k] || 0),
+      brand:   brandByKey[k] || '',
     }));
 
     res.json({ labels: labelSet, datasets, grandRevenue: Math.round(grandRevenue) });
