@@ -958,12 +958,16 @@ router.post('/import-nomenclature', editor, upload.single('file'), async (req, r
       }
     }
 
-    // Build Excel name→stock map
+    // Build Excel name→stock map (skip group headers — they have no leading whitespace)
     const excelMap = new Map();
     for (let i = dataStart; i < rows.length; i++) {
-      const row  = rows[i];
-      const name = String(row[0] || '').trim();
+      const row    = rows[i];
+      const rawVal = String(row[0] || '');
+      const name   = rawVal.trim();
       if (!name) continue;
+      // Group headers have no leading spaces; actual products are indented
+      const isGroup = rawVal === name; // no leading whitespace → group header, skip
+      if (isGroup) continue;
       const osn  = toInt(row[colOsn]);
       const kommRaw = Number(row[colKomm]);
       const komm = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
