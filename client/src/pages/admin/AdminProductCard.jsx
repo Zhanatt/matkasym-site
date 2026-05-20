@@ -11,6 +11,8 @@ const STATUS_BADGE = {
   in_development: { icon: '🔧', label: 'В разработке',   bg: '#fff3e0', color: '#e65100' },
   improvement:    { icon: '⬆', label: 'На улучшении',   bg: '#f3e5f5', color: '#7b1fa2' },
   discontinued:   { icon: '🚫', label: 'Снят',           bg: '#f5f5f5', color: '#9e9e9e' },
+  liquidation:    { icon: '🔴', label: 'Ликвидация',     bg: '#fff0f0', color: '#c0392b' },
+  nelikvid:       { icon: '🗑️', label: 'Неликвид',       bg: '#fef3c7', color: '#92400e' },
 };
 
 function getPrice(p, mode) {
