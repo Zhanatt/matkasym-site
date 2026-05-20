@@ -103,6 +103,19 @@ export default function AdminSetSalesChart() {
   const grandTotal   = totals.reduce((s,x) => s + x.total, 0);
   const grandRevenue = data?.grandRevenue || 0;
 
+  let cumSum = 0;
+  const totalsWithAbc = totals.map(item => {
+    cumSum += item.total;
+    const cumPct = grandTotal > 0 ? cumSum / grandTotal : 0;
+    return { ...item, abc: cumPct <= 0.7 ? 'A' : cumPct <= 0.9 ? 'B' : 'C' };
+  });
+
+  const ABC_STYLE = {
+    A: { background:'#e8f5e9', color:'#1e7e34' },
+    B: { background:'#fff8e1', color:'#e65100' },
+    C: { background:'#ffebee', color:'#c62828' },
+  };
+
   const chartRows = data
     ? data.labels.map((lbl,i) => {
         const row = { _label: fmtLabel(lbl, period) };
@@ -183,18 +196,20 @@ export default function AdminSetSalesChart() {
           </div>
 
           {/* Table */}
-          {totals.length > 0 && (
+          {totalsWithAbc.length > 0 && (
             <div style={{ border:'1px solid #eee', borderRadius:10, overflow:'hidden', background:'#fff' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'24px 1fr 80px 100px', padding:'8px 14px', background:'#f7f8fa', borderBottom:'1px solid #eee', fontSize:11, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:0.5 }}>
-                <span>#</span><span>Товар</span><span style={{ textAlign:'right' }}>% от итога</span><span style={{ textAlign:'right' }}>Продано, шт</span>
+              <div style={{ display:'grid', gridTemplateColumns:'24px 28px 1fr 80px 100px', padding:'8px 14px', background:'#f7f8fa', borderBottom:'1px solid #eee', fontSize:11, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:0.5 }}>
+                <span>#</span><span>Кат.</span><span>Товар</span><span style={{ textAlign:'right' }}>% от итога</span><span style={{ textAlign:'right' }}>Продано, шт</span>
               </div>
-              {totals.map((item,i) => {
+              {totalsWithAbc.map((item,i) => {
                 const pct = grandTotal>0 ? Math.round(item.total/grandTotal*100) : 0;
+                const abcStyle = ABC_STYLE[item.abc];
                 return (
-                  <div key={item.name} style={{ display:'grid', gridTemplateColumns:'24px 1fr 80px 100px', padding:'9px 14px', borderBottom:'1px solid #f5f5f5', fontSize:13, alignItems:'center' }}
+                  <div key={item.name} style={{ display:'grid', gridTemplateColumns:'24px 28px 1fr 80px 100px', padding:'9px 14px', borderBottom:'1px solid #f5f5f5', fontSize:13, alignItems:'center' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#fafafa'}
                     onMouseLeave={e=>e.currentTarget.style.background=''}>
                     <span style={{ fontSize:11, color:'#ccc', fontWeight:600 }}>{i+1}</span>
+                    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:5, fontSize:10, fontWeight:800, ...abcStyle }}>{item.abc}</span>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <span style={{ width:10, height:10, borderRadius:'50%', background:LINE_COLORS[i%LINE_COLORS.length], flexShrink:0 }} />
                       <span style={{ fontWeight:500 }}>{item.name}</span>
@@ -209,8 +224,8 @@ export default function AdminSetSalesChart() {
                   </div>
                 );
               })}
-              <div style={{ display:'grid', gridTemplateColumns:'24px 1fr 80px 100px', padding:'10px 14px', background:'#f7f8fa', fontSize:13 }}>
-                <span /><span style={{ fontWeight:700, color:'#111' }}>Итого</span><span />
+              <div style={{ display:'grid', gridTemplateColumns:'24px 28px 1fr 80px 100px', padding:'10px 14px', background:'#f7f8fa', fontSize:13 }}>
+                <span /><span /><span style={{ fontWeight:700, color:'#111' }}>Итого</span><span />
                 <span style={{ textAlign:'right', fontWeight:800, fontSize:15, color:'#1e7e34' }}>{grandTotal.toLocaleString('ru')} шт</span>
               </div>
             </div>
