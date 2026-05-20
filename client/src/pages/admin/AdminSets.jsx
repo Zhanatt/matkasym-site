@@ -60,6 +60,8 @@ const PRODUCT_STATUS_META = {
   in_development: { label: 'В разработке',        color: '#7c3aed', bg: '#f3e8ff' },
   improvement:    { label: 'На улучшении',        color: '#c47a00', bg: '#fff3cd' },
   discontinued:   { label: 'Снят с производства', color: '#888',    bg: '#f5f5f5' },
+  liquidation:    { label: 'Ликвидация',          color: '#c0392b', bg: '#fff0f0' },
+  nelikvid:       { label: 'Неликвид',            color: '#92400e', bg: '#fef3c7' },
 };
 
 const BRAND_META = {
@@ -448,6 +450,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 const price      = getPrice(primary, priceMode);
                 const hasStock   = primary.stock > 0 || primary.inStock;
                 const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
+                const statusMeta = PRODUCT_STATUS_META[primary.productStatus];
+                const showBadge  = statusMeta && primary.productStatus !== 'for_sale';
                 return (
                   <div key={name} onClick={() => setDetailProduct(primary)}
                     style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
@@ -456,10 +460,19 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
-                    <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8' }}>
+                    <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative' }}>
                       <img src={img} alt={name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={e => { e.target.src = NO_PHOTO; }} />
+                      {showBadge && (
+                        <div style={{
+                          position: 'absolute', top: 6, right: 6,
+                          background: statusMeta.bg, color: statusMeta.color,
+                          borderRadius: 6, padding: '3px 7px',
+                          fontSize: 10, fontWeight: 700,
+                          boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+                        }}>{statusMeta.label}</div>
+                      )}
                     </div>
                     <div style={{ padding: '10px 11px' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
