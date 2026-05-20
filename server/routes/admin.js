@@ -937,7 +937,7 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
 router.post('/import-nomenclature', editor, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
   try {
-    const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const wb   = xlsx.read(req.file.buffer, { type: 'buffer', cellStyles: true });
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
@@ -958,16 +958,30 @@ router.post('/import-nomenclature', editor, upload.single('file'), async (req, r
       }
     }
 
-    // Build Excel name→stock map (skip group headers — they have no leading whitespace)
+    // Helper: check if cell has a colored (non-white) background — group rows in 1C are yellow
+    function cellIsColored(rowIdx, colIdx) {
+      const ref  = xlsx.utils.encode_cell({ r: rowIdx, c: colIdx });
+      const cell = ws[ref];
+      if (!cell || !cell.s) return false;
+      const fg = cell.s.fgColor || cell.s.bgColor;
+      if (!fg) return false;
+      // RGB format "AARRGGBB" — white = FFFFFFFF or 00000000 (transparent)
+      if (fg.rgb) {
+        const rgb = fg.rgb.toUpperCase();
+        return rgb !== 'FFFFFFFF' && rgb !== '00000000' && rgb.length >= 6;
+      }
+      // theme/indexed color → also treat as colored
+      if (fg.theme !== undefined || fg.indexed !== undefined) return true;
+      return false;
+    }
+
+    // Build Excel name→stock map — skip colored rows (1C group headers are yellow)
     const excelMap = new Map();
     for (let i = dataStart; i < rows.length; i++) {
-      const row    = rows[i];
-      const rawVal = String(row[0] || '');
-      const name   = rawVal.trim();
+      const row  = rows[i];
+      const name = String(row[0] || '').trim();
       if (!name) continue;
-      // Group headers have no leading spaces; actual products are indented
-      const isGroup = rawVal === name; // no leading whitespace → group header, skip
-      if (isGroup) continue;
+      if (cellIsColored(i, 0)) continue; // skip group/header rows
       const osn  = toInt(row[colOsn]);
       const kommRaw = Number(row[colKomm]);
       const komm = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
