@@ -14,6 +14,7 @@ const NAV_ALL = [
   { to: '/admin/price-log',   label: 'История цен',       icon: '💰', roles: ['owner','editor'] },
   { to: '/admin/sales-chart', label: 'Продажи по сетам',  icon: '📈', roles: ['owner','editor'] },
   { to: '/admin/changelog',   label: 'История изменений', icon: '📋', roles: ['owner'] },
+  { to: '/admin/product-log', label: 'История товаров',   icon: '🗃', roles: ['owner','editor'] },
 ];
 
 export default function AdminLayout() {

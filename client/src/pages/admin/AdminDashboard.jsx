@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos } from '../../api/index';
+import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminImportNomenclature } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
 function StatCard({ label, value, sub, red, green, to, icon }) {
@@ -82,7 +82,8 @@ export default function AdminDashboard() {
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
   const [priceLoading,  setPriceLoading]  = useState(null);
-  const [photoLoading,  setPhotoLoading]  = useState(false);
+  const [photoLoading,       setPhotoLoading]       = useState(false);
+  const [nomenclatureLoading, setNomenclatureLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
 
   useEffect(() => {
@@ -187,6 +188,23 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleNomenclatureImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setNomenclatureLoading(true);
+    setSyncResult(null);
+    try {
+      const r = await adminImportNomenclature(file);
+      setSyncResult({ ok: true, msg: `✅ Импорт завершён — добавлено: ${r.data.added}, уже есть: ${r.data.skipped}` });
+      adminStats().then(r => setStats(r.data)).catch(() => {});
+    } catch (err) {
+      setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка импорта' });
+    } finally {
+      setNomenclatureLoading(false);
+      e.target.value = '';
+    }
+  };
+
   const PREVIEW = 5;
   const liquidPreview = showAllLiquid ? liquidItems : liquidItems.slice(0, PREVIEW);
 
@@ -262,9 +280,10 @@ export default function AdminDashboard() {
             { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail'),        accept: '.xlsx' },
             { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale'),     accept: '.xlsx' },
             { key: 'photos',    label: '🖼 Фото',             color: '#7b2d8b', bg: '#f8e8ff', disabled: photoLoading,            onChange: handlePhotoUpload,                          accept: 'image/*', multiple: true },
+            { key: 'nomenclature', label: '📥 Новые из 1С',  color: '#7c3aed', bg: '#f3e8ff', disabled: nomenclatureLoading,        onChange: handleNomenclatureImport,                   accept: '.xlsx' },
           ].map(({ key, label, color, bg, disabled, onChange, accept, multiple }) => {
             const pct = uploadProgress[key] || 0;
-            const active = key === 'stock' ? syncLoading : key === 'photos' ? photoLoading : priceLoading === key;
+            const active = key === 'stock' ? syncLoading : key === 'photos' ? photoLoading : key === 'nomenclature' ? nomenclatureLoading : priceLoading === key;
             return (
               <label key={key} style={{ position: 'relative', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px 18px', borderRadius: 8, cursor: disabled ? 'wait' : 'pointer', border: `1.5px solid ${color}`, color, fontWeight: 700, fontSize: 14, minWidth: 160, background: '#fff', userSelect: 'none' }}>
                 <input type="file" accept={accept} multiple={multiple} style={{ display: 'none' }} onChange={onChange} disabled={disabled} />

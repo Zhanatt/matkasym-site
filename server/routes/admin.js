@@ -7,6 +7,7 @@ const User         = require('../models/User');
 const ChangeLog    = require('../models/ChangeLog');
 const StockLog     = require('../models/StockLog');
 const PriceLog     = require('../models/PriceLog');
+const ProductLog   = require('../models/ProductLog');
 const CategorySpec = require('../models/CategorySpec');
 const Frontman     = require('../models/Frontman');
 const cloudinary   = require('../lib/cloudinary');
@@ -140,8 +141,19 @@ router.get('/products/:id', async (req, res) => {
 
 // Editor+ required for mutations
 router.post('/products', editor, async (req, res) => {
-  try { res.status(201).json(await Product.create(req.body)); }
-  catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+  try {
+    const p = await Product.create(req.body);
+    await ProductLog.create({
+      action: 'added',
+      productId: p._id,
+      productName: p.fullName || p.name,
+      sku: p.sku || '',
+      brand: p.brand || '',
+      source: 'manual',
+      changedBy: req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
+    });
+    res.status(201).json(p);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
 router.patch('/products/:id', editor, async (req, res) => {
@@ -218,8 +230,21 @@ router.patch('/products/:id', editor, async (req, res) => {
 
 router.delete('/products/:id', editor, async (req, res) => {
   if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
-  try { await Product.findByIdAndDelete(req.params.id); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+  try {
+    const p = await Product.findByIdAndDelete(req.params.id);
+    if (p) {
+      await ProductLog.create({
+        action: 'deleted',
+        productId: p._id,
+        productName: p.fullName || p.name,
+        sku: p.sku || '',
+        brand: p.brand || '',
+        source: 'manual',
+        changedBy: req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Cloudinary ───────────────────────────────────
@@ -907,6 +932,110 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
   }
 });
 
+// ── IMPORT NOMENCLATURE FROM 1С ─────────────────────────────────────────────
+// POST /api/admin/import-nomenclature  (multipart: field "file")
+router.post('/import-nomenclature', editor, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+  try {
+    const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    // Same auto-detection as upload-stock
+    let colOsn = 4, colKomm = 19, dataStart = 7;
+    for (let ri = 5; ri <= 10; ri++) {
+      const hr = rows[ri] || [];
+      for (let c = 0; c < hr.length; c++) {
+        const cell = String(hr[c] || '').toLowerCase();
+        if (cell.includes('основной'))     colOsn  = c;
+        if (cell.includes('коммерческий')) colKomm = c;
+      }
+    }
+    for (let ri = 6; ri <= 12; ri++) {
+      if (String((rows[ri] || [])[colOsn] || '').toLowerCase().includes('остаток')) {
+        dataStart = ri + 1;
+        break;
+      }
+    }
+
+    // Build Excel name→stock map
+    const excelMap = new Map();
+    for (let i = dataStart; i < rows.length; i++) {
+      const row  = rows[i];
+      const name = String(row[0] || '').trim();
+      if (!name) continue;
+      const osn  = toInt(row[colOsn]);
+      const kommRaw = Number(row[colKomm]);
+      const komm = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
+      excelMap.set(normName(name), { originalName: name, stock: osn + komm });
+    }
+
+    // Build set of existing product normNames
+    const existing = await Product.find({}, 'fullName name').lean();
+    const existingSet = new Set(existing.map(p => normName(p.fullName || p.name || '')));
+
+    // Find new nomenclatures
+    const toAdd = [];
+    for (const [normed, data] of excelMap) {
+      if (!existingSet.has(normed)) {
+        toAdd.push(data);
+      }
+    }
+
+    if (toAdd.length === 0) {
+      return res.json({ added: 0, skipped: excelMap.size, products: [] });
+    }
+
+    // Detect brand from name
+    function detectBrand(name) {
+      const n = name.toLowerCase();
+      if (n.includes('shaar') || n.includes('шаар')) return 'matkasym-shaar';
+      if (n.includes('kyzmat') || n.includes('кызмат')) return 'matkasym-kyzmat';
+      return 'matkasym-home';
+    }
+
+    // Create new products
+    const created = [];
+    const logDocs = [];
+    for (const item of toAdd) {
+      const stock = item.stock;
+      const inStock = stock > 0;
+      const brand = detectBrand(item.originalName);
+      try {
+        const p = await Product.create({
+          name:          item.originalName,
+          fullName:      item.originalName,
+          brand,
+          price:         0,
+          category:      'other',
+          stock,
+          inStock,
+          stockStatus:   inStock ? 'in_stock' : 'out_of_stock',
+          productStatus: 'for_sale',
+        });
+        created.push(p);
+        logDocs.push({
+          action:      'added',
+          productId:   p._id,
+          productName: p.fullName,
+          sku:         '',
+          brand,
+          source:      'sync_1c',
+          changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
+        });
+      } catch (_) {}
+    }
+
+    if (logDocs.length) await ProductLog.insertMany(logDocs, { ordered: false });
+
+    res.json({
+      added:    created.length,
+      skipped:  excelMap.size - created.length,
+      products: created.map(p => p.fullName),
+    });
+  } catch (e) { res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message }); }
+});
+
 // ── UPLOAD PRICE LIST ────────────────────────────────────────────────────────
 // POST /api/admin/upload-prices?type=retail|wholesale|dealer|cost
 router.post('/upload-prices', editor, upload.single('file'), async (req, res) => {
@@ -1156,6 +1285,30 @@ router.get('/price-log', editor, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// ── Product Log ──────────────────────────────────────────────────────────────
+// GET /api/admin/product-log?action=&source=&page=1&limit=50&dateFrom=&dateTo=&search=&brand=
+router.get('/product-log', editor, async (req, res) => {
+  try {
+    const { action, source, page = 1, limit = 50, dateFrom, dateTo, search, brand } = req.query;
+    const filter = {};
+    if (action)  filter.action  = action;
+    if (source)  filter.source  = source;
+    if (brand)   filter.brand   = brand;
+    if (search)  filter.productName = { $regex: search, $options: 'i' };
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo)   filter.createdAt.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
+    }
+    const skip = (Number(page) - 1) * Number(limit);
+    const [logs, total] = await Promise.all([
+      ProductLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+      ProductLog.countDocuments(filter),
+    ]);
+    res.json({ logs, total, pages: Math.ceil(total / Number(limit)) });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
 // GET /api/admin/sales-chart?period=day|week|month&dateFrom=&dateTo=&brand=&set=&groupBy=set|product
 router.get('/sales-chart', editor, async (req, res) => {
   try {
@@ -1232,7 +1385,7 @@ router.get('/tenders', editor, async (req, res) => {
     if (completed === 'true') {
       filter = { tenderCompleted: true };
     } else {
-      filter = { productStatus: { $in: ['improvement', 'in_development'] } };
+      filter = { productStatus: { $in: ['improvement', 'in_development'] }, tenderCompleted: { $ne: true } };
       if (status && ['improvement', 'in_development'].includes(status)) filter.productStatus = status;
     }
     if (brand)  filter.brand = brand;

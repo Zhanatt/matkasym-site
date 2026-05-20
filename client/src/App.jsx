@@ -18,6 +18,7 @@ import AdminFrontmen      from './pages/admin/AdminFrontmen';
 import AdminOutOfStock    from './pages/admin/AdminOutOfStock';
 import AdminTenders       from './pages/admin/AdminTenders';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
+import AdminProductLog   from './pages/admin/AdminProductLog';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="sales-chart"           element={<AdminSalesChart />} />
           <Route path="sales-chart/:setSlug" element={<AdminSetSalesChart />} />
           <Route path="changelog" element={<AdminChangelog />} />
+          <Route path="product-log" element={<AdminProductLog />} />
         </Route>
       </Routes>
     );
