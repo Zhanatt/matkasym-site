@@ -321,9 +321,7 @@ export default function AdminDashboard() {
           <Link to="/admin/sets" className="btn btn-outline">
             📦 Каталог по сетам
           </Link>
-          <Link to="/admin/map" className="btn btn-outline">
-            🗺 Product Map
-          </Link>
+
           {isOwner && (
             <Link to="/admin/users" className="btn btn-outline">
               👥 Пользователи
