@@ -20,6 +20,7 @@ import AdminTenders       from './pages/admin/AdminTenders';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import AdminProductLog   from './pages/admin/AdminProductLog';
 import AdminNews         from './pages/admin/AdminNews';
+import AdminNewsCreate   from './pages/admin/AdminNewsCreate';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="changelog" element={<AdminChangelog />} />
           <Route path="product-log" element={<AdminProductLog />} />
           <Route path="news" element={<AdminNews />} />
+          <Route path="news/create" element={<AdminNewsCreate />} />
         </Route>
       </Routes>
     );
