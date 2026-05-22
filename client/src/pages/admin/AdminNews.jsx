@@ -4,8 +4,8 @@ import { adminGetNews, adminMarkNewsRead, adminMarkAllNewsRead, adminDeleteNews 
 import { useAuth } from '../../context/AuthContext';
 
 const TYPE_META = {
-  discontinued: { label: 'Снят с производства', color: '#c0392b', bg: '#fdf0ef' },
-  liquidation:  { label: 'Ликвидация',           color: '#e67e22', bg: '#fef6ec' },
+  discontinued: { label: 'Снят с производства', color: '#e10523', bg: '#fff0ef' },
+  liquidation:  { label: 'Ликвидация',           color: '#e67e22', bg: '#fff4e8' },
   nelikvid:     { label: 'Неликвид',             color: '#8e44ad', bg: '#f5eef8' },
   out_of_stock: { label: 'Нет в наличии',         color: '#7f8c8d', bg: '#f2f3f4' },
   restocked:    { label: 'Появился на складе',    color: '#27ae60', bg: '#eafaf1' },
@@ -36,72 +36,131 @@ function timeAgo(d) {
   return fmt(d);
 }
 
+const IconBox = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e10523" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>
+  </svg>
+);
+
+const IconChat = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e10523" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z"/>
+  </svg>
+);
+
+const IconTrash = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+  </svg>
+);
+
 function NewsCard({ item, onRead, onDelete, canDelete }) {
   const meta = TYPE_META[item.type] || TYPE_META.custom;
   const img  = productImg(item.product);
 
   return (
-    <div onClick={() => !item.read && onRead(item._id)} style={{
-      background: '#fff', borderRadius: 12, padding: '18px 20px',
-      boxShadow: item.read ? '0 1px 4px rgba(0,0,0,.06)' : '0 2px 12px rgba(0,0,0,.1)',
-      border: item.read ? '1.5px solid #f0f0f0' : `1.5px solid ${meta.color}40`,
-      cursor: item.read ? 'default' : 'pointer',
-      transition: 'box-shadow .2s, border-color .2s',
-      position: 'relative',
-      opacity: item.read ? .85 : 1,
-    }}>
+    <div
+      onClick={() => !item.read && onRead(item._id)}
+      style={{
+        background: '#fff',
+        borderRadius: 20,
+        overflow: 'hidden',
+        boxShadow: item.read ? '0 2px 12px rgba(0,0,0,.06)' : '0 4px 24px rgba(0,0,0,.1)',
+        border: item.read ? '1.5px solid #f0f0f0' : `1.5px solid ${meta.color}30`,
+        cursor: item.read ? 'default' : 'pointer',
+        transition: 'box-shadow .2s',
+        position: 'relative',
+      }}
+    >
+      {/* Unread accent line */}
       {!item.read && (
-        <div style={{ position: 'absolute', top: 18, right: 18, width: 9, height: 9, borderRadius: '50%', background: meta.color }} />
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: meta.color, borderRadius: '20px 0 0 20px' }} />
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-        <span style={{ background: meta.bg, color: meta.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 12 }}>
-          {meta.label}
-        </span>
-        <span style={{ fontSize: 11, color: '#bbb' }}>{timeAgo(item.createdAt)}</span>
-        {item.createdBy?.name && <span style={{ fontSize: 11, color: '#ccc' }}>· {item.createdBy.name}</span>}
+      <div style={{ padding: '20px 22px 0' }}>
+        {/* Meta row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+          <span style={{
+            background: meta.bg, color: meta.color,
+            fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 20,
+          }}>{meta.label}</span>
+          <span style={{ fontSize: 12, color: '#bbb' }}>{timeAgo(item.createdAt)}</span>
+          {item.createdBy?.name && <>
+            <span style={{ color: '#ddd' }}>•</span>
+            <span style={{ fontSize: 12, color: '#bbb' }}>{item.createdBy.name}</span>
+          </>}
+          <span style={{ color: '#ddd' }}>•</span>
+          <span style={{ fontSize: 12, color: '#bbb' }}>{fmt(item.createdAt)}</span>
+        </div>
+
+        {/* Title */}
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#111', lineHeight: 1.35, marginBottom: 18 }}>
+          {item.title}
+        </div>
       </div>
 
-      <div style={{ fontWeight: 800, fontSize: 15, color: '#111', marginBottom: 8, paddingRight: 20 }}>
-        {item.title}
-      </div>
+      {/* Large image */}
+      {img && (
+        <div style={{ margin: '0 22px 18px', background: '#f7f8fa', borderRadius: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+          <img
+            src={img}
+            alt=""
+            style={{ width: '100%', maxHeight: 340, objectFit: 'contain', display: 'block', padding: '16px 0' }}
+          />
+        </div>
+      )}
 
-      {item.product?.name && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f7f8fa', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
-          {img && <img src={img} alt="" style={{ width: 52, height: 52, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {item.product.name}
+      <div style={{ padding: '0 22px' }}>
+        {/* Product info */}
+        {item.product?.name && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+            <div style={{ width: 46, height: 46, borderRadius: '50%', background: '#fff0ef', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <IconBox />
             </div>
-            <div style={{ fontSize: 12, color: '#7d96a0', marginTop: 2 }}>
-              Остаток на складе: <b style={{ color: item.product.stock === 0 ? '#c0392b' : '#111' }}>{item.product.stock ?? '—'} шт.</b>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{item.product.name}</div>
+              <div style={{ fontSize: 13, color: '#777', marginTop: 2 }}>
+                Остаток на складе:{' '}
+                <b style={{ color: item.product.stock === 0 ? '#e10523' : '#111', fontWeight: 800 }}>
+                  {item.product.stock ?? '—'} шт.
+                </b>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {item.message && (
-        <div style={{ fontSize: 13, color: '#555', lineHeight: 1.6, marginBottom: 8, whiteSpace: 'pre-wrap' }}>
-          {item.message}
-        </div>
-      )}
+        {/* Message */}
+        {item.message && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
+            <div style={{ width: 46, height: 46, borderRadius: '50%', background: '#fff0ef', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <IconChat />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#bbb', fontWeight: 600, marginBottom: 3, letterSpacing: .3 }}>Комментарий</div>
+              <div style={{ fontSize: 14, color: '#333', lineHeight: 1.5 }}>{item.message}</div>
+            </div>
+          </div>
+        )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-        <span style={{ fontSize: 11, color: '#ccc' }}>{fmt(item.createdAt)}</span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {!item.read && (
-            <button onClick={e => { e.stopPropagation(); onRead(item._id); }} style={{
-              background: 'none', border: '1px solid #ddd', borderRadius: 6, padding: '4px 10px',
-              fontSize: 11, color: '#555', cursor: 'pointer', fontWeight: 600,
-            }}>Прочитано ✓</button>
-          )}
-          {canDelete && (
-            <button onClick={e => { e.stopPropagation(); onDelete(item._id); }} style={{
-              background: 'none', border: '1px solid #fcc', borderRadius: 6, padding: '4px 10px',
-              fontSize: 11, color: '#c0392b', cursor: 'pointer', fontWeight: 600,
-            }}>Удалить</button>
-          )}
-        </div>
+        {/* Delete button */}
+        {canDelete && (
+          <div style={{ paddingBottom: 20, marginTop: 4 }}>
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(item._id); }}
+              style={{
+                width: '100%', padding: '13px', borderRadius: 12,
+                border: '1.5px solid #e10523', background: '#fff',
+                color: '#e10523', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'background .15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#fff5f5'}
+              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            >
+              <IconTrash /> Удалить
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -121,7 +180,7 @@ export default function AdminNews() {
 
   const load = useCallback((p = 1) => {
     setLoading(true);
-    adminGetNews({ page: p, limit: 30 })
+    adminGetNews({ page: p, limit: 20 })
       .then(r => {
         setNews(r.data.news || []);
         setTotal(r.data.total || 0);
@@ -153,70 +212,84 @@ export default function AdminNews() {
   };
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '28px 0 60px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Лента новостей</h1>
-          {unread > 0 && (
-            <span style={{ background: '#e10523', color: '#fff', fontSize: 12, fontWeight: 800, borderRadius: 12, padding: '2px 10px' }}>
-              {unread} новых
-            </span>
-          )}
+    <div style={{ position: 'relative', minHeight: '100%', overflow: 'hidden' }}>
+      {/* Background blobs */}
+      <div style={{ position: 'fixed', bottom: -80, left: 140, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(225,5,35,.12) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'fixed', top: 60, right: 0, width: 200, height: 300, borderRadius: '50% 0 0 50%', background: 'radial-gradient(circle, rgba(225,5,35,.1) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 600, margin: '0 auto', padding: '32px 0 60px' }}>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <img src="/logos/logo-main.png" alt="MATKASYM" style={{ height: 32, marginBottom: 16, filter: 'invert(0)' }} />
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900, letterSpacing: -.5 }}>Лента новостей</h1>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {unread > 0 && (
-            <button onClick={handleReadAll} style={{
-              padding: '8px 16px', borderRadius: 8, border: '1.5px solid #e0e0e0',
-              background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#555',
-            }}>Прочитать все</button>
-          )}
-          {isEditor && (
-            <button onClick={() => navigate('/admin/news/create')} style={{
-              padding: '8px 18px', borderRadius: 8, border: 'none',
-              background: '#111', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            }}>+ Новость</button>
-          )}
-        </div>
+
+        {/* Actions */}
+        {(isEditor || unread > 0) && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginBottom: 20 }}>
+            {unread > 0 && (
+              <button onClick={handleReadAll} style={{
+                padding: '8px 16px', borderRadius: 10, border: '1.5px solid #e0e0e0',
+                background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#555',
+              }}>Прочитать все</button>
+            )}
+            {isEditor && (
+              <button onClick={() => navigate('/admin/news/create')} style={{
+                padding: '8px 20px', borderRadius: 10, border: 'none',
+                background: '#111', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              }}>+ Новость</button>
+            )}
+          </div>
+        )}
+
+        {/* Feed */}
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}>
+            <div style={{ width: 32, height: 32, border: '3px solid #e0e0e0', borderTopColor: '#e10523', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        ) : news.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '80px 0', color: '#bbb' }}>
+            <div style={{ fontSize: 48, marginBottom: 14 }}>📭</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#999' }}>Новостей пока нет</div>
+            {isEditor && <div style={{ fontSize: 13, marginTop: 6 }}>Создайте первую новость кнопкой выше</div>}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {news.map(item => (
+              <NewsCard
+                key={item._id}
+                item={item}
+                onRead={handleRead}
+                onDelete={handleDelete}
+                canDelete={isEditor}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 28 }}>
+            {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
+              <button key={p} onClick={() => load(p)} style={{
+                width: 34, height: 34, borderRadius: 8, border: '1.5px solid',
+                borderColor: p === page ? '#111' : '#e0e0e0',
+                background: p === page ? '#111' : '#fff',
+                color: p === page ? '#fff' : '#555',
+                fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              }}>{p}</button>
+            ))}
+          </div>
+        )}
+
+        {total > 0 && (
+          <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#bbb' }}>
+            Всего {total} новостей
+          </div>
+        )}
       </div>
-
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-          <div style={{ width: 28, height: 28, border: '3px solid #e0e0e0', borderTopColor: '#000', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      ) : news.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 0', color: '#bbb' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Новостей пока нет</div>
-          {isEditor && <div style={{ fontSize: 13, marginTop: 6 }}>Создайте первую новость кнопкой выше</div>}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {news.map(item => (
-            <NewsCard key={item._id} item={item} onRead={handleRead} onDelete={handleDelete} canDelete={isEditor} />
-          ))}
-        </div>
-      )}
-
-      {pages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 28 }}>
-          {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
-            <button key={p} onClick={() => load(p)} style={{
-              width: 34, height: 34, borderRadius: 8, border: '1.5px solid',
-              borderColor: p === page ? '#111' : '#e0e0e0',
-              background: p === page ? '#111' : '#fff',
-              color: p === page ? '#fff' : '#555',
-              fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            }}>{p}</button>
-          ))}
-        </div>
-      )}
-
-      {total > 0 && (
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: '#ccc' }}>
-          Всего {total} новостей
-        </div>
-      )}
     </div>
   );
 }
