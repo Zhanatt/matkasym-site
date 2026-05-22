@@ -105,4 +105,62 @@ async function sendPasswordReset({ toEmail, toName, resetLink }) {
   });
 }
 
-module.exports = { sendApprovalRequest, sendApproved, sendRejected, sendPasswordReset };
+const NEWS_TYPE_LABELS = {
+  discontinued:  'Снят с производства',
+  liquidation:   'Ликвидация',
+  nelikvid:      'Неликвид',
+  out_of_stock:  'Нет в наличии',
+  restocked:     'Появился на складе',
+  price_change:  'Изменение цены',
+  custom:        'Объявление',
+};
+
+// Новость/объявление — рассылка пользователям
+async function sendNewsNotification({ toEmail, toName, newsTitle, newsMessage, type, product }) {
+  const typeLabel = NEWS_TYPE_LABELS[type] || 'Новость';
+  const typeColor = {
+    discontinued: '#c0392b', liquidation: '#e67e22', nelikvid: '#8e44ad',
+    out_of_stock: '#7f8c8d', restocked: '#27ae60', price_change: '#2980b9', custom: '#2c3e50',
+  }[type] || '#2c3e50';
+
+  const imgUrl = product?.images?.[0] || (product?.driveImages?.[0]
+    ? `https://drive.google.com/uc?export=view&id=${product.driveImages[0]}`
+    : null);
+
+  const productBlock = product?.name ? `
+    <div style="display:flex;align-items:center;gap:16px;background:#f7f8fa;border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+      ${imgUrl ? `<img src="${imgUrl}" alt="${product.name}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;flex-shrink:0;" />` : ''}
+      <div>
+        <div style="font-weight:700;font-size:15px;color:#111;margin-bottom:4px;">${product.name}</div>
+        ${product.stock != null ? `<div style="font-size:12px;color:#7d96a0;">Остаток на складе: <b style="color:#111;">${product.stock} шт.</b></div>` : ''}
+      </div>
+    </div>` : '';
+
+  await transporter.sendMail({
+    from: `"Продакт матрица" <${ADMIN_EMAIL}>`,
+    to:   toEmail,
+    subject: `📢 ${newsTitle}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+        <div style="background:#000;padding:20px 24px;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:12px;">
+          <span style="color:#fff;font-weight:800;font-size:16px;letter-spacing:1px;">MATKASYM</span>
+          <span style="background:#e10523;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">Продакт матрица</span>
+        </div>
+        <div style="border:1px solid #e8e8e8;border-top:none;padding:28px 24px;border-radius:0 0 8px 8px;">
+          <div style="display:inline-block;background:${typeColor}1a;color:${typeColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;margin-bottom:14px;letter-spacing:.4px;">
+            ${typeLabel.toUpperCase()}
+          </div>
+          <h2 style="margin:0 0 16px;color:#000;font-size:18px;">${newsTitle}</h2>
+          ${productBlock}
+          ${newsMessage ? `<p style="color:#333;margin:0 0 20px;line-height:1.6;white-space:pre-wrap;">${newsMessage}</p>` : ''}
+          <a href="${SITE_URL}/admin/news" style="display:inline-block;background:#000;color:#fff;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:700;font-size:13px;">
+            Открыть в матрице
+          </a>
+          <p style="color:#bbb;font-size:11px;margin:20px 0 0;">Привет, ${toName} — это автоматическое уведомление от Продакт матрицы.</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+module.exports = { sendApprovalRequest, sendApproved, sendRejected, sendPasswordReset, sendNewsNotification };

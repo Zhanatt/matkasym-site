@@ -105,4 +105,12 @@ export const adminConfirmNomenclature = (items) =>
 
 export const adminGetProductLog = (params) => api.get('/admin/product-log', { params });
 
+// News feed
+export const adminGetNews          = (params)     => api.get('/admin/news', { params });
+export const adminGetNewsUnread    = ()            => api.get('/admin/news/unread-count');
+export const adminCreateNews       = (data)        => api.post('/admin/news', data);
+export const adminMarkNewsRead     = (id)          => api.patch(`/admin/news/${id}/read`);
+export const adminMarkAllNewsRead  = ()            => api.post('/admin/news/read-all');
+export const adminDeleteNews       = (id)          => api.delete(`/admin/news/${id}`);
+
 export default api;

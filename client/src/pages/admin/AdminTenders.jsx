@@ -158,7 +158,6 @@ export default function AdminTenders() {
   const load = useCallback(() => {
     setLoading(true);
     const params = {};
-    if (filter !== 'all') params.status = filter;
     if (search) params.search = search;
     Promise.all([
       adminGetTenders(params),
@@ -167,7 +166,7 @@ export default function AdminTenders() {
       .then(([active, done]) => { setTenders(active.data); setCompleted(done.data); })
       .catch(() => { setTenders([]); setCompleted([]); })
       .finally(() => setLoading(false));
-  }, [filter, search]);
+  }, [search]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -184,7 +183,9 @@ export default function AdminTenders() {
       const now = new Date();
       setTenders(prev => prev.filter(p => p._id !== product._id));
       setCompleted(prev => [{ ...product, productStatus: 'for_sale', tenderCompleted: true, tenderCompletedAt: now }, ...prev]);
-    } catch {}
+    } catch (err) {
+      alert('Ошибка при завершении тендера: ' + (err?.response?.data?.error || err.message));
+    }
   };
 
   const handleAssigned = (productId, userId) => {

@@ -1428,4 +1428,131 @@ router.patch('/tenders/:id/assign', editor, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// ── News Feed ─────────────────────────────────────────────────────────────────
+
+const News = require('../models/News');
+const { sendNewsNotification } = require('../lib/mailer');
+
+// GET /admin/news/unread-count — MUST be before /news/:id
+router.get('/news/unread-count', async (req, res) => {
+  try {
+    const count = await News.countDocuments({
+      recipients: { $elemMatch: { userId: req.user._id, read: false } },
+    });
+    res.json({ count });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// POST /admin/news/read-all — MUST be before /news/:id
+router.post('/news/read-all', async (req, res) => {
+  try {
+    await News.updateMany(
+      { recipients: { $elemMatch: { userId: req.user._id, read: false } } },
+      { $set: { 'recipients.$[r].read': true, 'recipients.$[r].readAt': new Date() } },
+      { arrayFilters: [{ 'r.userId': req.user._id }] }
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// GET /admin/news — лента для текущего пользователя (viewer+)
+router.get('/news', async (req, res) => {
+  try {
+    const uid = req.user._id.toString();
+    const { page = 1, limit = 30 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [news, total] = await Promise.all([
+      News.find({ 'recipients.userId': req.user._id })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .lean(),
+      News.countDocuments({ 'recipients.userId': req.user._id }),
+    ]);
+
+    const result = news.map(n => ({
+      ...n,
+      read: n.recipients.find(r => r.userId.toString() === uid)?.read ?? false,
+    }));
+
+    res.json({ news: result, total, pages: Math.ceil(total / Number(limit)) });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// POST /admin/news — создать новость (editor+)
+router.post('/news', editor, async (req, res) => {
+  try {
+    const { type, title, message, productId, recipientIds } = req.body;
+    if (!type || !title) return res.status(400).json({ message: 'Тип и заголовок обязательны' });
+
+    const product = productId ? await Product.findById(productId).lean() : null;
+
+    let users;
+    if (Array.isArray(recipientIds) && recipientIds.length > 0) {
+      users = await User.find({ _id: { $in: recipientIds }, role: { $in: ['owner', 'editor', 'viewer'] }, isPending: false }).lean();
+    } else {
+      users = await User.find({ role: { $in: ['owner', 'editor', 'viewer'] }, isPending: false }).lean();
+    }
+
+    const recipients = users.map(u => ({ userId: u._id, name: u.name, email: u.email, read: false }));
+
+    const news = await News.create({
+      type,
+      title,
+      message: message || '',
+      product: product ? {
+        id:          product._id,
+        name:        product.fullName || product.name,
+        brand:       product.brand,
+        set:         product.set,
+        stock:       product.stock,
+        images:      product.images || [],
+        driveImages: product.driveImages || [],
+      } : undefined,
+      recipients,
+      createdBy: { id: req.user._id, name: req.user.name, email: req.user.email },
+    });
+
+    // Send emails async — don't block response
+    for (const u of users) {
+      sendNewsNotification({
+        toEmail: u.email,
+        toName:  u.name,
+        newsTitle: title,
+        newsMessage: message || '',
+        type,
+        product: product ? {
+          name:        product.fullName || product.name,
+          stock:       product.stock,
+          images:      product.images || [],
+          driveImages: product.driveImages || [],
+        } : null,
+      }).catch(() => {});
+    }
+
+    res.status(201).json({ news });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// PATCH /admin/news/:id/read — отметить прочитанной
+router.patch('/news/:id/read', async (req, res) => {
+  try {
+    await News.updateOne(
+      { _id: req.params.id, 'recipients.userId': req.user._id },
+      { $set: { 'recipients.$[r].read': true, 'recipients.$[r].readAt': new Date() } },
+      { arrayFilters: [{ 'r.userId': req.user._id }] }
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// DELETE /admin/news/:id — удалить (editor+)
+router.delete('/news/:id', editor, async (req, res) => {
+  try {
+    await News.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 module.exports = router;

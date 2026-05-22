@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminStats } from '../../api';
+import { adminStats, adminGetNewsUnread } from '../../api';
 import './Admin.css';
 
 const NAV_ALL = [
   { to: '/admin',          label: 'Дашборд',             icon: '◻', end: true, roles: ['owner','editor','viewer'] },
   { to: '/admin/sets',     label: 'Каталог по сетам',    icon: '🗂', roles: ['owner','editor','viewer'] },
   { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer'] },
-  { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'] },
+  { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer'], badge: 'news' },
+  { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },
   { to: '/admin/tenders',      label: 'Тендеры',            icon: '🎯', roles: ['owner','editor','viewer'] },
   { to: '/admin/stock-log',   label: 'История остатков',  icon: '📦', roles: ['owner','editor'] },
   { to: '/admin/price-log',   label: 'История цен',       icon: '💰', roles: ['owner','editor'] },
@@ -21,8 +22,9 @@ export default function AdminLayout() {
   const { user, logout, loading, authError, checkAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [newsUnread,   setNewsUnread]   = useState(0);
 
   // Reset body overflow on every navigation (guard against modal scroll-lock leaking)
   useEffect(() => {
@@ -31,11 +33,19 @@ export default function AdminLayout() {
 
   useEffect(() => {
     if (!user) return;
-    const load = () => adminStats().then(r => setPendingCount(r.data.pending || 0)).catch(() => {});
+    const load = () => {
+      adminStats().then(r => setPendingCount(r.data.pending || 0)).catch(() => {});
+      adminGetNewsUnread().then(r => setNewsUnread(r.data.count || 0)).catch(() => {});
+    };
     load();
     const id = setInterval(load, 60_000);
     return () => clearInterval(id);
   }, [!!user]);
+
+  // Clear news badge when visiting /admin/news
+  useEffect(() => {
+    if (location.pathname === '/admin/news') setNewsUnread(0);
+  }, [location.pathname]);
 
   const ALLOWED = ['owner', 'editor', 'viewer'];
 
@@ -87,34 +97,37 @@ export default function AdminLayout() {
         </div>
 
         <nav className="admin-nav">
-          {NAV_ALL.filter(n => n.roles.includes(user.role)).map(n => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              className={({ isActive }) => `admin-nav-link ${isActive ? 'active' : ''}`}
-              onClick={close}
-            >
-              <span className="admin-nav-icon">{n.icon}</span>
-              {n.label}
-              {n.to === '/admin/users' && pendingCount > 0 && (
-                <span style={{
-                  marginLeft: 'auto',
-                  background: '#e10523',
-                  color: '#fff',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  borderRadius: 10,
-                  padding: '1px 7px',
-                  minWidth: 18,
-                  textAlign: 'center',
-                  lineHeight: '18px',
-                }}>
-                  {pendingCount}
-                </span>
-              )}
-            </NavLink>
-          ))}
+          {NAV_ALL.filter(n => n.roles.includes(user.role)).map(n => {
+            const badgeCount = n.badge === 'pending' ? pendingCount : n.badge === 'news' ? newsUnread : 0;
+            return (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.end}
+                className={({ isActive }) => `admin-nav-link ${isActive ? 'active' : ''}`}
+                onClick={close}
+              >
+                <span className="admin-nav-icon">{n.icon}</span>
+                {n.label}
+                {badgeCount > 0 && (
+                  <span style={{
+                    marginLeft: 'auto',
+                    background: '#e10523',
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    borderRadius: 10,
+                    padding: '1px 7px',
+                    minWidth: 18,
+                    textAlign: 'center',
+                    lineHeight: '18px',
+                  }}>
+                    {badgeCount}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="admin-sidebar-footer">
