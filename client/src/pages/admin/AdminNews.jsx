@@ -136,11 +136,14 @@ function CreateModal({ onClose, onCreated }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 560, height: 680, display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,.18)', overflow: 'hidden' }}>
-      <div style={{ overflowY: 'auto', padding: 28, flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
+
+        {/* Sticky header */}
+        <div style={{ padding: '18px 28px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Создать новость</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: '#aaa', lineHeight: 1 }}>×</button>
         </div>
+
+      <div style={{ overflowY: 'auto', padding: '20px 28px', flex: 1 }}>
 
         {/* Type */}
         <label style={{ fontSize: 12, fontWeight: 700, color: '#666', display: 'block', marginBottom: 6 }}>Тип события</label>
