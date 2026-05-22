@@ -1493,6 +1493,21 @@ router.post('/news', editor, async (req, res) => {
 
     const product = productId ? await Product.findById(productId).lean() : null;
 
+    // Автоматически обновляем статус товара по типу новости
+    if (product) {
+      const statusMap = {
+        discontinued: { productStatus: 'discontinued' },
+        liquidation:  { productStatus: 'liquidation'  },
+        nelikvid:     { productStatus: 'nelikvid'     },
+        out_of_stock: { stockStatus: 'out_of_stock', inStock: false },
+        restocked:    { stockStatus: 'in_stock',     inStock: true  },
+      };
+      const updates = statusMap[type];
+      if (updates) {
+        await Product.findByIdAndUpdate(product._id, { $set: updates });
+      }
+    }
+
     let users;
     if (Array.isArray(recipientIds) && recipientIds.length > 0) {
       users = await User.find({ _id: { $in: recipientIds }, role: { $in: ['owner', 'editor', 'viewer'] }, isPending: false }).lean();
