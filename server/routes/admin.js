@@ -1437,7 +1437,10 @@ const { sendNewsNotification } = require('../lib/mailer');
 router.get('/news/unread-count', async (req, res) => {
   try {
     const count = await News.countDocuments({
-      recipients: { $elemMatch: { userId: req.user._id, read: false } },
+      $or: [
+        { recipients: { $elemMatch: { userId: req.user._id, read: false } } },
+        // созданные — всегда считаются прочитанными, не добавляем сюда
+      ],
     });
     res.json({ count });
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -1462,19 +1465,21 @@ router.get('/news', async (req, res) => {
     const { page = 1, limit = 30 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
+    const filter = { $or: [
+      { 'recipients.userId': req.user._id },
+      { 'createdBy.id': req.user._id },
+    ]};
+
     const [news, total] = await Promise.all([
-      News.find({ 'recipients.userId': req.user._id })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit))
-        .lean(),
-      News.countDocuments({ 'recipients.userId': req.user._id }),
+      News.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+      News.countDocuments(filter),
     ]);
 
-    const result = news.map(n => ({
-      ...n,
-      read: n.recipients.find(r => r.userId.toString() === uid)?.read ?? false,
-    }));
+    const result = news.map(n => {
+      const rec  = n.recipients.find(r => r.userId.toString() === uid);
+      const isCreator = n.createdBy?.id?.toString() === uid;
+      return { ...n, read: rec ? rec.read : isCreator };
+    });
 
     res.json({ news: result, total, pages: Math.ceil(total / Number(limit)) });
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -1496,6 +1501,12 @@ router.post('/news', editor, async (req, res) => {
     }
 
     const recipients = users.map(u => ({ userId: u._id, name: u.name, email: u.email, read: false }));
+
+    // Создатель всегда видит свою новость (помечается как прочитанная)
+    const creatorInList = recipients.some(r => r.userId.toString() === req.user._id.toString());
+    if (!creatorInList) {
+      recipients.push({ userId: req.user._id, name: req.user.name, email: req.user.email, read: true });
+    }
 
     const news = await News.create({
       type,
