@@ -134,8 +134,9 @@ function CreateModal({ onClose, onCreated }) {
   const ROLE_LABELS = { owner: 'Владелец', editor: 'Редактор', viewer: 'Просмотр' };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 16px', overflowY: 'auto' }}>
-      <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 560, padding: 28, boxShadow: '0 8px 32px rgba(0,0,0,.18)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 560, maxHeight: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,.18)', overflow: 'hidden' }}>
+      <div style={{ overflowY: 'auto', padding: 28, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
           <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Создать новость</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: '#aaa', lineHeight: 1 }}>×</button>
@@ -245,9 +246,11 @@ function CreateModal({ onClose, onCreated }) {
           </div>
         )}
 
-        {error && <div style={{ fontSize: 13, color: '#c0392b', marginBottom: 14, background: '#fdf0ef', padding: '8px 12px', borderRadius: 6 }}>{error}</div>}
+        {error && <div style={{ fontSize: 13, color: '#c0392b', marginBottom: 4, background: '#fdf0ef', padding: '8px 12px', borderRadius: 6 }}>{error}</div>}
+      </div>{/* end scroll area */}
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+      {/* Sticky footer */}
+      <div style={{ padding: '14px 28px', borderTop: '1px solid #f0f0f0', display: 'flex', gap: 10, justifyContent: 'flex-end', background: '#fff', flexShrink: 0 }}>
           <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 8, border: '1.5px solid #e0e0e0', background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#555' }}>
             Отмена
           </button>
