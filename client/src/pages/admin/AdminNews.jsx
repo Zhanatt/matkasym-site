@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminGetNews, adminMarkNewsRead, adminMarkAllNewsRead, adminDeleteNews } from '../../api';
+import { adminGetNews, adminMarkNewsRead, adminMarkAllNewsRead, adminDeleteNews, adminSyncNewsProduct } from '../../api';
 import { useAuth } from '../../context/AuthContext';
+
+// Типы, которые автоматически синхронизируют статус товара
+const SYNC_TYPES = new Set(['discontinued', 'liquidation', 'nelikvid', 'out_of_stock', 'restocked']);
 
 const TYPE_META = {
   discontinued: { label: 'Снят с производства', color: '#e10523', bg: '#fff0ef' },
@@ -54,7 +57,14 @@ const IconTrash = () => (
   </svg>
 );
 
-function NewsCard({ item, onRead, onDelete, canDelete }) {
+const IconSync = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+    <path d="M3.51 9a9 9 0 0114.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0020.49 15"/>
+  </svg>
+);
+
+function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
   const meta = TYPE_META[item.type] || TYPE_META.custom;
   const img  = productImg(item.product);
 
@@ -142,9 +152,26 @@ function NewsCard({ item, onRead, onDelete, canDelete }) {
           </div>
         )}
 
-        {/* Delete button */}
+        {/* Action buttons */}
         {canDelete && (
-          <div style={{ paddingBottom: 20, marginTop: 4 }}>
+          <div style={{ paddingBottom: 20, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Sync button — only for types that affect product status */}
+            {item.product?.id && SYNC_TYPES.has(item.type) && (
+              <button
+                onClick={e => { e.stopPropagation(); onSync(item._id); }}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 12,
+                  border: '1.5px solid #2980b9', background: '#fff',
+                  color: '#2980b9', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'background .15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#eaf4fb'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              >
+                <IconSync /> Применить статус к товару
+              </button>
+            )}
             <button
               onClick={e => { e.stopPropagation(); onDelete(item._id); }}
               style={{
@@ -211,6 +238,12 @@ export default function AdminNews() {
     adminDeleteNews(id).then(() => load(page)).catch(() => {});
   };
 
+  const handleSync = (id) => {
+    adminSyncNewsProduct(id)
+      .then(() => alert('Статус товара обновлён'))
+      .catch(e => alert(e.response?.data?.message || 'Ошибка синхронизации'));
+  };
+
   return (
     <div style={{ position: 'relative', minHeight: '100%', overflow: 'hidden' }}>
       {/* Background blobs */}
@@ -263,6 +296,7 @@ export default function AdminNews() {
                 item={item}
                 onRead={handleRead}
                 onDelete={handleDelete}
+                onSync={handleSync}
                 canDelete={isEditor}
               />
             ))}

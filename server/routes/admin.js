@@ -1573,6 +1573,37 @@ router.patch('/news/:id/read', async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// POST /admin/news/:id/sync — применить статус новости к товару (editor+)
+const NEWS_STATUS_MAP = {
+  discontinued: { productStatus: 'discontinued' },
+  liquidation:  { productStatus: 'liquidation'  },
+  nelikvid:     { productStatus: 'nelikvid'     },
+  out_of_stock: { stockStatus: 'out_of_stock', inStock: false },
+  restocked:    { stockStatus: 'in_stock',     inStock: true  },
+};
+
+router.post('/news/:id/sync', editor, async (req, res) => {
+  try {
+    const news = await News.findById(req.params.id).lean();
+    if (!news) return res.status(404).json({ message: 'Новость не найдена' });
+
+    const updates = NEWS_STATUS_MAP[news.type];
+    if (!updates) return res.status(400).json({ message: 'Этот тип новости не влияет на статус товара' });
+
+    const productId = news.product?.id;
+    if (!productId) return res.status(400).json({ message: 'К новости не привязан товар' });
+
+    const updated = await Product.findByIdAndUpdate(
+      productId,
+      { $set: updates },
+      { new: true, select: 'productStatus stockStatus inStock name' }
+    );
+    if (!updated) return res.status(404).json({ message: 'Товар не найден' });
+
+    res.json({ ok: true, product: updated });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 // DELETE /admin/news/:id — удалить (editor+)
 router.delete('/news/:id', editor, async (req, res) => {
   try {

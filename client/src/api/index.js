@@ -112,5 +112,6 @@ export const adminCreateNews       = (data)        => api.post('/admin/news', da
 export const adminMarkNewsRead     = (id)          => api.patch(`/admin/news/${id}/read`);
 export const adminMarkAllNewsRead  = ()            => api.post('/admin/news/read-all');
 export const adminDeleteNews       = (id)          => api.delete(`/admin/news/${id}`);
+export const adminSyncNewsProduct  = (id)          => api.post(`/admin/news/${id}/sync`);
 
 export default api;
