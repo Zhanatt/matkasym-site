@@ -68,9 +68,20 @@ const IconSync = () => (
   </svg>
 );
 
+const IconEye = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3498db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+  </svg>
+);
+
 function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
+  const [showViewers, setShowViewers] = useState(false);
   const meta = TYPE_META[item.type] || TYPE_META.custom;
   const img  = productImg(item.product);
+
+  const viewers = (item.recipients || []).filter(r => r.read);
+  const viewCount = viewers.length;
+  const totalRecipients = (item.recipients || []).length;
 
   return (
     <div
@@ -153,6 +164,55 @@ function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
               <div style={{ fontSize: 11, color: '#bbb', fontWeight: 600, marginBottom: 3, letterSpacing: .3 }}>Комментарий</div>
               <div style={{ fontSize: 14, color: '#333', lineHeight: 1.5 }}>{item.message}</div>
             </div>
+          </div>
+        )}
+
+        {/* Views */}
+        {totalRecipients > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <button
+              onClick={e => { e.stopPropagation(); setShowViewers(!showViewers); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                background: '#f0f7ff', border: 'none', borderRadius: 10, padding: '10px 14px',
+                cursor: 'pointer', transition: 'background .15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#e3f0fc'}
+              onMouseLeave={e => e.currentTarget.style.background = '#f0f7ff'}
+            >
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e3f0fc', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <IconEye />
+              </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2980b9' }}>
+                  Просмотрено: {viewCount} из {totalRecipients}
+                </div>
+                <div style={{ fontSize: 11, color: '#7fb3de', marginTop: 1 }}>
+                  {showViewers ? 'Скрыть список' : 'Показать кто просмотрел'}
+                </div>
+              </div>
+              <span style={{ fontSize: 14, color: '#2980b9', transform: showViewers ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform .2s' }}>▼</span>
+            </button>
+
+            {showViewers && viewers.length > 0 && (
+              <div style={{ marginTop: 8, background: '#fafcff', borderRadius: 8, border: '1px solid #e3f0fc', overflow: 'hidden' }}>
+                {viewers.map((v, i) => (
+                  <div key={v.userId || i} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px', borderBottom: i < viewers.length - 1 ? '1px solid #f0f5fa' : 'none',
+                  }}>
+                    <span style={{ fontSize: 13, color: '#333', fontWeight: 500 }}>{v.name || v.email}</span>
+                    <span style={{ fontSize: 11, color: '#aaa' }}>{v.readAt ? fmt(v.readAt) : '—'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {showViewers && viewers.length === 0 && (
+              <div style={{ marginTop: 8, padding: '12px', background: '#fafcff', borderRadius: 8, border: '1px solid #e3f0fc', fontSize: 13, color: '#999', textAlign: 'center' }}>
+                Ещё никто не просмотрел
+              </div>
+            )}
           </div>
         )}
 
