@@ -288,12 +288,12 @@ function buildGraph(products, navigate) {
 
       const setMidY = (setStartY + globalY) / 2 - 36;
       const SET_LABELS_RU = {
-        'nelikvid':       'Неликвид',
-        'samples':        'Образцы',
-        'small-batch':    'Small Batch',
-        'misc':           'Misc',
-        'equipment':      'Equipment',
-        'other':          'Прочее',
+        'nelikvid':       'Nelikvid',
+        'samples':        'Obraztsy',
+        'small-batch':    'Malaya Partiya',
+        'misc':           'Raznoe',
+        'equipment':      'Oborudovanie',
+        'other':          'Prochee',
         'achyk-asman':    'Achyk Asman',
         'den-sooluk':     'Den Sooluk',
         'zhashyl-ömür':   'Zhashyl Omur',

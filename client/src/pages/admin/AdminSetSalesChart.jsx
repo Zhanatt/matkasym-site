@@ -23,10 +23,10 @@ const SET_NAMES = {
   '0-tashtandy':     '0-Tashtandy',     'bekem-fasad':     'Bekem Fasad',
   'bilim-kelechek':  'Bilim Kelechek',  'kooz-koopsuzduk': 'Kooz Koopsuzduk',
   'uzak-koldon':     'Uzak Koldon',     'önügüü-set':      'Onuguu Set',
-  'dayar-tütük':     'Dayar Tutuk',     'nelikvid':        'Неликвид',
-  'samples':         'Образцы',         'small-batch':     'Small Batch',
-  'misc':            'Misc',            'equipment':       'Equipment',
-  'other':           'Прочее',
+  'dayar-tütük':     'Dayar Tutuk',     'nelikvid':        'Nelikvid',
+  'samples':         'Obraztsy',        'small-batch':     'Malaya Partiya',
+  'misc':            'Raznoe',          'equipment':       'Oborudovanie',
+  'other':           'Prochee',
 };
 
 function setLabel(slug) {

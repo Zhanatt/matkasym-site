@@ -59,12 +59,12 @@ const STATIC_SET_NAMES = {
   'dayar-tütük':     'Dayar Tutuk',
   'önügüü-set':      'Onuguu Set',
   // Прочие
-  'nelikvid':        'Неликвид',
-  'samples':         'Образцы',
-  'small-batch':     'Small Batch',
-  'misc':            'Misc',
-  'equipment':       'Equipment',
-  'other':           'Прочее',
+  'nelikvid':        'Nelikvid',
+  'samples':         'Obraztsy',
+  'small-batch':     'Malaya Partiya',
+  'misc':            'Raznoe',
+  'equipment':       'Oborudovanie',
+  'other':           'Prochee',
 };
 
 const COLOR_OPTIONS = [

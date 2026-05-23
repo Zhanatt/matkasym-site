@@ -28,12 +28,12 @@ const SET_NAMES = {
   'uzak-koldon':     'Uzak Koldon',
   'önügüü-set':      'Onuguu Set',
   'dayar-tütük':     'Dayar Tutuk',
-  'nelikvid':        'Неликвид',
-  'samples':         'Образцы',
-  'small-batch':     'Small Batch',
-  'misc':            'Misc',
-  'equipment':       'Equipment',
-  'other':           'Прочее',
+  'nelikvid':        'Nelikvid',
+  'samples':         'Obraztsy',
+  'small-batch':     'Malaya Partiya',
+  'misc':            'Raznoe',
+  'equipment':       'Oborudovanie',
+  'other':           'Prochee',
 };
 
 function setLabel(slug) {
