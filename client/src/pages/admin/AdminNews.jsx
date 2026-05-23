@@ -7,12 +7,17 @@ import { useAuth } from '../../context/AuthContext';
 const SYNC_TYPES = new Set(['discontinued', 'nelikvid', 'out_of_stock', 'restocked']);
 
 const TYPE_META = {
-  discontinued: { label: 'Снят с производства', color: '#e10523', bg: '#fff0ef' },
-  nelikvid:     { label: 'Неликвид',             color: '#8e44ad', bg: '#f5eef8' },
-  out_of_stock: { label: 'Нет в наличии',         color: '#7f8c8d', bg: '#f2f3f4' },
-  restocked:    { label: 'Появился на складе',    color: '#27ae60', bg: '#eafaf1' },
-  price_change: { label: 'Изменение цены',        color: '#2980b9', bg: '#eaf4fb' },
-  custom:       { label: 'Объявление',            color: '#2c3e50', bg: '#f0f3f4' },
+  discontinued:          { label: 'Снят с производства', color: '#e10523', bg: '#fff0ef' },
+  nelikvid:              { label: 'Неликвид',             color: '#8e44ad', bg: '#f5eef8' },
+  out_of_stock:          { label: 'Нет в наличии',         color: '#7f8c8d', bg: '#f2f3f4' },
+  restocked:             { label: 'Появился на складе',    color: '#27ae60', bg: '#eafaf1' },
+  price_change:          { label: 'Изменение цены',        color: '#2980b9', bg: '#eaf4fb' },
+  custom:                { label: 'Объявление',            color: '#2c3e50', bg: '#f0f3f4' },
+  new_product:           { label: 'Новый товар',           color: '#27ae60', bg: '#eafaf1' },
+  status_planned:        { label: 'В планах',              color: '#f39c12', bg: '#fef9e7' },
+  status_in_development: { label: 'В разработке',          color: '#3498db', bg: '#ebf5fb' },
+  status_improvement:    { label: 'На улучшении',          color: '#9b59b6', bg: '#f5eef8' },
+  status_for_sale:       { label: 'В продаже',             color: '#27ae60', bg: '#eafaf1' },
 };
 
 function productImg(p) {

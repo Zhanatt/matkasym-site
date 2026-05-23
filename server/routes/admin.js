@@ -152,6 +152,14 @@ router.post('/products', editor, async (req, res) => {
       source: 'manual',
       changedBy: req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
     });
+
+    // Автопубликация новости о новом товаре
+    autoPublishNews({
+      type: 'new_product',
+      product: p,
+      changedBy: { id: req.user._id, name: req.user.name, email: req.user.email },
+    });
+
     res.status(201).json(p);
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
@@ -221,6 +229,30 @@ router.patch('/products/:id', editor, async (req, res) => {
           };
         });
         await PriceLog.insertMany(priceLogs);
+
+        // Автопубликация новости об изменении цены (розничной или оптовой)
+        const retailOrWholesale = priceChanges.find(c =>
+          c.field === FIELD_LABELS.price || c.field === FIELD_LABELS.priceWholesale
+        );
+        if (retailOrWholesale) {
+          const priceMsg = priceChanges.map(c => `${c.field}: ${c.from} → ${c.to} тг`).join('\n');
+          autoPublishNews({
+            type: 'price_change',
+            product: p,
+            changedBy: { id: req.user._id, name: req.user.name, email: req.user.email },
+            message: priceMsg,
+          });
+        }
+      }
+
+      // Автопубликация при изменении productStatus
+      const statusChange = changes.find(c => c.field === FIELD_LABELS.productStatus);
+      if (statusChange && STATUS_TO_NEWS_TYPE[statusChange.to]) {
+        autoPublishNews({
+          type: STATUS_TO_NEWS_TYPE[statusChange.to],
+          product: p,
+          changedBy: { id: req.user._id, name: req.user.name, email: req.user.email },
+        });
       }
     }
 
@@ -1433,6 +1465,77 @@ router.patch('/tenders/:id/assign', editor, async (req, res) => {
 const News = require('../models/News');
 const { sendNewsNotification } = require('../lib/mailer');
 
+// Маппинг productStatus → news type
+const STATUS_TO_NEWS_TYPE = {
+  planned:        'status_planned',
+  in_development: 'status_in_development',
+  improvement:    'status_improvement',
+  for_sale:       'status_for_sale',
+  discontinued:   'discontinued',
+  nelikvid:       'nelikvid',
+};
+
+const NEWS_TYPE_TITLES = {
+  new_product:           (name) => `Новый товар: ${name}`,
+  status_planned:        (name) => `${name} — добавлен в планы`,
+  status_in_development: (name) => `${name} — в разработке`,
+  status_improvement:    (name) => `${name} — на улучшении`,
+  status_for_sale:       (name) => `${name} — в продаже`,
+  discontinued:          (name) => `${name} — снят с производства`,
+  nelikvid:              (name) => `${name} — неликвид`,
+  price_change:          (name) => `Изменение цены: ${name}`,
+};
+
+async function autoPublishNews({ type, product, changedBy, message = '' }) {
+  try {
+    const users = await User.find({
+      role: { $in: ['owner', 'editor', 'viewer'] },
+      isPending: { $ne: true },
+    }).lean();
+
+    if (users.length === 0) return null;
+
+    const productName = product.fullName || product.name;
+    const title = NEWS_TYPE_TITLES[type]?.(productName) || productName;
+
+    const recipients = users.map(u => ({
+      userId: u._id,
+      name:   u.name,
+      email:  u.email,
+      read:   u._id.toString() === changedBy.id?.toString(),
+      readAt: u._id.toString() === changedBy.id?.toString() ? new Date() : null,
+    }));
+
+    const news = await News.create({
+      type,
+      title,
+      message,
+      product: {
+        id:          product._id,
+        name:        productName,
+        brand:       product.brand || '',
+        set:         product.set   || '',
+        stock:       product.stock ?? 0,
+        images:      product.images      || [],
+        driveImages: product.driveImages || [],
+      },
+      recipients,
+      createdBy: changedBy,
+    });
+
+    // Отправляем email (кроме автора)
+    const emailRecipients = users.filter(u => u._id.toString() !== changedBy.id?.toString());
+    if (emailRecipients.length > 0) {
+      sendNewsNotification({ type, title, message, product }, emailRecipients).catch(() => {});
+    }
+
+    return news;
+  } catch (e) {
+    console.error('Auto-publish news error:', e.message);
+    return null;
+  }
+}
+
 // GET /admin/news/unread-count — MUST be before /news/:id
 router.get('/news/unread-count', async (req, res) => {
   try {
@@ -1539,21 +1642,20 @@ router.post('/news', editor, async (req, res) => {
       createdBy: { id: req.user._id, name: req.user.name, email: req.user.email },
     });
 
-    // Send emails async — don't block response
-    for (const u of users) {
+    // Send emails async — don't block response (исключаем автора)
+    const emailRecipients = users.filter(u => u._id.toString() !== req.user._id.toString());
+    if (emailRecipients.length > 0) {
       sendNewsNotification({
-        toEmail: u.email,
-        toName:  u.name,
-        newsTitle: title,
-        newsMessage: message || '',
         type,
+        title,
+        message: message || '',
         product: product ? {
           name:        product.fullName || product.name,
           stock:       product.stock,
           images:      product.images || [],
           driveImages: product.driveImages || [],
         } : null,
-      }).catch(() => {});
+      }, emailRecipients).catch(() => {});
     }
 
     res.status(201).json({ news });
