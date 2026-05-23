@@ -1650,6 +1650,7 @@ router.post('/news', editor, async (req, res) => {
 
     // Send emails async — don't block response (исключаем автора)
     const emailRecipients = users.filter(u => u._id.toString() !== req.user._id.toString());
+    console.log(`[News] Created news "${title}", sending to ${emailRecipients.length} recipients`);
     if (emailRecipients.length > 0) {
       sendNewsNotification({
         type,
@@ -1661,7 +1662,9 @@ router.post('/news', editor, async (req, res) => {
           images:      product.images || [],
           driveImages: product.driveImages || [],
         } : null,
-      }, emailRecipients).catch(() => {});
+      }, emailRecipients).catch(e => console.error('[News] Email send error:', e.message));
+    } else {
+      console.log('[News] No recipients to email (only author)');
     }
 
     res.status(201).json({ news });

@@ -147,13 +147,18 @@ async function sendNewsNotification({ type, title, message, product }, recipient
     </div>` : '';
 
   const recipientsList = Array.isArray(recipients) ? recipients : [recipients];
+  console.log(`[Mailer] Sending news "${title}" to ${recipientsList.length} recipients`);
 
   for (const r of recipientsList) {
     const toEmail = r.email;
     const toName  = r.name || r.email;
-    if (!toEmail) continue;
+    if (!toEmail) {
+      console.log('[Mailer] Skipping recipient without email:', r);
+      continue;
+    }
 
     try {
+      console.log(`[Mailer] Sending to: ${toEmail}`);
       await transporter.sendMail({
         from: `"Продакт матрица" <${ADMIN_EMAIL}>`,
         to:   toEmail,
@@ -179,8 +184,9 @@ async function sendNewsNotification({ type, title, message, product }, recipient
           </div>
         `,
       });
+      console.log(`[Mailer] ✓ Sent to ${toEmail}`);
     } catch (e) {
-      console.error(`Failed to send news email to ${toEmail}:`, e.message);
+      console.error(`[Mailer] ✗ Failed to send to ${toEmail}:`, e.message);
     }
   }
 }
