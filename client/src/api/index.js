@@ -114,4 +114,8 @@ export const adminMarkAllNewsRead  = ()            => api.post('/admin/news/read
 export const adminDeleteNews       = (id)          => api.delete(`/admin/news/${id}`);
 export const adminSyncNewsProduct  = (id)          => api.post(`/admin/news/${id}/sync`);
 
+// Telegram
+export const adminGetTelegramLink  = ()            => api.get('/admin/telegram-link');
+export const adminUnlinkTelegram   = ()            => api.delete('/admin/telegram-unlink');
+
 export default api;

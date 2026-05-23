@@ -25,6 +25,35 @@ app.use('/api/catalog',  require('./routes/catalog'));  // AI-bot context API
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'OK', time: new Date() }));
 
+// Telegram bot webhook
+app.post('/api/telegram-webhook', async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) return res.sendStatus(200);
+
+    const chatId = message.chat?.id;
+    const text = message.text || '';
+
+    // /start userId — привязка аккаунта
+    if (text.startsWith('/start ')) {
+      const userId = text.split(' ')[1];
+      if (userId && userId.match(/^[a-f0-9]{24}$/i)) {
+        const User = require('./models/User');
+        const user = await User.findByIdAndUpdate(userId, { telegramChatId: String(chatId) }, { new: true });
+        if (user) {
+          const { sendTelegramMessage } = require('./lib/telegram');
+          await sendTelegramMessage(chatId, `✅ Telegram привязан к аккаунту <b>${user.name}</b>!\n\nТеперь ты будешь получать уведомления о новостях сюда.`);
+        }
+      }
+    }
+
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('[Telegram Webhook]', e.message);
+    res.sendStatus(200);
+  }
+});
+
 // Serve React build in production
 if (process.env.NODE_ENV === 'production') {
   const clientBuild = path.join(__dirname, '../client/dist');

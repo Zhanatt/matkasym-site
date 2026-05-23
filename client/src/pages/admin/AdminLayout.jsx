@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminStats, adminGetNewsUnread } from '../../api';
+import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram } from '../../api';
 import './Admin.css';
 
 const NAV_ALL = [
@@ -25,6 +25,8 @@ export default function AdminLayout() {
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [newsUnread,   setNewsUnread]   = useState(0);
+  const [tgLink,       setTgLink]       = useState('');
+  const [tgConnected,  setTgConnected]  = useState(false);
 
   // Reset body overflow on every navigation (guard against modal scroll-lock leaking)
   useEffect(() => {
@@ -38,6 +40,7 @@ export default function AdminLayout() {
       adminGetNewsUnread().then(r => setNewsUnread(r.data.count || 0)).catch(() => {});
     };
     load();
+    adminGetTelegramLink().then(r => { setTgLink(r.data.link); setTgConnected(r.data.connected); }).catch(() => {});
     const id = setInterval(load, 60_000);
     return () => clearInterval(id);
   }, [!!user]);
@@ -131,6 +134,32 @@ export default function AdminLayout() {
         </nav>
 
         <div className="admin-sidebar-footer">
+          {/* Telegram */}
+          {tgConnected ? (
+            <button
+              onClick={() => { adminUnlinkTelegram().then(() => setTgConnected(false)).catch(() => {}); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 12,
+                padding: '8px 12px', borderRadius: 8, border: 'none',
+                background: '#e8f8f0', color: '#27ae60', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 18 }}>✓</span> Telegram подключён
+            </button>
+          ) : tgLink && (
+            <a
+              href={tgLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 12,
+                padding: '8px 12px', borderRadius: 8, textDecoration: 'none',
+                background: '#e3f2fd', color: '#1976d2', fontSize: 13, fontWeight: 600,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>📱</span> Подключить Telegram
+            </a>
+          )}
           <span className="admin-user-name">{user.name}</span>
           <button className="admin-logout" onClick={() => { logout(); navigate('/'); }}>
             Выйти

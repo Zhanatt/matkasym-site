@@ -388,6 +388,21 @@ router.delete('/users/:id', admin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// GET /admin/telegram-link — ссылка для привязки Telegram
+router.get('/telegram-link', async (req, res) => {
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'MatkasymBot';
+  const link = `https://t.me/${botUsername}?start=${req.user._id}`;
+  res.json({ link, connected: !!req.user.telegramChatId });
+});
+
+// DELETE /admin/telegram-unlink — отвязать Telegram
+router.delete('/telegram-unlink', async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, { telegramChatId: '' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Custom categories (user-created) ─────────────────────────────────────
 
 // GET /api/admin/custom-categories — list user-created categories
@@ -1470,6 +1485,7 @@ router.patch('/tenders/:id/assign', editor, async (req, res) => {
 
 const News = require('../models/News');
 const { sendNewsNotification } = require('../lib/mailer');
+const { sendNewsNotificationTelegram } = require('../lib/telegram');
 
 // Маппинг productStatus → news type
 const STATUS_TO_NEWS_TYPE = {
@@ -1529,10 +1545,13 @@ async function autoPublishNews({ type, product, changedBy, message = '' }) {
       createdBy: changedBy,
     });
 
-    // Отправляем email (кроме автора)
-    const emailRecipients = users.filter(u => u._id.toString() !== changedBy.id?.toString());
-    if (emailRecipients.length > 0) {
-      sendNewsNotification({ type, title, message, product }, emailRecipients).catch(() => {});
+    // Отправляем уведомления (кроме автора)
+    const notifyRecipients = users.filter(u => u._id.toString() !== changedBy.id?.toString());
+    if (notifyRecipients.length > 0) {
+      // Telegram (основной)
+      sendNewsNotificationTelegram({ type, title, message, product }, notifyRecipients).catch(() => {});
+      // Email (резерв)
+      sendNewsNotification({ type, title, message, product }, notifyRecipients).catch(() => {});
     }
 
     return news;
@@ -1648,11 +1667,11 @@ router.post('/news', editor, async (req, res) => {
       createdBy: { id: req.user._id, name: req.user.name, email: req.user.email },
     });
 
-    // Send emails async — don't block response (исключаем автора)
-    const emailRecipients = users.filter(u => u._id.toString() !== req.user._id.toString());
-    console.log(`[News] Created news "${title}", sending to ${emailRecipients.length} recipients`);
-    if (emailRecipients.length > 0) {
-      sendNewsNotification({
+    // Send notifications async — don't block response (исключаем автора)
+    const notifyRecipients = users.filter(u => u._id.toString() !== req.user._id.toString());
+    console.log(`[News] Created news "${title}", sending to ${notifyRecipients.length} recipients`);
+    if (notifyRecipients.length > 0) {
+      const newsData = {
         type,
         title,
         message: message || '',
@@ -1662,9 +1681,13 @@ router.post('/news', editor, async (req, res) => {
           images:      product.images || [],
           driveImages: product.driveImages || [],
         } : null,
-      }, emailRecipients).catch(e => console.error('[News] Email send error:', e.message));
+      };
+      // Telegram (основной)
+      sendNewsNotificationTelegram(newsData, notifyRecipients).catch(e => console.error('[News] Telegram send error:', e.message));
+      // Email (резерв)
+      sendNewsNotification(newsData, notifyRecipients).catch(e => console.error('[News] Email send error:', e.message));
     } else {
-      console.log('[News] No recipients to email (only author)');
+      console.log('[News] No recipients to notify (only author)');
     }
 
     res.status(201).json({ news });
