@@ -1364,9 +1364,11 @@ router.get('/sales-chart', editor, async (req, res) => {
           period: { $dateToString: { format: fmt, date: '$createdAt', timezone: '+06:00' } },
           key:    groupKey,
         },
-        sales:   { $sum: { $abs: '$delta' } },
-        revenue: { $sum: { $multiply: [{ $abs: '$delta' }, { $ifNull: ['$prod.price', 0] }] } },
-        brand:   { $first: '$prod.brand' },
+        sales:      { $sum: { $abs: '$delta' } },
+        revenue:    { $sum: { $multiply: [{ $abs: '$delta' }, { $ifNull: ['$prod.price', 0] }] } },
+        brand:      { $first: '$prod.brand' },
+        images:     { $first: '$prod.images' },
+        driveImages:{ $first: '$prod.driveImages' },
       }},
       { $sort: { '_id.period': 1 } },
     );
@@ -1379,6 +1381,7 @@ router.get('/sales-chart', editor, async (req, res) => {
     const byKey = {};
     const revByKey = {};
     const brandByKey = {};
+    const imagesByKey = {};
     let grandRevenue = 0;
     rows.forEach(r => {
       const k = r._id.key;
@@ -1388,13 +1391,16 @@ router.get('/sales-chart', editor, async (req, res) => {
       revByKey[k] = (revByKey[k] || 0) + (r.revenue || 0);
       grandRevenue += r.revenue || 0;
       if (!brandByKey[k]) brandByKey[k] = r.brand || '';
+      if (!imagesByKey[k]) imagesByKey[k] = { images: r.images || [], driveImages: r.driveImages || [] };
     });
 
     const datasets = keys.map(k => ({
-      set:     k,
-      data:    labelSet.map(l => byKey[k]?.[l] || 0),
-      revenue: Math.round(revByKey[k] || 0),
-      brand:   brandByKey[k] || '',
+      set:        k,
+      data:       labelSet.map(l => byKey[k]?.[l] || 0),
+      revenue:    Math.round(revByKey[k] || 0),
+      brand:      brandByKey[k] || '',
+      images:     imagesByKey[k]?.images || [],
+      driveImages:imagesByKey[k]?.driveImages || [],
     }));
 
     res.json({ labels: labelSet, datasets, grandRevenue: Math.round(grandRevenue) });

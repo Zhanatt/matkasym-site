@@ -95,10 +95,22 @@ export default function AdminSetSalesChart() {
 
   const totals = data
     ? data.datasets
-        .map(ds => ({ name: ds.set, total: ds.data.reduce((a,b)=>a+b,0), revenue: ds.revenue || 0 }))
+        .map(ds => ({
+          name: ds.set,
+          total: ds.data.reduce((a,b)=>a+b,0),
+          revenue: ds.revenue || 0,
+          images: ds.images || [],
+          driveImages: ds.driveImages || [],
+        }))
         .filter(x => x.total > 0)
         .sort((a,b) => b.total - a.total)
     : [];
+
+  const getProductImg = (item) => {
+    if (item.images?.[0]) return item.images[0];
+    if (item.driveImages?.[0]) return `https://drive.google.com/uc?export=view&id=${item.driveImages[0]}`;
+    return null;
+  };
 
   const grandTotal   = totals.reduce((s,x) => s + x.total, 0);
   const grandRevenue = data?.grandRevenue || 0;
@@ -198,18 +210,26 @@ export default function AdminSetSalesChart() {
           {/* Table */}
           {totalsWithAbc.length > 0 && (
             <div style={{ border:'1px solid #eee', borderRadius:10, overflow:'hidden', background:'#fff' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'24px 28px 1fr 80px 100px', padding:'8px 14px', background:'#f7f8fa', borderBottom:'1px solid #eee', fontSize:11, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:0.5 }}>
-                <span>#</span><span>Кат.</span><span>Товар</span><span style={{ textAlign:'right' }}>% от итога</span><span style={{ textAlign:'right' }}>Продано, шт</span>
+              <div style={{ display:'grid', gridTemplateColumns:'24px 28px 44px 1fr 80px 100px', padding:'8px 14px', background:'#f7f8fa', borderBottom:'1px solid #eee', fontSize:11, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:0.5, alignItems:'center' }}>
+                <span>#</span><span>Кат.</span><span></span><span>Товар</span><span style={{ textAlign:'right' }}>% от итога</span><span style={{ textAlign:'right' }}>Продано, шт</span>
               </div>
               {totalsWithAbc.map((item,i) => {
                 const pct = grandTotal>0 ? Math.round(item.total/grandTotal*100) : 0;
                 const abcStyle = ABC_STYLE[item.abc];
+                const imgUrl = getProductImg(item);
                 return (
-                  <div key={item.name} style={{ display:'grid', gridTemplateColumns:'24px 28px 1fr 80px 100px', padding:'9px 14px', borderBottom:'1px solid #f5f5f5', fontSize:13, alignItems:'center' }}
+                  <div key={item.name} style={{ display:'grid', gridTemplateColumns:'24px 28px 44px 1fr 80px 100px', padding:'9px 14px', borderBottom:'1px solid #f5f5f5', fontSize:13, alignItems:'center' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#fafafa'}
                     onMouseLeave={e=>e.currentTarget.style.background=''}>
                     <span style={{ fontSize:11, color:'#ccc', fontWeight:600 }}>{i+1}</span>
                     <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:5, fontSize:10, fontWeight:800, ...abcStyle }}>{item.abc}</span>
+                    <div style={{ width:36, height:36, borderRadius:6, overflow:'hidden', background:'#f5f5f5', flexShrink:0 }}>
+                      {imgUrl ? (
+                        <img src={imgUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                      ) : (
+                        <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#ccc', fontSize:14 }}>📦</div>
+                      )}
+                    </div>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <span style={{ width:10, height:10, borderRadius:'50%', background:LINE_COLORS[i%LINE_COLORS.length], flexShrink:0 }} />
                       <span style={{ fontWeight:500 }}>{item.name}</span>
@@ -224,8 +244,8 @@ export default function AdminSetSalesChart() {
                   </div>
                 );
               })}
-              <div style={{ display:'grid', gridTemplateColumns:'24px 28px 1fr 80px 100px', padding:'10px 14px', background:'#f7f8fa', fontSize:13 }}>
-                <span /><span /><span style={{ fontWeight:700, color:'#111' }}>Итого</span><span />
+              <div style={{ display:'grid', gridTemplateColumns:'24px 28px 44px 1fr 80px 100px', padding:'10px 14px', background:'#f7f8fa', fontSize:13 }}>
+                <span /><span /><span /><span style={{ fontWeight:700, color:'#111' }}>Итого</span><span />
                 <span style={{ textAlign:'right', fontWeight:800, fontSize:15, color:'#1e7e34' }}>{grandTotal.toLocaleString('ru')} шт</span>
               </div>
             </div>
