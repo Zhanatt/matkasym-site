@@ -1,12 +1,16 @@
 const { Resend } = require('resend');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 // Письмо админу — новый пользователь хочет доступ
 async function sendApprovalRequest({ adminName, adminEmail, newUser }) {
+  if (!resend) {
+    console.log('[Mailer] Resend not configured, skipping approval request email');
+    return;
+  }
   const approveLink = `${SITE_URL}/api/auth/approve/${newUser._id}?secret=${process.env.JWT_SECRET.slice(0, 12)}`;
   const rejectLink  = `${SITE_URL}/api/auth/reject/${newUser._id}?secret=${process.env.JWT_SECRET.slice(0, 12)}`;
 
@@ -43,6 +47,7 @@ async function sendApprovalRequest({ adminName, adminEmail, newUser }) {
 
 // Письмо пользователю — доступ подтверждён
 async function sendApproved({ toEmail, toName }) {
+  if (!resend) return;
   await resend.emails.send({
     from: `Продакт матрица <${FROM_EMAIL}>`,
     to: toEmail,
@@ -66,6 +71,7 @@ async function sendApproved({ toEmail, toName }) {
 
 // Письмо пользователю — отклонено
 async function sendRejected({ toEmail, toName }) {
+  if (!resend) return;
   await resend.emails.send({
     from: `Продакт матрица <${FROM_EMAIL}>`,
     to: toEmail,
@@ -76,6 +82,7 @@ async function sendRejected({ toEmail, toName }) {
 
 // Письмо пользователю — сброс пароля
 async function sendPasswordReset({ toEmail, toName, resetLink }) {
+  if (!resend) return;
   await resend.emails.send({
     from: `Продакт матрица <${FROM_EMAIL}>`,
     to: toEmail,
@@ -115,6 +122,10 @@ const NEWS_TYPE_LABELS = {
 
 // Новость/объявление — рассылка пользователям
 async function sendNewsNotification({ type, title, message, product }, recipients) {
+  if (!resend) {
+    console.log('[Mailer] Resend not configured, skipping news notification email');
+    return;
+  }
   const typeLabel = NEWS_TYPE_LABELS[type] || 'Новость';
   const typeColors = {
     discontinued: '#c0392b', nelikvid: '#8e44ad',
