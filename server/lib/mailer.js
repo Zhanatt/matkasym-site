@@ -1,24 +1,18 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
-const ADMIN_EMAIL = process.env.GMAIL_USER;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 // Письмо админу — новый пользователь хочет доступ
 async function sendApprovalRequest({ adminName, adminEmail, newUser }) {
   const approveLink = `${SITE_URL}/api/auth/approve/${newUser._id}?secret=${process.env.JWT_SECRET.slice(0, 12)}`;
   const rejectLink  = `${SITE_URL}/api/auth/reject/${newUser._id}?secret=${process.env.JWT_SECRET.slice(0, 12)}`;
 
-  await transporter.sendMail({
-    from: `"Продакт матрица" <${ADMIN_EMAIL}>`,
-    to:   ADMIN_EMAIL,
+  await resend.emails.send({
+    from: `Продакт матрица <${FROM_EMAIL}>`,
+    to: adminEmail,
     subject: `🔐 Новый запрос доступа — ${newUser.name}`,
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -49,9 +43,9 @@ async function sendApprovalRequest({ adminName, adminEmail, newUser }) {
 
 // Письмо пользователю — доступ подтверждён
 async function sendApproved({ toEmail, toName }) {
-  await transporter.sendMail({
-    from: `"Продакт матрица" <${ADMIN_EMAIL}>`,
-    to:   toEmail,
+  await resend.emails.send({
+    from: `Продакт матрица <${FROM_EMAIL}>`,
+    to: toEmail,
     subject: '✅ Доступ подтверждён — Продакт матрица',
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -61,7 +55,7 @@ async function sendApproved({ toEmail, toName }) {
         <div style="border: 1px solid #e8e8e8; border-top: none; padding: 28px 24px; border-radius: 0 0 8px 8px;">
           <h2 style="margin: 0 0 12px; color: #000;">Привет, ${toName}!</h2>
           <p style="color: #4d4d4d;">Твой доступ к Продакт матрице подтверждён. Можешь войти:</p>
-          <a href="https://matkasym-site.onrender.com/admin/login" style="display: inline-block; background: #e10523; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 700; margin-top: 16px;">
+          <a href="${SITE_URL}/admin/login" style="display: inline-block; background: #e10523; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 700; margin-top: 16px;">
             Войти в матрицу
           </a>
         </div>
@@ -72,9 +66,9 @@ async function sendApproved({ toEmail, toName }) {
 
 // Письмо пользователю — отклонено
 async function sendRejected({ toEmail, toName }) {
-  await transporter.sendMail({
-    from: `"Продакт матрица" <${ADMIN_EMAIL}>`,
-    to:   toEmail,
+  await resend.emails.send({
+    from: `Продакт матрица <${FROM_EMAIL}>`,
+    to: toEmail,
     subject: 'Запрос доступа отклонён',
     html: `<p>Привет, ${toName}. К сожалению, твой запрос доступа к Продакт матрице был отклонён.</p>`,
   });
@@ -82,9 +76,9 @@ async function sendRejected({ toEmail, toName }) {
 
 // Письмо пользователю — сброс пароля
 async function sendPasswordReset({ toEmail, toName, resetLink }) {
-  await transporter.sendMail({
-    from: `"Продакт матрица" <${ADMIN_EMAIL}>`,
-    to:   toEmail,
+  await resend.emails.send({
+    from: `Продакт матрица <${FROM_EMAIL}>`,
+    to: toEmail,
     subject: '🔑 Восстановление пароля — Продакт матрица',
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -119,7 +113,7 @@ const NEWS_TYPE_LABELS = {
   status_for_sale:       'В продаже',
 };
 
-// Новость/объявление — рассылка пользователям (может принять массив recipients)
+// Новость/объявление — рассылка пользователям
 async function sendNewsNotification({ type, title, message, product }, recipients) {
   const typeLabel = NEWS_TYPE_LABELS[type] || 'Новость';
   const typeColors = {
@@ -159,15 +153,15 @@ async function sendNewsNotification({ type, title, message, product }, recipient
 
     try {
       console.log(`[Mailer] Sending to: ${toEmail}`);
-      await transporter.sendMail({
-        from: `"Продакт матрица" <${ADMIN_EMAIL}>`,
-        to:   toEmail,
+      await resend.emails.send({
+        from: `Продакт матрица <${FROM_EMAIL}>`,
+        to: toEmail,
         subject: `📢 ${title}`,
         html: `
           <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
-            <div style="background:#000;padding:20px 24px;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:12px;">
+            <div style="background:#000;padding:20px 24px;border-radius:8px 8px 0 0;">
               <span style="color:#fff;font-weight:800;font-size:16px;letter-spacing:1px;">MATKASYM</span>
-              <span style="background:#e10523;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">Продакт матрица</span>
+              <span style="background:#e10523;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;">Продакт матрица</span>
             </div>
             <div style="border:1px solid #e8e8e8;border-top:none;padding:28px 24px;border-radius:0 0 8px 8px;">
               <div style="display:inline-block;background:${typeColor}1a;color:${typeColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;margin-bottom:14px;letter-spacing:.4px;">
