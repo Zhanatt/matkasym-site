@@ -16,7 +16,6 @@ const BRANDS = [
 ];
 
 const SET_LABELS_RU = {
-  'nelikvid':       'Nelikvid',
   'samples':        'Obraztsy',
   'small-batch':    'Malaya Partiya',
   'misc':           'Raznoe',

@@ -82,7 +82,6 @@ const SET_NAMES = {
   'bilim-kelechek':  'Bilim Kelechek',
   'kooz-koopsuzduk': 'Kooz Koopsuzduk',
   'uzak-koldon':     'Uzak Koldon',
-  'nelikvid':        'Nelikvid',
   'samples':         'Obraztsy',
   'small-batch':     'Malaya Partiya',
   'misc':            'Raznoe',

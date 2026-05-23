@@ -35,7 +35,6 @@ const SET_NAMES = {
   'bilim-kelechek':  'Bilim Kelechek',
   'kooz-koopsuzduk': 'Kooz Koopsuzduk',
   'uzak-koldon':     'Uzak Koldon',
-  'nelikvid':        'Nelikvid',
   'samples':         'Obraztsy',
   'small-batch':     'Malaya Partiya',
   'misc':            'Raznoe',
@@ -43,15 +42,14 @@ const SET_NAMES = {
   'other':           'Prochee',
 };
 
-const EXCLUDE = new Set(['nelikvid', 'samples', 'small-batch', 'misc', 'equipment', 'other']);
+const EXCLUDE = new Set(['samples', 'small-batch', 'misc', 'equipment', 'other']);
 
 const PROCHIYE = [
-  { slug: 'nelikvid',    label: 'Неликвид' },
-  { slug: 'samples',     label: 'Образцы' },
-  { slug: 'small-batch', label: 'Малосерийные' },
-  { slug: 'misc',        label: 'Разное' },
-  { slug: 'equipment',   label: 'Оборудование и сырьё' },
-  { slug: 'other',       label: 'Прочее' },
+  { slug: 'samples',     label: 'Obraztsy' },
+  { slug: 'small-batch', label: 'Malaya Partiya' },
+  { slug: 'misc',        label: 'Raznoe' },
+  { slug: 'equipment',   label: 'Oborudovanie' },
+  { slug: 'other',       label: 'Prochee' },
 ];
 
 const PRODUCT_STATUS_META = {

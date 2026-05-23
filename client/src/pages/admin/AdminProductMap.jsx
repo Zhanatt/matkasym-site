@@ -288,7 +288,6 @@ function buildGraph(products, navigate) {
 
       const setMidY = (setStartY + globalY) / 2 - 36;
       const SET_LABELS_RU = {
-        'nelikvid':       'Nelikvid',
         'samples':        'Obraztsy',
         'small-batch':    'Malaya Partiya',
         'misc':           'Raznoe',

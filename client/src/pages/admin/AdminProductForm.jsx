@@ -59,7 +59,6 @@ const STATIC_SET_NAMES = {
   'dayar-tütük':     'Dayar Tutuk',
   'önügüü-set':      'Onuguu Set',
   // Прочие
-  'nelikvid':        'Nelikvid',
   'samples':         'Obraztsy',
   'small-batch':     'Malaya Partiya',
   'misc':            'Raznoe',

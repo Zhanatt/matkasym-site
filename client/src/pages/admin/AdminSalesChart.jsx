@@ -28,7 +28,6 @@ const SET_NAMES = {
   'uzak-koldon':     'Uzak Koldon',
   'önügüü-set':      'Onuguu Set',
   'dayar-tütük':     'Dayar Tutuk',
-  'nelikvid':        'Nelikvid',
   'samples':         'Obraztsy',
   'small-batch':     'Malaya Partiya',
   'misc':            'Raznoe',
