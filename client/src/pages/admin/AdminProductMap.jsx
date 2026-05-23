@@ -288,15 +288,36 @@ function buildGraph(products, navigate) {
 
       const setMidY = (setStartY + globalY) / 2 - 36;
       const SET_LABELS_RU = {
-        'nelikvid':    'Неликвид',
-        'samples':     'Образцы',
-        'small-batch': 'Малосерийные',
-        'misc':        'Разное',
-        'equipment':   'Оборудование и сырьё',
-        'other':       'Прочее',
+        'nelikvid':       'Неликвид',
+        'samples':        'Образцы',
+        'small-batch':    'Малая партия',
+        'misc':           'Разное',
+        'equipment':      'Оборудование',
+        'other':          'Прочее',
+        'achyk-asman':    'Ачык Асман',
+        'den-sooluk':     'Ден Соолук',
+        'zhashyl-ömür':   'Жашыл Өмүр',
+        'kosh-keliniz':   'Кош Келиңиз',
+        'sanarip-tv':     'Санарип ТВ',
+        'taza-kiym':      'Таза Кийим',
+        'jenil-ashkana':  'Жеңил Ашкана',
+        'onoi-sakta':     'Оңой Сакта',
+        'baary-oorunda':  'Баары Ордунда',
+        'bilim-kelechek': 'Билим Келечек',
+        'uzak-koldon':    'Узак Колдон',
+        'bekem-fasad':    'Бекем Фасад',
+        '0-tashtandy':    '0-Таштанды',
+        'konok-keldi':    'Конок Келди',
+        'korkom-aiym':    'Коркөм Айым',
+        'shirin-balalyk': 'Ширин Балалык',
+        'uydo-ishtoo':    'Үйдө Иштөө',
+        'mazza-seiyl':    'Мазза Сейил',
+        'kooz-koopsuzduk':'Көз Коопсуздук',
+        'dayar-tütük':    'Даяр Түтүк',
+        'önügüü-set':     'Өнүгүү Сет',
       };
       const setLabel = setKey === '__none__' ? 'Без сета'
-        : (SET_LABELS_RU[setKey] || setKey.toUpperCase().replace(/-/g, ' '));
+        : (SET_LABELS_RU[setKey] || setKey);
       const allPlanned = prods.length > 0 && prods.every(p => (p.productStatus || 'ready') === 'planned');
       const uniqueCount = Object.keys(nameGroups).length;
       nodes.push({
