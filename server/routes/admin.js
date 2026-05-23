@@ -56,18 +56,18 @@ router.get('/stats', async (req, res) => {
     const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
     const adminRoles = ['owner', 'editor', 'viewer', 'banned'];
 
-    const [products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid, frontmen] = await Promise.all([
+    const [products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen] = await Promise.all([
       Product.countDocuments(),
       Product.countDocuments({ inStock: false }),
       Brand.countDocuments(),
       User.countDocuments({ role: { $in: adminRoles } }),
       User.countDocuments({ role: { $in: adminRoles }, lastSeen: { $gte: onlineThreshold } }),
       User.countDocuments({ isPending: true }),
-      Product.countDocuments({ productStatus: 'liquidation' }),
+      Product.countDocuments({ productStatus: 'discontinued' }),
       Product.countDocuments({ category: 'Неликвид' }),
       Frontman.countDocuments(),
     ]);
-    res.json({ products, outOfStock, brands, users, usersOnline, pending, liquidation, illiquid, frontmen });
+    res.json({ products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen });
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }
@@ -1497,7 +1497,6 @@ router.post('/news', editor, async (req, res) => {
     if (product) {
       const statusMap = {
         discontinued: { productStatus: 'discontinued' },
-        liquidation:  { productStatus: 'liquidation'  },
         nelikvid:     { productStatus: 'nelikvid'     },
         out_of_stock: { stockStatus: 'out_of_stock', inStock: false },
         restocked:    { stockStatus: 'in_stock',     inStock: true  },
@@ -1576,7 +1575,6 @@ router.patch('/news/:id/read', async (req, res) => {
 // POST /admin/news/:id/sync — применить статус новости к товару (editor+)
 const NEWS_STATUS_MAP = {
   discontinued: { productStatus: 'discontinued' },
-  liquidation:  { productStatus: 'liquidation'  },
   nelikvid:     { productStatus: 'nelikvid'     },
   out_of_stock: { stockStatus: 'out_of_stock', inStock: false },
   restocked:    { stockStatus: 'in_stock',     inStock: true  },

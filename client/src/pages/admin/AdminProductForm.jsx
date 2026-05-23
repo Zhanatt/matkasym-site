@@ -729,8 +729,7 @@ export default function AdminProductForm() {
                 { value: 'planned',        label: '📋 В плане',       bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
                 { value: 'in_development', label: '🔨 В разработке',  bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
                 { value: 'improvement',    label: '🔧 На улучшении',  bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
-                { value: 'discontinued',   label: '🚫 Снят',          bg: '#f5f5f5', color: '#888',    border: '#ccc'    },
-                { value: 'liquidation',    label: '🔴 Ликвидация',    bg: '#fff0f0', color: '#c0392b', border: '#e74c3c' },
+                { value: 'discontinued',   label: '🚫 Снят',          bg: '#fff0f0', color: '#c0392b', border: '#e74c3c' },
                 { value: 'nelikvid',       label: '🗑️ Неликвид',      bg: '#fef3c7', color: '#92400e', border: '#d97706' },
               ].map(opt => (
                 <label key={opt.value} style={{

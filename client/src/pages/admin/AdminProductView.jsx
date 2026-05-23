@@ -11,8 +11,7 @@ const PRODUCT_STATUS_META = {
   planned:        { label: 'В плане',             color: '#3b5bdb' },
   in_development: { label: 'В разработке',        color: '#7c3aed' },
   improvement:    { label: 'На улучшении',        color: '#c47a00' },
-  discontinued:   { label: 'Снят с производства', color: '#888'    },
-  liquidation:    { label: '🔴 ЛИКВИДАЦИЯ',       color: '#c0392b' },
+  discontinued:   { label: '🚫 СНЯТ',             color: '#c0392b' },
   nelikvid:       { label: '🗑️ НЕЛИКВИД',         color: '#92400e' },
 };
 const STOCK_STATUS_META = {

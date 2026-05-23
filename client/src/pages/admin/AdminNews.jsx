@@ -4,11 +4,10 @@ import { adminGetNews, adminMarkNewsRead, adminMarkAllNewsRead, adminDeleteNews,
 import { useAuth } from '../../context/AuthContext';
 
 // Типы, которые автоматически синхронизируют статус товара
-const SYNC_TYPES = new Set(['discontinued', 'liquidation', 'nelikvid', 'out_of_stock', 'restocked']);
+const SYNC_TYPES = new Set(['discontinued', 'nelikvid', 'out_of_stock', 'restocked']);
 
 const TYPE_META = {
   discontinued: { label: 'Снят с производства', color: '#e10523', bg: '#fff0ef' },
-  liquidation:  { label: 'Ликвидация',           color: '#e67e22', bg: '#fff4e8' },
   nelikvid:     { label: 'Неликвид',             color: '#8e44ad', bg: '#f5eef8' },
   out_of_stock: { label: 'Нет в наличии',         color: '#7f8c8d', bg: '#f2f3f4' },
   restocked:    { label: 'Появился на складе',    color: '#27ae60', bg: '#eafaf1' },

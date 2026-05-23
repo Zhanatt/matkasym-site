@@ -76,9 +76,9 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [stats,        setStats]        = useState(null);
-  const [liquidItems,  setLiquidItems]  = useState([]);
+  const [discontinuedItems,  setDiscontinuedItems]  = useState([]);
   const [illiquidItems, setIlliquidItems] = useState([]);
-  const [showAllLiquid, setShowAllLiquid] = useState(false);
+  const [showAllDiscontinued, setShowAllDiscontinued] = useState(false);
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
   const [priceLoading,  setPriceLoading]  = useState(null);
@@ -91,8 +91,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     adminStats().then(r => setStats(r.data)).catch(() => {});
-    adminGetProducts({ productStatus: 'liquidation', limit: 100 })
-      .then(r => setLiquidItems(r.data.products || []))
+    adminGetProducts({ productStatus: 'discontinued', limit: 100 })
+      .then(r => setDiscontinuedItems(r.data.products || []))
       .catch(() => {});
     adminGetProducts({ set: 'nelikvid', limit: 500 })
       .then(r => setIlliquidItems(r.data.products || []))
@@ -227,7 +227,7 @@ export default function AdminDashboard() {
   };
 
   const PREVIEW = 5;
-  const liquidPreview = showAllLiquid ? liquidItems : liquidItems.slice(0, PREVIEW);
+  const discontinuedPreview = showAllDiscontinued ? discontinuedItems : discontinuedItems.slice(0, PREVIEW);
 
   return (
     <div>
@@ -347,8 +347,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── ЛИКВИДАЦИЯ ── */}
-      {liquidItems.length > 0 && (
+      {/* ── СНЯТЫЕ С ПРОИЗВОДСТВА ── */}
+      {discontinuedItems.length > 0 && (
         <div style={{
           background: 'linear-gradient(135deg, #fff0f0 0%, #ffe8e8 100%)',
           border: '2px solid #e74c3c',
@@ -358,32 +358,32 @@ export default function AdminDashboard() {
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 28 }}>🔴</span>
+              <span style={{ fontSize: 28 }}>🚫</span>
               <div>
                 <div style={{ fontWeight: 900, fontSize: 16, color: '#c0392b', letterSpacing: 0.3 }}>
-                  ЛИКВИДАЦИЯ — {liquidItems.length} {liquidItems.length === 1 ? 'товар' : liquidItems.length < 5 ? 'товара' : 'товаров'}
+                  СНЯТО С ПРОИЗВОДСТВА — {discontinuedItems.length} {discontinuedItems.length === 1 ? 'товар' : discontinuedItems.length < 5 ? 'товара' : 'товаров'}
                 </div>
                 <div style={{ fontSize: 13, color: '#922b21', marginTop: 3, fontWeight: 600 }}>
-                  🚨 Эти товары снимаются с производства — нужно СРОЧНО продать остатки на складе!
+                  🚨 Эти товары сняты с производства — нужно СРОЧНО распродать остатки на складе!
                 </div>
               </div>
             </div>
             <Link
-              to="/admin/products?productStatus=liquidation"
+              to="/admin/products?productStatus=discontinued"
               style={{ fontSize: 12, fontWeight: 700, color: '#c0392b', textDecoration: 'none', flexShrink: 0, padding: '6px 14px', border: '1.5px solid #c0392b', borderRadius: 8, background: '#fff' }}
             >
               Все →
             </Link>
           </div>
 
-          <ProductAlertList products={liquidPreview} navigate={navigate} />
+          <ProductAlertList products={discontinuedPreview} navigate={navigate} />
 
-          {liquidItems.length > PREVIEW && (
+          {discontinuedItems.length > PREVIEW && (
             <button
-              onClick={() => setShowAllLiquid(v => !v)}
+              onClick={() => setShowAllDiscontinued(v => !v)}
               style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#c0392b' }}
             >
-              {showAllLiquid ? 'Свернуть ▲' : `Показать все ${liquidItems.length} ▼`}
+              {showAllDiscontinued ? 'Свернуть ▲' : `Показать все ${discontinuedItems.length} ▼`}
             </button>
           )}
         </div>

@@ -19,9 +19,9 @@ export default function ProductCard({ product }) {
   const navigate = useNavigate();
   const inCart   = items.some(i => i.product === product._id);
   const images   = getImages(product);
-  const isPlanned      = product.productStatus === 'planned';
-  const isLiquidation  = product.productStatus === 'liquidation';
-  const isNelikvid     = product.productStatus === 'nelikvid';
+  const isPlanned       = product.productStatus === 'planned';
+  const isDiscontinued  = product.productStatus === 'discontinued';
+  const isNelikvid      = product.productStatus === 'nelikvid';
 
   const [activeIdx, setActiveIdx] = useState(0);
   const intervalRef = useRef(null);
@@ -44,7 +44,7 @@ export default function ProductCard({ product }) {
     : 0;
 
   return (
-    <div className={`pc${isPlanned ? ' pc--planned' : ''}${isLiquidation ? ' pc--liquidation' : ''}${isNelikvid ? ' pc--nelikvid' : ''}`} onMouseEnter={startSlider} onMouseLeave={stopSlider}>
+    <div className={`pc${isPlanned ? ' pc--planned' : ''}${isDiscontinued ? ' pc--discontinued' : ''}${isNelikvid ? ' pc--nelikvid' : ''}`} onMouseEnter={startSlider} onMouseLeave={stopSlider}>
 
       {/* Image */}
       <Link to={`/product/${product._id}`} className="pc__img-wrap">
@@ -62,10 +62,10 @@ export default function ProductCard({ product }) {
           <div className={`pc__no-img${isPlanned ? ' pc__slide--blurred' : ''}`}>📦</div>
         )}
 
-        {isPlanned      && <span className="pc__badge-planned">В ПЛАНЕ</span>}
-        {isLiquidation  && <span className="pc__badge-liquidation">ЛИКВИДАЦИЯ</span>}
-        {isNelikvid     && <span className="pc__badge-nelikvid">НЕЛИКВИД</span>}
-        {!isPlanned && !isLiquidation && !isNelikvid && product.isNew && <span className="pc__badge-new">Новинка</span>}
+        {isPlanned       && <span className="pc__badge-planned">В ПЛАНЕ</span>}
+        {isDiscontinued  && <span className="pc__badge-discontinued">СНЯТ</span>}
+        {isNelikvid      && <span className="pc__badge-nelikvid">НЕЛИКВИД</span>}
+        {!isPlanned && !isDiscontinued && !isNelikvid && product.isNew && <span className="pc__badge-new">Новинка</span>}
 
         {images.length > 1 && (
           <div className="pc__dots">

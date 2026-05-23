@@ -4,7 +4,6 @@ import { adminCreateNews, adminGetUsers, adminGetProducts } from '../../api';
 
 const TYPE_META = {
   discontinued: { label: 'Снят с производства', color: '#c0392b', bg: '#fdf0ef' },
-  liquidation:  { label: 'Ликвидация',           color: '#e67e22', bg: '#fef6ec' },
   nelikvid:     { label: 'Неликвид',             color: '#8e44ad', bg: '#f5eef8' },
   out_of_stock: { label: 'Нет в наличии',         color: '#7f8c8d', bg: '#f2f3f4' },
   restocked:    { label: 'Появился на складе',    color: '#27ae60', bg: '#eafaf1' },
@@ -14,7 +13,6 @@ const TYPE_META = {
 
 const TYPE_TITLES = {
   discontinued: (name) => name ? `${name} снят с производства` : 'Снят с производства',
-  liquidation:  (name) => name ? `${name} — ликвидация остатков` : 'Ликвидация остатков',
   nelikvid:     (name) => name ? `${name} признан неликвидом` : 'Неликвид',
   out_of_stock: (name) => name ? `${name} — нет на складе` : 'Нет в наличии',
   restocked:    (name) => name ? `${name} снова в наличии` : 'Появился на складе',

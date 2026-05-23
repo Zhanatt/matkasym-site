@@ -59,8 +59,7 @@ const PRODUCT_STATUS_META = {
   planned:        { label: 'В плане',             color: '#3b5bdb', bg: '#e8eeff' },
   in_development: { label: 'В разработке',        color: '#7c3aed', bg: '#f3e8ff' },
   improvement:    { label: 'На улучшении',        color: '#c47a00', bg: '#fff3cd' },
-  discontinued:   { label: 'Снят с производства', color: '#888',    bg: '#f5f5f5' },
-  liquidation:    { label: 'Ликвидация',          color: '#c0392b', bg: '#fff0f0' },
+  discontinued:   { label: 'Снят',                color: '#c0392b', bg: '#fff0f0' },
   nelikvid:       { label: 'Неликвид',            color: '#92400e', bg: '#fef3c7' },
 };
 

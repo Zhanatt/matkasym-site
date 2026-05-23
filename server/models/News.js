@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const newsSchema = new Schema({
   type: {
     type: String,
-    enum: ['discontinued', 'liquidation', 'nelikvid', 'out_of_stock', 'restocked', 'price_change', 'custom'],
+    enum: ['discontinued', 'nelikvid', 'out_of_stock', 'restocked', 'price_change', 'custom'],
     required: true,
   },
   title:   { type: String, required: true },
