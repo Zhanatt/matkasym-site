@@ -13,19 +13,19 @@ const LINE_COLORS = [
 ];
 
 const SET_NAMES = {
-  'achyk-asman':     'Ачык Асман',      'den-sooluk':      'Ден Соолук',
-  'zhashyl-ömür':    'Жашыл Өмүр',      'jenil-ashkana':   'Жеңил Ашкана',
-  'konok-keldi':     'Конок Келди',     'korkom-aiym':     'Коркөм Айым',
-  'kosh-keliniz':    'Кош Келиңиз',     'onoi-sakta':      'Оңой Сакта',
-  'baary-oorunda':   'Баары Ордунда',   'sanarip-tv':      'Санарип ТВ',
-  'shirin-balalyk':  'Ширин Балалык',   'taza-kiym':       'Таза Кийим',
-  'uydo-ishtoo':     'Үйдө Иштөө',      'mazza-seiyl':     'Мазза Сейил',
-  '0-tashtandy':     '0-Таштанды',      'bekem-fasad':     'Бекем Фасад',
-  'bilim-kelechek':  'Билим Келечек',   'kooz-koopsuzduk': 'Көз Коопсуздук',
-  'uzak-koldon':     'Узак Колдон',     'önügüü-set':      'Өнүгүү Сет',
-  'dayar-tütük':     'Даяр Түтүк',      'nelikvid':        'Неликвид',
-  'samples':         'Образцы',         'small-batch':     'Малая партия',
-  'misc':            'Разное',          'equipment':       'Оборудование',
+  'achyk-asman':     'Achyk Asman',     'den-sooluk':      'Den Sooluk',
+  'zhashyl-ömür':    'Zhashyl Omur',    'jenil-ashkana':   'Jenil Ashkana',
+  'konok-keldi':     'Konok Keldi',     'korkom-aiym':     'Korkom Aiym',
+  'kosh-keliniz':    'Kosh Keliniz',    'onoi-sakta':      'Onoi Sakta',
+  'baary-oorunda':   'Baary Oorunda',   'sanarip-tv':      'Sanarip TV',
+  'shirin-balalyk':  'Shirin Balalyk',  'taza-kiym':       'Taza Kiym',
+  'uydo-ishtoo':     'Uydo Ishtoo',     'mazza-seiyl':     'Mazza Seiyl',
+  '0-tashtandy':     '0-Tashtandy',     'bekem-fasad':     'Bekem Fasad',
+  'bilim-kelechek':  'Bilim Kelechek',  'kooz-koopsuzduk': 'Kooz Koopsuzduk',
+  'uzak-koldon':     'Uzak Koldon',     'önügüü-set':      'Onuguu Set',
+  'dayar-tütük':     'Dayar Tutuk',     'nelikvid':        'Неликвид',
+  'samples':         'Образцы',         'small-batch':     'Small Batch',
+  'misc':            'Misc',            'equipment':       'Equipment',
   'other':           'Прочее',
 };
 
