@@ -51,6 +51,33 @@ async function sendTelegramMessage(chatId, text, options = {}) {
   }
 }
 
+async function sendTelegramPhoto(chatId, photoUrl, caption) {
+  if (!TELEGRAM_BOT_TOKEN || !chatId) return null;
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: photoUrl,
+        caption: caption.slice(0, 1024),
+        parse_mode: 'HTML',
+      }),
+    });
+    const data = await response.json();
+    if (!data.ok) {
+      console.error(`[Telegram] Error sending photo to ${chatId}:`, data.description);
+      return null;
+    }
+    console.log(`[Telegram] ✓ Photo sent to ${chatId}`);
+    return data;
+  } catch (e) {
+    console.error(`[Telegram] ✗ Failed to send photo to ${chatId}:`, e.message);
+    return null;
+  }
+}
+
 async function sendNewsNotificationTelegram({ type, title, message, product }, recipients) {
   const typeLabel = NEWS_TYPE_LABELS[type] || '📢 Новость';
   const productName = product?.fullName || product?.name || '';
@@ -72,6 +99,9 @@ async function sendNewsNotificationTelegram({ type, title, message, product }, r
 
   text += `\n\n<a href="${SITE_URL}/admin/news">Открыть в матрице →</a>`;
 
+  // Use first Cloudinary image if available
+  const photoUrl = product?.images?.find(img => img && img.startsWith('http')) || null;
+
   const recipientsList = Array.isArray(recipients) ? recipients : [recipients];
   console.log(`[Telegram] Sending news "${title}" to ${recipientsList.length} recipients`);
 
@@ -81,8 +111,13 @@ async function sendNewsNotificationTelegram({ type, title, message, product }, r
       console.log(`[Telegram] Skipping ${r.name || r.email} — no telegramChatId`);
       continue;
     }
-    await sendTelegramMessage(chatId, text);
+    if (photoUrl) {
+      const result = await sendTelegramPhoto(chatId, photoUrl, text);
+      if (!result) await sendTelegramMessage(chatId, text); // fallback
+    } else {
+      await sendTelegramMessage(chatId, text);
+    }
   }
 }
 
-module.exports = { sendTelegramMessage, sendNewsNotificationTelegram };
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram };

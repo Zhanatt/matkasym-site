@@ -27,6 +27,9 @@ export default function AdminLayout() {
   const [newsUnread,   setNewsUnread]   = useState(0);
   const [tgLink,       setTgLink]       = useState('');
   const [tgConnected,  setTgConnected]  = useState(false);
+  const [tgBannerDismissed, setTgBannerDismissed] = useState(
+    () => !!localStorage.getItem('tg_banner_dismissed')
+  );
 
   // Reset body overflow on every navigation (guard against modal scroll-lock leaking)
   useEffect(() => {
@@ -168,6 +171,36 @@ export default function AdminLayout() {
       </aside>
 
       <main className="admin-main">
+        {/* Telegram connect banner */}
+        {!tgConnected && tgLink && !tgBannerDismissed && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            background: '#e3f2fd', borderBottom: '1px solid #90caf9',
+            padding: '10px 20px', fontSize: 13,
+          }}>
+            <span style={{ fontSize: 20 }}>📱</span>
+            <span style={{ flex: 1, color: '#1565c0', fontWeight: 600 }}>
+              Подключите Telegram — и вы будете получать уведомления о новостях Matkasym прямо в мессенджер
+            </span>
+            <a
+              href={tgLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                background: '#1976d2', color: '#fff', padding: '7px 16px',
+                borderRadius: 7, fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap',
+              }}
+            >
+              Подключить →
+            </a>
+            <button
+              onClick={() => { localStorage.setItem('tg_banner_dismissed', '1'); setTgBannerDismissed(true); }}
+              style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#888', padding: '0 4px', lineHeight: 1 }}
+              title="Закрыть"
+            >×</button>
+          </div>
+        )}
+
         <div key={location.pathname} className="admin-page">
           <Outlet />
         </div>
