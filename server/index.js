@@ -25,6 +25,10 @@ app.use('/api/catalog',  require('./routes/catalog'));  // AI-bot context API
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'OK', time: new Date() }));
 
+// Version endpoint — returns server start time; changes on every redeploy
+const SERVER_START = Date.now().toString();
+app.get('/api/version', (req, res) => res.json({ version: SERVER_START }));
+
 // Telegram bot webhook
 app.post('/api/telegram-webhook', async (req, res) => {
   try {

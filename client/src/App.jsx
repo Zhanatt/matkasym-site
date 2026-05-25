@@ -1,4 +1,5 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { useVersionCheck } from './hooks/useVersionCheck';
 import Header           from './components/Header';
 import Footer           from './components/Footer';
 import AdminLayout        from './pages/admin/AdminLayout';
@@ -35,6 +36,7 @@ import Brand       from './pages/Brand';
 
 export default function App() {
   const { pathname } = useLocation();
+  useVersionCheck();
   const isAdmin = pathname.startsWith('/admin');
 
   if (isAdmin) {
