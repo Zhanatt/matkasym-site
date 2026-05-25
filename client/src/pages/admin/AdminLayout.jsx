@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram } from '../../api';
@@ -30,6 +30,7 @@ export default function AdminLayout() {
   const [tgBannerDismissed, setTgBannerDismissed] = useState(
     () => !!localStorage.getItem('tg_banner_dismissed')
   );
+  const tgPollRef = useRef(null);
 
   // Reset body overflow on every navigation (guard against modal scroll-lock leaking)
   useEffect(() => {
@@ -47,6 +48,27 @@ export default function AdminLayout() {
     const id = setInterval(load, 60_000);
     return () => clearInterval(id);
   }, [!!user]);
+
+  const startTgPolling = () => {
+    if (tgPollRef.current) return;
+    let attempts = 0;
+    tgPollRef.current = setInterval(() => {
+      attempts++;
+      adminGetTelegramLink()
+        .then(r => {
+          if (r.data.connected) {
+            setTgConnected(true);
+            clearInterval(tgPollRef.current);
+            tgPollRef.current = null;
+          }
+        })
+        .catch(() => {});
+      if (attempts >= 40) { // stop after ~2 min
+        clearInterval(tgPollRef.current);
+        tgPollRef.current = null;
+      }
+    }, 3000);
+  };
 
   // Clear news badge when visiting /admin/news
   useEffect(() => {
@@ -154,6 +176,7 @@ export default function AdminLayout() {
               href={tgLink}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={startTgPolling}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 12,
                 padding: '8px 12px', borderRadius: 8, textDecoration: 'none',
@@ -186,6 +209,7 @@ export default function AdminLayout() {
               href={tgLink}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={startTgPolling}
               style={{
                 background: '#1976d2', color: '#fff', padding: '7px 16px',
                 borderRadius: 7, fontWeight: 700, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap',
