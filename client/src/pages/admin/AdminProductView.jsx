@@ -11,6 +11,7 @@ const PRODUCT_STATUS_META = {
   planned:        { label: 'В плане',             color: '#3b5bdb' },
   in_development: { label: 'В разработке',        color: '#7c3aed' },
   improvement:    { label: 'На улучшении',        color: '#c47a00' },
+  on_pause:       { label: '⏸ НА ПАУЗЕ',          color: '#475569' },
   discontinued:   { label: '🚫 СНЯТ',             color: '#c0392b' },
   nelikvid:       { label: '🗑️ НЕЛИКВИД',         color: '#92400e' },
 };
@@ -317,6 +318,18 @@ export default function AdminProductView() {
               onDownload={() => downloadTZ('improvement')}
               loading={pdfLoading === 'improvement'}
             />
+          )}
+
+          {/* На паузе — причина */}
+          {product.productStatus === 'on_pause' && product.pauseNote && (
+            <div style={{ background: '#f0f4f8', border: '1.5px solid #94a3b8', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
+                ⏸ Причина паузы
+              </div>
+              <div style={{ fontSize: 14, color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {product.pauseNote}
+              </div>
+            </div>
           )}
 
           {/* Prices */}

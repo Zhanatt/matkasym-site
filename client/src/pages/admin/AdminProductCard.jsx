@@ -10,6 +10,7 @@ const STATUS_BADGE = {
   planned:        { icon: '📋', label: 'В плане',        bg: '#e8f0fe', color: '#1a73e8' },
   in_development: { icon: '🔧', label: 'В разработке',   bg: '#fff3e0', color: '#e65100' },
   improvement:    { icon: '⬆', label: 'На улучшении',   bg: '#f3e5f5', color: '#7b1fa2' },
+  on_pause:       { icon: '⏸', label: 'На паузе',        bg: '#f0f4f8', color: '#475569' },
   discontinued:   { icon: '🚫', label: 'Снят',           bg: '#fff0f0', color: '#c0392b' },
   nelikvid:       { icon: '🗑️', label: 'Неликвид',       bg: '#fef3c7', color: '#92400e' },
 };

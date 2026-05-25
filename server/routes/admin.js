@@ -33,7 +33,7 @@ const TRACKED_FIELDS = [
   'name','fullName','sku','price','priceWholesale','priceDealer','priceCost',
   'inStock','stock','stockStatus','productStatus','description','dimensions',
   'category','set','color','isNew','developmentStage',
-  'developmentTZ','improvementTZ',
+  'developmentTZ','improvementTZ','pauseNote',
 ];
 
 const FIELD_LABELS = {
@@ -44,6 +44,7 @@ const FIELD_LABELS = {
   productStatus: 'Статус продукта', description: 'Описание',
   dimensions: 'Габариты', category: 'Категория', set: 'Сет',
   color: 'Цвет', isNew: 'Новинка', developmentStage: 'Стадия разработки',
+  pauseNote: 'Причина паузы',
   specs: 'Характеристики',
 };
 

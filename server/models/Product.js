@@ -46,7 +46,8 @@ const productSchema = new mongoose.Schema({
   inStock:       { type: Boolean, default: true },
   stock:         { type: Number, default: 50 },
   stockStatus:      { type: String, enum: ['in_stock', 'out_of_stock', 'expected'], default: 'in_stock' },
-  productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development', 'nelikvid'], default: 'for_sale' },
+  productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development', 'nelikvid', 'on_pause'], default: 'for_sale' },
+  pauseNote:        { type: String, default: '' },
   developmentStage: { type: String, default: '' },  // e.g. 'производство', 'моделирование', 'чертеж'
 
   // TZ data for in_development

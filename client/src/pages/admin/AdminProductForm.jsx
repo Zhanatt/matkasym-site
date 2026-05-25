@@ -92,6 +92,7 @@ const EMPTY = {
   description: '',
   images: [],
   inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', productStatus: 'for_sale', developmentStage: '',
+  pauseNote: '',
   developmentTZ: { description: '', files: [] },
   improvementTZ: { problem: '', solution: '', files: [] },
 };
@@ -269,6 +270,7 @@ export default function AdminProductForm() {
           priceWholesale: p.priceWholesale ?? '',
           priceDealer:    p.priceDealer ?? '',
           dimensions:     p.dimensions || '',
+          pauseNote:      p.pauseNote || '',
           developmentTZ:  p.developmentTZ || { description: '', files: [] },
           improvementTZ:  p.improvementTZ || { problem: '', solution: '', files: [] },
         });
@@ -728,6 +730,7 @@ export default function AdminProductForm() {
                 { value: 'planned',        label: '📋 В плане',       bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
                 { value: 'in_development', label: '🔨 В разработке',  bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
                 { value: 'improvement',    label: '🔧 На улучшении',  bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
+                { value: 'on_pause',       label: '⏸ На паузе',       bg: '#f0f4f8', color: '#475569', border: '#94a3b8' },
                 { value: 'discontinued',   label: '🚫 Снят',          bg: '#fff0f0', color: '#c0392b', border: '#e74c3c' },
                 { value: 'nelikvid',       label: '🗑️ Неликвид',      bg: '#fef3c7', color: '#92400e', border: '#d97706' },
               ].map(opt => (
@@ -749,6 +752,26 @@ export default function AdminProductForm() {
               ))}
             </div>
           </div>
+
+          {form.productStatus === 'on_pause' && (
+            <div style={{ marginTop: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>
+                В чём проблема / причина паузы?
+              </label>
+              <textarea
+                value={form.pauseNote}
+                onChange={e => set('pauseNote', e.target.value)}
+                placeholder="Опишите причину паузы или текущую проблему..."
+                rows={3}
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 13,
+                  border: '2px solid #94a3b8', outline: 'none', resize: 'vertical',
+                  fontFamily: 'inherit', lineHeight: 1.5, color: '#334155',
+                  background: '#f8fafc',
+                }}
+              />
+            </div>
+          )}
 
           {/* CRM stages */}
           {form.productStatus === 'in_development' && (
