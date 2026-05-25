@@ -72,20 +72,22 @@ export default function App() {
     <>
       <Header />
       <main>
-        <Routes>
-          <Route path="/"                element={<Home />} />
-          <Route path="/catalog"         element={<Catalog />} />
-          <Route path="/product/:id"     element={<ProductPage />} />
-          <Route path="/cart"            element={<Cart />} />
-          <Route path="/checkout"        element={<Checkout />} />
-          <Route path="/login"           element={<Login />} />
-          <Route path="/register"        element={<Register />} />
-          <Route path="/orders"          element={<Orders />} />
-          <Route path="/favorites"       element={<Favorites />} />
-          <Route path="/sets"            element={<Sets />} />
-          <Route path="/sets/:setKey"    element={<Sets />} />
-          <Route path="/brand/:brandKey" element={<Brand />} />
-        </Routes>
+        <div key={pathname} className="page-animate">
+          <Routes>
+            <Route path="/"                element={<Home />} />
+            <Route path="/catalog"         element={<Catalog />} />
+            <Route path="/product/:id"     element={<ProductPage />} />
+            <Route path="/cart"            element={<Cart />} />
+            <Route path="/checkout"        element={<Checkout />} />
+            <Route path="/login"           element={<Login />} />
+            <Route path="/register"        element={<Register />} />
+            <Route path="/orders"          element={<Orders />} />
+            <Route path="/favorites"       element={<Favorites />} />
+            <Route path="/sets"            element={<Sets />} />
+            <Route path="/sets/:setKey"    element={<Sets />} />
+            <Route path="/brand/:brandKey" element={<Brand />} />
+          </Routes>
+        </div>
       </main>
       <Footer />
     </>

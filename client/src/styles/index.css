@@ -2,6 +2,14 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-animate {
+  animation: pageIn .3s cubic-bezier(.2,.8,.4,1) both;
+}
+
 :root {
   /* ── Official MATKASYM brand colors (BrandBook 2024) ── */
   --red:        #e10523;   /* accent — NOT used as fill */
