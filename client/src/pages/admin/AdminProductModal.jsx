@@ -47,6 +47,8 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
         setLevel:         product.setLevel         || '',
         color:            product.color            || '',
         category:         product.category         || 'other',
+        isSupplied:       product.isSupplied       || false,
+        supplier:         product.supplier         || { company: '', contactName: '', sku: '' },
         priceCost:        product.priceCost        || 0,
         priceWholesale:   product.priceWholesale   || 0,
         priceDealer:      product.priceDealer      || 0,
@@ -420,6 +422,28 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                   <div style={{ fontSize: 13, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                     {product.description}
                   </div>
+                </div>
+              )}
+
+              {/* Supplier — привозной товар */}
+              {product.isSupplied && (
+                <div style={{ background: '#eef6ff', border: '1.5px solid #93c5fd', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    🚚 Привозной товар (поставщик)
+                  </div>
+                  {[
+                    ['Компания',           product.supplier?.company],
+                    ['Контактное лицо',    product.supplier?.contactName],
+                    ['Артикул поставщика', product.supplier?.sku],
+                  ].filter(([, v]) => v).map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '5px 0' }}>
+                      <span style={{ color: '#7aa5d8', minWidth: 130, flexShrink: 0 }}>{label}</span>
+                      <span style={{ color: '#1c1c1c', fontWeight: 600 }}>{value}</span>
+                    </div>
+                  ))}
+                  {!product.supplier?.company && !product.supplier?.contactName && !product.supplier?.sku && (
+                    <span style={{ fontSize: 13, color: '#7aa5d8' }}>Данные поставщика не заполнены</span>
+                  )}
                 </div>
               )}
             </div>
