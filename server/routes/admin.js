@@ -1013,12 +1013,39 @@ router.post('/preview-nomenclature', editor, upload.single('file'), async (req, 
       return 'matkasym-home';
     }
 
-    // Parse all non-empty rows
+    // Filter out group/category rows (not actual products)
+    function isGroup(name) {
+      const n = name.toLowerCase().trim();
+      // 1. Starts with digit + space ("1 Товары от...", "2 Мейкин", "3 Неликвидные")
+      if (/^\d+\s/.test(name)) return true;
+      // 2. Contains "товар" (Товары, Мелкие товары, Канцелярские товары)
+      if (/товар/i.test(name)) return true;
+      // 3. All caps Latin or Cyrillic brand names (МАТКАСЫМ-ХОУМ, ACHYK ASMAN, etc.)
+      if (name === name.toUpperCase() && /[А-ЯA-Z]{3,}/.test(name) && name.length <= 30) return true;
+      // 4. Brand groups with "cross" or "ikea" suffix (ACHYK ASMAN cross, DEN SOOLUK ikea, etc.)
+      if (/\b(cross|ikea)$/i.test(n)) return true;
+      // 5. Total/summary row
+      if (n === 'итого') return true;
+      // 5. Known category names (exact match only — products have model names after)
+      const categories = [
+        'эко мангалы', 'антенны', 'кронштейны', 'сушилки', 'вешалки',
+        'гладильные доски', 'полки для цветов', 'обувная полка', 'корзина для белья',
+        'архив/удаленные', 'вешалки гардеробные', 'вешалки напольные и настенные',
+        'сушилки для посуды', 'кронштейны для кондиционера', 'щиты',
+        'коврики для прихожей', 'коврики с китая', 'плечики', 'урны пластиковые',
+        'малосерийные', 'сырье и комплектующие', 'усилитель антенны',
+        'стулья и табуретки', 'вазы/лейка', 'посуда', 'корзина'
+      ];
+      if (categories.includes(n)) return true;
+      return false;
+    }
+
+    // Parse all non-empty rows (skip groups/categories)
     const excelMap = new Map();
     for (let i = dataStart; i < rows.length; i++) {
       const row  = rows[i];
       const name = String(row[0] || '').trim();
-      if (!name) continue;
+      if (!name || isGroup(name)) continue;
       const osn     = toInt(row[colOsn]);
       const kommRaw = Number(row[colKomm]);
       const komm    = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
