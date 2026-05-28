@@ -34,7 +34,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
       <div onClick={onClick}
         style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px',
           borderBottom: '1px solid #f0f0f0', background: '#fff', cursor: 'pointer' }}
-        onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
+        onMouseEnter={e => e.currentTarget.style.background = '#f7f6f3'}
         onMouseLeave={e => e.currentTarget.style.background = '#fff'}
       >
         <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -81,7 +81,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
     >
-      <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative' }}>
+      <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f7f6f3', position: 'relative' }}>
         <img src={img} alt={product.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           loading="lazy" onError={e => { e.target.src = NO_PHOTO; }} />

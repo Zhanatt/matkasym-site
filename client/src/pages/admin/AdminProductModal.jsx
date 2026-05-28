@@ -158,18 +158,19 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
       }}>
         <div style={{
           background: '#fff',
-          borderRadius: isMobile ? 0 : 16,
+          borderRadius: isMobile ? 0 : 18,
           width: '100%', maxWidth: 900,
           maxHeight: isMobile ? '100%' : '92vh',
           height: isMobile ? '100%' : 'auto',
           overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
           pointerEvents: 'auto',
+          fontFamily: 'var(--admin-font)',
         }}>
 
           {/* Top bar */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 16px', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+            padding: '12px 16px', borderBottom: '1px solid var(--admin-line)', flexShrink: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Карточка товара
             </div>
@@ -212,7 +213,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
           }}>
 
             {/* Image gallery */}
-            <div style={{ background: '#f5f5f7', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: '#f7f6f3', display: 'flex', flexDirection: 'column' }}>
               <div style={{ flex: 1, position: 'relative', minHeight: isMobile ? 280 : 380,
                 display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <img src={img} alt={product.name}
@@ -255,7 +256,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                 )}
               </div>
               {images.length > 1 && (
-                <div style={{ display: 'flex', gap: 6, padding: '8px 12px', overflowX: 'auto', background: '#eee', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 6, padding: '8px 12px', overflowX: 'auto', background: '#efece6', flexShrink: 0 }}>
                   {images.map((src, i) => (
                     <img key={i} src={src} alt="" onClick={() => setImgIdx(i)}
                       style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', flexShrink: 0,

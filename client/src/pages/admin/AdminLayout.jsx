@@ -79,20 +79,20 @@ export default function AdminLayout() {
 
   // Waiting for AuthContext to verify token
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7f8fa' }}>
-      <div style={{ width: 32, height: 32, border: '3px solid #e0e0e0', borderTopColor: '#000', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--admin-canvas)', fontFamily: 'var(--admin-font)' }}>
+      <div style={{ width: 32, height: 32, border: '3px solid #e8e6e0', borderTopColor: 'var(--red)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
   // Network/server error — show retry instead of redirecting to login
   if (authError) return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#f7f8fa' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'var(--admin-canvas)', fontFamily: 'var(--admin-font)' }}>
       <div style={{ fontSize: 32 }}>⚠️</div>
-      <p style={{ fontSize: 15, color: '#555', margin: 0 }}>Сервер не отвечает. Повторите попытку.</p>
+      <p style={{ fontSize: 15, color: 'var(--dark)', margin: 0 }}>Сервер не отвечает. Повторите попытку.</p>
       <button
         onClick={checkAuth}
-        style={{ padding: '10px 28px', borderRadius: 8, background: '#111', color: '#fff', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+        style={{ padding: '10px 28px', borderRadius: 8, background: 'var(--black)', color: '#fff', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
       >Повторить</button>
     </div>
   );

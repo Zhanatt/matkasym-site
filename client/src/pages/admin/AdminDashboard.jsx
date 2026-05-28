@@ -6,15 +6,15 @@ import { useAuth } from '../../context/AuthContext';
 function StatCard({ label, value, sub, red, green, to, icon }) {
   const navigate = useNavigate();
   const style = {
-    background: '#fff',
-    border: '1px solid var(--gray-200)',
-    borderRadius: 'var(--radius-lg)',
-    padding: '20px 24px',
+    background: 'var(--admin-surface)',
+    border: '1px solid var(--admin-line)',
+    borderRadius: 16,
+    padding: '22px 24px',
     cursor: to ? 'pointer' : 'default',
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
-    transition: 'box-shadow .22s, transform .22s',
+    transition: 'box-shadow .22s, transform .22s, border-color .22s',
     textDecoration: 'none',
     color: 'inherit',
   };
@@ -335,17 +335,17 @@ export default function AdminDashboard() {
       {/* ── СНЯТЫЕ С ПРОИЗВОДСТВА ── */}
       {discontinuedItems.length > 0 && (
         <div style={{
-          background: 'linear-gradient(135deg, #fff0f0 0%, #ffe8e8 100%)',
-          border: '2px solid #e74c3c',
-          borderRadius: 14,
+          background: '#fdf4f4',
+          border: '1px solid #f0cfcf',
+          borderRadius: 16,
           padding: '18px 22px',
           marginBottom: 20,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 28 }}>🚫</span>
+              <span style={{ fontSize: 24 }}>🚫</span>
               <div>
-                <div style={{ fontWeight: 900, fontSize: 16, color: '#c0392b', letterSpacing: 0.3 }}>
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#c0392b', letterSpacing: 0.2 }}>
                   СНЯТО С ПРОИЗВОДСТВА — {discontinuedItems.length} {discontinuedItems.length === 1 ? 'товар' : discontinuedItems.length < 5 ? 'товара' : 'товаров'}
                 </div>
                 <div style={{ fontSize: 13, color: '#922b21', marginTop: 3, fontWeight: 600 }}>
@@ -377,17 +377,17 @@ export default function AdminDashboard() {
       {/* ── НЕЛИКВИДЫ ── */}
       {illiquidItems.length > 0 && (
         <div style={{
-          background: 'linear-gradient(135deg, #fffbf0 0%, #fff8e6 100%)',
-          border: '2px solid #f0c060',
-          borderRadius: 14,
+          background: '#fdf9f0',
+          border: '1px solid #ecd9ad',
+          borderRadius: 16,
           padding: '18px 22px',
           marginBottom: 20,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 28 }}>📦</span>
+              <span style={{ fontSize: 24 }}>📦</span>
               <div>
-                <div style={{ fontWeight: 900, fontSize: 16, color: '#c47a00', letterSpacing: 0.3 }}>
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#c47a00', letterSpacing: 0.2 }}>
                   НЕЛИКВИДЫ — {illiquidItems.length} {illiquidItems.length === 1 ? 'товар' : illiquidItems.length < 5 ? 'товара' : 'товаров'}
                 </div>
                 <div style={{ fontSize: 13, color: '#7a5000', marginTop: 3, fontWeight: 600 }}>

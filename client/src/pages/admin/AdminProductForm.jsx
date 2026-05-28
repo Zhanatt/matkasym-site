@@ -199,7 +199,7 @@ function SH({ text }) {
 
 function Card({ children }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #eee', padding: '24px 28px' }}>
+    <div style={{ background: 'var(--admin-surface)', borderRadius: 16, border: '1px solid var(--admin-line)', padding: '24px 28px' }}>
       {children}
     </div>
   );

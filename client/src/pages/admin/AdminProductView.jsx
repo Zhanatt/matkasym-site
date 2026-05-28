@@ -117,7 +117,7 @@ export default function AdminProductView() {
         <div>
           <div style={{
             position: 'relative',
-            background: '#f7f8fa',
+            background: '#f7f6f3',
             borderRadius: 16,
             overflow: 'hidden',
             aspectRatio: '1 / 1',
@@ -194,7 +194,7 @@ export default function AdminProductView() {
                   <div style={{
                     width: 60, height: 60, borderRadius: 8, overflow: 'hidden',
                     border: i === imgIdx ? '2px solid #000' : '2px solid transparent',
-                    cursor: 'pointer', background: '#f7f8fa',
+                    cursor: 'pointer', background: '#f7f6f3',
                   }}>
                     <img
                       src={imgSrc(url)}
@@ -469,7 +469,7 @@ function Row({ label, value }) {
 function PriceCard({ label, value }) {
   if (!value && value !== 0) return null;
   return (
-    <div style={{ background: '#f7f8fa', borderRadius: 8, padding: '10px 14px' }}>
+    <div style={{ background: '#f7f6f3', borderRadius: 8, padding: '10px 14px' }}>
       <div style={{ fontSize: 11, color: 'var(--slate)', fontWeight: 600, marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 16, fontWeight: 800 }}>{Number(value).toLocaleString('ru')} сом</div>
     </div>

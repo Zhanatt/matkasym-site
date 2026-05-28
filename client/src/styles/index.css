@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -30,6 +31,14 @@
   --gray-300:   #d0d0d0;
   --gray-500:   #999999;
   --green:      #2d7a3a;
+
+  /* ── Admin (light/airy, BrandBook-aligned) ── */
+  --admin-font:    'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  --admin-canvas:  #f7f6f3;   /* warm neutral background */
+  --admin-surface: #ffffff;   /* cards / panels */
+  --admin-line:    #ecebe7;   /* hairline borders */
+  --admin-red-wash:#fdecee;   /* red accent wash (active/selected) */
+  --admin-slate-wash:#eef2f4; /* slate wash (hover/secondary) */
 
   --radius:     6px;
   --radius-lg:  12px;
