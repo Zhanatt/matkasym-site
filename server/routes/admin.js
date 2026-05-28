@@ -1014,8 +1014,9 @@ router.post('/preview-nomenclature', editor, upload.single('file'), async (req, 
     }
 
     // Check if row is a group by yellow background color (F8F2D8)
+    // rows[i] corresponds to Excel A(i+2) because A1 is empty
     function isYellowRow(rowIndex) {
-      const cellAddr = 'A' + (rowIndex + 1);
+      const cellAddr = 'A' + (rowIndex + 2);
       const cell = ws[cellAddr];
       if (!cell || !cell.s) return false;
       const fgColor = cell.s.fgColor?.rgb || '';
