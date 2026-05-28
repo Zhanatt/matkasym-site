@@ -52,6 +52,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {product.isSupplied && <span title="Привозной товар" style={{ marginRight: 4 }}>🚚</span>}
             {product.fullName || product.name}
           </div>
           {product.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{product.sku}</div>}
@@ -102,6 +103,14 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
             background: 'rgba(255,255,255,0.92)', borderRadius: 4,
             fontSize: 9, fontWeight: 700, padding: '2px 5px', color: '#555' }}>
             {product.sku}
+          </div>
+        )}
+        {product.isSupplied && (
+          <div title="Привозной товар" style={{ position: 'absolute', top: 6, left: 6,
+            background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
+            fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
+            boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
+            <span>🚚</span><span>Привозной</span>
           </div>
         )}
       </div>

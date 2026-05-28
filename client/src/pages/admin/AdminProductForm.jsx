@@ -86,6 +86,8 @@ const EMPTY = {
   name: '', fullName: '', sku: '',
   brand: 'matkasym-home', set: '', setLevel: '', color: '',
   category: '',
+  isSupplied: false,
+  supplier: { company: '', contactName: '', sku: '' },
   dimensions: '',
   specs: [],
   priceCost: '', priceWholesale: '', priceDealer: '', price: '',
@@ -270,6 +272,8 @@ export default function AdminProductForm() {
           priceWholesale: p.priceWholesale ?? '',
           priceDealer:    p.priceDealer ?? '',
           dimensions:     p.dimensions || '',
+          isSupplied:     p.isSupplied || false,
+          supplier:       p.supplier || { company: '', contactName: '', sku: '' },
           pauseNote:      p.pauseNote || '',
           developmentTZ:  p.developmentTZ || { description: '', files: [] },
           improvementTZ:  p.improvementTZ || { problem: '', solution: '', files: [] },
@@ -294,6 +298,9 @@ export default function AdminProductForm() {
   }, [id, isNew]);
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+
+  const setSupplier = (key, value) =>
+    setForm(f => ({ ...f, supplier: { ...(f.supplier || {}), [key]: value } }));
 
   const handleCategoryChange = (value) => {
     const staticSpecs = (CATEGORY_SPECS[value] || []).filter(t => t.key !== 'Цвет' && !isDimensionKey(t.key));
@@ -543,6 +550,33 @@ export default function AdminProductForm() {
               )}
             </div>
           </div>
+        </Card>
+
+        {/* ── ПОСТАВЩИК / ПРИВОЗНОЙ ТОВАР ── */}
+        <Card>
+          <SH text="Поставщик" />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: form.isSupplied ? 18 : 0 }}>
+            <input type="checkbox" checked={form.isSupplied} onChange={e => set('isSupplied', e.target.checked)} />
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Привозной товар (от другого производителя)</span>
+          </label>
+          {form.isSupplied && (
+            <>
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label>Компания-поставщик</label>
+                  <input value={form.supplier?.company || ''} onChange={e => setSupplier('company', e.target.value)} placeholder="Название компании" />
+                </div>
+                <div className="admin-form-group">
+                  <label>Контактное лицо (кто поставлял)</label>
+                  <input value={form.supplier?.contactName || ''} onChange={e => setSupplier('contactName', e.target.value)} placeholder="Имя поставщика" />
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label>Артикул у поставщика</label>
+                <input value={form.supplier?.sku || ''} onChange={e => setSupplier('sku', e.target.value)} placeholder="Артикул в системе поставщика" />
+              </div>
+            </>
+          )}
         </Card>
 
         {/* ── ФОТОГРАФИИ ── */}

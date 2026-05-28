@@ -264,6 +264,21 @@ export default function AdminProductView() {
           {/* Dimensions */}
           {product.dimensions && <Row label="Габариты" value={product.dimensions} />}
 
+          {/* Supplier — привозной товар */}
+          {product.isSupplied && (
+            <div style={{ background: '#eef6ff', border: '1.5px solid #93c5fd', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
+                🚚 Привозной товар (поставщик)
+              </div>
+              {product.supplier?.company && <Row label="Компания" value={product.supplier.company} />}
+              {product.supplier?.contactName && <Row label="Контактное лицо" value={product.supplier.contactName} />}
+              {product.supplier?.sku && <Row label="Артикул поставщика" value={product.supplier.sku} />}
+              {!product.supplier?.company && !product.supplier?.contactName && !product.supplier?.sku && (
+                <span style={{ fontSize: 13, color: 'var(--slate)' }}>Данные поставщика не заполнены</span>
+              )}
+            </div>
+          )}
+
           {/* Description */}
           {product.description && (
             <div>

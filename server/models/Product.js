@@ -15,6 +15,14 @@ const productSchema = new mongoose.Schema({
   // Category (product type) — open string, managed from admin
   category: { type: String, required: true, default: 'other' },
 
+  // Supplier — привозной товар от стороннего производителя
+  isSupplied: { type: Boolean, default: false },
+  supplier: {
+    company:     { type: String, default: '' },  // название компании-поставщика
+    contactName: { type: String, default: '' },  // кто делал поставку (контактное лицо)
+    sku:         { type: String, default: '' },  // артикул у поставщика
+  },
+
   // Pricing
   priceCost:         { type: Number, default: 0 },   // Себестоимость
   priceWholesale:    { type: Number, default: 0 },   // Оптовая цена
