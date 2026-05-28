@@ -93,7 +93,7 @@ const EMPTY = {
   priceCost: '', priceWholesale: '', priceDealer: '', price: '',
   description: '',
   images: [],
-  inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', productStatus: 'for_sale', developmentStage: '',
+  inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', inTransit: false, productStatus: 'for_sale', developmentStage: '',
   pauseNote: '',
   developmentTZ: { description: '', files: [] },
   improvementTZ: { problem: '', solution: '', files: [] },
@@ -274,6 +274,7 @@ export default function AdminProductForm() {
           dimensions:     p.dimensions || '',
           isSupplied:     p.isSupplied || false,
           supplier:       p.supplier || { company: '', contactName: '', sku: '' },
+          inTransit:      p.inTransit || false,
           pauseNote:      p.pauseNote || '',
           developmentTZ:  p.developmentTZ || { description: '', files: [] },
           improvementTZ:  p.improvementTZ || { problem: '', solution: '', files: [] },
@@ -898,6 +899,19 @@ export default function AdminProductForm() {
                 <span style={{ fontSize: 13, fontWeight: 500 }}>Новинка</span>
               </label>
             </div>
+
+            {/* В пути */}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginTop: 16,
+              padding: '12px 16px', borderRadius: 10,
+              border: `2px solid ${form.inTransit ? '#93c5fd' : 'var(--gray-200)'}`,
+              background: form.inTransit ? '#eef6ff' : '#fff',
+            }}>
+              <input type="checkbox" checked={form.inTransit} onChange={e => set('inTransit', e.target.checked)} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: form.inTransit ? '#1d4ed8' : 'var(--slate)' }}>
+                🚚 Товар в пути (ещё не на складе)
+              </span>
+            </label>
           </div>
         </Card>
 

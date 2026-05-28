@@ -244,6 +244,11 @@ export default function AdminProductView() {
               <span style={{ fontSize: 12, fontWeight: 700, color: ss.color, background: ss.color + '18', padding: '3px 10px', borderRadius: 20 }}>
                 {ss.label}
               </span>
+              {product.inTransit && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', background: '#eef6ff', padding: '3px 10px', borderRadius: 20 }}>
+                  🚚 В пути
+                </span>
+              )}
               {product.isNew && (
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#e10523', background: '#fde8e8', padding: '3px 10px', borderRadius: 20 }}>NEW</span>
               )}
@@ -268,7 +273,7 @@ export default function AdminProductView() {
           {product.isSupplied && (
             <div style={{ background: '#eef6ff', border: '1.5px solid #93c5fd', borderRadius: 10, padding: '14px 16px' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
-                🚚 Привозной товар (поставщик)
+                📦 Привозной товар (поставщик)
               </div>
               {product.supplier?.company && <Row label="Компания" value={product.supplier.company} />}
               {product.supplier?.contactName && <Row label="Контактное лицо" value={product.supplier.contactName} />}

@@ -1539,6 +1539,7 @@ async function autoPublishNews({ type, product, changedBy, message = '' }) {
         brand:       product.brand || '',
         set:         product.set   || '',
         stock:       product.stock ?? 0,
+        inTransit:   product.inTransit || false,
         images:      product.images      || [],
         driveImages: product.driveImages || [],
       },

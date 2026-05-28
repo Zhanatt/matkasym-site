@@ -88,7 +88,9 @@ async function sendNewsNotificationTelegram({ type, title, message, product }, r
 
   if (productName) {
     text += `\n📦 <b>${productName}</b>`;
-    if (productStock != null) {
+    if (product?.inTransit) {
+      text += `\n🚚 <b>Товар в пути</b> — ещё не на складе`;
+    } else if (productStock != null) {
       text += `\nОстаток: ${productStock} шт.`;
     }
   }

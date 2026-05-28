@@ -49,6 +49,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
         category:         product.category         || 'other',
         isSupplied:       product.isSupplied       || false,
         supplier:         product.supplier         || { company: '', contactName: '', sku: '' },
+        inTransit:        product.inTransit        || false,
         priceCost:        product.priceCost        || 0,
         priceWholesale:   product.priceWholesale   || 0,
         priceDealer:      product.priceDealer      || 0,
@@ -279,6 +280,10 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
                     background: '#fff3cd', color: '#856404' }}>Новинка</span>
                 )}
+                {product.inTransit && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+                    background: '#eef6ff', color: '#1d4ed8' }}>🚚 В пути</span>
+                )}
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
                   background: product.inStock ? '#e8f5e9' : '#fce8e8',
                   color: product.inStock ? '#2d7a3a' : '#c00' }}>{stockLabel}</span>
@@ -429,7 +434,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
               {product.isSupplied && (
                 <div style={{ background: '#eef6ff', border: '1.5px solid #93c5fd', borderRadius: 10, padding: '12px 14px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    🚚 Привозной товар (поставщик)
+                    📦 Привозной товар (поставщик)
                   </div>
                   {[
                     ['Компания',           product.supplier?.company],

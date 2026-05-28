@@ -144,12 +144,22 @@ function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
             </div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{item.product.name}</div>
-              <div style={{ fontSize: 13, color: '#777', marginTop: 2 }}>
-                Остаток на складе:{' '}
-                <b style={{ color: item.product.stock === 0 ? '#e10523' : '#111', fontWeight: 800 }}>
-                  {item.product.stock ?? '—'} шт.
-                </b>
-              </div>
+              {item.product.inTransit ? (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 5,
+                  background: '#eef6ff', color: '#1d4ed8', fontSize: 13, fontWeight: 800,
+                  padding: '4px 12px', borderRadius: 20, border: '1.5px solid #93c5fd',
+                }}>
+                  🚚 Товар в пути — ещё не на складе
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: '#777', marginTop: 2 }}>
+                  Остаток на складе:{' '}
+                  <b style={{ color: item.product.stock === 0 ? '#e10523' : '#111', fontWeight: 800 }}>
+                    {item.product.stock ?? '—'} шт.
+                  </b>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -18,6 +18,7 @@ const newsSchema = new Schema({
     brand:       { type: String, default: '' },
     set:         { type: String, default: '' },
     stock:       { type: Number, default: 0 },
+    inTransit:   { type: Boolean, default: false },
     images:      [{ type: String }],
     driveImages: [{ type: String }],
   },

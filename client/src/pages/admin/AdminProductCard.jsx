@@ -52,10 +52,12 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {product.isSupplied && <span title="Привозной товар" style={{ marginRight: 4 }}>🚚</span>}
+            {product.isSupplied && <span title="Привозной товар" style={{ marginRight: 4 }}>📦</span>}
             {product.fullName || product.name}
           </div>
-          {product.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{product.sku}</div>}
+          {product.inTransit
+            ? <div style={{ fontSize: 10, color: '#1d4ed8', fontWeight: 700 }}>🚚 В пути</div>
+            : product.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{product.sku}</div>}
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500 }}>{priceLabel}</div>
@@ -105,12 +107,24 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
             {product.sku}
           </div>
         )}
-        {product.isSupplied && (
-          <div title="Привозной товар" style={{ position: 'absolute', top: 6, left: 6,
-            background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
-            fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
-            boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
-            <span>🚚</span><span>Привозной</span>
+        {(product.isSupplied || product.inTransit) && (
+          <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {product.inTransit && (
+              <div title="Товар в пути" style={{
+                background: '#1d4ed8', color: '#fff', borderRadius: 6, padding: '3px 6px',
+                fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
+                boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
+                <span>🚚</span><span>В пути</span>
+              </div>
+            )}
+            {product.isSupplied && (
+              <div title="Привозной товар" style={{
+                background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
+                fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
+                boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
+                <span>📦</span><span>Привозной</span>
+              </div>
+            )}
           </div>
         )}
       </div>
