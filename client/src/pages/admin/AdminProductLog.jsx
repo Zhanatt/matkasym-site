@@ -62,7 +62,7 @@ export default function AdminProductLog() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 18, borderBottom: '1px solid #eee', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 18, borderBottom: '1px solid var(--admin-line)', marginBottom: 20 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '0 4px', color: '#888' }}>←</button>
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>📋 История товаров</div>
@@ -99,10 +99,10 @@ export default function AdminProductLog() {
       ) : logs.length === 0 ? (
         <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>Нет записей</div>
       ) : (
-        <div style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--admin-line)', borderRadius: 14, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #eee' }}>
+              <tr style={{ background: '#f7f6f3', borderBottom: '1px solid var(--admin-line)' }}>
                 {['Дата', 'Действие', 'Источник', 'Товар', 'Бренд', 'Кто'].map(h => (
                   <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
                 ))}
@@ -113,7 +113,7 @@ export default function AdminProductLog() {
                 const am = ACTION_META[log.action] || {};
                 const sm = SOURCE_META[log.source] || {};
                 return (
-                  <tr key={log._id} style={{ borderBottom: '1px solid #f0f0f0', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                  <tr key={log._id} style={{ borderBottom: '1px solid var(--admin-line)', background: i % 2 === 0 ? '#fff' : '#faf9f6' }}>
                     <td style={{ padding: '9px 14px', color: '#888', whiteSpace: 'nowrap', fontSize: 12 }}>{fmt(log.createdAt)}</td>
                     <td style={{ padding: '9px 14px' }}>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: am.bg, color: am.color }}>

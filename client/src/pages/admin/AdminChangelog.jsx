@@ -113,16 +113,16 @@ export default function AdminChangelog() {
           {filtered.map(log => (
             <div key={log._id} style={{
               background: '#fff',
-              border: '1px solid var(--gray-200)',
-              borderRadius: 10,
+              border: '1px solid var(--admin-line)',
+              borderRadius: 14,
               overflow: 'hidden',
             }}>
               {/* Header */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 20px',
-                background: '#f7f8fa',
-                borderBottom: '1px solid var(--gray-200)',
+                background: '#f7f6f3',
+                borderBottom: '1px solid var(--admin-line)',
                 flexWrap: 'wrap',
               }}>
                 <div style={{ flex: 1, minWidth: 200 }}>

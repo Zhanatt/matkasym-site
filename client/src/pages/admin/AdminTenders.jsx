@@ -43,7 +43,7 @@ function TZBlock({ product }) {
         <span>{open ? '▾' : '▸'}</span> ТЗ {open ? 'скрыть' : 'показать'}
       </button>
       {open && (
-        <div style={{ marginTop: 8, padding: '10px 12px', background: '#f8f9fb', borderRadius: 8, fontSize: 12, lineHeight: 1.6 }}>
+        <div style={{ marginTop: 8, padding: '10px 12px', background: '#f7f6f3', borderRadius: 8, fontSize: 12, lineHeight: 1.6 }}>
           {productStatus === 'in_development' ? (
             <>
               {developmentStage && <div style={{ marginBottom: 4 }}><b>Этап:</b> {developmentStage}</div>}
@@ -84,7 +84,7 @@ function AssigneeBlock({ product, users, onAssigned }) {
   };
 
   return (
-    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f0f0f0', position: 'relative' }}>
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--admin-line)', position: 'relative' }}>
       {assigned ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#3463A3', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
@@ -119,10 +119,10 @@ function AssigneeBlock({ product, users, onAssigned }) {
       {open && (
         <div style={{
           position: 'absolute', right: 0, top: '100%', zIndex: 100, marginTop: 4,
-          background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10,
-          boxShadow: '0 4px 20px rgba(0,0,0,.12)', minWidth: 220, maxHeight: 260, overflowY: 'auto',
+          background: '#fff', border: '1px solid var(--admin-line)', borderRadius: 12,
+          boxShadow: '0 8px 28px rgba(31,28,22,.12)', minWidth: 220, maxHeight: 260, overflowY: 'auto',
         }}>
-          <div style={{ padding: '6px 12px', fontSize: 11, color: '#aaa', fontWeight: 600, borderBottom: '1px solid #f0f0f0', textTransform: 'uppercase' }}>Выберите пользователя</div>
+          <div style={{ padding: '6px 12px', fontSize: 11, color: '#aaa', fontWeight: 600, borderBottom: '1px solid var(--admin-line)', textTransform: 'uppercase' }}>Выберите пользователя</div>
           {users.map(u => (
             <div key={u._id} onClick={() => assign(u._id)}
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f9f9f9' }}
@@ -220,7 +220,7 @@ export default function AdminTenders() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 18, borderBottom: '1px solid #eee', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 18, borderBottom: '1px solid var(--admin-line)', marginBottom: 20 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>🎯 Тендеры</div>
           <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>Товары на улучшении и в разработке</div>
@@ -247,7 +247,7 @@ export default function AdminTenders() {
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
-        <div style={{ display: 'flex', background: '#f5f5f5', borderRadius: 8, padding: 3, gap: 0 }}>
+        <div style={{ display: 'flex', background: '#f4f3f0', borderRadius: 8, padding: 3, gap: 0 }}>
           {[
             { k: 'all',            l: `Все (${stats.all})` },
             { k: 'improvement',    l: `На улучшении (${stats.improvement})` },
@@ -296,7 +296,7 @@ export default function AdminTenders() {
               : product.images?.[0] || null;
 
             return (
-              <div key={product._id} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(0,0,0,.04)' }}>
+              <div key={product._id} style={{ background: '#fff', border: '1px solid var(--admin-line)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', boxShadow: '0 2px 10px rgba(31,28,22,.04)' }}>
                 {/* Top row */}
                 <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
                   {img && (
@@ -308,7 +308,7 @@ export default function AdminTenders() {
                         {sm.label}
                       </span>
                       {product.set && (
-                        <span style={{ fontSize: 10, color: '#aaa', padding: '2px 8px', borderRadius: 20, border: '1px solid #eee' }}>
+                        <span style={{ fontSize: 10, color: '#aaa', padding: '2px 8px', borderRadius: 20, border: '1px solid var(--admin-line)' }}>
                           {product.set}
                         </span>
                       )}
@@ -331,7 +331,7 @@ export default function AdminTenders() {
                 <AssigneeBlock product={product} users={users} onAssigned={handleAssigned} />
 
                 {/* Complete button */}
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f0f0f0' }}>
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--admin-line)' }}>
                   <button onClick={() => handleComplete(product)} style={{
                     width: '100%', padding: '8px 0', borderRadius: 8, border: 'none',
                     background: '#e8f5e9', color: '#1e7e34', fontWeight: 700, fontSize: 13,
@@ -353,8 +353,8 @@ export default function AdminTenders() {
         <div style={{ marginTop: 32 }}>
           <button onClick={() => setShowDone(v => !v)} style={{
             display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-            border: 'none', cursor: 'pointer', padding: '12px 16px', borderRadius: 10,
-            background: '#f7f8fa',
+            border: 'none', cursor: 'pointer', padding: '12px 16px', borderRadius: 12,
+            background: '#f7f6f3',
           }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#555' }}>
               {showDone ? '▾' : '▸'} Завершённые тендеры

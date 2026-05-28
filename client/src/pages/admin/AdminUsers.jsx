@@ -91,8 +91,8 @@ export default function AdminUsers() {
     return (
       <div key={u._id} className="admin-user-card" style={{
         background: '#fff',
-        border: u.isPending ? '1.5px solid #f0c060' : '1px solid var(--gray-200)',
-        borderRadius: 10,
+        border: u.isPending ? '1.5px solid #ecd9ad' : '1px solid var(--admin-line)',
+        borderRadius: 14,
         padding: '14px 20px',
         display: 'flex', alignItems: 'center', gap: 14,
         flexWrap: 'wrap',
@@ -175,7 +175,7 @@ export default function AdminUsers() {
               onChange={e => handleRoleChange(u, e.target.value)}
               style={{
                 padding: '7px 12px', borderRadius: 8,
-                border: '1.5px solid var(--gray-200)',
+                border: '1.5px solid var(--admin-line)',
                 fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
                 cursor: isSelf ? 'not-allowed' : 'pointer',
                 background: '#fff',
@@ -190,8 +190,8 @@ export default function AdminUsers() {
           ) : (
             <div style={{
               padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              background: '#f5f5f5', color: AVATAR_COLORS[u.role] || '#333',
-              border: '1.5px solid var(--gray-200)', minWidth: 140, textAlign: 'center',
+              background: '#f4f3f0', color: AVATAR_COLORS[u.role] || '#333',
+              border: '1.5px solid var(--admin-line)', minWidth: 140, textAlign: 'center',
             }}>
               {ROLE_LABELS[u.role] || u.role}
             </div>

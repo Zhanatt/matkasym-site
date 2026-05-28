@@ -91,7 +91,7 @@ function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
         borderRadius: 20,
         overflow: 'hidden',
         boxShadow: item.read ? '0 2px 12px rgba(0,0,0,.06)' : '0 4px 24px rgba(0,0,0,.1)',
-        border: item.read ? '1.5px solid #f0f0f0' : `1.5px solid ${meta.color}30`,
+        border: item.read ? '1.5px solid var(--admin-line)' : `1.5px solid ${meta.color}30`,
         cursor: item.read ? 'default' : 'pointer',
         transition: 'box-shadow .2s',
         position: 'relative',
@@ -126,7 +126,7 @@ function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
 
       {/* Large image */}
       {img && (
-        <div style={{ margin: '0 22px 18px', background: '#f7f8fa', borderRadius: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+        <div style={{ margin: '0 22px 18px', background: '#f7f6f3', borderRadius: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
           <img
             src={img}
             alt=""

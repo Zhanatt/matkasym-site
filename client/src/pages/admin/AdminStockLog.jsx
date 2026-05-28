@@ -85,7 +85,7 @@ export default function AdminStockLog() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 18, borderBottom: '1px solid #eee', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 18, borderBottom: '1px solid var(--admin-line)', marginBottom: 20 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '0 4px', color: '#888' }}>←</button>
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>📦 История остатков</div>
@@ -126,14 +126,14 @@ export default function AdminStockLog() {
         <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Записей нет</div>
       ) : (
         <>
-          <div style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+          <div style={{ border: '1px solid var(--admin-line)', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
             {/* Table header */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '140px 1fr 80px 110px 90px 120px',
               padding: '8px 14px',
-              background: '#f7f8fa',
-              borderBottom: '1px solid #eee',
+              background: '#f7f6f3',
+              borderBottom: '1px solid var(--admin-line)',
               fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5,
             }}>
               <span>Дата</span>
@@ -153,11 +153,11 @@ export default function AdminStockLog() {
                     display: 'grid',
                     gridTemplateColumns: '140px 1fr 80px 110px 90px 120px',
                     padding: '9px 14px',
-                    borderBottom: '1px solid #f5f5f5',
+                    borderBottom: '1px solid var(--admin-line)',
                     alignItems: 'center',
                     fontSize: 13,
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                  onMouseEnter={e => e.currentTarget.style.background = '#faf9f6'}
                   onMouseLeave={e => e.currentTarget.style.background = ''}
                 >
                   <span style={{ fontSize: 11, color: '#888' }}>{fmt(log.createdAt)}</span>
