@@ -236,14 +236,16 @@ export default function AdminSuppliers() {
         <div
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 2000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            padding: '40px 20px', overflow: 'auto',
           }}
           onClick={e => { if (e.target === e.currentTarget) cancelEdit(); }}
         >
           <div style={{
             background: '#fff', borderRadius: 14, padding: '28px 32px',
-            width: 480, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto',
+            width: 480, maxWidth: '100%',
             boxShadow: '0 8px 40px rgba(0,0,0,.18)',
+            margin: 'auto 0',
           }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 20px' }}>
               {editId === 'new' ? 'Новый поставщик' : 'Редактировать поставщика'}
