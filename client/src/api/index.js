@@ -118,4 +118,10 @@ export const adminSyncNewsProduct  = (id)          => api.post(`/admin/news/${id
 export const adminGetTelegramLink  = ()            => api.get('/admin/telegram-link');
 export const adminUnlinkTelegram   = ()            => api.delete('/admin/telegram-unlink');
 
+// Suppliers
+export const adminGetSuppliers     = ()            => api.get('/admin/suppliers');
+export const adminCreateSupplier   = (data)        => api.post('/admin/suppliers', data);
+export const adminUpdateSupplier   = (id, data)    => api.patch(`/admin/suppliers/${id}`, data);
+export const adminDeleteSupplier   = (id)          => api.delete(`/admin/suppliers/${id}`);
+
 export default api;

@@ -10,6 +10,7 @@ const PriceLog     = require('../models/PriceLog');
 const ProductLog   = require('../models/ProductLog');
 const CategorySpec = require('../models/CategorySpec');
 const Frontman     = require('../models/Frontman');
+const Supplier     = require('../models/Supplier');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer } = require('../middleware/auth');
 
@@ -499,6 +500,37 @@ router.patch('/frontmen/:id', protect, editor, async (req, res) => {
 router.delete('/frontmen/:id', protect, editor, async (req, res) => {
   try {
     await Frontman.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// ── Suppliers (индивидуальные поставщики) ─────────────────────────────────────
+
+router.get('/suppliers', protect, viewer, async (req, res) => {
+  try {
+    const list = await Supplier.find().populate('products', 'name fullName images brand set').sort({ createdAt: -1 });
+    res.json(list);
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+router.post('/suppliers', protect, editor, async (req, res) => {
+  try {
+    const supplier = await Supplier.create(req.body);
+    res.status(201).json(supplier);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
+router.patch('/suppliers/:id', protect, editor, async (req, res) => {
+  try {
+    const supplier = await Supplier.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('products', 'name fullName images brand set');
+    if (!supplier) return res.status(404).json({ error: 'Не найден' });
+    res.json(supplier);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
+router.delete('/suppliers/:id', protect, editor, async (req, res) => {
+  try {
+    await Supplier.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
