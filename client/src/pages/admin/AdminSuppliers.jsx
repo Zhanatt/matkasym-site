@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   adminGetSuppliers, adminCreateSupplier,
@@ -232,7 +233,7 @@ export default function AdminSuppliers() {
         )}
       </div>
 
-      {editId && (
+      {editId && createPortal(
         <div
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 2000,
@@ -394,7 +395,8 @@ export default function AdminSuppliers() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
