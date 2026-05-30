@@ -466,17 +466,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       <img src={img} alt={name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={e => { e.target.src = NO_PHOTO; }} />
-                      <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                        {showBadge && (
-                          <div style={{
-                            background: statusMeta.bg, color: statusMeta.color,
-                            borderRadius: 6, padding: '3px 7px',
-                            fontSize: 10, fontWeight: 700,
-                            boxShadow: '0 1px 4px rgba(0,0,0,.15)',
-                          }}>{statusMeta.label}</div>
-                        )}
-                        {primary.isSupplied && (
-                          primary.supplier?.company === 'IKEA' ? (
+                      {primary.isSupplied && (
+                        <div style={{ position: 'absolute', top: 6, left: 6 }}>
+                          {primary.supplier?.company === 'IKEA' ? (
                             <img src="/logos/ikea.svg" alt="IKEA" title="IKEA" style={{
                               height: 18, borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,.15)'
                             }} />
@@ -485,11 +477,20 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
                               fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
                               boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
-                              <span>📦</span>
+                              <span>📦</span><span>Привозной</span>
                             </div>
-                          )
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
+                      {showBadge && (
+                        <div style={{
+                          position: 'absolute', top: 6, right: 6,
+                          background: statusMeta.bg, color: statusMeta.color,
+                          borderRadius: 6, padding: '3px 7px',
+                          fontSize: 10, fontWeight: 700,
+                          boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+                        }}>{statusMeta.label}</div>
+                      )}
                     </div>
                     <div style={{ padding: '10px 11px' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
