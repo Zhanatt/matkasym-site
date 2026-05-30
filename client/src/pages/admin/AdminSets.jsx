@@ -10,6 +10,7 @@ import {
 import AdminPdfButton from './AdminPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
+import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
 
 // ── constants ──────────────────────────────────────────────────────────────────
 
@@ -51,15 +52,6 @@ const PROCHIYE = [
   { slug: 'equipment',   label: 'Oborudovanie' },
   { slug: 'other',       label: 'Prochee' },
 ];
-
-const PRODUCT_STATUS_META = {
-  for_sale:       { label: 'В продаже',           color: '#2d7a3a', bg: '#e8f5e9' },
-  planned:        { label: 'В плане',             color: '#3b5bdb', bg: '#e8eeff' },
-  in_development: { label: 'В разработке',        color: '#7c3aed', bg: '#f3e8ff' },
-  improvement:    { label: 'На улучшении',        color: '#c47a00', bg: '#fff3cd' },
-  discontinued:   { label: 'Снят',                color: '#c0392b', bg: '#fff0f0' },
-  nelikvid:       { label: 'Неликвид',            color: '#92400e', bg: '#fef3c7' },
-};
 
 const BRAND_META = {
   'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
@@ -419,11 +411,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       onError={e => { e.target.src = NO_PHOTO; }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {primary.isSupplied && (
-                          primary.supplier?.company === 'IKEA'
-                            ? <img src="/logos/ikea.svg" alt="IKEA" title="IKEA" style={{ height: 12, flexShrink: 0 }} />
-                            : <span title="Привозной" style={{ flexShrink: 0 }}>📦</span>
-                        )}
+                        <SupplierBadge product={primary} size="small" />
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
                       </div>
                       {primary.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{primary.sku}</div>}
@@ -452,8 +440,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 const price      = getPrice(primary, priceMode);
                 const hasStock   = primary.stock > 0 || primary.inStock;
                 const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
-                const statusMeta = PRODUCT_STATUS_META[primary.productStatus];
-                const showBadge  = statusMeta && primary.productStatus !== 'for_sale';
+                const showBadge  = STATUS_BADGE[primary.productStatus];
                 return (
                   <div key={name} onClick={() => setDetailProduct(primary)}
                     style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
@@ -468,28 +455,13 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                         onError={e => { e.target.src = NO_PHOTO; }} />
                       {primary.isSupplied && (
                         <div style={{ position: 'absolute', top: 6, left: 6 }}>
-                          {primary.supplier?.company === 'IKEA' ? (
-                            <img src="/logos/ikea.svg" alt="IKEA" title="IKEA" style={{
-                              height: 18, borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,.15)'
-                            }} />
-                          ) : (
-                            <div title="Привозной товар" style={{
-                              background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
-                              fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
-                              boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
-                              <span>📦</span><span>Привозной</span>
-                            </div>
-                          )}
+                          <SupplierBadge product={primary} />
                         </div>
                       )}
                       {showBadge && (
-                        <div style={{
-                          position: 'absolute', top: 6, right: 6,
-                          background: statusMeta.bg, color: statusMeta.color,
-                          borderRadius: 6, padding: '3px 7px',
-                          fontSize: 10, fontWeight: 700,
-                          boxShadow: '0 1px 4px rgba(0,0,0,.15)',
-                        }}>{statusMeta.label}</div>
+                        <div style={{ position: 'absolute', top: 6, right: 6 }}>
+                          <StatusBadge product={primary} />
+                        </div>
                       )}
                     </div>
                     <div style={{ padding: '10px 11px' }}>

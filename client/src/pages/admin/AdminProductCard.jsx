@@ -1,19 +1,10 @@
 import { cloudinaryOpt } from '../../utils/drive';
+import { SupplierBadge, StatusBadge, ProductImageBadges } from '../../components/ProductBadges';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
 const PRICE_FIELDS = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer' };
 const PRICE_LABELS = { retail: 'Розничная', wholesale: 'Оптовая', dealer: 'Дилерская' };
-
-const STATUS_BADGE = {
-  for_sale:       null,
-  planned:        { icon: '📋', label: 'В плане',        bg: '#e8f0fe', color: '#1a73e8' },
-  in_development: { icon: '🔧', label: 'В разработке',   bg: '#fff3e0', color: '#e65100' },
-  improvement:    { icon: '⬆', label: 'На улучшении',   bg: '#f3e5f5', color: '#7b1fa2' },
-  on_pause:       { icon: '⏸', label: 'На паузе',        bg: '#f0f4f8', color: '#475569' },
-  discontinued:   { icon: '🚫', label: 'Снят',           bg: '#fff0f0', color: '#c0392b' },
-  nelikvid:       { icon: '🗑️', label: 'Неликвид',       bg: '#fef3c7', color: '#92400e' },
-};
 
 function getPrice(p, mode) {
   const field = PRICE_FIELDS[mode];
@@ -27,7 +18,6 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
   const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
   const priceLabel = PRICE_LABELS[priceMode] || '';
   const onClick    = () => onOpen(product);
-  const badge      = STATUS_BADGE[product.productStatus] ?? null;
 
   if (viewMode === 'list') {
     return (
@@ -41,23 +31,14 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
           <img src={img} alt={product.name}
             style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }}
             loading="lazy" onError={e => { e.target.src = NO_PHOTO; }} />
-          {badge && (
-            <div title={badge.label} style={{
-              position: 'absolute', top: -4, right: -4,
-              background: badge.bg, borderRadius: '50%',
-              width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, lineHeight: 1, border: '1px solid rgba(0,0,0,.08)',
-            }}>{badge.icon}</div>
-          )}
+          <div style={{ position: 'absolute', top: -4, right: -4 }}>
+            <StatusBadge product={product} compact />
+          </div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {product.isSupplied && (
-              product.supplier?.company === 'IKEA'
-                ? <img src="/logos/ikea.svg" alt="IKEA" title="IKEA" style={{ height: 12, marginRight: 4, verticalAlign: 'middle' }} />
-                : <span title="Привозной товар" style={{ marginRight: 4 }}>📦</span>
-            )}
-            {product.fullName || product.name}
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <SupplierBadge product={product} size="small" />
+            <span>{product.fullName || product.name}</span>
           </div>
           {product.inTransit
             ? <div style={{ fontSize: 10, color: '#1d4ed8', fontWeight: 700 }}>🚚 В пути</div>
@@ -89,52 +70,12 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         <img src={img} alt={product.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           loading="lazy" onError={e => { e.target.src = NO_PHOTO; }} />
-        {/* Status badge — top-right corner of image */}
-        {badge && (
-          <div title={badge.label} style={{
-            position: 'absolute', top: 6, right: 6,
-            background: badge.bg, color: badge.color,
-            borderRadius: 6, padding: '3px 6px',
-            fontSize: 10, fontWeight: 700,
-            display: 'flex', alignItems: 'center', gap: 3,
-            boxShadow: '0 1px 4px rgba(0,0,0,.15)',
-            backdropFilter: 'blur(4px)',
-          }}>
-            <span>{badge.icon}</span>
-            <span>{badge.label}</span>
-          </div>
-        )}
+        <ProductImageBadges product={product} />
         {product.sku && (
           <div style={{ position: 'absolute', bottom: 6, left: 6,
             background: 'rgba(255,255,255,0.92)', borderRadius: 4,
             fontSize: 9, fontWeight: 700, padding: '2px 5px', color: '#555' }}>
             {product.sku}
-          </div>
-        )}
-        {(product.isSupplied || product.inTransit) && (
-          <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {product.inTransit && (
-              <div title="Товар в пути" style={{
-                background: '#1d4ed8', color: '#fff', borderRadius: 6, padding: '3px 6px',
-                fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
-                boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
-                <span>🚚</span><span>В пути</span>
-              </div>
-            )}
-            {product.isSupplied && (
-              product.supplier?.company === 'IKEA' ? (
-                <img src="/logos/ikea.svg" alt="IKEA" title="Привозной товар от IKEA" style={{
-                  height: 18, borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,.15)'
-                }} />
-              ) : (
-                <div title="Привозной товар" style={{
-                  background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
-                  fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
-                  boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
-                  <span>📦</span><span>Привозной</span>
-                </div>
-              )
-            )}
           </div>
         )}
       </div>
