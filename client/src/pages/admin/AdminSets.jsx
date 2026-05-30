@@ -418,8 +418,13 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
                       onError={e => { e.target.src = NO_PHOTO; }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {name}
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {primary.isSupplied && (
+                          primary.supplier?.company === 'IKEA'
+                            ? <img src="/logos/ikea.svg" alt="IKEA" title="IKEA" style={{ height: 12, flexShrink: 0 }} />
+                            : <span title="Привозной" style={{ flexShrink: 0 }}>📦</span>
+                        )}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
                       </div>
                       {primary.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{primary.sku}</div>}
                     </div>
@@ -461,15 +466,30 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       <img src={img} alt={name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={e => { e.target.src = NO_PHOTO; }} />
-                      {showBadge && (
-                        <div style={{
-                          position: 'absolute', top: 6, right: 6,
-                          background: statusMeta.bg, color: statusMeta.color,
-                          borderRadius: 6, padding: '3px 7px',
-                          fontSize: 10, fontWeight: 700,
-                          boxShadow: '0 1px 4px rgba(0,0,0,.15)',
-                        }}>{statusMeta.label}</div>
-                      )}
+                      <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                        {showBadge && (
+                          <div style={{
+                            background: statusMeta.bg, color: statusMeta.color,
+                            borderRadius: 6, padding: '3px 7px',
+                            fontSize: 10, fontWeight: 700,
+                            boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+                          }}>{statusMeta.label}</div>
+                        )}
+                        {primary.isSupplied && (
+                          primary.supplier?.company === 'IKEA' ? (
+                            <img src="/logos/ikea.svg" alt="IKEA" title="IKEA" style={{
+                              height: 18, borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,.15)'
+                            }} />
+                          ) : (
+                            <div title="Привозной товар" style={{
+                              background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
+                              fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
+                              boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
+                              <span>📦</span>
+                            </div>
+                          )
+                        )}
+                      </div>
                     </div>
                     <div style={{ padding: '10px 11px' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
