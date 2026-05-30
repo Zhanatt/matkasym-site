@@ -52,7 +52,11 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {product.isSupplied && <span title="Привозной товар" style={{ marginRight: 4 }}>📦</span>}
+            {product.isSupplied && (
+              product.supplier?.company === 'IKEA'
+                ? <img src="/logos/ikea.svg" alt="IKEA" title="IKEA" style={{ height: 12, marginRight: 4, verticalAlign: 'middle' }} />
+                : <span title="Привозной товар" style={{ marginRight: 4 }}>📦</span>
+            )}
             {product.fullName || product.name}
           </div>
           {product.inTransit
@@ -118,12 +122,18 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
               </div>
             )}
             {product.isSupplied && (
-              <div title="Привозной товар" style={{
-                background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
-                fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
-                boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
-                <span>📦</span><span>Привозной</span>
-              </div>
+              product.supplier?.company === 'IKEA' ? (
+                <img src="/logos/ikea.svg" alt="IKEA" title="Привозной товар от IKEA" style={{
+                  height: 18, borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,.15)'
+                }} />
+              ) : (
+                <div title="Привозной товар" style={{
+                  background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
+                  fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
+                  boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
+                  <span>📦</span><span>Привозной</span>
+                </div>
+              )
             )}
           </div>
         )}
