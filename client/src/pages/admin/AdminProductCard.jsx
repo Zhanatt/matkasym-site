@@ -86,10 +86,16 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
           <div>
-            <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
-              {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
-            </div>
+            {product.priceUndefined ? (
+              <div style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}>Цена не определена</div>
+            ) : (
+              <>
+                <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
+                  {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                </div>
+              </>
+            )}
           </div>
           <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
             background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>

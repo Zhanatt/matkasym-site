@@ -416,8 +416,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       </div>
                       {primary.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{primary.sku}</div>}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: accent, flexShrink: 0 }}>
-                      {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                    <div style={{ fontSize: 13, fontWeight: 800, color: primary.priceUndefined ? '#888' : accent, flexShrink: 0, fontStyle: primary.priceUndefined ? 'italic' : 'normal' }}>
+                      {primary.priceUndefined ? 'Цена не определена' : (price > 0 ? `${price.toLocaleString('ru')} сом` : '—')}
                     </div>
                     <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
                       background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
@@ -477,10 +477,16 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       ))}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
                         <div>
-                          <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
-                            {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
-                          </div>
+                          {primary.priceUndefined ? (
+                            <div style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}>Цена не определена</div>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
+                                {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
                           background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
