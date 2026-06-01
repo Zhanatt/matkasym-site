@@ -91,7 +91,7 @@ const EMPTY = {
   supplier: { company: '', contactName: '', sku: '' },
   dimensions: '',
   specs: [],
-  priceCost: '', priceWholesale: '', priceDealer: '', price: '',
+  priceCost: '', priceWholesale: '', priceDealer: '', price: '', priceUndefined: false,
   description: '',
   images: [],
   inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', inTransit: false, productStatus: 'for_sale', developmentStage: '',
@@ -279,6 +279,7 @@ export default function AdminProductForm() {
           priceCost:      p.priceCost ?? '',
           priceWholesale: p.priceWholesale ?? '',
           priceDealer:    p.priceDealer ?? '',
+          priceUndefined: p.priceUndefined || false,
           dimensions:     p.dimensions || '',
           isSupplied:     p.isSupplied || false,
           supplier:       p.supplier || { company: '', contactName: '', sku: '' },
@@ -790,24 +791,34 @@ export default function AdminProductForm() {
         {/* ── ЦЕНЫ ── */}
         <Card>
           <SH text="Цены (сом)" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-            <div className="admin-form-group">
-              <label>Себестоимость</label>
-              <input type="number" min="0" value={form.priceCost} onChange={e => set('priceCost', e.target.value)} placeholder="0" />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 16 }}>
+            <input
+              type="checkbox"
+              checked={form.priceUndefined || false}
+              onChange={e => set('priceUndefined', e.target.checked)}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#888' }}>Ещё не определено</span>
+          </label>
+          {!form.priceUndefined && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+              <div className="admin-form-group">
+                <label>Себестоимость</label>
+                <input type="number" min="0" value={form.priceCost} onChange={e => set('priceCost', e.target.value)} placeholder="0" />
+              </div>
+              <div className="admin-form-group">
+                <label>Оптовая</label>
+                <input type="number" min="0" value={form.priceWholesale} onChange={e => set('priceWholesale', e.target.value)} placeholder="0" />
+              </div>
+              <div className="admin-form-group">
+                <label>Дилерская</label>
+                <input type="number" min="0" value={form.priceDealer} onChange={e => set('priceDealer', e.target.value)} placeholder="0" />
+              </div>
+              <div className="admin-form-group">
+                <label>Розничная *</label>
+                <input required type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="0" />
+              </div>
             </div>
-            <div className="admin-form-group">
-              <label>Оптовая</label>
-              <input type="number" min="0" value={form.priceWholesale} onChange={e => set('priceWholesale', e.target.value)} placeholder="0" />
-            </div>
-            <div className="admin-form-group">
-              <label>Дилерская</label>
-              <input type="number" min="0" value={form.priceDealer} onChange={e => set('priceDealer', e.target.value)} placeholder="0" />
-            </div>
-            <div className="admin-form-group">
-              <label>Розничная *</label>
-              <input required type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="0" />
-            </div>
-          </div>
+          )}
         </Card>
 
         {/* ── СТАТУС ── */}
