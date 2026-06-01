@@ -6,6 +6,7 @@ import {
   adminGetCategorySpecs, adminSaveCategorySpec,
   adminGetCustomCategories, adminCreateCustomCategory,
   adminGetFacets,
+  adminGetSuppliers, adminCreateSupplier,
 } from '../../api/index';
 import ImageUploader  from '../../components/ImageUploader';
 import SelectWithAdd  from '../../components/SelectWithAdd';
@@ -224,6 +225,8 @@ export default function AdminProductForm() {
   const [categories, setCategories]       = useState(CATEGORIES);
   const [savedCatSpecs, setSavedCatSpecs] = useState([]);
   const [savingSpec, setSavingSpec]       = useState(null);
+  const [suppliers, setSuppliers]         = useState([]);
+  const [newSupplierName, setNewSupplierName] = useState('');
 
   const loadSavedCatSpecs = useCallback((category) => {
     if (!category) return;
@@ -233,6 +236,11 @@ export default function AdminProductForm() {
   // Load brands
   useEffect(() => {
     adminGetBrands().then(r => setBrandsData(r.data)).catch(() => {});
+  }, []);
+
+  // Load suppliers
+  useEffect(() => {
+    adminGetSuppliers().then(r => setSuppliers(r.data)).catch(() => {});
   }, []);
 
   // Load facet sets when brand changes (sync with AdminSets page)
@@ -564,8 +572,58 @@ export default function AdminProductForm() {
             <>
               <div className="admin-form-row">
                 <div className="admin-form-group">
-                  <label>Компания-поставщик</label>
-                  <input value={form.supplier?.company || ''} onChange={e => setSupplier('company', e.target.value)} placeholder="Название компании" />
+                  <label>Поставщик</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <select
+                      value={form.supplier?.company || ''}
+                      onChange={e => {
+                        const selected = suppliers.find(s => s.name === e.target.value);
+                        if (selected) {
+                          setSupplier('company', selected.name);
+                          setSupplier('contactName', selected.phone || selected.instagram || '');
+                        } else {
+                          setSupplier('company', e.target.value);
+                        }
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="">— Выберите поставщика —</option>
+                      {suppliers.map(s => (
+                        <option key={s._id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                    <input
+                      value={newSupplierName}
+                      onChange={e => setNewSupplierName(e.target.value)}
+                      placeholder="Новый поставщик..."
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      disabled={!newSupplierName.trim()}
+                      onClick={async () => {
+                        if (!newSupplierName.trim()) return;
+                        try {
+                          const res = await adminCreateSupplier({ name: newSupplierName.trim() });
+                          setSuppliers(prev => [...prev, res.data]);
+                          setSupplier('company', res.data.name);
+                          setNewSupplierName('');
+                        } catch (err) {
+                          alert('Ошибка создания поставщика');
+                        }
+                      }}
+                      style={{
+                        padding: '8px 16px', borderRadius: 6, border: 'none',
+                        background: newSupplierName.trim() ? '#1c1c1c' : '#e0e0e0',
+                        color: newSupplierName.trim() ? '#fff' : '#999',
+                        fontWeight: 600, fontSize: 13, cursor: newSupplierName.trim() ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      + Добавить
+                    </button>
+                  </div>
                 </div>
                 <div className="admin-form-group">
                   <label>Контактное лицо (кто поставлял)</label>
