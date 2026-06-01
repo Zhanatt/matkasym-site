@@ -12,6 +12,7 @@ export function SupplierBadge({ product, size = 'normal' }) {
   if (!product.isSupplied) return null;
 
   const height = size === 'small' ? 12 : 18;
+  const supplierName = product.supplier?.company || 'Привозной';
 
   if (product.supplier?.company === 'IKEA') {
     return (
@@ -25,16 +26,16 @@ export function SupplierBadge({ product, size = 'normal' }) {
   }
 
   if (size === 'small') {
-    return <span title="Привозной товар">📦</span>;
+    return <span title={supplierName}>📦</span>;
   }
 
   return (
-    <div title="Привозной товар" style={{
+    <div title={supplierName} style={{
       background: '#eef6ff', color: '#1d4ed8', borderRadius: 6, padding: '3px 6px',
       fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
       boxShadow: '0 1px 4px rgba(0,0,0,.15)'
     }}>
-      <span>📦</span><span>Привозной</span>
+      <span>📦</span><span>{supplierName}</span>
     </div>
   );
 }
