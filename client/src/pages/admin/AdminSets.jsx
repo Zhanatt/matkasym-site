@@ -56,13 +56,12 @@ const PROCHIYE = [
 const BRAND_META = {
   'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
   'matkasym-shaar':  { label: 'SHAAR',  accent: '#3463A3' },
-  'matkasym-kyzmat': { label: 'KYZMAT', accent: '#267846',
-    staticSets: ['önügüü-set', 'dayar-tütük'] },
+  'matkasym-kyzmat': { label: 'KYZMAT', accent: '#267846' },
 };
 
 const SET_SUB_ITEMS = {
-  'önügüü-set':  ['Лазер', 'Гибка', 'Сварка', 'Труборез', 'Покраска'],
-  'dayar-tütük': ['Трубопрокат'],
+  'onuguu-set':  ['Лазер', 'Гибка', 'Сварка', 'Труборез', 'Покраска'],
+  'dayar-tutuk': ['Трубопрокат'],
 };
 
 function toTitle(slug) {
