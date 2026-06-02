@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AdminProductModal from './AdminProductModal';
 import {
@@ -87,10 +87,20 @@ function slugify(name) {
     .replace(/-+/g, '-');
 }
 
-function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
+function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog }) {
   const [editing, setEditing]     = useState(false);
   const [catalogSlug, setCatalog] = useState(() => autoOpenSet || null);
   const isMobile                  = useIsMobile();
+
+  function handleOpenCatalog(slug) {
+    setCatalog(slug);
+    onOpenCatalog?.(brandKey, slug);
+  }
+
+  function handleCloseCatalog() {
+    setCatalog(null);
+    onCloseCatalog?.();
+  }
 
   const [customSets,  setCustomSets]  = useState([]);
   const [showAddSet,  setShowAddSet]  = useState(false);
@@ -237,7 +247,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
                 </div>
               ) : (
                 <span
-                  onClick={() => !editing && setCatalog(slug)}
+                  onClick={() => !editing && handleOpenCatalog(slug)}
                   onDoubleClick={() => editing && customSet && startEditSet(slug, displayLabel)}
                   style={{ fontSize: 13, color: '#1c1c1c', flex: 1, minWidth: 0,
                     cursor: editing ? (customSet ? 'text' : 'default') : 'pointer',
@@ -282,7 +292,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
       </div>
 
       {catalogSlug && (
-        <SetCatalogPanel brandKey={brandKey} setSlug={catalogSlug} onClose={() => setCatalog(null)} />
+        <SetCatalogPanel brandKey={brandKey} setSlug={catalogSlug} onClose={handleCloseCatalog} />
       )}
     </div>
   );
@@ -632,8 +642,19 @@ function btn(bg, color, bold) {
 export default function AdminSets() {
   const [sets, setSets]     = useState({});
   const [loading, setLoad]  = useState(true);
-  const location            = useLocation();
-  const autoOpen            = location.state?.autoOpen;
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Читаем brand и set из URL
+  const urlBrand = searchParams.get('brand');
+  const urlSet = searchParams.get('set');
+
+  function handleOpenCatalog(brand, set) {
+    setSearchParams({ brand, set });
+  }
+
+  function handleCloseCatalog() {
+    setSearchParams({});
+  }
 
   useEffect(() => {
     const dynamicBrands = Object.entries(BRAND_META).filter(([, m]) => !m.staticSets);
@@ -666,7 +687,9 @@ export default function AdminSets() {
                   sets={allSets}
                   accent={meta.accent}
                   subItems={SET_SUB_ITEMS}
-                  autoOpenSet={autoOpen?.brand === key ? autoOpen.set : null}
+                  autoOpenSet={urlBrand === key ? urlSet : null}
+                  onOpenCatalog={handleOpenCatalog}
+                  onCloseCatalog={handleCloseCatalog}
                 />
               );
             })}
