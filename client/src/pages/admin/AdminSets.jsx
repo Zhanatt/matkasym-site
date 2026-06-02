@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import AdminProductModal from './AdminProductModal';
 import {
   adminGetFacets, adminGetProducts,
-  adminGetBrands, adminAddBrandSet, adminDeleteBrandSet,
+  adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
@@ -98,6 +98,8 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
   const [newSetName,  setNewSetName]  = useState('');
   const [addingSet,   setAddingSet]   = useState(false);
   const [addSetError, setAddSetError] = useState('');
+  const [editingSetKey, setEditingSetKey] = useState(null);
+  const [editSetLabel,  setEditSetLabel]  = useState('');
 
   useEffect(() => {
     adminGetBrands().then(r => {
@@ -128,6 +130,23 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
     if (!window.confirm(`Удалить сет «${slug}»?`)) return;
     const res = await adminDeleteBrandSet(brandKey, slug);
     setCustomSets(res.data.sets || []);
+  }
+
+  async function handleUpdateSet(slug) {
+    if (!editSetLabel.trim()) return;
+    try {
+      const res = await adminUpdateBrandSet(brandKey, slug, { label: editSetLabel.trim() });
+      setCustomSets(res.data.sets || []);
+      setEditingSetKey(null);
+      setEditSetLabel('');
+    } catch (e) {
+      alert(e?.response?.data?.error || 'Ошибка при обновлении');
+    }
+  }
+
+  function startEditSet(slug, currentLabel) {
+    setEditingSetKey(slug);
+    setEditSetLabel(currentLabel);
   }
 
   const pad = isMobile ? '20px 16px' : '32px 36px';
@@ -190,7 +209,12 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
 
       {/* Sets list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {allSets.map((slug, i) => (
+        {allSets.map((slug, i) => {
+          const customSet = customSets.find(cs => cs.key === slug);
+          const displayLabel = customSet?.label || toTitle(slug);
+          const isEditing = editingSetKey === slug;
+
+          return (
           <div key={slug}
             style={{ padding: '8px 10px', background: i % 2 === 0 ? '#f8f9fb' : '#fff', borderRadius: 6 }}
           >
@@ -199,22 +223,47 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
                 {i + 1}
               </span>
               <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
-              <span
-                onClick={() => !editing && setCatalog(slug)}
-                style={{ fontSize: 13, color: '#1c1c1c', flex: 1, minWidth: 0,
-                  cursor: editing ? 'default' : 'pointer',
-                  textDecoration: editing ? 'none' : 'underline',
-                  textDecorationStyle: 'dotted', textDecorationColor: '#bbb',
-                }}
-              >{toTitle(slug)}</span>
 
-              {editing && customSets.some(cs => cs.key === slug) && (
-                <button onClick={() => handleDeleteSet(slug)}
-                  title="Удалить сет"
-                  style={{ color: '#c00', background: 'none', border: 'none',
-                    cursor: 'pointer', fontSize: 13, padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>
-                  ✕
-                </button>
+              {editing && isEditing ? (
+                <div style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    value={editSetLabel}
+                    onChange={e => setEditSetLabel(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleUpdateSet(slug)}
+                    autoFocus
+                    style={{ flex: 1, fontSize: 13, border: '1px solid #ccc', borderRadius: 4, padding: '4px 8px' }}
+                  />
+                  <button onClick={() => handleUpdateSet(slug)} style={btn('#267846','#fff',true)}>✓</button>
+                  <button onClick={() => { setEditingSetKey(null); setEditSetLabel(''); }} style={btn('#f5f5f5','#555')}>✕</button>
+                </div>
+              ) : (
+                <span
+                  onClick={() => !editing && setCatalog(slug)}
+                  onDoubleClick={() => editing && customSet && startEditSet(slug, displayLabel)}
+                  style={{ fontSize: 13, color: '#1c1c1c', flex: 1, minWidth: 0,
+                    cursor: editing ? (customSet ? 'text' : 'default') : 'pointer',
+                    textDecoration: editing ? 'none' : 'underline',
+                    textDecorationStyle: 'dotted', textDecorationColor: '#bbb',
+                  }}
+                  title={editing && customSet ? 'Двойной клик для редактирования' : ''}
+                >{displayLabel}</span>
+              )}
+
+              {editing && customSet && !isEditing && (
+                <>
+                  <button onClick={() => startEditSet(slug, displayLabel)}
+                    title="Редактировать название"
+                    style={{ color: '#666', background: 'none', border: 'none',
+                      cursor: 'pointer', fontSize: 12, padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>
+                    ✏️
+                  </button>
+                  <button onClick={() => handleDeleteSet(slug)}
+                    title="Удалить сет"
+                    style={{ color: '#c00', background: 'none', border: 'none',
+                      cursor: 'pointer', fontSize: 13, padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>
+                    ✕
+                  </button>
+                </>
               )}
             </div>
 
@@ -230,7 +279,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet }) {
               </div>
             )}
           </div>
-        ))}
+        );})}
       </div>
 
       {catalogSlug && (

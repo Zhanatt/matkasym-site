@@ -335,6 +335,21 @@ router.delete('/brands/:key/sets/:slug', editor, async (req, res) => {
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
+// Update a set's label in a brand
+router.put('/brands/:key/sets/:slug', editor, async (req, res) => {
+  try {
+    const { label, labelRu } = req.body;
+    if (!label) return res.status(400).json({ error: 'label обязателен' });
+    const brand = await Brand.findOneAndUpdate(
+      { key: req.params.key, 'sets.key': req.params.slug },
+      { $set: { 'sets.$.label': label, 'sets.$.labelRu': labelRu || '' } },
+      { new: true }
+    );
+    if (!brand) return res.status(404).json({ error: 'Бренд или сет не найден' });
+    res.json(brand);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
 // ── Changelog (admin only) ───────────────────────
 router.get('/changelog', admin, async (req, res) => {
   try {
