@@ -1198,7 +1198,157 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
 });
 
 // ── BULK PHOTO UPLOAD ────────────────────────────────────────────────────────
-// POST /api/admin/upload-photos  (multipart: field "files", multiple images)
+// POST /api/admin/upload-photos  (multipart: field "files", multiple images OR single Excel with embedded photos)
+
+// Helper: extract images from Excel file with embedded photos
+async function extractImagesFromExcel(buffer) {
+  const AdmZip = require('adm-zip');
+  const xml2js = require('xml2js');
+
+  const zip = new AdmZip(buffer);
+  const entries = zip.getEntries();
+
+  // Fix case sensitivity issue with SharedStrings.xml
+  for (const entry of entries) {
+    if (entry.entryName === 'xl/SharedStrings.xml') {
+      entry.entryName = 'xl/sharedStrings.xml';
+    }
+  }
+
+  // 1. Read product names from sheet (column 18 = S, starting row ~87)
+  const sharedStringsEntry = entries.find(e => e.entryName.toLowerCase() === 'xl/sharedstrings.xml');
+  const sheetEntry = entries.find(e => e.entryName === 'xl/worksheets/sheet1.xml');
+
+  if (!sheetEntry) throw new Error('Не найден лист Excel');
+
+  // Parse shared strings
+  const sharedStrings = [];
+  if (sharedStringsEntry) {
+    const ssXml = sharedStringsEntry.getData().toString('utf8');
+    const ssResult = await xml2js.parseStringPromise(ssXml);
+    const si = ssResult?.sst?.si || [];
+    for (const item of si) {
+      if (item.t) sharedStrings.push(item.t[0] || '');
+      else if (item.r) sharedStrings.push(item.r.map(r => r.t?.[0] || '').join(''));
+      else sharedStrings.push('');
+    }
+  }
+
+  // Parse sheet to find product names by row
+  const sheetXml = sheetEntry.getData().toString('utf8');
+  const sheetResult = await xml2js.parseStringPromise(sheetXml);
+  const rows = sheetResult?.worksheet?.sheetData?.[0]?.row || [];
+
+  const productsByRow = new Map(); // row number -> product name
+  for (const row of rows) {
+    const rowNum = parseInt(row.$.r);
+    if (rowNum < 80) continue;
+
+    const cells = row.c || [];
+    // Look for cell in column S (19th column) or column C (3rd column for item number)
+    let itemNum = null, prodName = null;
+
+    for (const cell of cells) {
+      const ref = cell.$.r || '';
+      const col = ref.replace(/[0-9]/g, '');
+      const val = cell.v?.[0];
+
+      if (col === 'C' && val) {
+        const n = parseInt(val);
+        if (!isNaN(n) && n > 0 && n < 10000) itemNum = n;
+      }
+      if (col === 'S' && val !== undefined) {
+        // Check if it's a shared string reference
+        if (cell.$.t === 's' && sharedStrings[parseInt(val)]) {
+          prodName = sharedStrings[parseInt(val)];
+        } else {
+          prodName = val;
+        }
+      }
+    }
+
+    if (itemNum && prodName && !prodName.startsWith('Цена:')) {
+      productsByRow.set(rowNum, prodName.trim());
+    }
+  }
+
+  // 2. Parse drawing relationships to get image files
+  const drawingRelsEntry = entries.find(e => e.entryName === 'xl/drawings/_rels/drawing1.xml.rels');
+  const drawingEntry = entries.find(e => e.entryName === 'xl/drawings/drawing1.xml');
+
+  if (!drawingEntry || !drawingRelsEntry) throw new Error('Не найдены встроенные изображения в Excel');
+
+  // Parse rels to map rId -> image filename
+  const relsXml = drawingRelsEntry.getData().toString('utf8');
+  const relsResult = await xml2js.parseStringPromise(relsXml);
+  const relationships = relsResult?.Relationships?.Relationship || [];
+
+  const ridToFile = new Map();
+  for (const rel of relationships) {
+    const rid = rel.$.Id;
+    const target = rel.$.Target || '';
+    if (target.includes('media/')) {
+      ridToFile.set(rid, target.replace('../media/', ''));
+    }
+  }
+
+  // 3. Parse drawing.xml to get image positions (which row each image is on)
+  const drawingXml = drawingEntry.getData().toString('utf8');
+  const drawingResult = await xml2js.parseStringPromise(drawingXml);
+
+  const ns = 'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+  const anchors = drawingResult?.['wsDr']?.['xdr:twoCellAnchor'] ||
+                  drawingResult?.['xdr:wsDr']?.['xdr:twoCellAnchor'] ||
+                  drawingResult?.wsDr?.twoCellAnchor || [];
+
+  const imagePositions = []; // { row, imageFile }
+  for (const anchor of anchors) {
+    const from = anchor['xdr:from']?.[0] || anchor.from?.[0];
+    const pic = anchor['xdr:pic']?.[0] || anchor.pic?.[0];
+
+    if (!from || !pic) continue;
+
+    const row = parseInt(from['xdr:row']?.[0] || from.row?.[0] || '-1');
+    if (row < 80) continue;
+
+    const blipFill = pic['xdr:blipFill']?.[0] || pic.blipFill?.[0];
+    const blip = blipFill?.['a:blip']?.[0];
+    if (!blip) continue;
+
+    const rid = blip.$?.['r:embed'];
+    if (rid && ridToFile.has(rid)) {
+      imagePositions.push({ row, imageFile: ridToFile.get(rid) });
+    }
+  }
+
+  // 4. Match images to products (find nearest product within 10 rows)
+  const result = []; // { name, buffer, ext }
+  const usedProducts = new Set();
+
+  for (const { row, imageFile } of imagePositions) {
+    let bestName = null, bestDist = 100;
+
+    for (const [prodRow, name] of productsByRow) {
+      const dist = Math.abs(prodRow - row);
+      if (dist < bestDist && dist <= 10 && !usedProducts.has(name)) {
+        bestDist = dist;
+        bestName = name;
+      }
+    }
+
+    if (bestName) {
+      const mediaEntry = entries.find(e => e.entryName === `xl/media/${imageFile}`);
+      if (mediaEntry) {
+        usedProducts.add(bestName);
+        const ext = path.extname(imageFile) || '.png';
+        result.push({ name: bestName, buffer: mediaEntry.getData(), ext });
+      }
+    }
+  }
+
+  return result;
+}
+
 router.post('/upload-photos', editor, upload.array('files', 500), async (req, res) => {
   if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'Файлы не загружены' });
 
@@ -1225,10 +1375,34 @@ router.post('/upload-photos', editor, upload.array('files', 500), async (req, re
     const notFoundRows = [];
     const ops = [];
 
+    // Check if single Excel file with embedded images
+    const isExcel = req.files.length === 1 &&
+      (req.files[0].originalname.endsWith('.xlsx') || req.files[0].originalname.endsWith('.xls'));
+
+    let filesToProcess = [];
+
+    if (isExcel) {
+      console.log('[upload-photos] Processing Excel file with embedded images...');
+      try {
+        const extracted = await extractImagesFromExcel(req.files[0].buffer);
+        console.log(`[upload-photos] Extracted ${extracted.length} images from Excel`);
+        filesToProcess = extracted.map(({ name, buffer, ext }) => ({
+          originalname: name + ext,
+          buffer,
+          mimetype: ext === '.png' ? 'image/png' : 'image/jpeg'
+        }));
+      } catch (e) {
+        console.error('[upload-photos] Excel extraction error:', e.message);
+        return res.status(400).json({ error: 'Ошибка извлечения фото из Excel: ' + e.message });
+      }
+    } else {
+      filesToProcess = req.files;
+    }
+
     // Process in batches of 5 to avoid Cloudinary rate limits
     const BATCH = 5;
-    for (let i = 0; i < req.files.length; i += BATCH) {
-      const batch = req.files.slice(i, i + BATCH);
+    for (let i = 0; i < filesToProcess.length; i += BATCH) {
+      const batch = filesToProcess.slice(i, i + BATCH);
       await Promise.all(batch.map(async file => {
         const baseName = path.basename(file.originalname, path.extname(file.originalname)).trim();
         const product  = bySkuMap.get(baseName.toLowerCase()) || byNameMap.get(normName(baseName));
@@ -1258,8 +1432,8 @@ router.post('/upload-photos', editor, upload.array('files', 500), async (req, re
       excelBase64 = xlsx.write(wb2, { type: 'base64', bookType: 'xlsx' });
     }
 
-    console.log(`[upload-photos] matched=${matched} notFound=${notFoundRows.length} total=${req.files.length}`);
-    res.json({ success: true, matched, notFound: notFoundRows.length, total: req.files.length, excelBase64 });
+    console.log(`[upload-photos] matched=${matched} notFound=${notFoundRows.length} total=${filesToProcess.length}`);
+    res.json({ success: true, matched, notFound: notFoundRows.length, total: filesToProcess.length, excelBase64 });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка: ' + e.message });
   }

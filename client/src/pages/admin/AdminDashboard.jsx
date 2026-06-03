@@ -285,7 +285,7 @@ export default function AdminDashboard() {
             { key: 'stock',     label: '📥 Остатки из 1С',   color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading,             onChange: handleStockUpload,                         accept: '.xlsx' },
             { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail'),        accept: '.xlsx' },
             { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale'),     accept: '.xlsx' },
-            { key: 'photos',    label: '🖼 Фото',             color: '#7b2d8b', bg: '#f8e8ff', disabled: photoLoading,            onChange: handlePhotoUpload,                          accept: 'image/*', multiple: true },
+            { key: 'photos',    label: '🖼 Фото',             color: '#7b2d8b', bg: '#f8e8ff', disabled: photoLoading,            onChange: handlePhotoUpload,                          accept: 'image/*,.xlsx,.xls', multiple: true },
             { key: 'nomenclature', label: '📥 Новые из 1С',  color: '#7c3aed', bg: '#f3e8ff', disabled: nomenclatureLoading,        onChange: handleNomenclatureUpload,                   accept: '.xlsx' },
           ].map(({ key, label, color, bg, disabled, onChange, accept, multiple }) => {
             const pct = uploadProgress[key] || 0;
