@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import JSZip from 'jszip';
 import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
@@ -156,31 +157,153 @@ export default function AdminDashboard() {
     }
   };
 
+  // Extract images from Excel file on client side
+  const extractPhotosFromExcel = async (file) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+
+    // Parse shared strings for product names
+    let sharedStrings = [];
+    const ssFile = zip.file(/xl\/sharedstrings\.xml/i)[0];
+    if (ssFile) {
+      const ssXml = await ssFile.async('string');
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(ssXml, 'text/xml');
+      const sis = doc.getElementsByTagName('si');
+      for (const si of sis) {
+        const texts = si.getElementsByTagName('t');
+        sharedStrings.push(Array.from(texts).map(t => t.textContent || '').join(''));
+      }
+    }
+
+    // Parse sheet to find product names by row (column S = 19)
+    const sheetFile = zip.file('xl/worksheets/sheet1.xml');
+    if (!sheetFile) throw new Error('Лист не найден');
+    const sheetXml = await sheetFile.async('string');
+    const sheetDoc = new DOMParser().parseFromString(sheetXml, 'text/xml');
+    const rows = sheetDoc.getElementsByTagName('row');
+
+    const productsByRow = new Map();
+    for (const row of rows) {
+      const rowNum = parseInt(row.getAttribute('r') || '0');
+      if (rowNum < 80) continue;
+      const cells = row.getElementsByTagName('c');
+      let itemNum = null, prodName = null;
+      for (const cell of cells) {
+        const ref = cell.getAttribute('r') || '';
+        const col = ref.replace(/[0-9]/g, '');
+        const vElem = cell.getElementsByTagName('v')[0];
+        const val = vElem?.textContent;
+        if (col === 'C' && val) {
+          const n = parseInt(val);
+          if (!isNaN(n) && n > 0 && n < 10000) itemNum = n;
+        }
+        if (col === 'S' && val !== undefined) {
+          if (cell.getAttribute('t') === 's' && sharedStrings[parseInt(val)]) {
+            prodName = sharedStrings[parseInt(val)];
+          } else {
+            prodName = val;
+          }
+        }
+      }
+      if (itemNum && prodName && !prodName.startsWith('Цена:')) {
+        productsByRow.set(rowNum, prodName.trim());
+      }
+    }
+
+    // Parse drawing relationships
+    const relsFile = zip.file('xl/drawings/_rels/drawing1.xml.rels');
+    const drawingFile = zip.file('xl/drawings/drawing1.xml');
+    if (!relsFile || !drawingFile) throw new Error('Нет встроенных изображений');
+
+    const relsXml = await relsFile.async('string');
+    const relsDoc = new DOMParser().parseFromString(relsXml, 'text/xml');
+    const rels = relsDoc.getElementsByTagName('Relationship');
+    const ridToFile = new Map();
+    for (const rel of rels) {
+      const rid = rel.getAttribute('Id');
+      const target = rel.getAttribute('Target') || '';
+      if (target.includes('media/')) ridToFile.set(rid, target.replace('../media/', ''));
+    }
+
+    // Parse drawing.xml to get image positions
+    const drawingXml = await drawingFile.async('string');
+    const drawingDoc = new DOMParser().parseFromString(drawingXml, 'text/xml');
+    const anchors = drawingDoc.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing', 'twoCellAnchor');
+
+    const result = [];
+    const usedProducts = new Set();
+
+    for (const anchor of anchors) {
+      const fromElem = anchor.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing', 'from')[0];
+      const rowElem = fromElem?.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing', 'row')[0];
+      const row = parseInt(rowElem?.textContent || '-1');
+      if (row < 80) continue;
+
+      const blip = anchor.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/main', 'blip')[0];
+      const rid = blip?.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed');
+      if (!rid || !ridToFile.has(rid)) continue;
+
+      let bestName = null, bestDist = 100;
+      for (const [prodRow, name] of productsByRow) {
+        const dist = Math.abs(prodRow - row);
+        if (dist < bestDist && dist <= 10 && !usedProducts.has(name)) {
+          bestDist = dist;
+          bestName = name;
+        }
+      }
+
+      if (bestName) {
+        const imgFile = zip.file(`xl/media/${ridToFile.get(rid)}`);
+        if (imgFile) {
+          usedProducts.add(bestName);
+          const blob = await imgFile.async('blob');
+          const ext = ridToFile.get(rid).split('.').pop() || 'png';
+          result.push({ name: bestName, blob, ext });
+        }
+      }
+    }
+    return result;
+  };
+
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setPhotoLoading(true);
     setProgress('photos', 0);
     setSyncResult(null);
+
     try {
-      const r = await adminUploadPhotos(files, pct => setProgress('photos', pct));
-      setSyncResult({ ok: true, msg: `✅ Фото загружены — совпало: ${r.data.matched}, не найдено: ${r.data.notFound}, всего: ${r.data.total}` });
-      if (r.data.excelBase64) {
-        const binary = atob(r.data.excelBase64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `фото_не_найдены_${new Date().toISOString().slice(0, 10)}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      let filesToUpload = files;
+      let sourceFile = '';
+
+      // If single Excel file, extract photos on client
+      if (files.length === 1 && (files[0].name.endsWith('.xlsx') || files[0].name.endsWith('.xls'))) {
+        setSyncResult({ ok: true, msg: '📦 Извлекаем фото из Excel...' });
+        sourceFile = files[0].name;
+        const extracted = await extractPhotosFromExcel(files[0]);
+        setSyncResult({ ok: true, msg: `📦 Извлечено ${extracted.length} фото, загружаем...` });
+        filesToUpload = extracted.map(({ name, blob, ext }) => {
+          const file = new File([blob], `${name}.${ext}`, { type: `image/${ext}` });
+          return file;
+        });
       }
+
+      // Upload in batches of 10 to avoid memory issues
+      const BATCH_SIZE = 10;
+      let matched = 0, notFound = 0, total = filesToUpload.length;
+
+      for (let i = 0; i < filesToUpload.length; i += BATCH_SIZE) {
+        const batch = filesToUpload.slice(i, i + BATCH_SIZE);
+        const r = await adminUploadPhotos(batch, () => {}, sourceFile);
+        matched += r.data.matched || 0;
+        notFound += r.data.notFound || 0;
+        setProgress('photos', Math.round(((i + batch.length) / total) * 100));
+      }
+
+      setSyncResult({ ok: true, msg: `✅ Фото загружены — совпало: ${matched}, не найдено: ${notFound}, всего: ${total}` });
     } catch (err) {
-      setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка загрузки' });
+      setSyncResult({ ok: false, error: err?.response?.data?.error || err.message || 'Ошибка загрузки' });
     } finally {
       setPhotoLoading(false);
       setProgress('photos', 0);

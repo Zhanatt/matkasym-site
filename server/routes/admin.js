@@ -917,7 +917,7 @@ function getPrice(p, mode) {
 const multer = require('multer');
 const xlsx   = require('xlsx');
 const sharp  = require('sharp');
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 600 * 1024 * 1024 } }); // 600 MB for Excel with photos
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }); // 50 MB per batch
 
 function normName(s = '') {
   return s.toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
@@ -1351,7 +1351,7 @@ async function extractImagesFromExcel(buffer) {
   return result;
 }
 
-router.post('/upload-photos', editor, upload.array('files', 1000), async (req, res) => {
+router.post('/upload-photos', editor, upload.array('files', 100), async (req, res) => {
   if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'Файлы не загружены' });
 
   try {
@@ -1391,31 +1391,10 @@ router.post('/upload-photos', editor, upload.array('files', 1000), async (req, r
     const ops = [];
     const photoLogs = [];
 
-    // Check if single Excel file with embedded images
-    const isExcel = req.files.length === 1 &&
-      (req.files[0].originalname.endsWith('.xlsx') || req.files[0].originalname.endsWith('.xls'));
-
-    let filesToProcess = [];
-    const sourceFile = isExcel ? req.files[0].originalname : '';
-    const source = isExcel ? 'excel' : 'manual';
-
-    if (isExcel) {
-      console.log('[upload-photos] Processing Excel file with embedded images...');
-      try {
-        const extracted = await extractImagesFromExcel(req.files[0].buffer);
-        console.log(`[upload-photos] Extracted ${extracted.length} images from Excel`);
-        filesToProcess = extracted.map(({ name, buffer, ext }) => ({
-          originalname: name + ext,
-          buffer,
-          mimetype: ext === '.png' ? 'image/png' : 'image/jpeg'
-        }));
-      } catch (e) {
-        console.error('[upload-photos] Excel extraction error:', e.message);
-        return res.status(400).json({ error: 'Ошибка извлечения фото из Excel: ' + e.message });
-      }
-    } else {
-      filesToProcess = req.files;
-    }
+    // sourceFile comes from form data (set by client when extracting from Excel)
+    const sourceFile = req.body.sourceFile || '';
+    const source = sourceFile ? 'excel' : 'manual';
+    const filesToProcess = req.files;
 
     // Process in batches of 5 to avoid Cloudinary rate limits
     const BATCH = 5;
