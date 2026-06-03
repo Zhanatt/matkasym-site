@@ -802,7 +802,7 @@ export default function AdminProductForm() {
           {!form.priceUndefined && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
               <div className="admin-form-group">
-                <label>Себестоимость</label>
+                <label>Себестоимость {form.isSupplied && <span style={{ fontSize: 10, color: '#888', fontWeight: 400 }}>(цена поставщика)</span>}</label>
                 <input type="number" min="0" value={form.priceCost} onChange={e => set('priceCost', e.target.value)} placeholder="0" />
               </div>
               <div className="admin-form-group">
