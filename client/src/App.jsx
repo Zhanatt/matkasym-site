@@ -11,6 +11,7 @@ import AdminUsers         from './pages/admin/AdminUsers';
 import AdminChangelog     from './pages/admin/AdminChangelog';
 import AdminStockLog     from './pages/admin/AdminStockLog';
 import AdminPriceLog     from './pages/admin/AdminPriceLog';
+import AdminPhotoLog     from './pages/admin/AdminPhotoLog';
 import AdminSalesChart    from './pages/admin/AdminSalesChart';
 import AdminSetSalesChart from './pages/admin/AdminSetSalesChart';
 import AdminProductView   from './pages/admin/AdminProductView';
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="users" element={<AdminUsers />} />
           <Route path="stock-log"    element={<AdminStockLog />} />
           <Route path="price-log"    element={<AdminPriceLog />} />
+          <Route path="photo-log"    element={<AdminPhotoLog />} />
           <Route path="sales-chart"           element={<AdminSalesChart />} />
           <Route path="sales-chart/:setSlug" element={<AdminSetSalesChart />} />
           <Route path="changelog" element={<AdminChangelog />} />

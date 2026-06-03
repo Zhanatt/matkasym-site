@@ -11,6 +11,7 @@ const ProductLog   = require('../models/ProductLog');
 const CategorySpec = require('../models/CategorySpec');
 const Frontman     = require('../models/Frontman');
 const Supplier     = require('../models/Supplier');
+const PhotoLog     = require('../models/PhotoLog');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer } = require('../middleware/auth');
 
@@ -915,7 +916,8 @@ function getPrice(p, mode) {
 // ── UPLOAD STOCK EXCEL FROM ADMIN PANEL ─────────────────────────────────────
 const multer = require('multer');
 const xlsx   = require('xlsx');
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const sharp  = require('sharp');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 600 * 1024 * 1024 } }); // 600 MB for Excel with photos
 
 function normName(s = '') {
   return s.toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
@@ -1349,7 +1351,7 @@ async function extractImagesFromExcel(buffer) {
   return result;
 }
 
-router.post('/upload-photos', editor, upload.array('files', 500), async (req, res) => {
+router.post('/upload-photos', editor, upload.array('files', 1000), async (req, res) => {
   if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'Файлы не загружены' });
 
   try {
@@ -1363,7 +1365,20 @@ router.post('/upload-photos', editor, upload.array('files', 500), async (req, re
       if (key) byNameMap.set(key, p);
     }
 
-    const uploadOne = (buf, mime, publicId) => new Promise((resolve, reject) => {
+    // Compress image to max 800px width, JPEG 80% quality
+    const compressImage = async (buf) => {
+      try {
+        return await sharp(buf)
+          .resize(800, null, { withoutEnlargement: true })
+          .jpeg({ quality: 80 })
+          .toBuffer();
+      } catch (e) {
+        console.warn('[upload-photos] compression failed, using original:', e.message);
+        return buf;
+      }
+    };
+
+    const uploadOne = (buf, publicId) => new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         { folder: 'matkasym', public_id: publicId, overwrite: true, resource_type: 'image' },
         (err, r) => err ? reject(err) : resolve(r)
@@ -1374,12 +1389,15 @@ router.post('/upload-photos', editor, upload.array('files', 500), async (req, re
     let matched = 0;
     const notFoundRows = [];
     const ops = [];
+    const photoLogs = [];
 
     // Check if single Excel file with embedded images
     const isExcel = req.files.length === 1 &&
       (req.files[0].originalname.endsWith('.xlsx') || req.files[0].originalname.endsWith('.xls'));
 
     let filesToProcess = [];
+    const sourceFile = isExcel ? req.files[0].originalname : '';
+    const source = isExcel ? 'excel' : 'manual';
 
     if (isExcel) {
       console.log('[upload-photos] Processing Excel file with embedded images...');
@@ -1413,8 +1431,22 @@ router.post('/upload-photos', editor, upload.array('files', 500), async (req, re
         }
 
         try {
-          const result = await uploadOne(file.buffer, file.mimetype, `product_${product._id}`);
+          // Compress before upload
+          const compressed = await compressImage(file.buffer);
+          const result = await uploadOne(compressed, `product_${product._id}`);
           ops.push({ updateOne: { filter: { _id: product._id }, update: { $set: { images: [result.secure_url] } } } });
+
+          // Log photo upload
+          photoLogs.push({
+            productId: product._id,
+            productName: product.fullName || product.name,
+            sku: product.sku || '',
+            imageUrl: result.secure_url,
+            source,
+            sourceFile,
+            changedBy: req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {}
+          });
+
           matched++;
         } catch (e) {
           notFoundRows.push({ 'Файл': file.originalname, 'Причина': 'Ошибка Cloudinary: ' + e.message });
@@ -1423,6 +1455,7 @@ router.post('/upload-photos', editor, upload.array('files', 500), async (req, re
     }
 
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
+    if (photoLogs.length) await PhotoLog.insertMany(photoLogs);
 
     let excelBase64 = null;
     if (notFoundRows.length > 0) {
@@ -1548,6 +1581,28 @@ router.get('/price-log', editor, async (req, res) => {
     const [logs, total] = await Promise.all([
       PriceLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
       PriceLog.countDocuments(filter),
+    ]);
+    res.json({ logs, total, pages: Math.ceil(total / Number(limit)) });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// ── Photo Log ────────────────────────────────────────────────────────────────
+// GET /api/admin/photo-log?source=&page=1&limit=50&dateFrom=&dateTo=&search=
+router.get('/photo-log', editor, async (req, res) => {
+  try {
+    const { source, page = 1, limit = 50, dateFrom, dateTo, search } = req.query;
+    const filter = {};
+    if (source) filter.source = source;
+    if (search) filter.productName = { $regex: search, $options: 'i' };
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo)   filter.createdAt.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
+    }
+    const skip = (Number(page) - 1) * Number(limit);
+    const [logs, total] = await Promise.all([
+      PhotoLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+      PhotoLog.countDocuments(filter),
     ]);
     res.json({ logs, total, pages: Math.ceil(total / Number(limit)) });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
