@@ -7,11 +7,13 @@ import { adminDeleteProduct, adminCreateProduct } from '../../api';
 const NO_PHOTO = '/logos/no-photo.png';
 
 const PRODUCT_STATUS_META = {
-  for_sale:       { label: 'В продаже',           color: '#2d7a3a', bg: '#e8f5e9' },
-  planned:        { label: 'В плане',             color: '#3b5bdb', bg: '#e8eeff' },
-  in_development: { label: 'В разработке',        color: '#7c3aed', bg: '#f3e8ff' },
-  improvement:    { label: 'На улучшении',        color: '#c47a00', bg: '#fff3cd' },
-  discontinued:   { label: 'Снят с производства', color: '#888',    bg: '#f5f5f5' },
+  for_sale:       { label: 'В продаже',           color: '#2d7a3a', bg: '#e8f5e9', icon: '🛒' },
+  planned:        { label: 'В плане',             color: '#3b5bdb', bg: '#e8eeff', icon: '📋' },
+  in_development: { label: 'В разработке',        color: '#7c3aed', bg: '#f3e8ff', icon: '🔧' },
+  improvement:    { label: 'На улучшении',        color: '#c47a00', bg: '#fff3cd', icon: '✏️' },
+  on_pause:       { label: 'На паузе',            color: '#6b7280', bg: '#f3f4f6', icon: '⏸' },
+  discontinued:   { label: 'Снят',                color: '#888',    bg: '#f5f5f5', icon: '🚫' },
+  nelikvid:       { label: 'Неликвид',            color: '#78716c', bg: '#f5f5f4', icon: '🗑' },
 };
 
 function useIsMobile() {
@@ -325,7 +327,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {statusMeta && (
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                    background: statusMeta.bg, color: statusMeta.color }}>{statusMeta.label}</span>
+                    background: statusMeta.bg, color: statusMeta.color }}>{statusMeta.icon} {statusMeta.label}</span>
                 )}
                 {product.isNew && (
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
@@ -339,6 +341,20 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                   background: product.inStock ? '#e8f5e9' : '#fce8e8',
                   color: product.inStock ? '#2d7a3a' : '#c00' }}>{stockLabel}</span>
               </div>
+
+              {/* Status note (pause reason, etc.) */}
+              {product.pauseNote && (
+                <div style={{
+                  background: '#f9fafb', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '10px 14px',
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                    ⏸ Причина паузы
+                  </div>
+                  <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+                    {product.pauseNote}
+                  </div>
+                </div>
+              )}
 
               {/* Title */}
               <div>
