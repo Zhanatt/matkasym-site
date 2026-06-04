@@ -361,6 +361,30 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return Object.entries(grouped);
   }, [products]);
 
+  // Группировка по типу для труб (dayar-tutuk)
+  const tubeGroups = useMemo(() => {
+    if (setSlug !== 'dayar-tutuk') return null;
+    const groups = {
+      'Круглые': [],
+      'Квадратные': [],
+      'Овальные': [],
+      'Прямоугольные': [],
+      'Прочие': [],
+    };
+    models.forEach(([name, variants]) => {
+      const lowerName = name.toLowerCase();
+      if (lowerName.includes('круглая')) groups['Круглые'].push([name, variants]);
+      else if (lowerName.includes('квадратная')) groups['Квадратные'].push([name, variants]);
+      else if (lowerName.includes('овальная')) groups['Овальные'].push([name, variants]);
+      else if (lowerName.includes('прямоугольная')) groups['Прямоугольные'].push([name, variants]);
+      else groups['Прочие'].push([name, variants]);
+    });
+    // Убираем пустые группы
+    return Object.entries(groups).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
+  const [openGroups, setOpenGroups] = useState({});
+
   const { visible, sentinelRef, hasMore } = useLazyItems(models, 24, scrollRef.current);
 
   const priceLabel = getPriceLabel(priceMode);
@@ -449,6 +473,66 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
           ) : models.length === 0 ? (
             <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Нет товаров</div>
+          ) : viewMode === 'list' && tubeGroups ? (
+            /* Accordion view for tubes (dayar-tutuk) */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {tubeGroups.map(([groupName, items]) => {
+                const isOpen = openGroups[groupName] ?? false;
+                return (
+                  <div key={groupName} style={{ border: '1px solid #e0e0e0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+                    <div
+                      onClick={() => setOpenGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }))}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '12px 16px', cursor: 'pointer', background: isOpen ? '#f0f7f0' : '#fafafa',
+                        borderBottom: isOpen ? '1px solid #e0e0e0' : 'none',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 18, transition: 'transform .2s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: '#333' }}>{groupName}</span>
+                        <span style={{ fontSize: 12, color: '#888', background: '#eee', padding: '2px 8px', borderRadius: 10 }}>{items.length}</span>
+                      </div>
+                    </div>
+                    {isOpen && (
+                      <div>
+                        {items.map(([name, variants]) => {
+                          const primary = variants[0];
+                          const img = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 80);
+                          const price = getPrice(primary, priceMode);
+                          const hasStock = primary.stock > 0 || primary.inStock;
+                          const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
+                          return (
+                            <div key={name} onClick={() => setDetailProduct(primary)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px',
+                                borderBottom: '1px solid #f0f0f0', background: '#fff', cursor: 'pointer' }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
+                              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                            >
+                              <img src={img} alt={name}
+                                style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+                                onError={e => { e.target.src = NO_PHOTO; }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {name}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: primary.priceUndefined ? '#888' : accent, flexShrink: 0, fontStyle: primary.priceUndefined ? 'italic' : 'normal' }}>
+                                {primary.priceUndefined ? 'Цена не определена' : (price > 0 ? `${price.toLocaleString('ru')} сом` : '—')}
+                              </div>
+                              <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
+                                background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+                                {stockLabel}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : viewMode === 'list' ? (
             <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
               {visible.map(([name, variants]) => {
