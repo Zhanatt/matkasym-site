@@ -147,6 +147,7 @@ export default function AdminAllCatalog() {
   const [fCategory, setFCategory] = useState('');
   const [fStock,    setFStock]    = useState(''); // '' | 'in' | 'out'
   const [fStatus,   setFStatus]   = useState('');
+  const [fPhoto,    setFPhoto]    = useState(''); // '' | 'no' | 'yes'
   const [sortStock, setSortStock] = useState('desc'); // '' | 'asc' | 'desc'
 
   useEffect(() => {
@@ -178,7 +179,9 @@ export default function AdminAllCatalog() {
     [...new Set(products.map(p => p.productStatus).filter(Boolean))].sort(),
   [products]);
 
-  const activeFilters = [fBrand, fSet, fCategory, fStock, fStatus, sortStock].filter(Boolean).length;
+  const activeFilters = [fBrand, fSet, fCategory, fStock, fStatus, fPhoto, sortStock].filter(Boolean).length;
+
+  const hasPhoto = p => p.images && p.images.length > 0 && p.images[0] && !p.images[0].includes('no-photo');
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -190,10 +193,12 @@ export default function AdminAllCatalog() {
     if (fStock === 'in')  list = list.filter(p => p.inStock || p.stock > 0);
     if (fStock === 'out') list = list.filter(p => !p.inStock && !(p.stock > 0));
     if (fStatus)  list = list.filter(p => p.productStatus === fStatus);
+    if (fPhoto === 'no')  list = list.filter(p => !hasPhoto(p));
+    if (fPhoto === 'yes') list = list.filter(p => hasPhoto(p));
     if (sortStock === 'asc')  list = [...list].sort((a, b) => (a.stock || 0) - (b.stock || 0));
     if (sortStock === 'desc') list = [...list].sort((a, b) => (b.stock || 0) - (a.stock || 0));
     return list;
-  }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, sortStock]);
+  }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, fPhoto, sortStock]);
 
   // Group by brand → set (no brand → HOME)
   const { tree } = useMemo(() => {
@@ -227,7 +232,7 @@ export default function AdminAllCatalog() {
 
   useScrollRestore(loading);
 
-  const resetFilters = () => { setFBrand(''); setFSet(''); setFCategory(''); setFStock(''); setFStatus(''); setSortStock(''); setSearch(''); };
+  const resetFilters = () => { setFBrand(''); setFSet(''); setFCategory(''); setFStock(''); setFStatus(''); setFPhoto(''); setSortStock(''); setSearch(''); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -295,6 +300,12 @@ export default function AdminAllCatalog() {
           <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={SEL}>
             <option value="">Все статусы</option>
             {statuses.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
+          </select>
+
+          <select value={fPhoto} onChange={e => setFPhoto(e.target.value)} style={SEL}>
+            <option value="">Любое фото</option>
+            <option value="no">📷 Без фото</option>
+            <option value="yes">✅ С фото</option>
           </select>
 
           <select value={sortStock} onChange={e => setSortStock(e.target.value)} style={SEL}>
