@@ -169,39 +169,89 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
         }}>
 
           {/* Top bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 16px', borderBottom: '1px solid var(--admin-line)', flexShrink: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Карточка товара
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {canDelete && (
-                <button onClick={() => setConfirming(true)}
-                  style={{ padding: '7px 14px', borderRadius: 8, background: '#fff0f0', color: '#c00',
-                    border: '1.5px solid #f5c6cb', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                  🗑 Удалить
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: isMobile ? '10px 12px' : '12px 16px',
+            borderBottom: '1px solid var(--admin-line)',
+            flexShrink: 0,
+            gap: 8,
+          }}>
+            {/* Left side - back button on mobile, title on desktop */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              {isMobile && (
+                <button onClick={onClose}
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, background: '#f5f5f5',
+                    border: 'none', cursor: 'pointer', fontSize: 20,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                  ←
                 </button>
               )}
-              {canEdit && (
+              <div style={{
+                fontSize: isMobile ? 14 : 12,
+                fontWeight: 600,
+                color: isMobile ? '#333' : '#aaa',
+                textTransform: isMobile ? 'none' : 'uppercase',
+                letterSpacing: isMobile ? 0 : 0.5,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {isMobile ? (product.name || 'Товар') : 'Карточка товара'}
+              </div>
+            </div>
+
+            {/* Right side - action buttons */}
+            <div style={{ display: 'flex', gap: isMobile ? 6 : 8, alignItems: 'center', flexShrink: 0 }}>
+              {canDelete && (
+                <button onClick={() => setConfirming(true)}
+                  style={{
+                    padding: isMobile ? '8px 10px' : '7px 14px',
+                    borderRadius: 8,
+                    background: '#fff0f0',
+                    color: '#c00',
+                    border: '1.5px solid #f5c6cb',
+                    fontWeight: 700,
+                    fontSize: isMobile ? 12 : 13,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}>
+                  {isMobile ? '🗑' : '🗑 Удалить'}
+                </button>
+              )}
+              {canEdit && !isMobile && (
                 <button onClick={handleCopy} disabled={copying}
                   style={{ padding: '7px 14px', borderRadius: 8, background: '#f0f7ff', color: '#3463A3',
                     border: '1.5px solid #b8d0f0', fontWeight: 700, fontSize: 13,
                     cursor: copying ? 'not-allowed' : 'pointer', opacity: copying ? 0.7 : 1 }}>
-                  {copying ? '⏳ Копирование…' : '📋 Копировать'}
+                  {copying ? '⏳…' : '📋 Копировать'}
                 </button>
               )}
               {canEdit && (
                 <button onClick={() => { document.body.style.overflow = ''; navigate(`/admin/products/${product._id}/edit`, { replace: true }); }}
-                  style={{ padding: '7px 16px', borderRadius: 8, background: '#111', color: '#fff',
-                    border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                  ✏️ Редактировать
+                  style={{
+                    padding: isMobile ? '8px 12px' : '7px 16px',
+                    borderRadius: 8,
+                    background: '#111',
+                    color: '#fff',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: isMobile ? 12 : 13,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}>
+                  {isMobile ? '✏️' : '✏️ Редактировать'}
                 </button>
               )}
-              <button onClick={onClose}
-                style={{ width: 32, height: 32, borderRadius: 8, background: '#f5f5f5',
-                  border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: '32px', textAlign: 'center' }}>
-                ✕
-              </button>
+              {!isMobile && (
+                <button onClick={onClose}
+                  style={{ width: 32, height: 32, borderRadius: 8, background: '#f5f5f5',
+                    border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: '32px', textAlign: 'center' }}>
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
