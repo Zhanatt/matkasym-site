@@ -14,13 +14,21 @@ export default function AdminPdfButton({ products, label = 'Каталог' }) {
     setLoading(true);
     setProgress(5);
 
+    // Filter only products in stock
+    const inStockProducts = products.filter(p => p.inStock || p.stock > 0);
+    if (inStockProducts.length === 0) {
+      alert('Нет товаров в наличии для выгрузки');
+      setLoading(false);
+      return;
+    }
+
     // Fake progress: ramps to ~88% while PDF generates, then snaps to 100%
     timerRef.current = setInterval(() => {
       setProgress(p => p < 88 ? p + (88 - p) * 0.12 : p);
     }, 250);
 
     try {
-      await downloadCatalogPDF(products, label, priceType);
+      await downloadCatalogPDF(inStockProducts, label, priceType);
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {
