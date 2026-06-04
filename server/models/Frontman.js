@@ -4,7 +4,7 @@ const FrontmanSchema = new Schema({
   name:      { type: String, required: true },
   brand:     { type: String, required: true },
   sets:      [{ type: String }],
-  channel:   { type: String, enum: ['matkasym.com', 'vimeikin', 'matkasym.kz'], default: null },
+  channel:   { type: String, enum: ['matkasym_home', 'make_in', 'matkasym_kz'], default: null },
   instagram: { type: String, default: '' },
   color:     { type: String, default: '#888888' },
   order:     { type: Number, default: 0 },

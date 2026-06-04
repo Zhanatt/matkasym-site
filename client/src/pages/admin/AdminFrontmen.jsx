@@ -16,9 +16,9 @@ const BRAND_META = {
 const PALETTE = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E'];
 
 const SALES_CHANNELS = [
-  { key: 'matkasym.com', label: 'matkasym.com', desc: 'Кыргызстан' },
-  { key: 'vimeikin',     label: 'vimeikin',     desc: 'Оптовики' },
-  { key: 'matkasym.kz',  label: 'matkasym.kz',  desc: 'Казахстан' },
+  { key: 'matkasym_home', label: 'matkasym_home', desc: 'Розница KG' },
+  { key: 'make_in',       label: 'make_in',       desc: 'Оптовики' },
+  { key: 'matkasym_kz',   label: 'matkasym_kz',   desc: 'Казахстан' },
 ];
 
 const SET_NAMES = {
