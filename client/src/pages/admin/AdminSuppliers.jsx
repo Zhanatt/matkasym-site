@@ -6,6 +6,7 @@ import {
   adminUpdateSupplier, adminDeleteSupplier,
   adminGetProducts,
 } from '../../api/index';
+import AdminProductModal from './AdminProductModal';
 
 export default function AdminSuppliers() {
   const { user } = useAuth();
@@ -20,6 +21,8 @@ export default function AdminSuppliers() {
   const [productSearch, setProductSearch] = useState('');
   const [productResults, setProductResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [viewSupplier, setViewSupplier] = useState(null);
+  const [detailProduct, setDetailProduct] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -134,11 +137,18 @@ export default function AdminSuppliers() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
         {suppliers.map(s => (
-          <div key={s._id} style={{
-            background: '#fff', borderRadius: 12, padding: '20px 24px',
-            boxShadow: '0 1px 4px rgba(0,0,0,.07)',
-            border: '1px solid #f0f0f0',
-          }}>
+          <div key={s._id}
+            onClick={() => s.products?.length > 0 && setViewSupplier(s)}
+            style={{
+              background: '#fff', borderRadius: 12, padding: '20px 24px',
+              boxShadow: '0 1px 4px rgba(0,0,0,.07)',
+              border: '1px solid #f0f0f0',
+              cursor: s.products?.length > 0 ? 'pointer' : 'default',
+              transition: 'box-shadow .15s, transform .15s',
+            }}
+            onMouseEnter={e => { if (s.products?.length > 0) { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.07)'; e.currentTarget.style.transform = 'none'; }}
+          >
             <div style={{ fontWeight: 700, fontSize: 16, color: '#1c1c1c', marginBottom: 8 }}>
               {s.name}
             </div>
@@ -212,11 +222,11 @@ export default function AdminSuppliers() {
 
             {canEdit && (
               <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                <button onClick={() => startEdit(s)} style={{
+                <button onClick={e => { e.stopPropagation(); startEdit(s); }} style={{
                   fontSize: 12, padding: '6px 14px', borderRadius: 6, border: '1px solid #e0e0e0',
                   background: '#fff', cursor: 'pointer', color: '#555', fontWeight: 600,
                 }}>Изменить</button>
-                <button onClick={() => del(s._id)} style={{
+                <button onClick={e => { e.stopPropagation(); del(s._id); }} style={{
                   fontSize: 12, padding: '6px 14px', borderRadius: 6, border: '1px solid #fcc',
                   background: '#fff8f8', cursor: 'pointer', color: '#c00', fontWeight: 600,
                 }}>Удалить</button>
@@ -232,6 +242,101 @@ export default function AdminSuppliers() {
           </div>
         )}
       </div>
+
+      {/* Supplier catalog view */}
+      {viewSupplier && createPortal(
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1900,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20,
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setViewSupplier(null); }}
+        >
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 0,
+            width: 900, maxWidth: '95vw', maxHeight: '90vh',
+            boxShadow: '0 8px 40px rgba(0,0,0,.2)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px 24px', borderBottom: '1px solid #eee',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#1c1c1c' }}>{viewSupplier.name}</div>
+                <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
+                  {viewSupplier.products?.length || 0} товаров
+                  {viewSupplier.instagram && <span> · {viewSupplier.instagram}</span>}
+                </div>
+              </div>
+              <button
+                onClick={() => setViewSupplier(null)}
+                style={{
+                  width: 36, height: 36, borderRadius: 8, background: '#f5f5f5',
+                  border: 'none', cursor: 'pointer', fontSize: 20, lineHeight: 1,
+                }}
+              >×</button>
+            </div>
+
+            {/* Products grid */}
+            <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
+                {(viewSupplier.products || []).map(p => (
+                  <div
+                    key={p._id}
+                    onClick={() => setDetailProduct(p)}
+                    style={{
+                      background: '#fff', borderRadius: 12, overflow: 'hidden',
+                      border: '1px solid #e8e8e8', cursor: 'pointer',
+                      transition: 'box-shadow .15s, transform .15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
+                  >
+                    <div style={{ aspectRatio: '1', background: '#f8f8f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {p.images?.[0] ? (
+                        <img src={p.images[0]} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ fontSize: 40, color: '#ddd' }}>📦</span>
+                      )}
+                    </div>
+                    <div style={{ padding: '12px 14px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1c1c1c', lineHeight: 1.3,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {p.name}
+                      </div>
+                      {p.price > 0 && (
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#1d4ed8', marginTop: 6 }}>
+                          {p.price.toLocaleString('ru')} сом
+                        </div>
+                      )}
+                      {p.sku && <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>{p.sku}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Product detail modal */}
+      {detailProduct && (
+        <AdminProductModal
+          product={detailProduct}
+          onClose={() => setDetailProduct(null)}
+          onDeleted={id => {
+            setDetailProduct(null);
+            if (viewSupplier) {
+              setViewSupplier(s => ({ ...s, products: s.products.filter(p => p._id !== id) }));
+            }
+            load();
+          }}
+        />
+      )}
 
       {editId && createPortal(
         <div
