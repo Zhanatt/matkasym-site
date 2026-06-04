@@ -462,56 +462,117 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
         {/* Header */}
         <div style={{
-          padding: '0 20px', height: 56, background: '#fff',
+          background: '#fff',
           borderBottom: '1px solid #eee',
-          display: 'flex', alignItems: 'center', gap: 12,
-          flexShrink: 0, flexWrap: 'wrap',
+          flexShrink: 0,
+          position: 'relative',
+          zIndex: 10,
         }}>
-          <button onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 22, color: '#555', padding: '0 4px', flexShrink: 0, lineHeight: 1 }}>
-            ←
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 18, color: '#111', lineHeight: 1 }}>
-              {titleOverride || toTitle(setSlug)}
+          {/* Row 1: Back, Title, Stats, Price toggle, View toggle */}
+          <div style={{
+            padding: isMobile ? '10px 12px' : '0 20px',
+            height: isMobile ? 'auto' : 56,
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? 8 : 12,
+          }}>
+            <button onClick={onClose}
+              style={{
+                background: isMobile ? '#f5f5f5' : 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: isMobile ? 18 : 22,
+                color: '#555',
+                padding: isMobile ? '8px 10px' : '0 4px',
+                flexShrink: 0,
+                lineHeight: 1,
+                borderRadius: isMobile ? 8 : 0,
+              }}>
+              ←
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontWeight: 800,
+                fontSize: isMobile ? 16 : 18,
+                color: '#111',
+                lineHeight: 1.2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {titleOverride || toTitle(setSlug)}
+              </div>
+              {BRAND_META[brandKey]?.label && (
+                <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginTop: 2 }}>
+                  {BRAND_META[brandKey].label}
+                </div>
+              )}
             </div>
-            {BRAND_META[brandKey]?.label && (
-              <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginTop: 1 }}>
-                {BRAND_META[brandKey].label}
+
+            {/* Stats inline - hide on mobile */}
+            {!loading && !isMobile && (
+              <div style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>
+                {products.length} тов. · {models.length} мод.
               </div>
             )}
+
+            {/* Price toggle */}
+            <div style={{ display: 'flex', gap: 0, background: '#f5f5f5', borderRadius: 8, padding: 3, flexShrink: 0 }}>
+              {PRICE_MODES.filter(m => m.key !== 'none').map(m => (
+                <button key={m.key} onClick={() => setPriceMode(m.key)} style={{
+                  padding: isMobile ? '5px 8px' : '4px 10px',
+                  borderRadius: 6,
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: isMobile ? 10 : 11,
+                  fontWeight: 600,
+                  background: priceMode === m.key ? accent : 'transparent',
+                  color: priceMode === m.key ? '#fff' : '#888',
+                }}>{m.short}</button>
+              ))}
+            </div>
+
+            {/* View toggle */}
+            <button onClick={toggleView} title={viewMode === 'grid' ? 'Список' : 'Сетка'} style={{
+              padding: isMobile ? '6px 10px' : '5px 10px',
+              borderRadius: 6,
+              border: '1.5px solid #e0e0e0',
+              background: '#fff',
+              cursor: 'pointer',
+              fontSize: isMobile ? 14 : 16,
+              color: '#555',
+              lineHeight: 1,
+              flexShrink: 0,
+            }}>
+              {viewMode === 'grid' ? '☰' : '⊞'}
+            </button>
           </div>
 
-          {/* Stats inline */}
-          {!loading && (
-            <div style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>
-              {products.length} тов. · {models.length} мод.
+          {/* Row 2 on mobile: Stats + PDF button */}
+          {isMobile && (
+            <div style={{
+              padding: '8px 12px',
+              borderTop: '1px solid #f0f0f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}>
+              {!loading && (
+                <div style={{ fontSize: 11, color: '#888' }}>
+                  {products.length} тов. · {models.length} мод.
+                </div>
+              )}
+              <AdminPdfButton products={products} label={titleOverride || toTitle(setSlug)} />
             </div>
           )}
 
-          {/* Price toggle */}
-          <div style={{ display: 'flex', gap: 0, background: '#f5f5f5', borderRadius: 8, padding: 3, flexShrink: 0 }}>
-            {PRICE_MODES.filter(m => m.key !== 'none').map(m => (
-              <button key={m.key} onClick={() => setPriceMode(m.key)} style={{
-                padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                fontSize: 11, fontWeight: 600,
-                background: priceMode === m.key ? accent : 'transparent',
-                color:      priceMode === m.key ? '#fff'  : '#888',
-              }}>{m.short}</button>
-            ))}
-          </div>
-
-          {/* View toggle */}
-          <button onClick={toggleView} title={viewMode === 'grid' ? 'Список' : 'Сетка'} style={{
-            padding: '5px 10px', borderRadius: 6, border: '1.5px solid #e0e0e0',
-            background: '#fff', cursor: 'pointer', fontSize: 16, color: '#555', lineHeight: 1, flexShrink: 0,
-          }}>
-            {viewMode === 'grid' ? '☰' : '⊞'}
-          </button>
-
-          {/* PDF button */}
-          <AdminPdfButton products={products} label={titleOverride || toTitle(setSlug)} />
+          {/* PDF button on desktop - inside header */}
+          {!isMobile && (
+            <div style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)' }}>
+              <AdminPdfButton products={products} label={titleOverride || toTitle(setSlug)} />
+            </div>
+          )}
         </div>
 
         {/* Product grid — scrollable */}
