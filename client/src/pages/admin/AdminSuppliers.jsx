@@ -116,9 +116,9 @@ export default function AdminSuppliers() {
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <div className="admin-page-header" style={{ marginBottom: 24 }}>
         <div>
-          <h1 className="admin-page-title">Индивидуальные поставщики</h1>
+          <h1 className="admin-page-title">Поставщики MATKASYM</h1>
           <p style={{ color: 'var(--slate)', fontSize: 13, margin: '2px 0 0' }}>
-            Поставщики, которые работают с нашей продукцией — {suppliers.length} чел.
+            Всего поставщиков — {suppliers.length}
           </p>
         </div>
         {canEdit && (
