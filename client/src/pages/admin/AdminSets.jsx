@@ -123,14 +123,14 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
       const brand = r.data.find(b => b.key === brandKey);
       if (brand) setCustomSets(brand.sets || []);
     });
-    adminGetFrontmen(brandKey).then(r => {
+    adminGetFrontmen().then(r => {
       setFrontmen(r.data || []);
     }).catch(() => {});
   }, [brandKey]);
 
   const getFrontmenForSet = (slug, channel) => {
     return frontmen.filter(f =>
-      f.sets?.includes(slug) && f.channel === channel
+      f.brand === brandKey && f.sets?.includes(slug) && f.channel === channel
     );
   };
 
