@@ -1149,9 +1149,7 @@ export default function AdminSets() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {Object.entries(BRAND_META).map(([key, meta]) => {
               const baseSets = meta.staticSets || sets[key] || [];
-              const allSets  = key === 'matkasym-home'
-                ? [...baseSets, ...PROCHIYE.map(p => p.slug)]
-                : baseSets;
+              const allSets  = baseSets;
               return (
                 <BrandSection
                   key={key}
