@@ -379,9 +379,63 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       else if (lowerName.includes('прямоугольная')) groups['Прямоугольные'].push([name, variants]);
       else groups['Прочие'].push([name, variants]);
     });
-    // Убираем пустые группы
     return Object.entries(groups).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
+
+  // Группировка для урн (0-tashtandy)
+  const trashGroups = useMemo(() => {
+    if (setSlug !== '0-tashtandy') return null;
+    const groups = {
+      'Пластиковые баки': [],
+      'Уличные металлические': [],
+      'Уличные дерево+металл': [],
+      'Подвесные': [],
+      'Большие контейнеры': [],
+      'Серия KARAKOL': [],
+      'Прочие': [],
+    };
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const lowerName = name.toLowerCase();
+      const type = (p.specs?.find(s => s.key.toLowerCase().includes('тип'))?.value || '').toLowerCase();
+      const material = (p.specs?.find(s => s.key.toLowerCase().includes('материал'))?.value || '').toLowerCase();
+      const series = (p.specs?.find(s => s.key.toLowerCase().includes('серия'))?.value || '').toLowerCase();
+      const volume = parseInt(p.specs?.find(s => s.key.toLowerCase().includes('объём') || s.key.toLowerCase().includes('объем'))?.value || '0');
+
+      // Пластиковые баки (120л-660л)
+      if (lowerName.includes('пластиков') || material.includes('пластик')) {
+        groups['Пластиковые баки'].push([name, variants]);
+      }
+      // Подвесные (серия asma)
+      else if (type.includes('подвесн') || series.includes('asma')) {
+        groups['Подвесные'].push([name, variants]);
+      }
+      // Большие контейнеры Tazalyk (660л+)
+      else if (lowerName.includes('tazalyk') || volume >= 660) {
+        groups['Большие контейнеры'].push([name, variants]);
+      }
+      // Серия KARAKOL
+      else if (series.includes('karakol') || lowerName.includes('karakol') || lowerName.includes('plaza') || lowerName.includes('bp')) {
+        groups['Серия KARAKOL'].push([name, variants]);
+      }
+      // Уличные дерево+металл (GW, SW серии)
+      else if (material.includes('дерево') || series.includes('wood') || /^(gw|sw)\d?$/i.test(name)) {
+        groups['Уличные дерево+металл'].push([name, variants]);
+      }
+      // Уличные металлические (G серия, GWR)
+      else if (type.includes('уличн') || /^(g\d|g tegerek|gwr|novotel)/i.test(name)) {
+        groups['Уличные металлические'].push([name, variants]);
+      }
+      // Прочие
+      else {
+        groups['Прочие'].push([name, variants]);
+      }
+    });
+    return Object.entries(groups).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
+  // Общая переменная для групп (трубы или урны)
+  const accordionGroups = tubeGroups || trashGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
@@ -473,7 +527,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
           ) : models.length === 0 ? (
             <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Нет товаров</div>
-          ) : viewMode === 'list' && tubeGroups ? (
+          ) : viewMode === 'list' && accordionGroups ? (
             /* Animated Accordion for tubes (dayar-tutuk) */
             <>
               <style>{`
@@ -669,7 +723,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 }
               `}</style>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {tubeGroups.map(([groupName, items], groupIdx) => {
+                {accordionGroups.map(([groupName, items], groupIdx) => {
                   const isOpen = openGroups[groupName] ?? false;
                   return (
                     <div
