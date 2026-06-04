@@ -791,9 +791,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
-                    <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative' }}>
+                    <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <img src={img} alt={name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                         onError={e => { e.target.src = NO_PHOTO; }} />
                       {primary.isSupplied && (
                         <div style={{ position: 'absolute', top: 6, left: 6 }}>
