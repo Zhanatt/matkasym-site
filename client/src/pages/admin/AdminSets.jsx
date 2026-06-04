@@ -474,65 +474,265 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
           ) : models.length === 0 ? (
             <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Нет товаров</div>
           ) : viewMode === 'list' && tubeGroups ? (
-            /* Accordion view for tubes (dayar-tutuk) */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {tubeGroups.map(([groupName, items]) => {
-                const isOpen = openGroups[groupName] ?? false;
-                return (
-                  <div key={groupName} style={{ border: '1px solid #e0e0e0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+            /* Animated Accordion for tubes (dayar-tutuk) */
+            <>
+              <style>{`
+                @keyframes tubeAccordionSlideIn {
+                  from { opacity: 0; transform: translateY(-8px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes tubeItemFadeIn {
+                  from { opacity: 0; transform: translateX(-12px); }
+                  to { opacity: 1; transform: translateX(0); }
+                }
+                @keyframes tubePulse {
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(38, 120, 70, 0.2); }
+                  50% { box-shadow: 0 0 0 4px rgba(38, 120, 70, 0); }
+                }
+                .tube-accordion-group {
+                  border: 1px solid #e0e0e0;
+                  border-radius: 14px;
+                  overflow: hidden;
+                  background: linear-gradient(135deg, #fff 0%, #fafbfc 100%);
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+                  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .tube-accordion-group:hover {
+                  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+                  border-color: #c8d4c8;
+                }
+                .tube-accordion-header {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 14px 18px;
+                  cursor: pointer;
+                  background: linear-gradient(135deg, #f8faf8 0%, #f0f4f0 100%);
+                  transition: all 0.25s ease;
+                  position: relative;
+                  overflow: hidden;
+                }
+                .tube-accordion-header::before {
+                  content: '';
+                  position: absolute;
+                  left: 0;
+                  top: 0;
+                  height: 100%;
+                  width: 4px;
+                  background: linear-gradient(180deg, #267846 0%, #3a9d5c 100%);
+                  transform: scaleY(0);
+                  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .tube-accordion-header.open::before {
+                  transform: scaleY(1);
+                }
+                .tube-accordion-header:hover {
+                  background: linear-gradient(135deg, #f0f7f0 0%, #e8f2e8 100%);
+                }
+                .tube-accordion-header.open {
+                  background: linear-gradient(135deg, #e8f5e9 0%, #dceedd 100%);
+                  border-bottom: 1px solid #c8e6c9;
+                }
+                .tube-accordion-icon {
+                  width: 28px;
+                  height: 28px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  background: linear-gradient(135deg, #267846 0%, #2d8a50 100%);
+                  border-radius: 8px;
+                  color: #fff;
+                  font-size: 12px;
+                  font-weight: 700;
+                  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                  box-shadow: 0 2px 6px rgba(38, 120, 70, 0.3);
+                }
+                .tube-accordion-icon.open {
+                  transform: rotate(90deg);
+                  background: linear-gradient(135deg, #1b5e20 0%, #267846 100%);
+                }
+                .tube-accordion-title {
+                  font-size: 15px;
+                  font-weight: 700;
+                  color: #1a3d1a;
+                  letter-spacing: -0.3px;
+                  transition: color 0.2s;
+                }
+                .tube-accordion-header:hover .tube-accordion-title {
+                  color: #267846;
+                }
+                .tube-accordion-badge {
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: #fff;
+                  background: linear-gradient(135deg, #78909c 0%, #607d8b 100%);
+                  padding: 3px 10px;
+                  border-radius: 12px;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                  transition: all 0.25s;
+                }
+                .tube-accordion-header.open .tube-accordion-badge {
+                  background: linear-gradient(135deg, #267846 0%, #2d8a50 100%);
+                }
+                .tube-accordion-content {
+                  max-height: 0;
+                  overflow: hidden;
+                  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                  background: #fff;
+                }
+                .tube-accordion-content.open {
+                  max-height: 2000px;
+                }
+                .tube-item {
+                  display: flex;
+                  align-items: center;
+                  gap: 12px;
+                  padding: 10px 14px;
+                  border-bottom: 1px solid #f0f0f0;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  position: relative;
+                }
+                .tube-item:last-child {
+                  border-bottom: none;
+                }
+                .tube-item::after {
+                  content: '';
+                  position: absolute;
+                  left: 0;
+                  top: 0;
+                  bottom: 0;
+                  width: 0;
+                  background: linear-gradient(90deg, rgba(38, 120, 70, 0.08) 0%, transparent 100%);
+                  transition: width 0.3s ease;
+                }
+                .tube-item:hover::after {
+                  width: 100%;
+                }
+                .tube-item:hover {
+                  background: #f8faf8;
+                }
+                .tube-item:active {
+                  transform: scale(0.995);
+                }
+                .tube-item-img {
+                  width: 48px;
+                  height: 48px;
+                  object-fit: cover;
+                  border-radius: 10px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                  transition: transform 0.2s, box-shadow 0.2s;
+                  position: relative;
+                  z-index: 1;
+                }
+                .tube-item:hover .tube-item-img {
+                  transform: scale(1.05);
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+                }
+                .tube-item-name {
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: #222;
+                  transition: color 0.2s;
+                  position: relative;
+                  z-index: 1;
+                }
+                .tube-item:hover .tube-item-name {
+                  color: #267846;
+                }
+                .tube-item-price {
+                  font-size: 13px;
+                  font-weight: 800;
+                  transition: transform 0.2s;
+                  position: relative;
+                  z-index: 1;
+                }
+                .tube-item:hover .tube-item-price {
+                  transform: scale(1.05);
+                }
+                .tube-stock-badge {
+                  font-size: 10px;
+                  font-weight: 700;
+                  padding: 4px 10px;
+                  border-radius: 6px;
+                  transition: all 0.2s;
+                  position: relative;
+                  z-index: 1;
+                }
+                .tube-stock-badge.in-stock {
+                  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+                  color: #2d7a3a;
+                }
+                .tube-stock-badge.out-stock {
+                  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+                  color: #c62828;
+                }
+              `}</style>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {tubeGroups.map(([groupName, items], groupIdx) => {
+                  const isOpen = openGroups[groupName] ?? false;
+                  return (
                     <div
-                      onClick={() => setOpenGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }))}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '12px 16px', cursor: 'pointer', background: isOpen ? '#f0f7f0' : '#fafafa',
-                        borderBottom: isOpen ? '1px solid #e0e0e0' : 'none',
-                      }}
+                      key={groupName}
+                      className="tube-accordion-group"
+                      style={{ animation: `tubeAccordionSlideIn 0.4s ease ${groupIdx * 0.08}s both` }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 18, transition: 'transform .2s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: '#333' }}>{groupName}</span>
-                        <span style={{ fontSize: 12, color: '#888', background: '#eee', padding: '2px 8px', borderRadius: 10 }}>{items.length}</span>
+                      <div
+                        className={`tube-accordion-header ${isOpen ? 'open' : ''}`}
+                        onClick={() => setOpenGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }))}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div className={`tube-accordion-icon ${isOpen ? 'open' : ''}`}>▶</div>
+                          <span className="tube-accordion-title">{groupName}</span>
+                        </div>
+                        <span className="tube-accordion-badge">{items.length} шт</span>
                       </div>
-                    </div>
-                    {isOpen && (
-                      <div>
-                        {items.map(([name, variants]) => {
+                      <div className={`tube-accordion-content ${isOpen ? 'open' : ''}`}>
+                        {items.map(([name, variants], itemIdx) => {
                           const primary = variants[0];
                           const img = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 80);
                           const price = getPrice(primary, priceMode);
                           const hasStock = primary.stock > 0 || primary.inStock;
                           const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
                           return (
-                            <div key={name} onClick={() => setDetailProduct(primary)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px',
-                                borderBottom: '1px solid #f0f0f0', background: '#fff', cursor: 'pointer' }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
-                              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                            <div
+                              key={name}
+                              className="tube-item"
+                              onClick={() => setDetailProduct(primary)}
+                              style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none' }}
                             >
-                              <img src={img} alt={name}
-                                style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
-                                onError={e => { e.target.src = NO_PHOTO; }} />
+                              <img
+                                src={img}
+                                alt={name}
+                                className="tube-item-img"
+                                onError={e => { e.target.src = NO_PHOTO; }}
+                              />
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <div className="tube-item-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {name}
                                 </div>
                               </div>
-                              <div style={{ fontSize: 13, fontWeight: 800, color: primary.priceUndefined ? '#888' : accent, flexShrink: 0, fontStyle: primary.priceUndefined ? 'italic' : 'normal' }}>
+                              <div
+                                className="tube-item-price"
+                                style={{
+                                  color: primary.priceUndefined ? '#888' : accent,
+                                  fontStyle: primary.priceUndefined ? 'italic' : 'normal'
+                                }}
+                              >
                                 {primary.priceUndefined ? 'Цена не определена' : (price > 0 ? `${price.toLocaleString('ru')} сом` : '—')}
                               </div>
-                              <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
-                                background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+                              <div className={`tube-stock-badge ${hasStock ? 'in-stock' : 'out-stock'}`}>
                                 {stockLabel}
                               </div>
                             </div>
                           );
                         })}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           ) : viewMode === 'list' ? (
             <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
               {visible.map(([name, variants]) => {
