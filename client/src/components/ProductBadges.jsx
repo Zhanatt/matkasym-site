@@ -1,3 +1,5 @@
+import { useAuth } from '../context/AuthContext';
+
 export const STATUS_BADGE = {
   for_sale:       null,
   planned:        { icon: '📋', label: 'В плане',        bg: '#e8f0fe', color: '#1a73e8' },
@@ -9,7 +11,10 @@ export const STATUS_BADGE = {
 };
 
 export function SupplierBadge({ product, size = 'normal' }) {
-  if (!product.isSupplied) return null;
+  const { user } = useAuth();
+  const canSeeSupplier = user?.role === 'owner' || user?.role === 'navigator';
+
+  if (!product.isSupplied || !canSeeSupplier) return null;
 
   const height = size === 'small' ? 12 : 18;
   const supplierName = product.supplier?.company || 'Привозной';

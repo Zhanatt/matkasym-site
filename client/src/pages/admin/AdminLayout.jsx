@@ -5,13 +5,13 @@ import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegr
 import './Admin.css';
 
 const NAV_ALL = [
-  { to: '/admin',          label: 'Дашборд',             icon: '◻', end: true, roles: ['owner','editor','viewer'] },
-  { to: '/admin/sets',     label: 'Каталог по сетам',    icon: '🗂', roles: ['owner','editor','viewer'] },
-  { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer'] },
-  { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','editor','viewer'] },
-  { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer'], badge: 'news' },
+  { to: '/admin',          label: 'Дашборд',             icon: '◻', end: true, roles: ['owner','editor','viewer','navigator'] },
+  { to: '/admin/sets',     label: 'Каталог по сетам',    icon: '🗂', roles: ['owner','editor','viewer','navigator'] },
+  { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer','navigator'] },
+  { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','navigator'] },
+  { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer','navigator'], badge: 'news' },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },
-  { to: '/admin/tenders',      label: 'Тендеры',            icon: '🎯', roles: ['owner','editor','viewer'] },
+  { to: '/admin/tenders',      label: 'Тендеры',            icon: '🎯', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/stock-log',   label: 'История остатков',  icon: '📦', roles: ['owner','editor'] },
   { to: '/admin/price-log',   label: 'История цен',       icon: '💰', roles: ['owner','editor'] },
   { to: '/admin/photo-log',   label: 'История фото',      icon: '🖼', roles: ['owner','editor'] },
@@ -77,7 +77,7 @@ export default function AdminLayout() {
     if (location.pathname === '/admin/news') setNewsUnread(0);
   }, [location.pathname]);
 
-  const ALLOWED = ['owner', 'editor', 'viewer'];
+  const ALLOWED = ['owner', 'editor', 'viewer', 'navigator'];
 
   // Waiting for AuthContext to verify token
   if (loading) return (

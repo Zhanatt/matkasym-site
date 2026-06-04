@@ -21,20 +21,22 @@ function timeAgo(date) {
 }
 
 const AVATAR_COLORS = {
-  owner:  '#000',
-  editor: '#7b3fa0',
-  viewer: '#1a6fb5',
-  banned: '#c0392b',
-  user:   '#888',
-  pending:'#c47a00',
+  owner:     '#000',
+  editor:    '#7b3fa0',
+  viewer:    '#1a6fb5',
+  navigator: '#0d9488',
+  banned:    '#c0392b',
+  user:      '#888',
+  pending:   '#c47a00',
 };
 
 const ROLE_LABELS = {
-  owner:  '👑 Владелец',
-  editor: '✏️ Редактор',
-  viewer: '👁️ Просмотр',
-  banned: '🚫 Заблокирован',
-  user:   '👤 Пользователь',
+  owner:     '👑 Владелец',
+  editor:    '✏️ Редактор',
+  viewer:    '👁️ Просмотр',
+  navigator: '🧭 Навигатор',
+  banned:    '🚫 Заблокирован',
+  user:      '👤 Пользователь',
 };
 
 export default function AdminUsers() {
@@ -185,6 +187,7 @@ export default function AdminUsers() {
             >
               <option value="editor">✏️ Редактор</option>
               <option value="viewer">👁️ Просмотр</option>
+              <option value="navigator">🧭 Навигатор</option>
               <option value="banned">🚫 Запретить доступ</option>
             </select>
           ) : (
