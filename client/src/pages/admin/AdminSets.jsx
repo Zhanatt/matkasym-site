@@ -6,6 +6,7 @@ import AdminProductModal from './AdminProductModal';
 import {
   adminGetFacets, adminGetProducts,
   adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet,
+  adminGetFrontmen,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
@@ -64,6 +65,12 @@ const SET_SUB_ITEMS = {
   'dayar-tutuk': ['Трубопрокат'],
 };
 
+const SALES_CHANNELS = [
+  { key: 'matkasym.com', label: 'matkasym.com', short: 'KG', color: '#DC1E24' },
+  { key: 'vimeikin',     label: 'vimeikin',     short: 'ОПТ', color: '#3463A3' },
+  { key: 'matkasym.kz',  label: 'matkasym.kz',  short: 'KZ', color: '#267846' },
+];
+
 function toTitle(slug) {
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -109,13 +116,23 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   const [addSetError, setAddSetError] = useState('');
   const [editingSetKey, setEditingSetKey] = useState(null);
   const [editSetLabel,  setEditSetLabel]  = useState('');
+  const [frontmen, setFrontmen] = useState([]);
 
   useEffect(() => {
     adminGetBrands().then(r => {
       const brand = r.data.find(b => b.key === brandKey);
       if (brand) setCustomSets(brand.sets || []);
     });
+    adminGetFrontmen(brandKey).then(r => {
+      setFrontmen(r.data || []);
+    }).catch(() => {});
   }, [brandKey]);
+
+  const getFrontmenForSet = (slug, channel) => {
+    return frontmen.filter(f =>
+      f.sets?.includes(slug) && f.channel === channel
+    );
+  };
 
   const allSets = [...new Set([...sets, ...customSets.map(s => s.key)])];
 
@@ -216,6 +233,25 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
         </div>
       )}
 
+      {/* Channel headers */}
+      {!isMobile && (
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, paddingLeft: 200 }}>
+          {SALES_CHANNELS.map(ch => (
+            <div key={ch.key} style={{
+              flex: 1,
+              textAlign: 'center',
+              fontSize: 10,
+              fontWeight: 700,
+              color: ch.color,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}>
+              {ch.label}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Sets list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {allSets.map((slug, i) => {
@@ -234,7 +270,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
               <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
 
               {editing && isEditing ? (
-                <div style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center' }}>
+                <div style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center', maxWidth: 150 }}>
                   <input
                     value={editSetLabel}
                     onChange={e => setEditSetLabel(e.target.value)}
@@ -249,12 +285,13 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                 <span
                   onClick={() => !editing && handleOpenCatalog(slug)}
                   onDoubleClick={() => editing && customSet && startEditSet(slug, displayLabel)}
-                  style={{ fontSize: 13, color: '#1c1c1c', flex: 1, minWidth: 0,
+                  style={{ fontSize: 13, color: '#1c1c1c', width: isMobile ? 'auto' : 140, flexShrink: 0,
                     cursor: editing ? (customSet ? 'text' : 'default') : 'pointer',
                     textDecoration: editing ? 'none' : 'underline',
                     textDecorationStyle: 'dotted', textDecorationColor: '#bbb',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}
-                  title={editing && customSet ? 'Двойной клик для редактирования' : ''}
+                  title={editing && customSet ? 'Двойной клик для редактирования' : displayLabel}
                 >{displayLabel}</span>
               )}
 
@@ -273,6 +310,42 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                     ✕
                   </button>
                 </>
+              )}
+
+              {/* Sales channels columns */}
+              {!isMobile && !editing && (
+                <div style={{ display: 'flex', flex: 1, marginLeft: 8 }}>
+                  {SALES_CHANNELS.map(ch => {
+                    const channelFrontmen = getFrontmenForSet(slug, ch.key);
+                    return (
+                      <div key={ch.key} style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 4,
+                        justifyContent: 'center',
+                        minHeight: 20,
+                      }}>
+                        {channelFrontmen.map(f => (
+                          <span key={f._id} style={{
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: f.color || ch.color,
+                            background: `${f.color || ch.color}15`,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {f.name}
+                          </span>
+                        ))}
+                        {channelFrontmen.length === 0 && (
+                          <span style={{ fontSize: 10, color: '#ddd' }}>—</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 

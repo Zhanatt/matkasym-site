@@ -15,6 +15,12 @@ const BRAND_META = {
 
 const PALETTE = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E'];
 
+const SALES_CHANNELS = [
+  { key: 'matkasym.com', label: 'matkasym.com', desc: 'Кыргызстан' },
+  { key: 'vimeikin',     label: 'vimeikin',     desc: 'Оптовики' },
+  { key: 'matkasym.kz',  label: 'matkasym.kz',  desc: 'Казахстан' },
+];
+
 const SET_NAMES = {
   // HOME
   'achyk-asman':     'Achyk Asman',
@@ -86,7 +92,7 @@ export default function AdminFrontmen() {
 
   function startNew(brandKey) {
     const color = PALETTE[frontmen.length % PALETTE.length];
-    setForm({ userId: '', name: '', brand: brandKey, instagram: '', sets: [], color });
+    setForm({ userId: '', name: '', brand: brandKey, instagram: '', sets: [], color, channel: '' });
     setEditId('new');
   }
 
@@ -98,6 +104,7 @@ export default function AdminFrontmen() {
       instagram: fm.instagram || '',
       sets: [...fm.sets],
       color: fm.color,
+      channel: fm.channel || '',
     });
     setEditId(fm._id);
   }
@@ -201,6 +208,15 @@ export default function AdminFrontmen() {
                     {fm.instagram && (
                       <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{fm.instagram}</div>
                     )}
+                    {fm.channel && (
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, color: '#fff',
+                        background: fm.color, padding: '2px 8px', borderRadius: 4,
+                        marginTop: 4, display: 'inline-block',
+                      }}>
+                        {fm.channel}
+                      </div>
+                    )}
                     {fm.sets.length > 0 && (
                       <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {fm.sets.map(s => (
@@ -301,6 +317,23 @@ export default function AdminFrontmen() {
                   <option key={k} value={k}>{m.label}</option>
                 ))}
               </select>
+
+              {/* Channel */}
+              <div>
+                <div style={{ fontSize: 11, color: '#888', fontWeight: 600, marginBottom: 6 }}>КАНАЛ ПРОДАЖ</div>
+                <select
+                  value={form.channel}
+                  onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}
+                  style={{ width: '100%', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 8, padding: '8px 12px', outline: 'none' }}
+                >
+                  <option value="">— Не выбран —</option>
+                  {SALES_CHANNELS.map(ch => (
+                    <option key={ch.key} value={ch.key}>
+                      {ch.label} ({ch.desc})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Sets */}
               <div>
