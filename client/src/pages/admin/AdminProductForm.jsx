@@ -98,6 +98,7 @@ const EMPTY = {
   pauseNote: '',
   developmentTZ: { description: '', files: [] },
   improvementTZ: { problem: '', solution: '', files: [] },
+  techSheet: { files: [] },
 };
 
 // ── TZBlock ───────────────────────────────────────────────────────────────────
@@ -135,9 +136,11 @@ function TZBlock({ label, accent, fields, data, onChange }) {
 
   return (
     <div style={{ marginTop: 16, padding: '16px 20px', borderRadius: 10, border: `1.5px solid ${accent}30`, background: `${accent}08` }}>
-      <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: accent, marginBottom: 14 }}>
-        {label}
-      </div>
+      {label && (
+        <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: accent, marginBottom: 14 }}>
+          {label}
+        </div>
+      )}
       {fields.map(f => (
         <div key={f.key} className="admin-form-group" style={{ marginBottom: 12 }}>
           <label style={{ color: accent }}>{f.label}</label>
@@ -287,6 +290,7 @@ export default function AdminProductForm() {
           pauseNote:      p.pauseNote || '',
           developmentTZ:  p.developmentTZ || { description: '', files: [] },
           improvementTZ:  p.improvementTZ || { problem: '', solution: '', files: [] },
+          techSheet:      p.techSheet || { files: [] },
         });
         if (p.category) {
           adminGetCategorySpecs(p.category)
@@ -991,6 +995,23 @@ export default function AdminProductForm() {
             <textarea rows={5} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Описание товара..." />
           </div>
         </Card>
+
+        {/* ── ТЕХЛИСТЫ (только для SHAAR) ── */}
+        {form.brand === 'matkasym-shaar' && (
+          <Card>
+            <SH text="Технические листы" />
+            <p style={{ fontSize: 13, color: '#666', margin: '0 0 12px 0' }}>
+              Прикрепите техлисты, чертежи и спецификации для этого товара
+            </p>
+            <TZBlock
+              label=""
+              accent="#3463A3"
+              fields={[]}
+              data={form.techSheet}
+              onChange={val => set('techSheet', val)}
+            />
+          </Card>
+        )}
 
         {error && <p style={{ color: 'var(--red)', fontSize: 14, margin: 0 }}>{error}</p>}
 

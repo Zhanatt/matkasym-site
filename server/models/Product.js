@@ -74,6 +74,11 @@ const productSchema = new mongoose.Schema({
     files: [{ name: { type: String }, url: { type: String } }],
   },
 
+  // Tech sheets for SHAAR products
+  techSheet: {
+    files: [{ name: { type: String }, url: { type: String } }],
+  },
+
   // Tender
   tenderCompleted:   { type: Boolean, default: false },
   tenderCompletedAt: { type: Date,    default: null  },
