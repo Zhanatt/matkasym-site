@@ -57,7 +57,7 @@ const productSchema = new mongoose.Schema({
   stockStatus:      { type: String, enum: ['in_stock', 'out_of_stock', 'expected'], default: 'in_stock' },
   inTransit:        { type: Boolean, default: false },  // товар в пути, ещё не на складе
 
-  productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development', 'nelikvid', 'on_pause'], default: 'for_sale' },
+  productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development', 'liquidation', 'on_pause'], default: 'for_sale' },
   pauseNote:        { type: String, default: '' },
   developmentStage: { type: String, default: '' },  // e.g. 'производство', 'моделирование', 'чертеж'
 

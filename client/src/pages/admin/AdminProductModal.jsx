@@ -13,7 +13,7 @@ const PRODUCT_STATUS_META = {
   improvement:    { label: 'На улучшении',        color: '#c47a00', bg: '#fff3cd', icon: '✏️' },
   on_pause:       { label: 'На паузе',            color: '#6b7280', bg: '#f3f4f6', icon: '⏸' },
   discontinued:   { label: 'Снят',                color: '#888',    bg: '#f5f5f5', icon: '🚫' },
-  nelikvid:       { label: 'Неликвид',            color: '#78716c', bg: '#f5f5f4', icon: '🗑' },
+  liquidation:    { label: 'Ликвидация',          color: '#92400e', bg: '#fef3c7', icon: '🏷️' },
 };
 
 function useIsMobile() {

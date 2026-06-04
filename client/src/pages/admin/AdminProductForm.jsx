@@ -836,7 +836,7 @@ export default function AdminProductForm() {
                 { value: 'improvement',    label: '🔧 На улучшении',  bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
                 { value: 'on_pause',       label: '⏸ На паузе',       bg: '#f0f4f8', color: '#475569', border: '#94a3b8' },
                 { value: 'discontinued',   label: '🚫 Снят',          bg: '#fff0f0', color: '#c0392b', border: '#e74c3c' },
-                { value: 'nelikvid',       label: '🗑️ Неликвид',      bg: '#fef3c7', color: '#92400e', border: '#d97706' },
+                { value: 'liquidation',    label: '🏷️ Ликвидация',    bg: '#fef3c7', color: '#92400e', border: '#d97706' },
               ].map(opt => (
                 <label key={opt.value} style={{
                   display: 'flex', alignItems: 'center', gap: 6,

@@ -5,7 +5,7 @@ const newsSchema = new Schema({
   type: {
     type: String,
     enum: [
-      'discontinued', 'nelikvid', 'out_of_stock', 'restocked', 'price_change', 'custom',
+      'discontinued', 'liquidation', 'out_of_stock', 'restocked', 'price_change', 'custom',
       'new_product', 'status_planned', 'status_in_development', 'status_improvement', 'status_for_sale',
     ],
     required: true,

@@ -3,7 +3,7 @@ const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
 
 const NEWS_TYPE_LABELS = {
   discontinued:          '🚫 Снят с производства',
-  nelikvid:              '📦 Неликвид',
+  liquidation:              '📦 Ликвидация',
   out_of_stock:          '❌ Нет в наличии',
   restocked:             '✅ Появился на складе',
   price_change:          '💰 Изменение цены',

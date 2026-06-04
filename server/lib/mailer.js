@@ -108,7 +108,7 @@ async function sendPasswordReset({ toEmail, toName, resetLink }) {
 
 const NEWS_TYPE_LABELS = {
   discontinued:          'Снят с производства',
-  nelikvid:              'Неликвид',
+  liquidation:              'Ликвидация',
   out_of_stock:          'Нет в наличии',
   restocked:             'Появился на складе',
   price_change:          'Изменение цены',
@@ -128,7 +128,7 @@ async function sendNewsNotification({ type, title, message, product }, recipient
   }
   const typeLabel = NEWS_TYPE_LABELS[type] || 'Новость';
   const typeColors = {
-    discontinued: '#c0392b', nelikvid: '#8e44ad',
+    discontinued: '#c0392b', liquidation: '#8e44ad',
     out_of_stock: '#7f8c8d', restocked: '#27ae60', price_change: '#2980b9', custom: '#2c3e50',
     new_product: '#27ae60', status_planned: '#f39c12', status_in_development: '#3498db',
     status_improvement: '#9b59b6', status_for_sale: '#27ae60',

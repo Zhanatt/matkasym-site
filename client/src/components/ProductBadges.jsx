@@ -7,7 +7,7 @@ export const STATUS_BADGE = {
   improvement:    { icon: '⬆', label: 'На улучшении',   bg: '#f3e5f5', color: '#7b1fa2' },
   on_pause:       { icon: '⏸', label: 'На паузе',        bg: '#f0f4f8', color: '#475569' },
   discontinued:   { icon: '🚫', label: 'Снят',           bg: '#fff0f0', color: '#c0392b' },
-  nelikvid:       { icon: '🗑️', label: 'Неликвид',       bg: '#fef3c7', color: '#92400e' },
+  liquidation:    { icon: '🏷️', label: 'Ликвидация',     bg: '#fef3c7', color: '#92400e' },
 };
 
 export function SupplierBadge({ product, size = 'normal' }) {
