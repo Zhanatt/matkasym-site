@@ -77,9 +77,8 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [stats,        setStats]        = useState(null);
-  const [discontinuedItems,  setDiscontinuedItems]  = useState([]);
-  const [illiquidItems, setIlliquidItems] = useState([]);
-  const [showAllDiscontinued, setShowAllDiscontinued] = useState(false);
+  const [liquidationItems, setLiquidationItems] = useState([]);
+  const [showAllLiquidation, setShowAllLiquidation] = useState(false);
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
   const [priceLoading,  setPriceLoading]  = useState(null);
@@ -89,11 +88,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     adminStats().then(r => setStats(r.data)).catch(() => {});
-    adminGetProducts({ productStatus: 'discontinued', limit: 100 })
-      .then(r => setDiscontinuedItems(r.data.products || []))
-      .catch(() => {});
-    adminGetProducts({ set: 'nelikvid', limit: 500 })
-      .then(r => setIlliquidItems(r.data.products || []))
+    adminGetProducts({ productStatus: 'liquidation', limit: 500 })
+      .then(r => setLiquidationItems(r.data.products || []))
       .catch(() => {});
   }, []);
 
@@ -334,8 +330,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const PREVIEW = 5;
-  const discontinuedPreview = showAllDiscontinued ? discontinuedItems : discontinuedItems.slice(0, PREVIEW);
+  const PREVIEW = 6;
+  const liquidationPreview = showAllLiquidation ? liquidationItems : liquidationItems.slice(0, PREVIEW);
 
   return (
     <div>
@@ -455,78 +451,45 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── СНЯТЫЕ С ПРОИЗВОДСТВА ── */}
-      {discontinuedItems.length > 0 && (
+      {/* ── ЛИКВИДАЦИЯ ── */}
+      {liquidationItems.length > 0 && (
         <div style={{
-          background: '#fdf4f4',
-          border: '1px solid #f0cfcf',
+          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+          border: '1px solid #f59e0b',
           borderRadius: 16,
           padding: '18px 22px',
           marginBottom: 20,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 24 }}>🚫</span>
+              <span style={{ fontSize: 24 }}>🏷️</span>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#c0392b', letterSpacing: 0.2 }}>
-                  СНЯТО С ПРОИЗВОДСТВА — {discontinuedItems.length} {discontinuedItems.length === 1 ? 'товар' : discontinuedItems.length < 5 ? 'товара' : 'товаров'}
+                <div style={{ fontWeight: 800, fontSize: 15, color: '#92400e', letterSpacing: 0.2 }}>
+                  ЛИКВИДАЦИЯ — {liquidationItems.length} {liquidationItems.length === 1 ? 'товар' : liquidationItems.length < 5 ? 'товара' : 'товаров'}
                 </div>
-                <div style={{ fontSize: 13, color: '#922b21', marginTop: 3, fontWeight: 600 }}>
-                  🚨 Эти товары сняты с производства — нужно СРОЧНО распродать остатки на складе!
+                <div style={{ fontSize: 13, color: '#78350f', marginTop: 3, fontWeight: 600 }}>
+                  🔥 Нужно распродать: сняты с производства, залежались или требуют акции
                 </div>
               </div>
             </div>
             <Link
-              to="/admin/products?productStatus=discontinued"
-              style={{ fontSize: 12, fontWeight: 700, color: '#c0392b', textDecoration: 'none', flexShrink: 0, padding: '6px 14px', border: '1.5px solid #c0392b', borderRadius: 8, background: '#fff' }}
+              to="/admin/products?productStatus=liquidation"
+              style={{ fontSize: 12, fontWeight: 700, color: '#92400e', textDecoration: 'none', flexShrink: 0, padding: '6px 14px', border: '1.5px solid #92400e', borderRadius: 8, background: '#fff' }}
             >
               Все →
             </Link>
           </div>
 
-          <ProductAlertList products={discontinuedPreview} navigate={navigate} />
+          <ProductAlertList products={liquidationPreview} navigate={navigate} />
 
-          {discontinuedItems.length > PREVIEW && (
+          {liquidationItems.length > PREVIEW && (
             <button
-              onClick={() => setShowAllDiscontinued(v => !v)}
-              style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#c0392b' }}
+              onClick={() => setShowAllLiquidation(v => !v)}
+              style={{ marginTop: 10, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#92400e' }}
             >
-              {showAllDiscontinued ? 'Свернуть ▲' : `Показать все ${discontinuedItems.length} ▼`}
+              {showAllLiquidation ? 'Свернуть ▲' : `Показать все ${liquidationItems.length} ▼`}
             </button>
           )}
-        </div>
-      )}
-
-      {/* ── НЕЛИКВИДЫ ── */}
-      {illiquidItems.length > 0 && (
-        <div style={{
-          background: '#fdf9f0',
-          border: '1px solid #ecd9ad',
-          borderRadius: 16,
-          padding: '18px 22px',
-          marginBottom: 20,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 24 }}>📦</span>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#c47a00', letterSpacing: 0.2 }}>
-                  НЕЛИКВИДЫ — {illiquidItems.length} {illiquidItems.length === 1 ? 'товар' : illiquidItems.length < 5 ? 'товара' : 'товаров'}
-                </div>
-                <div style={{ fontSize: 13, color: '#7a5000', marginTop: 3, fontWeight: 600 }}>
-                  ⏳ Товары уже много лежат на складе — нужно продать, пересмотреть цену или сделать акцию
-                </div>
-              </div>
-            </div>
-            <Link
-              to="/admin/products?illiquid=true"
-              style={{ fontSize: 12, fontWeight: 700, color: '#c47a00', textDecoration: 'none', flexShrink: 0, padding: '6px 14px', border: '1.5px solid #c47a00', borderRadius: 8, background: '#fff' }}
-            >
-              Все →
-            </Link>
-          </div>
-
-          <ProductAlertList products={illiquidItems} navigate={navigate} />
         </div>
       )}
 
