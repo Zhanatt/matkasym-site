@@ -1,11 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import {
-  adminGetFrontmen, adminCreateFrontman,
-  adminUpdateFrontman, adminDeleteFrontman,
-  adminGetUsers,
-} from '../../api/index';
+import { useFrontmen } from '../../context/FrontmenContext';
+import { adminGetUsers } from '../../api/index';
 
 const BRAND_META = {
   'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
@@ -54,24 +51,20 @@ export default function AdminFrontmen() {
   const navigate = useNavigate();
   const canEdit = user?.role === 'owner' || user?.role === 'editor';
 
-  const [frontmen, setFrontmen] = useState([]);
+  const { frontmen, loading: frontmenLoading, createFrontman, updateFrontman, deleteFrontman } = useFrontmen();
   const [users,    setUsers]    = useState([]);
-  const [loading,  setLoading]  = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [editId,   setEditId]   = useState(null);
   const [form,     setForm]     = useState({});
   const [saving,   setSaving]   = useState(false);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    Promise.all([adminGetFrontmen(), adminGetUsers()])
-      .then(([fmRes, usersRes]) => {
-        setFrontmen(fmRes.data);
-        setUsers(usersRes.data.filter(u => ['owner', 'editor', 'viewer'].includes(u.role)));
-      })
-      .finally(() => setLoading(false));
+  useEffect(() => {
+    adminGetUsers()
+      .then(res => setUsers(res.data.filter(u => ['owner', 'editor', 'viewer'].includes(u.role))))
+      .finally(() => setUsersLoading(false));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loading = frontmenLoading || usersLoading;
 
   // Sort: current user's frontman first, then by order/createdAt
   function sortItems(items) {
@@ -127,11 +120,10 @@ export default function AdminFrontmen() {
     try {
       const payload = { ...form, userId: form.userId || null };
       if (editId === 'new') {
-        await adminCreateFrontman(payload);
+        await createFrontman(payload);
       } else {
-        await adminUpdateFrontman(editId, payload);
+        await updateFrontman(editId, payload);
       }
-      await load();
       setEditId(null);
       setForm({});
     } finally { setSaving(false); }
@@ -139,8 +131,7 @@ export default function AdminFrontmen() {
 
   async function del(id) {
     if (!window.confirm('Удалить фронтмена?')) return;
-    await adminDeleteFrontman(id);
-    load();
+    await deleteFrontman(id);
   }
 
   if (loading) return <div className="admin-empty">Загрузка...</div>;

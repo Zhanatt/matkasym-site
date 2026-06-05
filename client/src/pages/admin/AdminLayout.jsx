@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { FrontmenProvider } from '../../context/FrontmenContext';
 import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram } from '../../api';
 import './Admin.css';
 
@@ -106,6 +107,7 @@ export default function AdminLayout() {
   const close = () => setSidebarOpen(false);
 
   return (
+    <FrontmenProvider>
     <div className="admin-shell">
 
       {/* Mobile top bar */}
@@ -232,5 +234,6 @@ export default function AdminLayout() {
         </div>
       </main>
     </div>
+    </FrontmenProvider>
   );
 }

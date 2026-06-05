@@ -2,11 +2,11 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useFrontmen } from '../../context/FrontmenContext';
 import AdminProductModal from './AdminProductModal';
 import {
   adminGetFacets, adminGetProducts,
   adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet,
-  adminGetFrontmen,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
@@ -71,6 +71,11 @@ const SALES_CHANNELS = [
   { key: 'matkasym_kz',   label: 'MATKASYM_KZ',   short: 'KZ',   color: '#267846' },
 ];
 
+const SHAAR_CHANNELS = [
+  { key: 'matkasym_home', label: 'MATKASYM_SHAAR',  short: 'SHAAR',  color: '#3463A3' },
+  { key: 'make_in',       label: 'MATKASYM_HORECA', short: 'HORECA', color: '#267846' },
+];
+
 function toTitle(slug) {
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -94,7 +99,7 @@ function slugify(name) {
     .replace(/-+/g, '-');
 }
 
-function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog }) {
+function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog, frontmen }) {
   const [editing, setEditing]     = useState(false);
   const [catalogSlug, setCatalog] = useState(() => autoOpenSet || null);
   const isMobile                  = useIsMobile();
@@ -116,16 +121,12 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   const [addSetError, setAddSetError] = useState('');
   const [editingSetKey, setEditingSetKey] = useState(null);
   const [editSetLabel,  setEditSetLabel]  = useState('');
-  const [frontmen, setFrontmen] = useState([]);
 
   useEffect(() => {
     adminGetBrands().then(r => {
       const brand = r.data.find(b => b.key === brandKey);
       if (brand) setCustomSets(brand.sets || []);
     });
-    adminGetFrontmen().then(r => {
-      setFrontmen(r.data || []);
-    }).catch(() => {});
   }, [brandKey]);
 
   const getFrontmenForSet = (slug, channel) => {
@@ -236,7 +237,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
       {/* Channel headers */}
       {!isMobile && (
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, paddingLeft: 200 }}>
-          {SALES_CHANNELS.map(ch => (
+          {(brandKey === 'matkasym-shaar' ? SHAAR_CHANNELS : SALES_CHANNELS).map(ch => (
             <div key={ch.key} style={{
               flex: 1,
               textAlign: 'center',
@@ -315,7 +316,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
               {/* Sales channels columns */}
               {!isMobile && !editing && (
                 <div style={{ display: 'flex', flex: 1, marginLeft: 8 }}>
-                  {SALES_CHANNELS.map(ch => {
+                  {(brandKey === 'matkasym-shaar' ? SHAAR_CHANNELS : SALES_CHANNELS).map(ch => {
                     const channelFrontmen = getFrontmenForSet(slug, ch.key);
                     return (
                       <div key={ch.key} style={{
@@ -1260,6 +1261,7 @@ export default function AdminSets() {
   const [sets, setSets]     = useState({});
   const [loading, setLoad]  = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
+  const { frontmen } = useFrontmen();
 
   // Читаем brand и set из URL
   const urlBrand = searchParams.get('brand');
@@ -1305,6 +1307,7 @@ export default function AdminSets() {
                   autoOpenSet={urlBrand === key ? urlSet : null}
                   onOpenCatalog={handleOpenCatalog}
                   onCloseCatalog={handleCloseCatalog}
+                  frontmen={frontmen}
                 />
               );
             })}
