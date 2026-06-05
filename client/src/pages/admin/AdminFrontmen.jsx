@@ -12,11 +12,19 @@ const BRAND_META = {
 
 const PALETTE = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E'];
 
-const SALES_CHANNELS = [
-  { key: 'matkasym_home', label: 'matkasym_home', desc: 'Розница KG' },
-  { key: 'make_in',       label: 'make_in',       desc: 'Оптовики' },
-  { key: 'matkasym_kz',   label: 'matkasym_kz',   desc: 'Казахстан' },
-];
+const SALES_CHANNELS = {
+  default: [
+    { key: 'matkasym_home', label: 'matkasym_home', desc: 'Розница KG' },
+    { key: 'make_in',       label: 'make_in',       desc: 'Оптовики' },
+    { key: 'matkasym_kz',   label: 'matkasym_kz',   desc: 'Казахстан' },
+  ],
+  'matkasym-shaar': [
+    { key: 'matkasym_home', label: 'matkasym_shaar',  desc: 'B2G (госзакупки)' },
+    { key: 'make_in',       label: 'matkasym_horeca', desc: 'HoReCa' },
+  ],
+};
+
+const getChannelsForBrand = (brand) => SALES_CHANNELS[brand] || SALES_CHANNELS.default;
 
 const SET_NAMES = {
   // HOME
@@ -318,7 +326,7 @@ export default function AdminFrontmen() {
                   style={{ width: '100%', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 8, padding: '8px 12px', outline: 'none' }}
                 >
                   <option value="">— Не выбран —</option>
-                  {SALES_CHANNELS.map(ch => (
+                  {getChannelsForBrand(form.brand).map(ch => (
                     <option key={ch.key} value={ch.key}>
                       {ch.label} ({ch.desc})
                     </option>
