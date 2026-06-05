@@ -533,8 +533,32 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return Object.entries(groups).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
-  // Общая переменная для групп (трубы, урны или ковка)
-  const accordionGroups = tubeGroups || trashGroups || forgeGroups;
+  // Группировка для Taza Kiym (товары для дома)
+  const tazaKiymGroups = useMemo(() => {
+    if (setSlug !== 'taza-kiym') return null;
+    const groups = {
+      'Корзина для белья': [],
+      'Гладильная доска': [],
+      'Сушилка': [],
+      'Гардеробная вешалка': [],
+      'Плечики': [],
+      'Костюмная вешалка': [],
+      'Прочее': [],
+    };
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const cat = p.category || 'Прочее';
+      if (groups[cat]) {
+        groups[cat].push([name, variants]);
+      } else {
+        groups['Прочее'].push([name, variants]);
+      }
+    });
+    return Object.entries(groups).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
+  // Общая переменная для групп (трубы, урны, ковка или taza-kiym)
+  const accordionGroups = tubeGroups || trashGroups || forgeGroups || tazaKiymGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
