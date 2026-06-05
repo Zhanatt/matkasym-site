@@ -546,9 +546,15 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       'Плечики': [],
       'Костюмная вешалка': [],
       'Прочее': [],
+      'Нет в наличии': [],
     };
     models.forEach(([name, variants]) => {
       const p = variants[0];
+      const hasStock = p.stock > 0 || p.inStock;
+      if (!hasStock) {
+        groups['Нет в наличии'].push([name, variants]);
+        return;
+      }
       const cat = p.category || 'Прочее';
       if (groups[cat]) {
         groups[cat].push([name, variants]);
@@ -556,7 +562,13 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         groups['Прочее'].push([name, variants]);
       }
     });
-    return Object.entries(groups).filter(([, items]) => items.length > 0);
+    const result = Object.entries(groups).filter(([, items]) => items.length > 0);
+    const outOfStockIdx = result.findIndex(([key]) => key === 'Нет в наличии');
+    if (outOfStockIdx > -1) {
+      const [outOfStock] = result.splice(outOfStockIdx, 1);
+      result.push(outOfStock);
+    }
+    return result;
   }, [setSlug, models]);
 
   // Общая переменная для групп (трубы, урны, ковка или taza-kiym)
