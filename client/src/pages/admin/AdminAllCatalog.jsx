@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { adminGetProducts } from '../../api';
 import AdminProductModal from './AdminProductModal';
 import AdminProductCard from './AdminProductCard';
@@ -107,6 +107,7 @@ const STATUS_LABELS = {
   in_development: 'В разработке',
   improvement:    'На улучшении',
   discontinued:   'Снят с производства',
+  liquidation:    'Ликвидация',
 };
 
 function getPrice(p, mode) {
@@ -128,6 +129,9 @@ const SEL = {
 
 export default function AdminAllCatalog() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get('productStatus') || '';
+
   const [products,      setProducts]      = useState([]);
   const [detailProduct, setDetailProduct] = useState(null);
   const [loading,   setLoading]   = useState(true);
@@ -146,7 +150,7 @@ export default function AdminAllCatalog() {
   const [fSet,      setFSet]      = useState('');
   const [fCategory, setFCategory] = useState('');
   const [fStock,    setFStock]    = useState(''); // '' | 'in' | 'out'
-  const [fStatus,   setFStatus]   = useState('');
+  const [fStatus,   setFStatus]   = useState(urlStatus);
   const [fPhoto,    setFPhoto]    = useState(''); // '' | 'no' | 'yes'
   const [sortStock, setSortStock] = useState('desc'); // '' | 'asc' | 'desc'
 

@@ -473,7 +473,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <Link
-              to="/admin/products?productStatus=liquidation"
+              to="/admin/all-catalog?productStatus=liquidation"
               style={{ fontSize: 12, fontWeight: 700, color: '#92400e', textDecoration: 'none', flexShrink: 0, padding: '6px 14px', border: '1.5px solid #92400e', borderRadius: 8, background: '#fff' }}
             >
               Все →
