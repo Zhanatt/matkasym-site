@@ -222,10 +222,25 @@ export default function AdminAllCatalog() {
     return list;
   }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, fPhoto, sortStock]);
 
+  // Разделение на товары в наличии и без
+  const { inStockFiltered, outOfStockFiltered } = useMemo(() => {
+    const inStock = [];
+    const outOfStock = [];
+    filtered.forEach(p => {
+      const hasStock = p.stock > 0 || p.inStock;
+      if (hasStock) {
+        inStock.push(p);
+      } else {
+        outOfStock.push(p);
+      }
+    });
+    return { inStockFiltered: inStock, outOfStockFiltered: outOfStock };
+  }, [filtered]);
+
   // Group by brand → set (no brand → HOME)
   const { tree } = useMemo(() => {
     const tree = {};
-    filtered.forEach(p => {
+    inStockFiltered.forEach(p => {
       const brand = p.brand || 'matkasym-home';
       const set   = p.set   || 'other';
       if (!tree[brand]) tree[brand] = {};
@@ -233,7 +248,7 @@ export default function AdminAllCatalog() {
       tree[brand][set].push(p);
     });
     return { tree };
-  }, [filtered]);
+  }, [inStockFiltered]);
 
   const brandOrder = ['matkasym-home', 'matkasym-shaar', 'matkasym-kyzmat'];
 
@@ -391,6 +406,37 @@ export default function AdminAllCatalog() {
             );
           })}
           {hasMore && <div ref={sentinelRef} style={{ height: 40 }} />}
+
+          {/* Секция "Нет в наличии" */}
+          {outOfStockFiltered.length > 0 && (
+            <>
+              <div style={{
+                marginTop: 32,
+                marginBottom: 16,
+                paddingBottom: 8,
+                borderBottom: '2px solid #e0e0e0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  НЕТ В НАЛИЧИИ
+                </span>
+                <span style={{ fontSize: 12, color: '#bbb' }}>{outOfStockFiltered.length} тов.</span>
+              </div>
+              <div style={{
+                display: viewMode === 'grid' ? 'grid' : 'flex',
+                gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(170px, 1fr))' : undefined,
+                flexDirection: viewMode === 'list' ? 'column' : undefined,
+                gap: 12,
+                opacity: 0.7,
+              }}>
+                {outOfStockFiltered.map(p => (
+                  <AdminProductCard key={p._id} product={p} priceMode={priceMode} accent="#888" onOpen={setDetailProduct} viewMode={viewMode} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 

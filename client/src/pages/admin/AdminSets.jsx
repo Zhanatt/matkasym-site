@@ -576,7 +576,23 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   const [openGroups, setOpenGroups] = useState({});
 
-  const { visible, sentinelRef, hasMore } = useLazyItems(models, 24, scrollRef.current);
+  // Разделение на товары в наличии и без
+  const { inStockModels, outOfStockModels } = useMemo(() => {
+    const inStock = [];
+    const outOfStock = [];
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const hasStock = p.stock > 0 || p.inStock;
+      if (hasStock) {
+        inStock.push([name, variants]);
+      } else {
+        outOfStock.push([name, variants]);
+      }
+    });
+    return { inStockModels: inStock, outOfStockModels: outOfStock };
+  }, [models]);
+
+  const { visible, sentinelRef, hasMore } = useLazyItems(inStockModels, 24, scrollRef.current);
 
   const priceLabel = getPriceLabel(priceMode);
 
@@ -1188,6 +1204,95 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               })}
               {hasMore && <div ref={sentinelRef} style={{ height: 20, gridColumn: '1 / -1' }} />}
             </div>
+          )}
+
+          {/* Секция "Нет в наличии" */}
+          {!accordionGroups && outOfStockModels.length > 0 && (
+            <>
+              <div style={{
+                marginTop: 32,
+                marginBottom: 16,
+                paddingBottom: 8,
+                borderBottom: '2px solid #e0e0e0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  НЕТ В НАЛИЧИИ
+                </span>
+                <span style={{ fontSize: 12, color: '#bbb' }}>{outOfStockModels.length} тов.</span>
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: isMobile ? 10 : 16,
+                opacity: 0.7,
+              }}>
+                {outOfStockModels.map(([name, variants]) => {
+                  const primary    = variants[0];
+                  const img        = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400);
+                  const price      = getPrice(primary, priceMode);
+                  const showBadge  = STATUS_BADGE[primary.productStatus];
+                  return (
+                    <div key={name} onClick={() => setDetailProduct(primary)}
+                      style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
+                        background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+                        cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
+                    >
+                      <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={img} alt={name}
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                          onError={e => { e.target.src = NO_PHOTO; }} />
+                        {primary.isSupplied && (
+                          <div style={{ position: 'absolute', top: 6, left: 6 }}>
+                            <SupplierBadge product={primary} />
+                          </div>
+                        )}
+                        {showBadge && (
+                          <div style={{ position: 'absolute', top: 6, right: 6 }}>
+                            <StatusBadge product={primary} />
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding: '10px 11px' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {name}
+                        </div>
+                        {variants.length > 1 && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
+                        {primary.specs?.slice(0, 2).map(s => (
+                          <div key={s.key} style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.2 }}>
+                            <span style={{ color: '#bbb' }}>{s.key}:</span> {s.value}
+                          </div>
+                        ))}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
+                          <div>
+                            {primary.priceUndefined ? (
+                              <div style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}>Цена не определена</div>
+                            ) : (
+                              <>
+                                <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
+                                  {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
+                            background: '#fce8e8', color: '#c00' }}>
+                            Нет
+                          </div>
+                        </div>
+                        {primary.sku && <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>
