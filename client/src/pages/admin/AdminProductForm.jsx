@@ -246,22 +246,38 @@ export default function AdminProductForm() {
     adminGetSuppliers().then(r => setSuppliers(r.data)).catch(() => {});
   }, []);
 
-  // Load facet sets when brand changes (sync with AdminSets page)
+  // Load facet sets and categories when brand/set changes
   useEffect(() => {
     if (!form.brand) return;
-    adminGetFacets({ brand: form.brand })
-      .then(r => setFacetSets(r.data.sets || []))
+    const params = { brand: form.brand };
+    if (form.set) params.set = form.set;
+    adminGetFacets(params)
+      .then(r => {
+        setFacetSets(r.data.sets || []);
+        // Update categories based on brand/set
+        const facetCategories = (r.data.categories || []).map(c => ({ value: c, label: c }));
+        if (facetCategories.length > 0) {
+          // Combine with static categories but prioritize facet ones
+          const facetKeys = new Set(facetCategories.map(c => c.value));
+          const staticFiltered = CATEGORIES.filter(c => !facetKeys.has(c.value));
+          setCategories([...facetCategories, ...staticFiltered]);
+        } else {
+          setCategories(CATEGORIES);
+        }
+      })
       .catch(() => {});
-  }, [form.brand]);
+  }, [form.brand, form.set]);
 
-  // Load custom categories
+  // Load custom categories (merge with existing)
   useEffect(() => {
     adminGetCustomCategories()
       .then(r => {
         if (r.data.length > 0) {
-          const staticKeys = new Set(CATEGORIES.map(c => c.value));
-          const extra = r.data.filter(c => !staticKeys.has(c.value));
-          if (extra.length > 0) setCategories(prev => [...prev, ...extra]);
+          setCategories(prev => {
+            const existingKeys = new Set(prev.map(c => c.value));
+            const extra = r.data.filter(c => !existingKeys.has(c.value));
+            return extra.length > 0 ? [...prev, ...extra] : prev;
+          });
         }
       })
       .catch(() => {});
@@ -488,23 +504,10 @@ export default function AdminProductForm() {
           <div className="admin-form-row">
             <div className="admin-form-group">
               <label>Бренд *</label>
-              <select value={form.brand} onChange={e => { set('brand', e.target.value); set('set', ''); set('setLevel', ''); }}>
+              <select value={form.brand} onChange={e => { set('brand', e.target.value); set('set', ''); set('setLevel', ''); set('category', ''); }}>
                 {BRAND_OPTIONS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
               </select>
             </div>
-            <div className="admin-form-group">
-              <label>Категория *</label>
-              <SelectWithAdd
-                options={categories}
-                value={form.category}
-                onChange={handleCategoryChange}
-                onAdd={(item) => { handleAddCategory(item); handleCategoryChange(item.value); }}
-                placeholder="Выберите категорию..."
-              />
-            </div>
-          </div>
-
-          <div className="admin-form-row">
             <div className="admin-form-group">
               <label>Сет</label>
               <SelectWithAdd
@@ -513,6 +516,19 @@ export default function AdminProductForm() {
                 onChange={v => { set('set', v); set('setLevel', ''); }}
                 onAdd={handleAddSet}
                 placeholder="Выберите сет..."
+              />
+            </div>
+          </div>
+
+          <div className="admin-form-row">
+            <div className="admin-form-group">
+              <label>Категория *</label>
+              <SelectWithAdd
+                options={categories}
+                value={form.category}
+                onChange={handleCategoryChange}
+                onAdd={(item) => { handleAddCategory(item); handleCategoryChange(item.value); }}
+                placeholder="Выберите категорию..."
               />
             </div>
             {levelOptions.length > 0 && (
