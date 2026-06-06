@@ -13,6 +13,27 @@ import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
 
+// ── helpers ────────────────────────────────────────────────────────────────────
+
+function getStockInfo(product) {
+  if (product.stock > 0) {
+    return { label: `${product.stock} шт.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+  }
+  if (product.inTransit && product.inTransitQty > 0) {
+    return { label: `Ожидается ${product.inTransitQty}`, hasStock: true, color: '#1d4ed8', bg: '#dbeafe' };
+  }
+  if (product.inTransit) {
+    return { label: 'В пути', hasStock: true, color: '#1d4ed8', bg: '#dbeafe' };
+  }
+  if (product.isOnOrder) {
+    return { label: 'Под заказ', hasStock: true, color: '#b45309', bg: '#fef3c7' };
+  }
+  if (product.inStock) {
+    return { label: 'Есть', hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+  }
+  return { label: 'Нет', hasStock: false, color: '#c00', bg: '#fce8e8' };
+}
+
 // ── constants ──────────────────────────────────────────────────────────────────
 
 const SET_NAMES = {
@@ -1006,8 +1027,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           const primary = variants[0];
                           const img = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 80);
                           const price = getPrice(primary, priceMode);
-                          const hasStock = primary.stock > 0 || primary.inStock;
-                          const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
+                          const stockInfo = getStockInfo(primary);
+                          const hasStock = stockInfo.hasStock;
+                          const stockLabel = stockInfo.label;
                           return (
                             <div
                               key={name}
@@ -1053,8 +1075,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 const primary  = variants[0];
                 const img      = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 80);
                 const price    = getPrice(primary, priceMode);
-                const hasStock = primary.stock > 0 || primary.inStock;
-                const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
+                const stockInfo = getStockInfo(primary);
+                const stockLabel = stockInfo.label;
                 return (
                   <div key={name} onClick={() => setDetailProduct(primary)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px',
@@ -1076,7 +1098,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       {primary.priceUndefined ? 'Цена не определена' : (price > 0 ? `${price.toLocaleString('ru')} сом` : '—')}
                     </div>
                     <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
-                      background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+                      background: stockInfo.bg, color: stockInfo.color }}>
                       {stockLabel}
                     </div>
                   </div>
@@ -1114,8 +1136,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       const primary    = variants[0];
                       const img        = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400);
                       const price      = getPrice(primary, priceMode);
-                      const hasStock   = primary.stock > 0 || primary.inStock;
-                      const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
+                      const stockInfo  = getStockInfo(primary);
+                      const stockLabel = stockInfo.label;
                       const showBadge  = STATUS_BADGE[primary.productStatus];
                       return (
                         <div key={name} onClick={() => setDetailProduct(primary)}
@@ -1165,7 +1187,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                                 )}
                               </div>
                               <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-                                background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+                                background: stockInfo.bg, color: stockInfo.color }}>
                                 {stockLabel}
                               </div>
                             </div>
@@ -1188,8 +1210,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 const primary    = variants[0];
                 const img        = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400);
                 const price      = getPrice(primary, priceMode);
-                const hasStock   = primary.stock > 0 || primary.inStock;
-                const stockLabel = primary.stock > 0 ? `${primary.stock} шт.` : (primary.inStock ? 'Есть' : 'Нет');
+                const stockInfo  = getStockInfo(primary);
+                const stockLabel = stockInfo.label;
                 const showBadge  = STATUS_BADGE[primary.productStatus];
                 return (
                   <div key={name} onClick={() => setDetailProduct(primary)}
@@ -1239,7 +1261,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           )}
                         </div>
                         <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-                          background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+                          background: stockInfo.bg, color: stockInfo.color }}>
                           {stockLabel}
                         </div>
                       </div>

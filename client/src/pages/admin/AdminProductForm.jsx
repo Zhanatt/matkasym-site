@@ -94,7 +94,7 @@ const EMPTY = {
   priceCost: '', priceWholesale: '', priceDealer: '', price: '', priceUndefined: false,
   description: '',
   images: [],
-  inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', inTransit: false, productStatus: 'for_sale', developmentStage: '',
+  inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', inTransit: false, inTransitQty: 0, isOnOrder: false, productStatus: 'for_sale', developmentStage: '',
   pauseNote: '',
   developmentTZ: { description: '', files: [] },
   improvementTZ: { problem: '', solution: '', files: [] },
@@ -303,6 +303,8 @@ export default function AdminProductForm() {
           isSupplied:     p.isSupplied || false,
           supplier:       p.supplier || { company: '', contactName: '', sku: '' },
           inTransit:      p.inTransit || false,
+          inTransitQty:   p.inTransitQty || 0,
+          isOnOrder:      p.isOnOrder || false,
           pauseNote:      p.pauseNote || '',
           developmentTZ:  p.developmentTZ || { description: '', files: [] },
           improvementTZ:  p.improvementTZ || { problem: '', solution: '', files: [] },
@@ -989,18 +991,50 @@ export default function AdminProductForm() {
               </label>
             </div>
 
-            {/* В пути */}
+            {/* Под заказ */}
             <label style={{
               display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginTop: 16,
               padding: '12px 16px', borderRadius: 10,
-              border: `2px solid ${form.inTransit ? '#93c5fd' : 'var(--gray-200)'}`,
-              background: form.inTransit ? '#eef6ff' : '#fff',
+              border: `2px solid ${form.isOnOrder ? '#fbbf24' : 'var(--gray-200)'}`,
+              background: form.isOnOrder ? '#fefce8' : '#fff',
+              opacity: form.inTransit ? 0.5 : 1,
+              pointerEvents: form.inTransit ? 'none' : 'auto',
             }}>
-              <input type="checkbox" checked={form.inTransit} onChange={e => set('inTransit', e.target.checked)} />
-              <span style={{ fontSize: 14, fontWeight: 600, color: form.inTransit ? '#1d4ed8' : 'var(--slate)' }}>
-                🚚 Товар в пути (ещё не на складе)
+              <input type="checkbox" checked={form.isOnOrder} onChange={e => set('isOnOrder', e.target.checked)} disabled={form.inTransit} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: form.isOnOrder ? '#b45309' : 'var(--slate)' }}>
+                📦 Под заказ (производим/закупаем по запросу)
               </span>
             </label>
+
+            {/* В пути */}
+            <div style={{
+              marginTop: 12,
+              padding: '12px 16px', borderRadius: 10,
+              border: `2px solid ${form.inTransit ? '#93c5fd' : 'var(--gray-200)'}`,
+              background: form.inTransit ? '#eef6ff' : '#fff',
+              opacity: form.isOnOrder ? 0.5 : 1,
+              pointerEvents: form.isOnOrder ? 'none' : 'auto',
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.inTransit} onChange={e => { set('inTransit', e.target.checked); if (!e.target.checked) set('inTransitQty', 0); }} disabled={form.isOnOrder} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: form.inTransit ? '#1d4ed8' : 'var(--slate)' }}>
+                  🚚 Товар в пути (ещё не на складе)
+                </span>
+              </label>
+              {form.inTransit && (
+                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, color: '#555' }}>Ожидается:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.inTransitQty}
+                    onChange={e => set('inTransitQty', parseInt(e.target.value) || 0)}
+                    style={{ width: 80, padding: '6px 10px', borderRadius: 6, border: '1px solid #ddd', fontSize: 14 }}
+                  />
+                  <span style={{ fontSize: 13, color: '#555' }}>шт</span>
+                </div>
+              )}
+            </div>
           </div>
         </Card>
 

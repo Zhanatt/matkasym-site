@@ -11,11 +11,31 @@ function getPrice(p, mode) {
   return field ? p[field] : null;
 }
 
+function getStockInfo(product) {
+  if (product.stock > 0) {
+    return { label: `${product.stock} шт.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+  }
+  if (product.inTransit && product.inTransitQty > 0) {
+    return { label: `Ожидается ${product.inTransitQty} шт`, hasStock: true, color: '#1d4ed8', bg: '#dbeafe' };
+  }
+  if (product.inTransit) {
+    return { label: 'В пути', hasStock: true, color: '#1d4ed8', bg: '#dbeafe' };
+  }
+  if (product.isOnOrder) {
+    return { label: 'Под заказ', hasStock: true, color: '#b45309', bg: '#fef3c7' };
+  }
+  if (product.inStock) {
+    return { label: 'Есть', hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+  }
+  return { label: 'Нет', hasStock: false, color: '#c00', bg: '#fce8e8' };
+}
+
 export default function AdminProductCard({ product, priceMode = 'retail', accent = '#DC1E24', onOpen, viewMode = 'grid' }) {
   const img        = cloudinaryOpt(product.images?.[0] || NO_PHOTO, viewMode === 'list' ? 80 : 400);
   const price      = getPrice(product, priceMode);
-  const hasStock   = product.stock > 0 || product.inStock;
-  const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
+  const stockInfo  = getStockInfo(product);
+  const hasStock   = stockInfo.hasStock;
+  const stockLabel = stockInfo.label;
   const priceLabel = PRICE_LABELS[priceMode] || '';
   const onClick    = () => onOpen(product);
 
@@ -51,7 +71,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
           </div>
         </div>
         <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
-          background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+          background: stockInfo.bg, color: stockInfo.color }}>
           {stockLabel}
         </div>
       </div>
@@ -98,7 +118,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
             )}
           </div>
           <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-            background: hasStock ? '#e8f5e9' : '#fce8e8', color: hasStock ? '#2d7a3a' : '#c00' }}>
+            background: stockInfo.bg, color: stockInfo.color }}>
             {stockLabel}
           </div>
         </div>
