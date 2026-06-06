@@ -388,12 +388,15 @@ const CATEGORY_LABELS = {
 };
 
 // ── Cover images ──────────────────────────────────────────────────────────────
-const COVER_HOME  = '/covers/title-page-home.png';
-const COVER_SHAAR = '/covers/title-page-shaar.png';
+const COVERS = {
+  home:   { title: '/covers/title-page-home.png',   end: '/covers/end-page-home.png'   },
+  shaar:  { title: '/covers/title-page-shaar.png',  end: '/covers/end-page-shaar.png'  },
+  kyzmat: { title: '/covers/title-page-kyzmat.png', end: '/covers/end-page-kyzmat.png' },
+};
 
 // ── Cover Page ────────────────────────────────────────────────────────────────
 function CoverPage({ brand = 'home' }) {
-  const coverSrc = brand === 'shaar' ? COVER_SHAAR : COVER_HOME;
+  const coverSrc = COVERS[brand]?.title || COVERS.home.title;
 
   return (
     <Page size="A4" style={{ padding: 0 }}>
@@ -402,13 +405,9 @@ function CoverPage({ brand = 'home' }) {
   );
 }
 
-// ── Back Cover images ─────────────────────────────────────────────────────────
-const BACK_HOME  = '/covers/end-page-home.png';
-const BACK_SHAAR = '/covers/end-page-shaar.png';
-
 // ── Back Cover ────────────────────────────────────────────────────────────────
 function BackCoverPage({ brand = 'home' }) {
-  const backSrc = brand === 'shaar' ? BACK_SHAAR : BACK_HOME;
+  const backSrc = COVERS[brand]?.end || COVERS.home.end;
 
   return (
     <Page size="A4" style={{ padding: 0 }}>
