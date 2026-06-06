@@ -762,14 +762,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   {products.length} тов. · {models.length} мод.
                 </div>
               )}
-              <AdminPdfButton products={products} label={titleOverride || toTitle(setSlug)} />
+              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} />
             </div>
           )}
 
           {/* PDF button on desktop - inside header */}
           {!isMobile && (
             <div style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)' }}>
-              <AdminPdfButton products={products} label={titleOverride || toTitle(setSlug)} />
+              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} />
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { downloadCatalogPDF } from './CatalogPDF';
 
-export default function AdminPdfButton({ products, label = 'Каталог' }) {
+export default function AdminPdfButton({ products, groups, label = 'Каталог' }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [priceType, setPriceType] = useState('price');
@@ -14,12 +14,36 @@ export default function AdminPdfButton({ products, label = 'Каталог' }) {
     setLoading(true);
     setProgress(5);
 
-    // Filter only products in stock
-    const inStockProducts = products.filter(p => p.inStock || p.stock > 0);
-    if (inStockProducts.length === 0) {
-      alert('Нет товаров в наличии для выгрузки');
-      setLoading(false);
-      return;
+    // Build grouped data for PDF
+    let pdfGroups = null;
+
+    if (groups && groups.length > 0) {
+      // Use category groups — filter out "Нет в наличии" and empty groups
+      pdfGroups = groups
+        .filter(([groupName]) => groupName !== 'Нет в наличии')
+        .map(([groupName, items]) => {
+          // items is array of [name, variants] — extract first variant (primary product)
+          const groupProducts = items
+            .map(([, variants]) => variants[0])
+            .filter(p => p.inStock || p.stock > 0);
+          return { groupName, products: groupProducts };
+        })
+        .filter(g => g.products.length > 0);
+
+      if (pdfGroups.length === 0) {
+        alert('Нет товаров в наличии для выгрузки');
+        setLoading(false);
+        return;
+      }
+    } else {
+      // No groups — use flat list filtered by stock
+      const inStockProducts = products.filter(p => p.inStock || p.stock > 0);
+      if (inStockProducts.length === 0) {
+        alert('Нет товаров в наличии для выгрузки');
+        setLoading(false);
+        return;
+      }
+      pdfGroups = [{ groupName: null, products: inStockProducts }];
     }
 
     // Fake progress: ramps to ~88% while PDF generates, then snaps to 100%
@@ -28,10 +52,11 @@ export default function AdminPdfButton({ products, label = 'Каталог' }) {
     }, 250);
 
     try {
-      await downloadCatalogPDF(inStockProducts, label, priceType);
+      await downloadCatalogPDF(pdfGroups, label, priceType);
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {
+      console.error('PDF error:', e);
       clearInterval(timerRef.current);
     } finally {
       setTimeout(() => { setLoading(false); setProgress(0); }, 600);

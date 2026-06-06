@@ -561,29 +561,91 @@ function ContentPage({ products, setName, pageIndex, priceType }) {
   );
 }
 
+// ── Category Divider Page ─────────────────────────────────────────────────────
+function CategoryDividerPage({ categoryName }) {
+  return (
+    <Page size="A4" style={S.coverPage}>
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 180,
+        backgroundColor: RED,
+        borderBottomLeftRadius: 80,
+        borderBottomRightRadius: 80,
+      }} />
+      <View style={{
+        position: 'absolute',
+        top: 220,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+      }}>
+        <Text style={{
+          fontSize: 42,
+          fontWeight: 700,
+          color: INK,
+          textAlign: 'center',
+          paddingHorizontal: 40,
+        }}>{categoryName}</Text>
+      </View>
+      <View style={{
+        position: 'absolute',
+        bottom: 80,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+      }}>
+        <View style={S.barsRow}>
+          <View style={[S.bar, { backgroundColor: RED }]} />
+          <View style={[S.bar, { backgroundColor: YELLOW }]} />
+          <View style={[S.bar, { backgroundColor: ORANGE }]} />
+        </View>
+      </View>
+    </Page>
+  );
+}
+
 // ── Document ──────────────────────────────────────────────────────────────────
-function CatalogDocument({ products, setName, priceType }) {
+// groups: [{ groupName: string|null, products: Product[] }, ...]
+function CatalogDocument({ groups, setName, priceType }) {
   const PER_PAGE = 4;
-  const pages = [];
-  for (let i = 0; i < products.length; i += PER_PAGE) {
-    pages.push(products.slice(i, i + PER_PAGE));
-  }
+  const hasMultipleGroups = groups.length > 1 || (groups.length === 1 && groups[0].groupName);
 
   return (
     <Document title={`Каталог — ${setName}`} author="MATKASYM HOME">
       <CoverPage />
-      {pages.map((chunk, idx) => (
-        <ContentPage key={idx} products={chunk} setName={setName} pageIndex={idx} priceType={priceType} />
-      ))}
+      {groups.map((group, groupIdx) => {
+        const pages = [];
+        for (let i = 0; i < group.products.length; i += PER_PAGE) {
+          pages.push(group.products.slice(i, i + PER_PAGE));
+        }
+        return [
+          hasMultipleGroups && group.groupName && (
+            <CategoryDividerPage key={`div-${groupIdx}`} categoryName={group.groupName} />
+          ),
+          ...pages.map((chunk, pageIdx) => (
+            <ContentPage
+              key={`${groupIdx}-${pageIdx}`}
+              products={chunk}
+              setName={group.groupName || setName}
+              pageIndex={groupIdx * 100 + pageIdx}
+              priceType={priceType}
+            />
+          )),
+        ];
+      })}
       <BackCoverPage />
     </Document>
   );
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
-export async function downloadCatalogPDF(products, setName, priceType = 'price') {
+// groups: [{ groupName: string|null, products: Product[] }, ...]
+export async function downloadCatalogPDF(groups, setName, priceType = 'price') {
   const blob = await pdf(
-    <CatalogDocument products={products} setName={setName} priceType={priceType} />
+    <CatalogDocument groups={groups} setName={setName} priceType={priceType} />
   ).toBlob();
 
   const url = URL.createObjectURL(blob);
