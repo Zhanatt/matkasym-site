@@ -25,7 +25,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           // items is array of [name, variants] — extract first variant (primary product)
           const groupProducts = items
             .map(([, variants]) => variants[0])
-            .filter(p => p.inStock || p.stock > 0);
+            .filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit);
           return { groupName, products: groupProducts };
         })
         .filter(g => g.products.length > 0);
@@ -36,14 +36,14 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
         return;
       }
     } else {
-      // No groups — use flat list filtered by stock
-      const inStockProducts = products.filter(p => p.inStock || p.stock > 0);
-      if (inStockProducts.length === 0) {
-        alert('Нет товаров в наличии для выгрузки');
+      // No groups — use flat list filtered by availability
+      const availableProducts = products.filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit);
+      if (availableProducts.length === 0) {
+        alert('Нет доступных товаров для выгрузки');
         setLoading(false);
         return;
       }
-      pdfGroups = [{ groupName: null, products: inStockProducts }];
+      pdfGroups = [{ groupName: null, products: availableProducts }];
     }
 
     // Fake progress: ramps to ~88% while PDF generates, then snaps to 100%
