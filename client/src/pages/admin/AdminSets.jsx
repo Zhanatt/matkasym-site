@@ -53,6 +53,7 @@ const SET_NAMES = {
   'taza-kiym':       'Taza Kiym',
   'uydo-ishtoo':     'Uydo Ishtoo',
   'mazza-seiyl':     'Mazza Seiyl',
+  'zhashyl-omur-shaar': 'Zhashyl Omur (Shaar)',
   '0-tashtandy':     '0-Tashtandy',
   'bekem-fasad':     'Bekem Fasad',
   'bilim-kelechek':  'Bilim Kelechek',
