@@ -571,7 +571,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     };
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const hasStock = p.stock > 0 || p.inStock;
+      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
       if (!hasStock) {
         groups['Нет в наличии'].push([name, variants]);
         return;
@@ -616,7 +616,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     };
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const hasStock = p.stock > 0 || p.inStock;
+      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
       if (!hasStock) {
         groups['Нет в наличии'].push([name, variants]);
         return;
@@ -644,13 +644,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const [openGroups, setOpenGroups] = useState({});
 
   // Разделение на товары в наличии и без
+  // "В наличии" = stock > 0 ИЛИ inStock ИЛИ isOnOrder ИЛИ inTransit
   const { inStockModels, outOfStockModels } = useMemo(() => {
     const inStock = [];
     const outOfStock = [];
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const hasStock = p.stock > 0 || p.inStock;
-      if (hasStock) {
+      const isAvailable = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+      if (isAvailable) {
         inStock.push([name, variants]);
       } else {
         outOfStock.push([name, variants]);
