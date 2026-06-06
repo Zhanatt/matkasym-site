@@ -388,7 +388,11 @@ const CATEGORY_LABELS = {
 };
 
 // ── Cover Page ────────────────────────────────────────────────────────────────
-function CoverPage() {
+function CoverPage({ brand = 'home' }) {
+  const isShaar = brand === 'shaar';
+  const brandName = isShaar ? 'SHAAR' : 'HOME';
+  const subtitle = isShaar ? 'ТОВАРЫ ДЛЯ ГОРОДА' : 'ТОВАРЫ ДЛЯ ДОМА';
+
   return (
     <Page size="A4" style={S.coverPage}>
       {/* Red arch plaque */}
@@ -398,8 +402,8 @@ function CoverPage() {
       <View style={S.coverBody}>
         <Image src={LOGO} style={S.coverLogo} />
         <Text style={S.coverH1a}>MATKASYM</Text>
-        <Text style={S.coverH1b}>HOME</Text>
-        <Text style={S.coverSubtitle}>ТОВАРЫ ДЛЯ ДОМА</Text>
+        <Text style={S.coverH1b}>{brandName}</Text>
+        <Text style={S.coverSubtitle}>{subtitle}</Text>
       </View>
 
       {/* Tagline + 3 bars */}
@@ -563,13 +567,13 @@ function ContentPage({ products, setName, pageIndex, priceType }) {
 
 // ── Document ──────────────────────────────────────────────────────────────────
 // groups: [{ groupName: string|null, products: Product[] }, ...]
-function CatalogDocument({ groups, setName, priceType }) {
+function CatalogDocument({ groups, setName, priceType, brand = 'home' }) {
   const PER_PAGE = 4;
   let pageCounter = 0;
 
   return (
-    <Document title={`Каталог — ${setName}`} author="MATKASYM HOME">
-      <CoverPage />
+    <Document title={`Каталог — ${setName}`} author={`MATKASYM ${brand.toUpperCase()}`}>
+      <CoverPage brand={brand} />
       {groups.map((group, groupIdx) => {
         const pages = [];
         for (let i = 0; i < group.products.length; i += PER_PAGE) {
@@ -595,9 +599,9 @@ function CatalogDocument({ groups, setName, priceType }) {
 
 // ── Export ────────────────────────────────────────────────────────────────────
 // groups: [{ groupName: string|null, products: Product[] }, ...]
-export async function downloadCatalogPDF(groups, setName, priceType = 'price') {
+export async function downloadCatalogPDF(groups, setName, priceType = 'price', brand = 'home') {
   const blob = await pdf(
-    <CatalogDocument groups={groups} setName={setName} priceType={priceType} />
+    <CatalogDocument groups={groups} setName={setName} priceType={priceType} brand={brand} />
   ).toBlob();
 
   const url = URL.createObjectURL(blob);

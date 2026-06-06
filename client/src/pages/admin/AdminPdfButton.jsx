@@ -51,8 +51,12 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
       setProgress(p => p < 88 ? p + (88 - p) * 0.12 : p);
     }, 250);
 
+    // Determine brand from products (shaar vs home)
+    const allProducts = pdfGroups.flatMap(g => g.products);
+    const brand = allProducts.some(p => p.brand === 'matkasym-shaar') ? 'shaar' : 'home';
+
     try {
-      await downloadCatalogPDF(pdfGroups, label, priceType);
+      await downloadCatalogPDF(pdfGroups, label, priceType, brand);
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {
