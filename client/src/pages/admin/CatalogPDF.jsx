@@ -387,34 +387,17 @@ const CATEGORY_LABELS = {
   'other':                'товар для дома',
 };
 
+// ── Cover images ──────────────────────────────────────────────────────────────
+const COVER_HOME  = '/covers/title-page-home.png';
+const COVER_SHAAR = '/covers/title-page-shaar.png';
+
 // ── Cover Page ────────────────────────────────────────────────────────────────
 function CoverPage({ brand = 'home' }) {
-  const isShaar = brand === 'shaar';
-  const brandName = isShaar ? 'SHAAR' : 'HOME';
-  const subtitle = isShaar ? 'ТОВАРЫ ДЛЯ ГОРОДА' : 'ТОВАРЫ ДЛЯ ДОМА';
+  const coverSrc = brand === 'shaar' ? COVER_SHAAR : COVER_HOME;
 
   return (
-    <Page size="A4" style={S.coverPage}>
-      {/* Red arch plaque */}
-      <View style={S.coverPlaque} />
-
-      {/* Main title + logo */}
-      <View style={S.coverBody}>
-        <Image src={LOGO} style={S.coverLogo} />
-        <Text style={S.coverH1a}>MATKASYM</Text>
-        <Text style={S.coverH1b}>{brandName}</Text>
-        <Text style={S.coverSubtitle}>{subtitle}</Text>
-      </View>
-
-      {/* Tagline + 3 bars */}
-      <View style={S.coverTagline}>
-        <Text style={S.coverTaglineText}>сделаем лучше!</Text>
-        <View style={S.barsRow}>
-          <View style={[S.bar, { backgroundColor: RED    }]} />
-          <View style={[S.bar, { backgroundColor: YELLOW }]} />
-          <View style={[S.bar, { backgroundColor: ORANGE }]} />
-        </View>
-      </View>
+    <Page size="A4" style={{ padding: 0 }}>
+      <Image src={coverSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     </Page>
   );
 }
