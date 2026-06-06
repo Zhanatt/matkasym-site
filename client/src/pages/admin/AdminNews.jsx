@@ -177,6 +177,15 @@ function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
           </div>
         )}
 
+        {/* Gallery images */}
+        {item.images?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            {item.images.map((url, i) => (
+              <img key={i} src={url} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); window.open(url, '_blank'); }} />
+            ))}
+          </div>
+        )}
+
         {/* Views */}
         {totalRecipients > 0 && (
           <div style={{ marginBottom: 14 }}>

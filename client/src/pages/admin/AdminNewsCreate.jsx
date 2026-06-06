@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminCreateNews, adminGetUsers, adminGetProducts } from '../../api';
+import { adminCreateNews, adminGetUsers, adminGetProducts, adminUploadImage } from '../../api';
 
 const TYPE_META = {
   discontinued: { label: 'Снят с производства', color: '#c0392b', bg: '#fdf0ef' },
@@ -44,7 +44,10 @@ export default function AdminNewsCreate() {
   const [usersLoaded,  setUsersLoaded]  = useState(false);
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState('');
+  const [images,       setImages]       = useState([]);
+  const [uploading,    setUploading]    = useState(false);
   const prodDebounce = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     adminGetUsers().then(r => {
@@ -91,6 +94,7 @@ export default function AdminNewsCreate() {
         type,
         title: title.trim(),
         message: message.trim(),
+        images,
         productId: selectedProd?._id || null,
         recipientIds: [...selected],
       });
@@ -187,6 +191,55 @@ export default function AdminNewsCreate() {
           rows={4}
           style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, outline: 'none', marginBottom: 24, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
         />
+
+        {/* Images */}
+        <label style={{ fontSize: 12, fontWeight: 700, color: '#666', display: 'block', marginBottom: 8 }}>
+          Фотографии <span style={{ color: '#bbb', fontWeight: 400 }}>(необязательно)</span>
+        </label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
+          {images.map((url, i) => (
+            <div key={i} style={{ position: 'relative', width: 80, height: 80 }}>
+              <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+              <button
+                onClick={() => setImages(imgs => imgs.filter((_, idx) => idx !== i))}
+                style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#c0392b', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >×</button>
+            </div>
+          ))}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            style={{ width: 80, height: 80, borderRadius: 8, border: '2px dashed #ddd', background: '#fafafa', cursor: uploading ? 'wait' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: '#999', fontSize: 11, fontWeight: 600 }}
+          >
+            {uploading ? '...' : <>+<span>Фото</span></>}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={async (e) => {
+              const files = Array.from(e.target.files || []);
+              if (files.length === 0) return;
+              setUploading(true);
+              try {
+                for (const file of files) {
+                  const formData = new FormData();
+                  formData.append('image', file);
+                  const res = await adminUploadImage(formData);
+                  if (res.data?.url) {
+                    setImages(imgs => [...imgs, res.data.url]);
+                  }
+                }
+              } catch (err) {
+                setError('Ошибка загрузки фото');
+              }
+              setUploading(false);
+              e.target.value = '';
+            }}
+          />
+        </div>
 
         {/* Recipients */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>

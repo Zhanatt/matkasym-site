@@ -12,6 +12,7 @@ const newsSchema = new Schema({
   },
   title:   { type: String, required: true },
   message: { type: String, default: '' },
+  images:  [{ type: String }],  // массив URL фотографий для поста
   product: {
     id:          { type: Schema.Types.ObjectId, ref: 'Product', default: null },
     name:        { type: String, default: '' },

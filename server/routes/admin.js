@@ -1883,7 +1883,7 @@ router.get('/news', async (req, res) => {
 // POST /admin/news — создать новость (editor+)
 router.post('/news', editor, async (req, res) => {
   try {
-    const { type, title, message, productId, recipientIds } = req.body;
+    const { type, title, message, images, productId, recipientIds } = req.body;
     if (!type || !title) return res.status(400).json({ message: 'Тип и заголовок обязательны' });
 
     const product = productId ? await Product.findById(productId).lean() : null;
@@ -1921,6 +1921,7 @@ router.post('/news', editor, async (req, res) => {
       type,
       title,
       message: message || '',
+      images: images || [],
       product: product ? {
         id:          product._id,
         name:        product.fullName || product.name,
