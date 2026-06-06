@@ -402,30 +402,17 @@ function CoverPage({ brand = 'home' }) {
   );
 }
 
-// ── Back Cover ────────────────────────────────────────────────────────────────
-function BackCoverPage() {
-  return (
-    <Page size="A4" style={S.backPage}>
-      <Image src={LOGO} style={S.backLogo} />
+// ── Back Cover images ─────────────────────────────────────────────────────────
+const BACK_HOME  = '/covers/end-page-home.png';
+const BACK_SHAAR = '/covers/end-page-shaar.png';
 
-      <View style={S.backFooter}>
-        <View style={S.backCol}>
-          <Text style={S.backColLabel}>АДРЕС</Text>
-          <Text style={S.backColText}>с. Маевка,{'\n'}ул. Тепличная,{'\n'}уч. 1/2</Text>
-        </View>
-        <View style={S.backCol}>
-          <Text style={S.backColLabel}>ТЕЛЕФОН</Text>
-          <Text style={S.backColText}>+996 706 042 018</Text>
-        </View>
-        <View style={S.backCol}>
-          <Text style={S.backColLabel}>КОНТАКТЫ</Text>
-          <Text style={S.backColText}>
-            matkasymovllc@gmail.com{'\n'}
-            @matkasym_home{'\n'}
-            @make_in_kg
-          </Text>
-        </View>
-      </View>
+// ── Back Cover ────────────────────────────────────────────────────────────────
+function BackCoverPage({ brand = 'home' }) {
+  const backSrc = brand === 'shaar' ? BACK_SHAAR : BACK_HOME;
+
+  return (
+    <Page size="A4" style={{ padding: 0 }}>
+      <Image src={backSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     </Page>
   );
 }
@@ -575,7 +562,7 @@ function CatalogDocument({ groups, setName, priceType, brand = 'home' }) {
           );
         });
       })}
-      <BackCoverPage />
+      <BackCoverPage brand={brand} />
     </Document>
   );
 }
