@@ -108,6 +108,10 @@ export const adminConfirmNomenclature = (items) =>
 
 export const adminGetProductLog = (params) => api.get('/admin/product-log', { params });
 
+// Upload single image (for news etc.)
+export const adminUploadImage = (formData) =>
+  api.post('/admin/upload-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+
 // News feed
 export const adminGetNews          = (params)     => api.get('/admin/news', { params });
 export const adminGetNewsUnread    = ()            => api.get('/admin/news/unread-count');

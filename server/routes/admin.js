@@ -919,6 +919,21 @@ const xlsx   = require('xlsx');
 const sharp  = require('sharp');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }); // 50 MB per batch
 
+// POST /api/admin/upload-image — загрузить одно изображение (для новостей и т.п.)
+router.post('/upload-image', editor, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'matkasym/news', resource_type: 'image' },
+        (err, result) => err ? reject(err) : resolve(result)
+      );
+      stream.end(req.file.buffer);
+    });
+    res.json({ url: result.secure_url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 function normName(s = '') {
   return s.toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
 }
