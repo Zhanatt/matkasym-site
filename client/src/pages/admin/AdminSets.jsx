@@ -571,8 +571,54 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return result;
   }, [setSlug, models]);
 
-  // Общая переменная для групп (трубы, урны, ковка или taza-kiym)
-  const accordionGroups = tubeGroups || trashGroups || forgeGroups || tazaKiymGroups;
+  // Группировка для Kooz Koopsuzduk (щиты безопасности)
+  const koozGroups = useMemo(() => {
+    if (setSlug !== 'kooz-koopsuzduk') return null;
+    const categoryLabels = {
+      'electric-panel-outdoor': 'Электрощиты',
+      'electric-panel-mount': 'ЩМП (с монтажной панелью)',
+      'electric-panel-floor': 'Этажные щиты',
+      'electric-panel-plumbing': 'Сантехнические щиты',
+      'electric-panel-gas': 'Газовые щиты',
+      'fire-cabinet': 'Пожарные шкафы',
+      'other': 'Прочее',
+    };
+    const groups = {
+      'Электрощиты': [],
+      'ЩМП (с монтажной панелью)': [],
+      'Этажные щиты': [],
+      'Сантехнические щиты': [],
+      'Газовые щиты': [],
+      'Пожарные шкафы': [],
+      'Прочее': [],
+      'Нет в наличии': [],
+    };
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const hasStock = p.stock > 0 || p.inStock;
+      if (!hasStock) {
+        groups['Нет в наличии'].push([name, variants]);
+        return;
+      }
+      const cat = p.category || 'other';
+      const label = categoryLabels[cat] || 'Прочее';
+      if (groups[label]) {
+        groups[label].push([name, variants]);
+      } else {
+        groups['Прочее'].push([name, variants]);
+      }
+    });
+    const result = Object.entries(groups).filter(([, items]) => items.length > 0);
+    const outOfStockIdx = result.findIndex(([key]) => key === 'Нет в наличии');
+    if (outOfStockIdx > -1) {
+      const [outOfStock] = result.splice(outOfStockIdx, 1);
+      result.push(outOfStock);
+    }
+    return result;
+  }, [setSlug, models]);
+
+  // Общая переменная для групп (трубы, урны, ковка, taza-kiym или kooz-koopsuzduk)
+  const accordionGroups = tubeGroups || trashGroups || forgeGroups || tazaKiymGroups || koozGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
