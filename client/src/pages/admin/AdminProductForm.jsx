@@ -435,6 +435,19 @@ export default function AdminProductForm() {
       setError('Неверный идентификатор товара — обновите страницу');
       return;
     }
+
+    // Валидация для статуса "Тест"
+    if (form.productStatus === 'test_sale') {
+      const errors = [];
+      if (!form.isSupplied || !form.supplier?.company) errors.push('Поставщик');
+      if (!form.priceCost || Number(form.priceCost) <= 0) errors.push('Себестоимость');
+      if (!form.images || form.images.length === 0) errors.push('Фото');
+      if (errors.length > 0) {
+        setError(`Для статуса "Тест" обязательно: ${errors.join(', ')}`);
+        return;
+      }
+    }
+
     setSaving(true);
     setError('');
     try {
@@ -853,6 +866,7 @@ export default function AdminProductForm() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
               {[
                 { value: 'for_sale',       label: '🛒 В продаже',     bg: '#e6f4ea', color: '#2d7a3a', border: '#a8d5b0' },
+                { value: 'test_sale',      label: '🧪 Тест',          bg: '#fdf4ff', color: '#a21caf', border: '#e879f9' },
                 { value: 'planned',        label: '📋 В плане',       bg: '#eef2ff', color: '#3b5bdb', border: '#bfcbfb' },
                 { value: 'in_development', label: '🔨 В разработке',  bg: '#f3e8ff', color: '#7c3aed', border: '#c4b5fd' },
                 { value: 'improvement',    label: '🔧 На улучшении',  bg: '#fff8e6', color: '#c47a00', border: '#f0c060' },
@@ -871,7 +885,10 @@ export default function AdminProductForm() {
                 }}>
                   <input type="radio" name="productStatus" value={opt.value}
                     checked={form.productStatus === opt.value}
-                    onChange={() => set('productStatus', opt.value)}
+                    onChange={() => {
+                      set('productStatus', opt.value);
+                      if (opt.value === 'test_sale') set('isSupplied', true);
+                    }}
                     style={{ display: 'none' }} />
                   {opt.label}
                 </label>
@@ -947,6 +964,17 @@ export default function AdminProductForm() {
               data={form.improvementTZ}
               onChange={val => set('improvementTZ', val)}
             />
+          )}
+
+          {form.productStatus === 'test_sale' && (
+            <div style={{ marginTop: 12, padding: '16px 20px', borderRadius: 10, border: '1.5px solid #e879f940', background: '#fdf4ff08' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: '#a21caf', marginBottom: 10 }}>
+                🧪 Тестовая продажа
+              </div>
+              <p style={{ fontSize: 13, color: '#666', margin: 0, lineHeight: 1.5 }}>
+                Продажа «только по фото» для проверки спроса. Обязательно укажите <strong>поставщика</strong>, <strong>себестоимость</strong>, характеристики и загрузите фото.
+              </p>
+            </div>
           )}
 
           {/* Divider */}

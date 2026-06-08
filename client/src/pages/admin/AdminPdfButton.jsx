@@ -25,7 +25,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           // items is array of [name, variants] — extract first variant (primary product)
           const groupProducts = items
             .map(([, variants]) => variants[0])
-            .filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit);
+            .filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit || p.productStatus === 'test_sale');
           return { groupName, products: groupProducts };
         })
         .filter(g => g.products.length > 0);
@@ -37,7 +37,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
       }
     } else {
       // No groups — use flat list filtered by availability
-      const availableProducts = products.filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit);
+      const availableProducts = products.filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit || p.productStatus === 'test_sale');
       if (availableProducts.length === 0) {
         alert('Нет доступных товаров для выгрузки');
         setLoading(false);
