@@ -721,6 +721,31 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return result;
   }, [setSlug, models]);
 
+  // Группировка для Mazza Seiyl (уличная мебель)
+  const mazzaSeiylGroups = useMemo(() => {
+    if (setSlug !== 'mazza-seiyl') return null;
+    const categoryMap = {
+      'pergola': 'Перголы',
+      'bench': 'Перголы',
+      'скамейка': 'Скамейки',
+      'качели': 'Качели',
+      'навес-для-скамьи': 'Навесы',
+      'фонарь': 'Фонари и светильники',
+      'ландшафтный-светильник': 'Фонари и светильники',
+    };
+    const groupOrder = ['Перголы', 'Скамейки', 'Качели', 'Навесы', 'Фонари и светильники', 'Прочее'];
+    const groups = {};
+    groupOrder.forEach(g => groups[g] = []);
+
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const cat = p.category || '';
+      const label = categoryMap[cat] || 'Прочее';
+      groups[label].push([name, variants]);
+    });
+    return Object.entries(groups).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
   // Группировка для Onuguu Set (услуги металлообработки)
   const onuguuGroups = useMemo(() => {
     if (setSlug !== 'onuguu-set') return null;
@@ -754,7 +779,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   }, [setSlug, models]);
 
   // Общая переменная для групп (трубы, урны, ковка, taza-kiym, kooz-koopsuzduk или onuguu-set)
-  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || onuguuGroups;
+  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeiylGroups || onuguuGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
