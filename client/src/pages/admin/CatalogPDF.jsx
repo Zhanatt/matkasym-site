@@ -387,11 +387,20 @@ const CATEGORY_LABELS = {
   'other':                'товар для дома',
 };
 
-// ── Cover images ──────────────────────────────────────────────────────────────
+// ── Cover images (Cloudinary URLs for react-pdf compatibility) ───────────────
 const COVERS = {
-  home:   { title: '/covers/title-page-home.png',   end: '/covers/end-page-home.png'   },
-  shaar:  { title: '/covers/title-page-shaar.png',  end: '/covers/end-page-shaar.png'  },
-  kyzmat: { title: '/covers/title-page-kyzmat.png', end: '/covers/end-page-kyzmat.png' },
+  home:   {
+    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894224/matkasym/covers/title-page-home.png',
+    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894227/matkasym/covers/end-page-home.png'
+  },
+  shaar:  {
+    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894225/matkasym/covers/title-page-shaar.png',
+    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894228/matkasym/covers/end-page-shaar.png'
+  },
+  kyzmat: {
+    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894226/matkasym/covers/title-page-kyzmat.png',
+    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894229/matkasym/covers/end-page-kyzmat.png'
+  },
 };
 
 // ── Cover Page ────────────────────────────────────────────────────────────────
