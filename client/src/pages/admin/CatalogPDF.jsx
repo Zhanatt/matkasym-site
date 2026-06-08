@@ -387,19 +387,19 @@ const CATEGORY_LABELS = {
   'other':                'товар для дома',
 };
 
-// ── Cover images (Cloudinary URLs for react-pdf compatibility) ───────────────
+// ── Cover images (Cloudinary URLs with optimization for react-pdf) ───────────
 const COVERS = {
   home:   {
-    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894224/matkasym/covers/title-page-home.png',
-    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894227/matkasym/covers/end-page-home.png'
+    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_90,w_595/v1780894224/matkasym/covers/title-page-home.png',
+    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_90,w_595/v1780894227/matkasym/covers/end-page-home.png'
   },
   shaar:  {
-    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894225/matkasym/covers/title-page-shaar.png',
-    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894228/matkasym/covers/end-page-shaar.png'
+    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_90,w_595/v1780894225/matkasym/covers/title-page-shaar.png',
+    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_90,w_595/v1780894228/matkasym/covers/end-page-shaar.png'
   },
   kyzmat: {
-    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894226/matkasym/covers/title-page-kyzmat.png',
-    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/v1780894229/matkasym/covers/end-page-kyzmat.png'
+    title: 'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_90,w_595/v1780894226/matkasym/covers/title-page-kyzmat.png',
+    end:   'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_90,w_595/v1780894229/matkasym/covers/end-page-kyzmat.png'
   },
 };
 
@@ -409,7 +409,7 @@ function CoverPage({ brand = 'home' }) {
 
   return (
     <Page size="A4" style={{ padding: 0 }}>
-      <Image src={coverSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <Image src={coverSrc} cache={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     </Page>
   );
 }
@@ -420,7 +420,7 @@ function BackCoverPage({ brand = 'home' }) {
 
   return (
     <Page size="A4" style={{ padding: 0 }}>
-      <Image src={backSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <Image src={backSrc} cache={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     </Page>
   );
 }
