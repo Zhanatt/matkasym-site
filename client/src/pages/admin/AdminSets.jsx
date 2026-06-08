@@ -726,8 +726,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     if (setSlug !== 'mazza-seiyl') return null;
     const categoryMap = {
       'pergola': 'Перголы',
-      'bench': 'Перголы',
       'скамейка': 'Скамейки',
+      'bench': 'Скамейки',
       'качели': 'Качели',
       'навес-для-скамьи': 'Навесы',
       'фонарь': 'Фонари и светильники',
