@@ -530,6 +530,44 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return Object.entries(groups).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
+  // Группировка для Bekem Fasad (кронштейны и корзины для кондиционеров)
+  const fasadGroups = useMemo(() => {
+    if (setSlug !== 'bekem-fasad') return null;
+    const categoryLabels = {
+      'ac-mount': 'Кронштейны для кондиционеров',
+      'ac-basket': 'Корзины для кондиционеров',
+      'other': 'Прочее',
+    };
+    const groups = {
+      'Кронштейны для кондиционеров': [],
+      'Корзины для кондиционеров': [],
+      'Прочее': [],
+      'Нет в наличии': [],
+    };
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+      if (!hasStock) {
+        groups['Нет в наличии'].push([name, variants]);
+        return;
+      }
+      const cat = p.category || 'other';
+      const label = categoryLabels[cat] || 'Прочее';
+      if (groups[label]) {
+        groups[label].push([name, variants]);
+      } else {
+        groups['Прочее'].push([name, variants]);
+      }
+    });
+    const result = Object.entries(groups).filter(([, items]) => items.length > 0);
+    const outOfStockIdx = result.findIndex(([key]) => key === 'Нет в наличии');
+    if (outOfStockIdx > -1) {
+      const [outOfStock] = result.splice(outOfStockIdx, 1);
+      result.push(outOfStock);
+    }
+    return result;
+  }, [setSlug, models]);
+
   // Группировка для кованых изделий (poly-fabrikat)
   const forgeGroups = useMemo(() => {
     if (setSlug !== 'poly-fabrikat') return null;
@@ -672,7 +710,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   }, [setSlug, models]);
 
   // Общая переменная для групп (трубы, урны, ковка, taza-kiym, kooz-koopsuzduk или onuguu-set)
-  const accordionGroups = tubeGroups || trashGroups || forgeGroups || tazaKiymGroups || koozGroups || onuguuGroups;
+  const accordionGroups = tubeGroups || trashGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || onuguuGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
