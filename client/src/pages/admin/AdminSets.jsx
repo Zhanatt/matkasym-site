@@ -639,8 +639,40 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return result;
   }, [setSlug, models]);
 
-  // Общая переменная для групп (трубы, урны, ковка, taza-kiym или kooz-koopsuzduk)
-  const accordionGroups = tubeGroups || trashGroups || forgeGroups || tazaKiymGroups || koozGroups;
+  // Группировка для Onuguu Set (услуги металлообработки)
+  const onuguuGroups = useMemo(() => {
+    if (setSlug !== 'onuguu-set') return null;
+    const categoryLabels = {
+      'laser': 'Лазер',
+      'gibka': 'Гибка',
+      'svarka': 'Сварка',
+      'truborez': 'Труборез',
+      'pokraska': 'Покраска',
+      'other': 'Прочее',
+    };
+    const groups = {
+      'Лазер': [],
+      'Гибка': [],
+      'Сварка': [],
+      'Труборез': [],
+      'Покраска': [],
+      'Прочее': [],
+    };
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const cat = p.category || 'other';
+      const label = categoryLabels[cat] || 'Прочее';
+      if (groups[label]) {
+        groups[label].push([name, variants]);
+      } else {
+        groups['Прочее'].push([name, variants]);
+      }
+    });
+    return Object.entries(groups).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
+  // Общая переменная для групп (трубы, урны, ковка, taza-kiym, kooz-koopsuzduk или onuguu-set)
+  const accordionGroups = tubeGroups || trashGroups || forgeGroups || tazaKiymGroups || koozGroups || onuguuGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
