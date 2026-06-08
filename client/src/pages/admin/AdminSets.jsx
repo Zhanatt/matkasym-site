@@ -514,12 +514,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       else if (series.includes('karakol') || lowerName.includes('karakol') || lowerName.includes('plaza') || lowerName.includes('bp')) {
         groups['Серия KARAKOL'].push([name, variants]);
       }
-      // Уличные дерево+металл (GW, SW серии)
-      else if (material.includes('дерево') || series.includes('wood') || /^(gw|sw)\d?$/i.test(name)) {
+      // Уличные дерево+металл (категория street-bin-wood или GWR/Novotel/ARNUR/BAZAR)
+      else if (p.category === 'street-bin-wood' || material.includes('дерево') || series.includes('wood') || /^(gwr|novotel|arnur|bazar)/i.test(name)) {
         groups['Уличные дерево+металл'].push([name, variants]);
       }
-      // Уличные металлические (G серия, GWR)
-      else if (type.includes('уличн') || /^(g\d|g tegerek|gwr|novotel)/i.test(name)) {
+      // Уличные металлические (G серия, GW, SW)
+      else if (p.category === 'street-bin' || type.includes('уличн') || /^(g\d|g tegerek|gw|sw)\d?$/i.test(name)) {
         groups['Уличные металлические'].push([name, variants]);
       }
       // Прочие
