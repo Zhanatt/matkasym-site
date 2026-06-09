@@ -182,21 +182,20 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
 
   // Merge static sets with custom sets, respecting saved order
   // IMPORTANT: Static sets (from props) are ALWAYS shown. DB only stores order info.
+  // localOrder is ONLY used during active drag operation
   const allSets = useMemo(() => {
-    if (localOrder.length > 0) return localOrder;
-
     // Map of saved order info from DB
     const orderMap = new Map(customSets.map(s => [s.key, s.order]));
 
-    // Start with ALL static sets
+    // Start with ALL static sets (from props - these are guaranteed)
     const result = [...sets];
 
-    // Add custom-only sets (not in static list)
+    // Add custom-only sets (created by user, not in static list)
     customSets.forEach(s => {
       if (!sets.includes(s.key)) result.push(s.key);
     });
 
-    // Sort by saved order if available, otherwise keep original order
+    // Sort by saved order if available
     const hasOrderInfo = customSets.some(s => typeof s.order === 'number');
     if (hasOrderInfo) {
       result.sort((a, b) => {
@@ -207,7 +206,10 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     }
 
     return result;
-  }, [sets, customSets, localOrder]);
+  }, [sets, customSets]);
+
+  // During drag, use localOrder for visual feedback
+  const displaySets = localOrder.length > 0 ? localOrder : allSets;
 
   const handleDragStart = (e, idx) => {
     setDraggedIdx(idx);
@@ -228,9 +230,11 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     if (draggedIdx === null || draggedIdx === idx) {
       setDraggedIdx(null);
       setDragOverIdx(null);
+      setLocalOrder([]);
       return;
     }
-    const newOrder = [...allSets];
+    const currentSets = localOrder.length > 0 ? localOrder : allSets;
+    const newOrder = [...currentSets];
     const [moved] = newOrder.splice(draggedIdx, 1);
     newOrder.splice(idx, 0, moved);
     setLocalOrder(newOrder);
@@ -239,8 +243,10 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     try {
       const res = await adminReorderBrandSets(brandKey, newOrder);
       setCustomSets(res.data.sets || []);
+      setLocalOrder([]); // Reset after save - allSets will recalculate from customSets
     } catch (e) {
       console.error('Reorder failed:', e);
+      setLocalOrder([]); // Reset on error too
     }
   };
 
@@ -367,7 +373,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
 
       {/* Sets list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {allSets.map((slug, i) => {
+        {displaySets.map((slug, i) => {
           const customSet = customSets.find(cs => cs.key === slug);
           const displayLabel = customSet?.label || toTitle(slug);
           const isEditingThis = editingSetKey === slug;
