@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   adminGetMySets,
-  adminGetPendingProducts,
+  adminGetAllSetProducts,
   adminSubmitReview,
 } from '../../api/index';
 
@@ -30,8 +30,8 @@ const setLabel = (s) => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, (c
 
 const STATUS_CONFIG = {
   keep: { label: 'Оставить', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
-  improve: { label: 'Модернизировать', color: '#f59e0b', bg: '#fffbeb', icon: '⚙' },
-  discontinue: { label: 'Снять с производства', color: '#ef4444', bg: '#fef2f2', icon: '✕' },
+  improve: { label: 'Улучшить', color: '#f59e0b', bg: '#fffbeb', icon: '⚙' },
+  discontinue: { label: 'Снять', color: '#ef4444', bg: '#fef2f2', icon: '✕' },
 };
 
 const PRODUCT_STATUS_LABELS = {
@@ -59,6 +59,7 @@ export default function AdminProductReview() {
 
   // Режим опроса
   const [activeSet, setActiveSet] = useState(null);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [products, setProducts] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -71,33 +72,58 @@ export default function AdminProductReview() {
   const [showDetails, setShowDetails] = useState(false);
 
   // Загрузка сетов
-  useEffect(() => {
-    adminGetMySets()
-      .then((res) => {
-        setSets(res.data.sets || []);
-        setFrontman(res.data.frontman);
-      })
-      .finally(() => setLoading(false));
+  const loadSets = useCallback(async () => {
+    try {
+      const res = await adminGetMySets();
+      setSets(res.data.sets || []);
+      setFrontman(res.data.frontman);
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
-  // Начать опрос сета
-  const startReview = useCallback(async (setSlug) => {
+  useEffect(() => {
+    loadSets().finally(() => setLoading(false));
+  }, [loadSets]);
+
+  // Открыть сет (все товары с отзывами)
+  const openSet = useCallback(async (setSlug) => {
     setLoading(true);
     try {
-      const res = await adminGetPendingProducts(setSlug);
-      setProducts(res.data.products || []);
-      setCurrentIndex(0);
+      const res = await adminGetAllSetProducts(setSlug);
+      const prods = res.data.products || [];
+      setProducts(prods);
+      setIsCompleted(res.data.isCompleted);
       setActiveSet(setSlug);
+
+      // Найти первый непроверенный товар, или начать с первого
+      const firstUnreviewed = prods.findIndex(p => !p.review);
+      setCurrentIndex(firstUnreviewed >= 0 ? firstUnreviewed : 0);
+
       setPendingStatus(null);
       setComment('');
+      setShowDetails(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Перейти к товару
+  const goToProduct = (index) => {
+    setCurrentIndex(index);
+    setPendingStatus(null);
+    setComment('');
+    setShowDetails(false);
+  };
+
   // Отправка статуса
   const submitStatus = async (status) => {
     if (status === 'improve' || status === 'discontinue') {
+      // Если уже есть комментарий от предыдущего отзыва — подставить
+      const existingReview = products[currentIndex]?.review;
+      if (existingReview?.status === status && existingReview?.comment) {
+        setComment(existingReview.comment);
+      }
       setPendingStatus(status);
       return;
     }
@@ -116,19 +142,31 @@ export default function AdminProductReview() {
         comment: commentText,
       });
 
-      // Следующий товар
+      // Обновить локально
+      setProducts(prev => prev.map((p, i) =>
+        i === currentIndex
+          ? { ...p, review: { status, comment: commentText } }
+          : p
+      ));
+
       setPendingStatus(null);
       setComment('');
       setShowDetails(false);
 
-      if (currentIndex + 1 < products.length) {
-        setCurrentIndex((i) => i + 1);
+      // Перейти к следующему непроверенному
+      const nextUnreviewed = products.findIndex((p, i) => i > currentIndex && !p.review);
+      if (nextUnreviewed >= 0) {
+        setCurrentIndex(nextUnreviewed);
       } else {
-        // Сет завершён
-        setProducts([]);
-        setActiveSet(null);
-        // Обновить статистику
-        adminGetMySets().then((res) => setSets(res.data.sets || []));
+        // Проверить, есть ли ещё непроверенные до текущего
+        const anyUnreviewed = products.findIndex((p, i) => i !== currentIndex && !p.review);
+        if (anyUnreviewed >= 0) {
+          setCurrentIndex(anyUnreviewed);
+        } else {
+          // Все проверены!
+          setIsCompleted(true);
+          loadSets();
+        }
       }
     } finally {
       setSubmitting(false);
@@ -145,12 +183,15 @@ export default function AdminProductReview() {
     setActiveSet(null);
     setProducts([]);
     setCurrentIndex(0);
+    setIsCompleted(false);
     setPendingStatus(null);
     setComment('');
+    loadSets();
   };
 
   const currentProduct = products[currentIndex];
-  const progress = products.length > 0 ? ((currentIndex) / products.length) * 100 : 0;
+  const reviewedCount = products.filter(p => p.review).length;
+  const progress = products.length > 0 ? (reviewedCount / products.length) * 100 : 0;
 
   // Получить URL картинки
   const getImageUrl = (p) => {
@@ -194,31 +235,27 @@ export default function AdminProductReview() {
 
         <div style={{ display: 'grid', gap: 12 }}>
           {sets.map((s) => {
-            const done = s.reviewed >= s.total;
+            const done = s.reviewed >= s.total && s.total > 0;
             const pct = s.total > 0 ? Math.round((s.reviewed / s.total) * 100) : 0;
 
             return (
               <button
                 key={s.slug}
-                onClick={() => !done && startReview(s.slug)}
-                disabled={done}
+                onClick={() => openSet(s.slug)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '20px 24px',
-                  background: done ? '#f8f8f8' : '#fff',
-                  border: `2px solid ${done ? '#e5e5e5' : frontman.color || '#333'}`,
+                  background: done ? '#f0fdf4' : '#fff',
+                  border: `2px solid ${done ? '#22c55e' : frontman.color || '#333'}`,
                   borderRadius: 12,
-                  cursor: done ? 'default' : 'pointer',
-                  opacity: done ? 0.6 : 1,
+                  cursor: 'pointer',
                   transition: 'transform 0.15s, box-shadow 0.15s',
                 }}
                 onMouseEnter={(e) => {
-                  if (!done) {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
-                  }
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'none';
@@ -229,14 +266,14 @@ export default function AdminProductReview() {
                   <div style={{ fontSize: 18, fontWeight: 700, color: '#1c1c1c' }}>
                     {setLabel(s.slug)}
                   </div>
-                  <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: done ? '#22c55e' : '#888', marginTop: 4 }}>
                     {s.reviewed} из {s.total} проверено
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                   {/* Прогресс-бар */}
-                  <div style={{ width: 100, height: 6, background: '#eee', borderRadius: 3 }}>
+                  <div style={{ width: 100, height: 6, background: done ? '#bbf7d0' : '#eee', borderRadius: 3 }}>
                     <div
                       style={{
                         width: `${pct}%`,
@@ -249,7 +286,17 @@ export default function AdminProductReview() {
                   </div>
 
                   {done ? (
-                    <span style={{ fontSize: 20, color: '#22c55e' }}>✓</span>
+                    <span style={{
+                      fontSize: 20,
+                      color: '#22c55e',
+                      background: '#dcfce7',
+                      width: 32,
+                      height: 32,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>✓</span>
                   ) : (
                     <span style={{ fontSize: 14, fontWeight: 600, color: frontman.color || '#333' }}>
                       {s.total - s.reviewed} →
@@ -271,35 +318,7 @@ export default function AdminProductReview() {
     );
   }
 
-  // Сет завершён
-  if (products.length === 0) {
-    return (
-      <div style={{ maxWidth: 500, margin: '80px auto', textAlign: 'center', padding: 40 }}>
-        <div style={{ fontSize: 64, marginBottom: 20 }}>🎉</div>
-        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>Готово!</h2>
-        <p style={{ color: '#666', fontSize: 15, marginBottom: 24 }}>
-          Сет «{setLabel(activeSet)}» успешно проверен
-        </p>
-        <button
-          onClick={backToSets}
-          style={{
-            padding: '14px 32px',
-            fontSize: 15,
-            fontWeight: 600,
-            background: '#1c1c1c',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 10,
-            cursor: 'pointer',
-          }}
-        >
-          К списку сетов
-        </button>
-      </div>
-    );
-  }
-
-  // Экран опроса
+  // Экран опроса / просмотра
   return (
     <div style={{ maxWidth: 500, margin: '0 auto', padding: '16px' }}>
       {/* Шапка */}
@@ -319,286 +338,362 @@ export default function AdminProductReview() {
         >
           ← Назад
         </button>
-        <div style={{ fontSize: 14, fontWeight: 600, color: frontman.color || '#333' }}>
-          {setLabel(activeSet)}
+        <div style={{ fontSize: 14, fontWeight: 600, color: isCompleted ? '#22c55e' : frontman.color || '#333' }}>
+          {setLabel(activeSet)} {isCompleted && '✓'}
         </div>
         <div style={{ fontSize: 13, color: '#888' }}>
-          {currentIndex + 1} / {products.length}
+          {reviewedCount} / {products.length}
         </div>
       </div>
 
       {/* Прогресс */}
-      <div style={{ height: 4, background: '#eee', borderRadius: 2, marginBottom: 20 }}>
+      <div style={{ height: 4, background: '#eee', borderRadius: 2, marginBottom: 12 }}>
         <div
           style={{
             width: `${progress}%`,
             height: '100%',
-            background: frontman.color || '#333',
+            background: isCompleted ? '#22c55e' : frontman.color || '#333',
             borderRadius: 2,
             transition: 'width 0.3s',
           }}
         />
       </div>
 
+      {/* Миниатюры навигации */}
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        marginBottom: 16,
+        overflowX: 'auto',
+        paddingBottom: 8,
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        {products.map((p, i) => {
+          const review = p.review;
+          const isCurrent = i === currentIndex;
+          const cfg = review ? STATUS_CONFIG[review.status] : null;
+
+          return (
+            <button
+              key={p._id}
+              onClick={() => goToProduct(i)}
+              style={{
+                width: 40,
+                height: 40,
+                minWidth: 40,
+                borderRadius: 8,
+                border: isCurrent ? '2px solid #333' : '2px solid transparent',
+                background: cfg ? cfg.bg : '#f5f5f5',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 14,
+                color: cfg ? cfg.color : '#ccc',
+                fontWeight: 700,
+                transition: 'transform 0.1s',
+                transform: isCurrent ? 'scale(1.1)' : 'scale(1)',
+              }}
+            >
+              {cfg ? cfg.icon : (i + 1)}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Карточка товара */}
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 16,
-          overflow: 'hidden',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-        }}
-      >
-        {/* Фото */}
-        <div
-          style={{
-            aspectRatio: '1',
-            background: '#f8f8f8',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-          }}
-        >
-          <img
-            src={getImageUrl(currentProduct)}
-            alt={currentProduct.name}
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            onError={(e) => { e.target.src = '/placeholder.png'; }}
-          />
-        </div>
-
-        {/* Инфо */}
-        <div style={{ padding: '20px 24px' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, lineHeight: 1.3 }}>
-            {currentProduct.fullName || currentProduct.name}
-          </h2>
-
-          {currentProduct.sku && (
-            <div style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>
-              SKU: {currentProduct.sku}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-            {/* Остаток */}
-            <div
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                background: '#f8f8f8',
-                borderRadius: 10,
-                textAlign: 'center',
-              }}
-            >
-              <div style={{ fontSize: 24, fontWeight: 700, color: currentProduct.stock > 0 ? '#22c55e' : '#ef4444' }}>
-                {currentProduct.stock}
-              </div>
-              <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>на складе</div>
-            </div>
-
-            {/* Статус */}
-            <div
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                background: '#f8f8f8',
-                borderRadius: 10,
-                textAlign: 'center',
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
-                {PRODUCT_STATUS_LABELS[currentProduct.productStatus] || currentProduct.productStatus}
-              </div>
-              <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>статус</div>
-            </div>
-          </div>
-
-          {/* Кнопка "Подробнее" */}
-          <button
-            onClick={() => setShowDetails(!showDetails)}
+      {currentProduct && (
+        <>
+          <div
             style={{
-              width: '100%',
-              padding: '10px',
-              fontSize: 13,
-              fontWeight: 600,
-              background: 'transparent',
-              border: '1px solid #e5e5e5',
-              borderRadius: 8,
-              cursor: 'pointer',
-              color: '#666',
-              marginBottom: 8,
+              background: '#fff',
+              borderRadius: 16,
+              overflow: 'hidden',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
             }}
           >
-            {showDetails ? 'Скрыть детали ↑' : 'Подробнее ↓'}
-          </button>
-
-          {/* Детали */}
-          {showDetails && (
+            {/* Фото */}
             <div
               style={{
-                padding: '16px',
-                background: '#fafafa',
-                borderRadius: 10,
-                marginBottom: 8,
-                fontSize: 13,
+                aspectRatio: '1',
+                background: '#f8f8f8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                position: 'relative',
               }}
             >
-              <div style={{ marginBottom: 8 }}>
-                <strong>Цена:</strong> {currentProduct.price?.toLocaleString('ru')} сом
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <strong>Склад:</strong> {STOCK_STATUS_LABELS[currentProduct.stockStatus] || currentProduct.stockStatus}
-              </div>
-              {currentProduct.specs?.length > 0 && (
-                <div>
-                  <strong>Характеристики:</strong>
-                  <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                    {currentProduct.specs.map((s, i) => (
-                      <li key={i}>{s.key}: {s.value}</li>
-                    ))}
-                  </ul>
+              <img
+                src={getImageUrl(currentProduct)}
+                alt={currentProduct.name}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                onError={(e) => { e.target.src = '/placeholder.png'; }}
+              />
+
+              {/* Бейдж с текущим статусом */}
+              {currentProduct.review && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 12,
+                    right: 12,
+                    padding: '6px 12px',
+                    borderRadius: 20,
+                    background: STATUS_CONFIG[currentProduct.review.status].bg,
+                    color: STATUS_CONFIG[currentProduct.review.status].color,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  {STATUS_CONFIG[currentProduct.review.status].icon} {STATUS_CONFIG[currentProduct.review.status].label}
                 </div>
               )}
             </div>
+
+            {/* Инфо */}
+            <div style={{ padding: '20px 24px' }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, lineHeight: 1.3 }}>
+                {currentProduct.fullName || currentProduct.name}
+              </h2>
+
+              {currentProduct.sku && (
+                <div style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>
+                  SKU: {currentProduct.sku}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    background: '#f8f8f8',
+                    borderRadius: 10,
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: 24, fontWeight: 700, color: currentProduct.stock > 0 ? '#22c55e' : '#ef4444' }}>
+                    {currentProduct.stock}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>на складе</div>
+                </div>
+
+                <div
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    background: '#f8f8f8',
+                    borderRadius: 10,
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
+                    {PRODUCT_STATUS_LABELS[currentProduct.productStatus] || currentProduct.productStatus}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>статус</div>
+                </div>
+              </div>
+
+              {/* Комментарий к отзыву (если есть) */}
+              {currentProduct.review?.comment && (
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    background: STATUS_CONFIG[currentProduct.review.status].bg,
+                    borderRadius: 10,
+                    marginBottom: 12,
+                    fontSize: 13,
+                    color: '#555',
+                    borderLeft: `3px solid ${STATUS_CONFIG[currentProduct.review.status].color}`,
+                  }}
+                >
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>Ваш комментарий:</div>
+                  {currentProduct.review.comment}
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: 'transparent',
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  color: '#666',
+                  marginBottom: 8,
+                }}
+              >
+                {showDetails ? 'Скрыть детали ↑' : 'Подробнее ↓'}
+              </button>
+
+              {showDetails && (
+                <div
+                  style={{
+                    padding: '16px',
+                    background: '#fafafa',
+                    borderRadius: 10,
+                    marginBottom: 8,
+                    fontSize: 13,
+                  }}
+                >
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Цена:</strong> {currentProduct.price?.toLocaleString('ru')} сом
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Склад:</strong> {STOCK_STATUS_LABELS[currentProduct.stockStatus] || currentProduct.stockStatus}
+                  </div>
+                  {currentProduct.specs?.length > 0 && (
+                    <div>
+                      <strong>Характеристики:</strong>
+                      <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+                        {currentProduct.specs.map((s, i) => (
+                          <li key={i}>{s.key}: {s.value}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Кнопки действий — только если сет НЕ завершён или редактируем */}
+          {!isCompleted && !pendingStatus && (
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
+                const isSelected = currentProduct.review?.status === status;
+                return (
+                  <button
+                    key={status}
+                    onClick={() => submitStatus(status)}
+                    disabled={submitting}
+                    style={{
+                      flex: 1,
+                      padding: '16px 8px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      background: isSelected ? cfg.color : cfg.bg,
+                      color: isSelected ? '#fff' : cfg.color,
+                      border: `2px solid ${cfg.color}`,
+                      borderRadius: 12,
+                      cursor: submitting ? 'wait' : 'pointer',
+                      opacity: submitting ? 0.6 : 1,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {cfg.icon} {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
           )}
-        </div>
-      </div>
 
-      {/* Кнопки действий */}
-      {!pendingStatus ? (
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button
-            onClick={() => submitStatus('keep')}
-            disabled={submitting}
-            style={{
-              flex: 1,
-              padding: '18px 12px',
-              fontSize: 14,
-              fontWeight: 700,
-              background: STATUS_CONFIG.keep.bg,
-              color: STATUS_CONFIG.keep.color,
-              border: `2px solid ${STATUS_CONFIG.keep.color}`,
-              borderRadius: 12,
-              cursor: submitting ? 'wait' : 'pointer',
-              opacity: submitting ? 0.6 : 1,
-            }}
-          >
-            ✓ Оставить
-          </button>
-
-          <button
-            onClick={() => submitStatus('improve')}
-            disabled={submitting}
-            style={{
-              flex: 1,
-              padding: '18px 12px',
-              fontSize: 14,
-              fontWeight: 700,
-              background: STATUS_CONFIG.improve.bg,
-              color: STATUS_CONFIG.improve.color,
-              border: `2px solid ${STATUS_CONFIG.improve.color}`,
-              borderRadius: 12,
-              cursor: submitting ? 'wait' : 'pointer',
-              opacity: submitting ? 0.6 : 1,
-            }}
-          >
-            ⚙ Улучшить
-          </button>
-
-          <button
-            onClick={() => submitStatus('discontinue')}
-            disabled={submitting}
-            style={{
-              flex: 1,
-              padding: '18px 12px',
-              fontSize: 14,
-              fontWeight: 700,
-              background: STATUS_CONFIG.discontinue.bg,
-              color: STATUS_CONFIG.discontinue.color,
-              border: `2px solid ${STATUS_CONFIG.discontinue.color}`,
-              borderRadius: 12,
-              cursor: submitting ? 'wait' : 'pointer',
-              opacity: submitting ? 0.6 : 1,
-            }}
-          >
-            ✕ Снять
-          </button>
-        </div>
-      ) : (
-        /* Форма комментария */
-        <div
-          style={{
-            marginTop: 20,
-            padding: 20,
-            background: STATUS_CONFIG[pendingStatus].bg,
-            border: `2px solid ${STATUS_CONFIG[pendingStatus].color}`,
-            borderRadius: 14,
-          }}
-        >
-          <div style={{ fontSize: 14, fontWeight: 700, color: STATUS_CONFIG[pendingStatus].color, marginBottom: 12 }}>
-            {pendingStatus === 'improve' ? 'Что нужно улучшить?' : 'Причина снятия с производства'}
-          </div>
-
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder={
-              pendingStatus === 'improve'
-                ? 'Опишите, что нужно изменить: упаковку, конструкцию, цвет...'
-                : 'Укажите причину: низкий спрос, устарел, есть аналог...'
-            }
-            autoFocus
-            style={{
-              width: '100%',
-              minHeight: 100,
-              padding: 14,
-              fontSize: 14,
-              border: '1px solid #ddd',
-              borderRadius: 10,
-              resize: 'vertical',
-              fontFamily: 'inherit',
-              marginBottom: 12,
-            }}
-          />
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              onClick={cancelComment}
+          {/* Форма комментария */}
+          {!isCompleted && pendingStatus && (
+            <div
               style={{
-                flex: 1,
-                padding: '12px',
-                fontSize: 14,
-                fontWeight: 600,
-                background: '#fff',
-                color: '#666',
-                border: '1px solid #ddd',
-                borderRadius: 10,
-                cursor: 'pointer',
+                marginTop: 20,
+                padding: 20,
+                background: STATUS_CONFIG[pendingStatus].bg,
+                border: `2px solid ${STATUS_CONFIG[pendingStatus].color}`,
+                borderRadius: 14,
               }}
             >
-              Отмена
-            </button>
-            <button
-              onClick={() => doSubmit(pendingStatus, comment)}
-              disabled={!comment.trim() || submitting}
+              <div style={{ fontSize: 14, fontWeight: 700, color: STATUS_CONFIG[pendingStatus].color, marginBottom: 12 }}>
+                {pendingStatus === 'improve' ? 'Что нужно улучшить?' : 'Причина снятия с производства'}
+              </div>
+
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={
+                  pendingStatus === 'improve'
+                    ? 'Опишите: упаковку, конструкцию, цвет...'
+                    : 'Укажите причину: низкий спрос, устарел...'
+                }
+                autoFocus
+                style={{
+                  width: '100%',
+                  minHeight: 80,
+                  padding: 14,
+                  fontSize: 14,
+                  border: '1px solid #ddd',
+                  borderRadius: 10,
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  marginBottom: 12,
+                }}
+              />
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={cancelComment}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    background: '#fff',
+                    color: '#666',
+                    border: '1px solid #ddd',
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => doSubmit(pendingStatus, comment)}
+                  disabled={!comment.trim() || submitting}
+                  style={{
+                    flex: 2,
+                    padding: '12px',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    background: STATUS_CONFIG[pendingStatus].color,
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 10,
+                    cursor: !comment.trim() || submitting ? 'not-allowed' : 'pointer',
+                    opacity: !comment.trim() || submitting ? 0.5 : 1,
+                  }}
+                >
+                  {submitting ? 'Сохранение...' : 'Подтвердить'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Режим просмотра для завершённого сета */}
+          {isCompleted && (
+            <div
               style={{
-                flex: 2,
-                padding: '12px',
-                fontSize: 14,
-                fontWeight: 700,
-                background: STATUS_CONFIG[pendingStatus].color,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 10,
-                cursor: !comment.trim() || submitting ? 'not-allowed' : 'pointer',
-                opacity: !comment.trim() || submitting ? 0.5 : 1,
+                marginTop: 20,
+                padding: 20,
+                background: '#f0fdf4',
+                border: '2px solid #22c55e',
+                borderRadius: 14,
+                textAlign: 'center',
               }}
             >
-              {submitting ? 'Сохранение...' : 'Подтвердить'}
-            </button>
-          </div>
-        </div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#22c55e' }}>
+                Сет завершён
+              </div>
+              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                Просмотр результатов. Редактирование недоступно.
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

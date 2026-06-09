@@ -2084,6 +2084,54 @@ router.get('/review/set/:setSlug/pending', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/admin/review/set/:setSlug/all — все товары сета с отзывами (для просмотра/редактирования)
+router.get('/review/set/:setSlug/all', async (req, res) => {
+  try {
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    if (!frontman.sets.includes(req.params.setSlug)) {
+      return res.status(403).json({ error: 'Этот сет не в вашем ведении' });
+    }
+
+    // Получить все товары сета
+    const products = await Product.find({
+      set: req.params.setSlug,
+      brand: frontman.brand,
+    })
+      .select('name fullName sku set brand price stock stockStatus productStatus images driveImages specs')
+      .sort({ name: 1 })
+      .lean();
+
+    // Получить все отзывы этого фронтмена для этих товаров
+    const productIds = products.map(p => p._id);
+    const reviews = await ProductReview.find({
+      frontman: frontman._id,
+      product: { $in: productIds },
+    }).lean();
+
+    // Создать map отзывов по productId
+    const reviewMap = {};
+    reviews.forEach(r => { reviewMap[r.product.toString()] = r; });
+
+    // Добавить отзыв к каждому товару
+    const productsWithReviews = products.map(p => ({
+      ...p,
+      review: reviewMap[p._id.toString()] || null,
+    }));
+
+    // Проверить, завершён ли сет (все товары проверены)
+    const isCompleted = products.length > 0 && reviews.length === products.length;
+
+    res.json({
+      products: productsWithReviews,
+      frontmanId: frontman._id,
+      isCompleted,
+      total: products.length,
+      reviewed: reviews.length,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/admin/review — сохранить отзыв фронтмена
 router.post('/review', async (req, res) => {
   try {

@@ -134,6 +134,7 @@ export const adminDeleteSupplier   = (id)          => api.delete(`/admin/supplie
 // Product Review (Аудит ассортимента)
 export const adminGetMySets           = ()               => api.get('/admin/review/my-sets');
 export const adminGetPendingProducts  = (setSlug)        => api.get(`/admin/review/set/${setSlug}/pending`);
+export const adminGetAllSetProducts   = (setSlug)        => api.get(`/admin/review/set/${setSlug}/all`);
 export const adminSubmitReview        = (data)           => api.post('/admin/review', data);
 export const adminGetReviewResults    = (params)         => api.get('/admin/review/results', { params });
 export const adminGetReviewStats      = ()               => api.get('/admin/review/stats');
