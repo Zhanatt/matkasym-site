@@ -11,6 +11,8 @@ const NAV_ALL = [
   { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','navigator'] },
   { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer','navigator'], badge: 'news' },
+  { to: '/admin/review',   label: 'Аудит товаров',       icon: '✅', roles: ['owner','editor','viewer','navigator'] },
+  { to: '/admin/review/results', label: 'Результаты аудита', icon: '📊', roles: ['owner','editor'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },
   { to: '/admin/tenders',      label: 'Тендеры',            icon: '🎯', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/stock-log',   label: 'История остатков',  icon: '📦', roles: ['owner','editor'] },

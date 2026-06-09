@@ -131,4 +131,13 @@ export const adminCreateSupplier   = (data)        => api.post('/admin/suppliers
 export const adminUpdateSupplier   = (id, data)    => api.patch(`/admin/suppliers/${id}`, data);
 export const adminDeleteSupplier   = (id)          => api.delete(`/admin/suppliers/${id}`);
 
+// Product Review (Аудит ассортимента)
+export const adminGetMySets           = ()               => api.get('/admin/review/my-sets');
+export const adminGetPendingProducts  = (setSlug)        => api.get(`/admin/review/set/${setSlug}/pending`);
+export const adminSubmitReview        = (data)           => api.post('/admin/review', data);
+export const adminGetReviewResults    = (params)         => api.get('/admin/review/results', { params });
+export const adminGetReviewStats      = ()               => api.get('/admin/review/stats');
+export const adminDeleteReview        = (id)             => api.delete(`/admin/review/${id}`);
+export const adminResetSetReviews     = (setSlug)        => api.post('/admin/review/reset-set', { setSlug });
+
 export default api;

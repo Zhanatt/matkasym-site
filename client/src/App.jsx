@@ -24,6 +24,8 @@ import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import AdminProductLog   from './pages/admin/AdminProductLog';
 import AdminNews         from './pages/admin/AdminNews';
 import AdminNewsCreate   from './pages/admin/AdminNewsCreate';
+import AdminProductReview from './pages/admin/AdminProductReview';
+import AdminReviewResults from './pages/admin/AdminReviewResults';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -67,6 +69,8 @@ export default function App() {
           <Route path="product-log" element={<AdminProductLog />} />
           <Route path="news" element={<AdminNews />} />
           <Route path="news/create" element={<AdminNewsCreate />} />
+          <Route path="review" element={<AdminProductReview />} />
+          <Route path="review/results" element={<AdminReviewResults />} />
         </Route>
       </Routes>
     );

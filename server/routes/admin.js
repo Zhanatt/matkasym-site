@@ -2027,4 +2027,173 @@ router.delete('/news/:id', editor, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Product Review (Аудит ассортимента) ───────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+const ProductReview = require('../models/ProductReview');
+
+// GET /api/admin/review/my-sets — сеты текущего фронтмена
+router.get('/review/my-sets', async (req, res) => {
+  try {
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.json({ sets: [], frontman: null });
+
+    // Для каждого сета: подсчитать товары и проверенные
+    const setsData = await Promise.all(
+      frontman.sets.map(async (setSlug) => {
+        const [total, reviewed] = await Promise.all([
+          Product.countDocuments({ set: setSlug, brand: frontman.brand }),
+          ProductReview.countDocuments({
+            frontman: frontman._id,
+            'productSnapshot.set': setSlug
+          }),
+        ]);
+        return { slug: setSlug, total, reviewed };
+      })
+    );
+
+    res.json({ sets: setsData, frontman: { _id: frontman._id, name: frontman.name, brand: frontman.brand, color: frontman.color } });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/review/set/:setSlug/pending — непроверенные товары сета
+router.get('/review/set/:setSlug/pending', async (req, res) => {
+  try {
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    if (!frontman.sets.includes(req.params.setSlug)) {
+      return res.status(403).json({ error: 'Этот сет не в вашем ведении' });
+    }
+
+    // Найти уже проверенные товары
+    const reviewedIds = await ProductReview.find({ frontman: frontman._id })
+      .distinct('product');
+
+    // Получить непроверенные товары сета
+    const products = await Product.find({
+      set: req.params.setSlug,
+      brand: frontman.brand,
+      _id: { $nin: reviewedIds },
+    })
+      .select('name fullName sku set brand price stock stockStatus productStatus images driveImages specs')
+      .sort({ name: 1 })
+      .lean();
+
+    res.json({ products, frontmanId: frontman._id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/review — сохранить отзыв фронтмена
+router.post('/review', async (req, res) => {
+  try {
+    const { productId, status, comment } = req.body;
+
+    if (!['keep', 'improve', 'discontinue'].includes(status)) {
+      return res.status(400).json({ error: 'Неверный статус' });
+    }
+    if ((status === 'improve' || status === 'discontinue') && !comment?.trim()) {
+      return res.status(400).json({ error: 'Комментарий обязателен' });
+    }
+
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+
+    const product = await Product.findById(productId).lean();
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+
+    if (!frontman.sets.includes(product.set)) {
+      return res.status(403).json({ error: 'Этот товар не в вашем ведении' });
+    }
+
+    // Создать или обновить отзыв
+    const review = await ProductReview.findOneAndUpdate(
+      { product: productId, frontman: frontman._id },
+      {
+        product: productId,
+        frontman: frontman._id,
+        reviewer: req.user._id,
+        status,
+        comment: comment?.trim() || '',
+        productSnapshot: {
+          name: product.name,
+          fullName: product.fullName,
+          sku: product.sku,
+          set: product.set,
+          brand: product.brand,
+          price: product.price,
+          stock: product.stock,
+          image: product.images?.[0] || '',
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ ok: true, review });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/review/results — результаты для админа (по сетам/статусам)
+router.get('/review/results', async (req, res) => {
+  try {
+    const { set, status, brand } = req.query;
+    const match = {};
+    if (set)    match['productSnapshot.set']   = set;
+    if (status) match.status = status;
+    if (brand)  match['productSnapshot.brand'] = brand;
+
+    const reviews = await ProductReview.find(match)
+      .populate('frontman', 'name color')
+      .populate('reviewer', 'name email')
+      .populate('product', 'images driveImages stock stockStatus productStatus')
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    res.json(reviews);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/review/stats — статистика по сетам для админа
+router.get('/review/stats', async (req, res) => {
+  try {
+    const stats = await ProductReview.aggregate([
+      {
+        $group: {
+          _id: { set: '$productSnapshot.set', status: '$status' },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.set',
+          statuses: { $push: { status: '$_id.status', count: '$count' } },
+          total: { $sum: '$count' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    res.json(stats);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/review/:id — удалить отзыв (editor+)
+router.delete('/review/:id', editor, async (req, res) => {
+  try {
+    await ProductReview.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/review/reset-set — сбросить все отзывы сета для нового аудита (editor+)
+router.post('/review/reset-set', editor, async (req, res) => {
+  try {
+    const { setSlug } = req.body;
+    if (!setSlug) return res.status(400).json({ error: 'Укажите сет' });
+
+    const result = await ProductReview.deleteMany({ 'productSnapshot.set': setSlug });
+    res.json({ ok: true, deleted: result.deletedCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
