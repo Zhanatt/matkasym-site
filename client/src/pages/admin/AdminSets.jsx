@@ -77,7 +77,25 @@ const PROCHIYE = [
 ];
 
 const BRAND_META = {
-  'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
+  'matkasym-home':   {
+    label: 'HOME',
+    accent: '#DC1E24',
+    staticSets: [
+      'shirin-balalyk',    // 1 - наименее популярный
+      'korkom-aiym',       // 2
+      'konok-keldi',       // 3
+      '0-tashtandy',       // 4
+      'baary-oorunda',     // 5
+      'uydo-ishtoo',       // 6
+      'zhashyl-ömür',      // 7
+      'achyk-asman',       // 8
+      'den-sooluk',        // 9
+      'jenil-ashkana',     // 10
+      'taza-kiym',         // 11
+      'kosh-keliniz',      // 12
+      'sanarip-tv',        // 13 - самый популярный
+    ],
+  },
   'matkasym-shaar':  { label: 'SHAAR',  accent: '#3463A3' },
   'matkasym-kyzmat': { label: 'KYZMAT', accent: '#267846' },
 };
