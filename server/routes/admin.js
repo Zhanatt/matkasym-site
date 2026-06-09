@@ -351,6 +351,24 @@ router.put('/brands/:key/sets/:slug', editor, async (req, res) => {
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
+// Reorder sets in a brand
+router.put('/brands/:key/sets-reorder', editor, async (req, res) => {
+  try {
+    const { orderedKeys } = req.body;
+    if (!Array.isArray(orderedKeys)) return res.status(400).json({ error: 'orderedKeys должен быть массивом' });
+    const brand = await Brand.findOne({ key: req.params.key });
+    if (!brand) return res.status(404).json({ error: 'Бренд не найден' });
+    const setMap = new Map(brand.sets.map(s => [s.key, s]));
+    const reordered = orderedKeys
+      .filter(k => setMap.has(k))
+      .map((k, i) => { const s = setMap.get(k); s.order = i; return s; });
+    brand.sets.forEach(s => { if (!orderedKeys.includes(s.key)) reordered.push(s); });
+    brand.sets = reordered;
+    await brand.save();
+    res.json(brand);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
 // ── Changelog (admin only) ───────────────────────
 router.get('/changelog', admin, async (req, res) => {
   try {

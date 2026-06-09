@@ -47,6 +47,7 @@ export const adminUpdateBrand    = (key, data)        => api.patch(`/admin/brand
 export const adminAddBrandSet    = (key, slug, label)  => api.post(`/admin/brands/${key}/sets`, { slug, label });
 export const adminUpdateBrandSet = (key, slug, data)   => api.put(`/admin/brands/${key}/sets/${slug}`, data);
 export const adminDeleteBrandSet = (key, slug)         => api.delete(`/admin/brands/${key}/sets/${slug}`);
+export const adminReorderBrandSets = (key, orderedKeys) => api.put(`/admin/brands/${key}/sets-reorder`, { orderedKeys });
 export const adminGetUsers    = ()       => api.get('/admin/users');
 export const adminUpdateUser  = (id, data) => api.patch(`/admin/users/${id}`, data);
 export const adminDeleteUser  = (id)    => api.delete(`/admin/users/${id}`);

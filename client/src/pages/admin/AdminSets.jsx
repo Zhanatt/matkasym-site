@@ -6,7 +6,7 @@ import { useFrontmen } from '../../context/FrontmenContext';
 import AdminProductModal from './AdminProductModal';
 import {
   adminGetFacets, adminGetProducts,
-  adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet,
+  adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
@@ -162,6 +162,11 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   const [editingSetKey, setEditingSetKey] = useState(null);
   const [editSetLabel,  setEditSetLabel]  = useState('');
 
+  // Drag and drop state
+  const [draggedIdx, setDraggedIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
+  const [localOrder, setLocalOrder] = useState([]);
+
   useEffect(() => {
     adminGetBrands().then(r => {
       const brand = r.data.find(b => b.key === brandKey);
@@ -175,7 +180,58 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     );
   };
 
-  const allSets = [...new Set([...sets, ...customSets.map(s => s.key)])];
+  const allSetsBase = [...new Set([...sets, ...customSets.map(s => s.key)])];
+  const allSets = localOrder.length > 0 ? localOrder : allSetsBase;
+
+  // Sync localOrder when customSets change
+  useEffect(() => {
+    if (customSets.length > 0) {
+      const sorted = [...customSets].sort((a, b) => (a.order || 0) - (b.order || 0));
+      setLocalOrder(sorted.map(s => s.key));
+    } else if (sets.length > 0) {
+      setLocalOrder(sets);
+    }
+  }, [customSets, sets]);
+
+  const handleDragStart = (e, idx) => {
+    setDraggedIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, idx) => {
+    e.preventDefault();
+    if (draggedIdx !== idx) setDragOverIdx(idx);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIdx(null);
+  };
+
+  const handleDrop = async (e, idx) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === idx) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const newOrder = [...allSets];
+    const [moved] = newOrder.splice(draggedIdx, 1);
+    newOrder.splice(idx, 0, moved);
+    setLocalOrder(newOrder);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+    try {
+      const res = await adminReorderBrandSets(brandKey, newOrder);
+      setCustomSets(res.data.sets || []);
+    } catch (e) {
+      console.error('Reorder failed:', e);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  };
 
   async function handleAddSet() {
     const name = newSetName.trim();
@@ -298,19 +354,40 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
         {allSets.map((slug, i) => {
           const customSet = customSets.find(cs => cs.key === slug);
           const displayLabel = customSet?.label || toTitle(slug);
-          const isEditing = editingSetKey === slug;
+          const isEditingThis = editingSetKey === slug;
+          const isDragging = draggedIdx === i;
+          const isDragOver = dragOverIdx === i;
 
           return (
           <div key={slug}
-            style={{ padding: '8px 10px', background: i % 2 === 0 ? '#f8f9fb' : '#fff', borderRadius: 6 }}
+            draggable={editing}
+            onDragStart={e => handleDragStart(e, i)}
+            onDragOver={e => handleDragOver(e, i)}
+            onDragLeave={handleDragLeave}
+            onDrop={e => handleDrop(e, i)}
+            onDragEnd={handleDragEnd}
+            style={{
+              padding: '8px 10px',
+              background: isDragOver ? '#e3f2fd' : (i % 2 === 0 ? '#f8f9fb' : '#fff'),
+              borderRadius: 6,
+              opacity: isDragging ? 0.5 : 1,
+              border: isDragOver ? `2px dashed ${accent}` : '2px solid transparent',
+              cursor: editing ? 'grab' : 'default',
+              transition: 'all 0.15s',
+            }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {editing && (
+                <span style={{ color: '#bbb', fontSize: 14, cursor: 'grab', flexShrink: 0 }} title="Перетащить">
+                  ≡
+                </span>
+              )}
               <span style={{ width: 20, textAlign: 'right', fontWeight: 700, fontSize: 12, color: accent, flexShrink: 0 }}>
                 {i + 1}
               </span>
               <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
 
-              {editing && isEditing ? (
+              {editing && isEditingThis ? (
                 <div style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center', maxWidth: 150 }}>
                   <input
                     value={editSetLabel}
@@ -336,7 +413,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                 >{displayLabel}</span>
               )}
 
-              {editing && customSet && !isEditing && (
+              {editing && customSet && !isEditingThis && (
                 <>
                   <button onClick={() => startEditSet(slug, displayLabel)}
                     title="Редактировать название"
