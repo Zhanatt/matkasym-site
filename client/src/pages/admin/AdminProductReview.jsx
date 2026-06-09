@@ -179,14 +179,16 @@ export default function AdminProductReview() {
   };
 
   // Вернуться к выбору сетов
-  const backToSets = () => {
+  const backToSets = async () => {
+    setLoading(true);
     setActiveSet(null);
     setProducts([]);
     setCurrentIndex(0);
     setIsCompleted(false);
     setPendingStatus(null);
     setComment('');
-    loadSets();
+    await loadSets();
+    setLoading(false);
   };
 
   const currentProduct = products[currentIndex];
