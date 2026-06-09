@@ -351,17 +351,27 @@ router.put('/brands/:key/sets/:slug', editor, async (req, res) => {
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
-// Reorder sets in a brand
+// Reorder sets in a brand (creates set entries for static sets if needed)
 router.put('/brands/:key/sets-reorder', editor, async (req, res) => {
   try {
     const { orderedKeys } = req.body;
     if (!Array.isArray(orderedKeys)) return res.status(400).json({ error: 'orderedKeys должен быть массивом' });
-    const brand = await Brand.findOne({ key: req.params.key });
-    if (!brand) return res.status(404).json({ error: 'Бренд не найден' });
+    let brand = await Brand.findOne({ key: req.params.key });
+    if (!brand) {
+      const defaultLabel = req.params.key.replace('matkasym-', '').toUpperCase();
+      brand = new Brand({ key: req.params.key, label: defaultLabel, sets: [] });
+    }
     const setMap = new Map(brand.sets.map(s => [s.key, s]));
-    const reordered = orderedKeys
-      .filter(k => setMap.has(k))
-      .map((k, i) => { const s = setMap.get(k); s.order = i; return s; });
+    const reordered = orderedKeys.map((k, i) => {
+      if (setMap.has(k)) {
+        const s = setMap.get(k);
+        s.order = i;
+        return s;
+      }
+      // Create new entry for static set
+      const label = k.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return { key: k, label, order: i };
+    });
     brand.sets.forEach(s => { if (!orderedKeys.includes(s.key)) reordered.push(s); });
     brand.sets = reordered;
     await brand.save();

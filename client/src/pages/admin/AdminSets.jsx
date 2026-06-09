@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -180,18 +180,21 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     );
   };
 
-  const allSetsBase = [...new Set([...sets, ...customSets.map(s => s.key)])];
-  const allSets = localOrder.length > 0 ? localOrder : allSetsBase;
+  // Merge static sets with custom sets, respecting saved order
+  const allSets = useMemo(() => {
+    if (localOrder.length > 0) return localOrder;
+    // Build order: customSets have order field, static sets don't
+    const customMap = new Map(customSets.map(s => [s.key, s.order ?? 999]));
+    const allKeys = [...new Set([...sets, ...customSets.map(s => s.key)])];
+    // Sort by order (customSets order) or keep original order for static sets
+    return allKeys.sort((a, b) => {
+      const orderA = customMap.get(a) ?? sets.indexOf(a);
+      const orderB = customMap.get(b) ?? sets.indexOf(b);
+      return orderA - orderB;
+    });
+  }, [sets, customSets, localOrder]);
 
-  // Sync localOrder when customSets change
-  useEffect(() => {
-    if (customSets.length > 0) {
-      const sorted = [...customSets].sort((a, b) => (a.order || 0) - (b.order || 0));
-      setLocalOrder(sorted.map(s => s.key));
-    } else if (sets.length > 0) {
-      setLocalOrder(sets);
-    }
-  }, [customSets, sets]);
+  // Don't auto-sync localOrder — only set it on drag operations
 
   const handleDragStart = (e, idx) => {
     setDraggedIdx(idx);
