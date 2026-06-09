@@ -336,17 +336,29 @@ router.delete('/brands/:key/sets/:slug', editor, async (req, res) => {
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
-// Update a set's label in a brand
+// Update a set's label in a brand (upsert - creates if not exists)
 router.put('/brands/:key/sets/:slug', editor, async (req, res) => {
   try {
     const { label, labelRu } = req.body;
     if (!label) return res.status(400).json({ error: 'label обязателен' });
-    const brand = await Brand.findOneAndUpdate(
+    // Try to update existing
+    let brand = await Brand.findOneAndUpdate(
       { key: req.params.key, 'sets.key': req.params.slug },
       { $set: { 'sets.$.label': label, 'sets.$.labelRu': labelRu || '' } },
       { new: true }
     );
-    if (!brand) return res.status(404).json({ error: 'Бренд или сет не найден' });
+    // If set doesn't exist, create it
+    if (!brand) {
+      const defaultLabel = req.params.key.replace('matkasym-', '').toUpperCase();
+      brand = await Brand.findOneAndUpdate(
+        { key: req.params.key },
+        {
+          $push: { sets: { key: req.params.slug, label, labelRu: labelRu || '' } },
+          $setOnInsert: { label: defaultLabel }
+        },
+        { new: true, upsert: true }
+      );
+    }
     res.json(brand);
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });

@@ -435,7 +435,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                 >{displayLabel}</span>
               )}
 
-              {editing && customSet && !isEditingThis && (
+              {editing && !isEditingThis && (
                 <>
                   <button onClick={() => startEditSet(slug, displayLabel)}
                     title="Редактировать название"
@@ -443,12 +443,15 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                       cursor: 'pointer', fontSize: 12, padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>
                     ✏️
                   </button>
-                  <button onClick={() => handleDeleteSet(slug)}
-                    title="Удалить сет"
-                    style={{ color: '#c00', background: 'none', border: 'none',
-                      cursor: 'pointer', fontSize: 13, padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>
-                    ✕
-                  </button>
+                  {/* Delete only for custom sets (not in static list) */}
+                  {!sets.includes(slug) && (
+                    <button onClick={() => handleDeleteSet(slug)}
+                      title="Удалить сет"
+                      style={{ color: '#c00', background: 'none', border: 'none',
+                        cursor: 'pointer', fontSize: 13, padding: '0 2px', flexShrink: 0, lineHeight: 1 }}>
+                      ✕
+                    </button>
+                  )}
                 </>
               )}
 
