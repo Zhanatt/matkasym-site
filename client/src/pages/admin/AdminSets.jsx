@@ -181,20 +181,33 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   };
 
   // Merge static sets with custom sets, respecting saved order
+  // IMPORTANT: Static sets (from props) are ALWAYS shown. DB only stores order info.
   const allSets = useMemo(() => {
     if (localOrder.length > 0) return localOrder;
-    // Build order: customSets have order field, static sets don't
-    const customMap = new Map(customSets.map(s => [s.key, s.order ?? 999]));
-    const allKeys = [...new Set([...sets, ...customSets.map(s => s.key)])];
-    // Sort by order (customSets order) or keep original order for static sets
-    return allKeys.sort((a, b) => {
-      const orderA = customMap.get(a) ?? sets.indexOf(a);
-      const orderB = customMap.get(b) ?? sets.indexOf(b);
-      return orderA - orderB;
-    });
-  }, [sets, customSets, localOrder]);
 
-  // Don't auto-sync localOrder — only set it on drag operations
+    // Map of saved order info from DB
+    const orderMap = new Map(customSets.map(s => [s.key, s.order]));
+
+    // Start with ALL static sets
+    const result = [...sets];
+
+    // Add custom-only sets (not in static list)
+    customSets.forEach(s => {
+      if (!sets.includes(s.key)) result.push(s.key);
+    });
+
+    // Sort by saved order if available, otherwise keep original order
+    const hasOrderInfo = customSets.some(s => typeof s.order === 'number');
+    if (hasOrderInfo) {
+      result.sort((a, b) => {
+        const orderA = orderMap.has(a) ? orderMap.get(a) : 1000 + sets.indexOf(a);
+        const orderB = orderMap.has(b) ? orderMap.get(b) : 1000 + sets.indexOf(b);
+        return orderA - orderB;
+      });
+    }
+
+    return result;
+  }, [sets, customSets, localOrder]);
 
   const handleDragStart = (e, idx) => {
     setDraggedIdx(idx);
