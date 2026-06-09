@@ -122,4 +122,26 @@ async function sendNewsNotificationTelegram({ type, title, message, product }, r
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram };
+async function sendAuditNotificationTelegram({ auditName, deadline }, recipients) {
+  const deadlineStr = new Date(deadline).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  let text = `<b>📋 Объявлен новый аудит!</b>\n\n`;
+  text += `<b>${auditName}</b>\n\n`;
+  text += `⏰ Срок: <b>${deadlineStr}</b>\n\n`;
+  text += `Пожалуйста, пройдите аудит товаров в ваших сетах до указанного срока.\n\n`;
+  text += `<a href="${SITE_URL}/admin/review">Начать аудит →</a>`;
+
+  const recipientsList = Array.isArray(recipients) ? recipients : [recipients];
+  console.log(`[Telegram] Sending audit notification to ${recipientsList.length} frontmen`);
+
+  for (const r of recipientsList) {
+    const chatId = r.telegramChatId;
+    if (!chatId) {
+      console.log(`[Telegram] Skipping ${r.name || r.email} — no telegramChatId`);
+      continue;
+    }
+    await sendTelegramMessage(chatId, text);
+  }
+}
+
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram };

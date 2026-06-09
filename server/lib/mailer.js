@@ -196,4 +196,58 @@ async function sendNewsNotification({ type, title, message, product }, recipient
   }
 }
 
-module.exports = { sendApprovalRequest, sendApproved, sendRejected, sendPasswordReset, sendNewsNotification };
+async function sendAuditNotification({ auditName, deadline }, recipients) {
+  if (!resend) {
+    console.log('[Mailer] Resend not configured, skipping audit notification email');
+    return;
+  }
+
+  const deadlineStr = new Date(deadline).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const recipientsList = Array.isArray(recipients) ? recipients : [recipients];
+  console.log(`[Mailer] Sending audit notification to ${recipientsList.length} frontmen`);
+
+  for (const r of recipientsList) {
+    const toEmail = r.email;
+    const toName = r.name || r.email;
+    if (!toEmail) continue;
+
+    try {
+      await resend.emails.send({
+        from: `Продакт матрица <${FROM_EMAIL}>`,
+        to: toEmail,
+        subject: `📋 Новый аудит: ${auditName}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+            <div style="background:#000;padding:20px 24px;border-radius:8px 8px 0 0;">
+              <span style="color:#fff;font-weight:800;font-size:16px;letter-spacing:1px;">MATKASYM</span>
+              <span style="background:#e10523;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px;">Продакт матрица</span>
+            </div>
+            <div style="border:1px solid #e8e8e8;border-top:none;padding:28px 24px;border-radius:0 0 8px 8px;">
+              <div style="display:inline-block;background:#3498db1a;color:#3498db;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;margin-bottom:14px;letter-spacing:.4px;">
+                АУДИТ ТОВАРОВ
+              </div>
+              <h2 style="margin:0 0 16px;color:#000;font-size:18px;">${auditName}</h2>
+              <div style="background:#f7f8fa;border-radius:8px;padding:16px;margin-bottom:20px;">
+                <div style="font-size:13px;color:#666;margin-bottom:4px;">Срок завершения:</div>
+                <div style="font-size:18px;font-weight:700;color:#e10523;">${deadlineStr}</div>
+              </div>
+              <p style="color:#333;margin:0 0 20px;line-height:1.6;">
+                Пожалуйста, пройдите аудит товаров в ваших сетах до указанного срока.
+              </p>
+              <a href="${SITE_URL}/admin/review" style="display:inline-block;background:#e10523;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:700;font-size:14px;">
+                Начать аудит
+              </a>
+              <p style="color:#bbb;font-size:11px;margin:20px 0 0;">Привет, ${toName}!</p>
+            </div>
+          </div>
+        `,
+      });
+      console.log(`[Mailer] ✓ Audit notification sent to ${toEmail}`);
+    } catch (e) {
+      console.error(`[Mailer] ✗ Failed to send audit notification to ${toEmail}:`, e.message);
+    }
+  }
+}
+
+module.exports = { sendApprovalRequest, sendApproved, sendRejected, sendPasswordReset, sendNewsNotification, sendAuditNotification };

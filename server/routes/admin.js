@@ -2032,19 +2032,181 @@ router.delete('/news/:id', editor, async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 const ProductReview = require('../models/ProductReview');
+const Audit = require('../models/Audit');
+const { sendAuditNotification } = require('../lib/mailer');
+const { sendAuditNotificationTelegram } = require('../lib/telegram');
 
-// GET /api/admin/review/my-sets — сеты текущего фронтмена
+// ── Audits Management ─────────────────────────────────────────────────────────
+
+// GET /api/admin/audits — список всех аудитов
+router.get('/audits', async (req, res) => {
+  try {
+    const audits = await Audit.find()
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json(audits);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/audits/active — активный аудит (или null)
+router.get('/audits/active', async (req, res) => {
+  try {
+    const audit = await Audit.findOne({ status: 'active' })
+      .populate('createdBy', 'name')
+      .lean();
+    res.json(audit);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/audits/:id — детали аудита
+router.get('/audits/:id', async (req, res) => {
+  try {
+    const audit = await Audit.findById(req.params.id)
+      .populate('createdBy', 'name email')
+      .populate('frontmenProgress.frontman', 'name color sets brand')
+      .lean();
+    if (!audit) return res.status(404).json({ error: 'Аудит не найден' });
+    res.json(audit);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/audits — создать новый аудит (editor+)
+router.post('/audits', editor, async (req, res) => {
+  try {
+    const { name, deadline } = req.body;
+
+    if (!name || !deadline) {
+      return res.status(400).json({ error: 'Укажите название и дедлайн' });
+    }
+
+    // Проверить, нет ли уже активного аудита
+    const existingActive = await Audit.findOne({ status: 'active' });
+    if (existingActive) {
+      return res.status(400).json({ error: 'Уже есть активный аудит. Завершите его перед созданием нового.' });
+    }
+
+    // Получить всех фронтменов с их товарами
+    const frontmen = await Frontman.find({ userId: { $ne: null } }).populate('userId', 'email name telegramChatId');
+
+    const frontmenProgress = await Promise.all(
+      frontmen.map(async (fm) => {
+        const totalProducts = await Product.countDocuments({ set: { $in: fm.sets }, brand: fm.brand });
+        return {
+          frontman: fm._id,
+          totalProducts,
+          reviewedProducts: 0,
+          completedAt: null,
+        };
+      })
+    );
+
+    const audit = await Audit.create({
+      name,
+      deadline: new Date(deadline),
+      createdBy: req.user._id,
+      frontmenProgress,
+      stats: {
+        frontmenTotal: frontmen.length,
+      },
+    });
+
+    // Отправить уведомления фронтменам
+    const recipients = frontmen
+      .filter(fm => fm.userId)
+      .map(fm => ({
+        email: fm.userId.email,
+        name: fm.userId.name || fm.name,
+        telegramChatId: fm.userId.telegramChatId,
+      }));
+
+    // Отправляем асинхронно, не ждём
+    Promise.all([
+      sendAuditNotification({ auditName: name, deadline }, recipients),
+      sendAuditNotificationTelegram({ auditName: name, deadline }, recipients),
+    ]).catch(e => console.error('[Audit] Notification error:', e));
+
+    res.status(201).json(audit);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/audits/:id/complete — завершить аудит вручную (editor+)
+router.post('/audits/:id/complete', editor, async (req, res) => {
+  try {
+    const audit = await Audit.findById(req.params.id);
+    if (!audit) return res.status(404).json({ error: 'Аудит не найден' });
+    if (audit.status !== 'active') return res.status(400).json({ error: 'Аудит уже завершён' });
+
+    // Подсчитать статистику
+    const reviews = await ProductReview.find({ audit: audit._id });
+    const stats = {
+      totalProducts: reviews.length,
+      keep: reviews.filter(r => r.status === 'keep').length,
+      improve: reviews.filter(r => r.status === 'improve').length,
+      discontinue: reviews.filter(r => r.status === 'discontinue').length,
+      frontmenTotal: audit.frontmenProgress.length,
+      frontmenCompleted: audit.frontmenProgress.filter(fp => fp.completedAt).length,
+    };
+
+    audit.status = 'completed';
+    audit.completedAt = new Date();
+    audit.stats = stats;
+    await audit.save();
+
+    res.json(audit);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/audits/:id — удалить аудит (editor+)
+router.delete('/audits/:id', editor, async (req, res) => {
+  try {
+    await ProductReview.deleteMany({ audit: req.params.id });
+    await Audit.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Frontman Review Interface ─────────────────────────────────────────────────
+
+// GET /api/admin/review/my-sets — сеты текущего фронтмена для активного аудита
 router.get('/review/my-sets', async (req, res) => {
   try {
     const frontman = await Frontman.findOne({ userId: req.user._id });
-    if (!frontman) return res.json({ sets: [], frontman: null });
+    if (!frontman) return res.json({ sets: [], frontman: null, activeAudit: null, overdueAudits: [] });
 
-    // Для каждого сета: подсчитать товары и проверенные
+    // Найти активный аудит
+    const activeAudit = await Audit.findOne({ status: 'active' }).lean();
+
+    // Найти просроченные незавершённые аудиты для этого фронтмена
+    const overdueAudits = await Audit.find({
+      status: 'active',
+      deadline: { $lt: new Date() },
+      'frontmenProgress.frontman': frontman._id,
+      'frontmenProgress.completedAt': null,
+    }).lean();
+
+    // Фильтруем только те, где этот фронтмен не завершил
+    const reallyOverdue = overdueAudits.filter(a => {
+      const fp = a.frontmenProgress.find(p => p.frontman.toString() === frontman._id.toString());
+      return fp && !fp.completedAt;
+    });
+
+    if (!activeAudit) {
+      return res.json({
+        sets: [],
+        frontman: { _id: frontman._id, name: frontman.name, brand: frontman.brand, color: frontman.color },
+        activeAudit: null,
+        overdueAudits: reallyOverdue,
+      });
+    }
+
+    // Для каждого сета: подсчитать товары и проверенные в текущем аудите
     const setsData = await Promise.all(
       frontman.sets.map(async (setSlug) => {
         const [total, reviewed] = await Promise.all([
           Product.countDocuments({ set: setSlug, brand: frontman.brand }),
           ProductReview.countDocuments({
+            audit: activeAudit._id,
             frontman: frontman._id,
             'productSnapshot.set': setSlug
           }),
@@ -2053,44 +2215,39 @@ router.get('/review/my-sets', async (req, res) => {
       })
     );
 
-    res.json({ sets: setsData, frontman: { _id: frontman._id, name: frontman.name, brand: frontman.brand, color: frontman.color } });
+    res.json({
+      sets: setsData,
+      frontman: { _id: frontman._id, name: frontman.name, brand: frontman.brand, color: frontman.color },
+      activeAudit: {
+        _id: activeAudit._id,
+        name: activeAudit.name,
+        deadline: activeAudit.deadline,
+      },
+      overdueAudits: reallyOverdue,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/admin/review/set/:setSlug/pending — непроверенные товары сета
-router.get('/review/set/:setSlug/pending', async (req, res) => {
+// GET /api/admin/review/set/:setSlug/all — все товары сета с отзывами
+router.get('/review/set/:setSlug/all', async (req, res) => {
   try {
+    const { auditId } = req.query;
     const frontman = await Frontman.findOne({ userId: req.user._id });
     if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
     if (!frontman.sets.includes(req.params.setSlug)) {
       return res.status(403).json({ error: 'Этот сет не в вашем ведении' });
     }
 
-    // Найти уже проверенные товары
-    const reviewedIds = await ProductReview.find({ frontman: frontman._id })
-      .distinct('product');
+    // Определить аудит
+    let audit;
+    if (auditId) {
+      audit = await Audit.findById(auditId);
+    } else {
+      audit = await Audit.findOne({ status: 'active' });
+    }
 
-    // Получить непроверенные товары сета
-    const products = await Product.find({
-      set: req.params.setSlug,
-      brand: frontman.brand,
-      _id: { $nin: reviewedIds },
-    })
-      .select('name fullName sku set brand price priceWholesale stock stockStatus productStatus images driveImages specs')
-      .sort({ name: 1 })
-      .lean();
-
-    res.json({ products, frontmanId: frontman._id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET /api/admin/review/set/:setSlug/all — все товары сета с отзывами (для просмотра/редактирования)
-router.get('/review/set/:setSlug/all', async (req, res) => {
-  try {
-    const frontman = await Frontman.findOne({ userId: req.user._id });
-    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
-    if (!frontman.sets.includes(req.params.setSlug)) {
-      return res.status(403).json({ error: 'Этот сет не в вашем ведении' });
+    if (!audit) {
+      return res.status(400).json({ error: 'Нет активного аудита' });
     }
 
     // Получить все товары сета
@@ -2102,24 +2259,22 @@ router.get('/review/set/:setSlug/all', async (req, res) => {
       .sort({ name: 1 })
       .lean();
 
-    // Получить все отзывы этого фронтмена для этих товаров
+    // Получить отзывы для этого аудита
     const productIds = products.map(p => p._id);
     const reviews = await ProductReview.find({
+      audit: audit._id,
       frontman: frontman._id,
       product: { $in: productIds },
     }).lean();
 
-    // Создать map отзывов по productId
     const reviewMap = {};
     reviews.forEach(r => { reviewMap[r.product.toString()] = r; });
 
-    // Добавить отзыв к каждому товару
     const productsWithReviews = products.map(p => ({
       ...p,
       review: reviewMap[p._id.toString()] || null,
     }));
 
-    // Проверить, завершён ли сет (все товары проверены)
     const isCompleted = products.length > 0 && reviews.length === products.length;
 
     res.json({
@@ -2128,6 +2283,7 @@ router.get('/review/set/:setSlug/all', async (req, res) => {
       isCompleted,
       total: products.length,
       reviewed: reviews.length,
+      audit: { _id: audit._id, name: audit.name, deadline: audit.deadline, status: audit.status },
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2135,7 +2291,7 @@ router.get('/review/set/:setSlug/all', async (req, res) => {
 // POST /api/admin/review — сохранить отзыв фронтмена
 router.post('/review', async (req, res) => {
   try {
-    const { productId, status, comment } = req.body;
+    const { productId, status, comment, auditId } = req.body;
 
     if (!['keep', 'improve', 'discontinue'].includes(status)) {
       return res.status(400).json({ error: 'Неверный статус' });
@@ -2147,6 +2303,23 @@ router.post('/review', async (req, res) => {
     const frontman = await Frontman.findOne({ userId: req.user._id });
     if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
 
+    // Определить аудит
+    let audit;
+    if (auditId) {
+      audit = await Audit.findById(auditId);
+    } else {
+      audit = await Audit.findOne({ status: 'active' });
+    }
+
+    if (!audit) {
+      return res.status(400).json({ error: 'Нет активного аудита' });
+    }
+
+    // Нельзя редактировать завершённый аудит
+    if (audit.status === 'completed') {
+      return res.status(400).json({ error: 'Аудит уже завершён, редактирование недоступно' });
+    }
+
     const product = await Product.findById(productId).lean();
     if (!product) return res.status(404).json({ error: 'Товар не найден' });
 
@@ -2156,8 +2329,9 @@ router.post('/review', async (req, res) => {
 
     // Создать или обновить отзыв
     const review = await ProductReview.findOneAndUpdate(
-      { product: productId, frontman: frontman._id },
+      { audit: audit._id, product: productId, frontman: frontman._id },
       {
+        audit: audit._id,
         product: productId,
         frontman: frontman._id,
         reviewer: req.user._id,
@@ -2177,20 +2351,52 @@ router.post('/review', async (req, res) => {
       { upsert: true, new: true }
     );
 
+    // Обновить прогресс фронтмена в аудите
+    const totalReviewed = await ProductReview.countDocuments({
+      audit: audit._id,
+      frontman: frontman._id,
+    });
+    const totalProducts = await Product.countDocuments({
+      set: { $in: frontman.sets },
+      brand: frontman.brand,
+    });
+
+    const isNowComplete = totalReviewed >= totalProducts;
+
+    await Audit.updateOne(
+      { _id: audit._id, 'frontmenProgress.frontman': frontman._id },
+      {
+        $set: {
+          'frontmenProgress.$.reviewedProducts': totalReviewed,
+          ...(isNowComplete && { 'frontmenProgress.$.completedAt': new Date() }),
+        },
+      }
+    );
+
     res.json({ ok: true, review });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/admin/review/results — результаты для админа (по сетам/статусам)
+// GET /api/admin/review/results — результаты для админа (по сетам/статусам/аудитам)
 router.get('/review/results', async (req, res) => {
   try {
-    const { set, status, brand } = req.query;
+    const { set, status, brand, auditId } = req.query;
     const match = {};
+
+    // По умолчанию показываем активный аудит
+    if (auditId) {
+      match.audit = new (require('mongoose').Types.ObjectId)(auditId);
+    } else {
+      const activeAudit = await Audit.findOne({ status: 'active' });
+      if (activeAudit) match.audit = activeAudit._id;
+    }
+
     if (set)    match['productSnapshot.set']   = set;
     if (status) match.status = status;
     if (brand)  match['productSnapshot.brand'] = brand;
 
     const reviews = await ProductReview.find(match)
+      .populate('audit', 'name deadline status')
       .populate('frontman', 'name color')
       .populate('reviewer', 'name email')
       .populate('product', 'images driveImages stock stockStatus productStatus')
@@ -2204,7 +2410,18 @@ router.get('/review/results', async (req, res) => {
 // GET /api/admin/review/stats — статистика по сетам для админа
 router.get('/review/stats', async (req, res) => {
   try {
+    const { auditId } = req.query;
+    let auditMatch = {};
+
+    if (auditId) {
+      auditMatch.audit = new (require('mongoose').Types.ObjectId)(auditId);
+    } else {
+      const activeAudit = await Audit.findOne({ status: 'active' });
+      if (activeAudit) auditMatch.audit = activeAudit._id;
+    }
+
     const stats = await ProductReview.aggregate([
+      { $match: auditMatch },
       {
         $group: {
           _id: { set: '$productSnapshot.set', status: '$status' },
@@ -2230,17 +2447,6 @@ router.delete('/review/:id', editor, async (req, res) => {
   try {
     await ProductReview.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /api/admin/review/reset-set — сбросить все отзывы сета для нового аудита (editor+)
-router.post('/review/reset-set', editor, async (req, res) => {
-  try {
-    const { setSlug } = req.body;
-    if (!setSlug) return res.status(400).json({ error: 'Укажите сет' });
-
-    const result = await ProductReview.deleteMany({ 'productSnapshot.set': setSlug });
-    res.json({ ok: true, deleted: result.deletedCount });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

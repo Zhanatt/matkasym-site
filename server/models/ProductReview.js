@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
 
 const productReviewSchema = new mongoose.Schema({
+  // Привязка к аудиту
+  audit: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Audit',
+    required: true
+  },
+
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
@@ -44,8 +51,11 @@ const productReviewSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-// Индекс для быстрого поиска: один отзыв на товар от одного фронтмена
-productReviewSchema.index({ product: 1, frontman: 1 }, { unique: true });
+// Индекс: один отзыв на товар от одного фронтмена в рамках одного аудита
+productReviewSchema.index({ audit: 1, product: 1, frontman: 1 }, { unique: true });
+
+// Индекс для получения всех отзывов аудита
+productReviewSchema.index({ audit: 1, status: 1 });
 
 // Индекс для фильтрации по сету
 productReviewSchema.index({ 'productSnapshot.set': 1, status: 1 });

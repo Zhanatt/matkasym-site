@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
+  adminGetAudits,
+  adminGetActiveAudit,
+  adminCreateAudit,
+  adminCompleteAudit,
+  adminDeleteAudit,
   adminGetReviewResults,
   adminGetReviewStats,
   adminDeleteReview,
-  adminResetSetReviews,
 } from '../../api/index';
 
 const SET_NAMES = {
@@ -35,11 +39,18 @@ const STATUS_CONFIG = {
   discontinue: { label: 'Снять', color: '#ef4444', bg: '#fef2f2', icon: '✕' },
 };
 
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('ru', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+const formatDateLong = (d) => d ? new Date(d).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+
 export default function AdminReviewResults() {
   const { user } = useAuth();
   const canEdit = user?.role === 'owner' || user?.role === 'editor';
 
   const [loading, setLoading] = useState(true);
+  const [audits, setAudits] = useState([]);
+  const [activeAudit, setActiveAudit] = useState(null);
+  const [selectedAuditId, setSelectedAuditId] = useState(null);
+
   const [stats, setStats] = useState([]);
   const [reviews, setReviews] = useState([]);
 
@@ -47,33 +58,98 @@ export default function AdminReviewResults() {
   const [filterSet, setFilterSet] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
+  // Модалка создания аудита
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newAuditName, setNewAuditName] = useState('');
+  const [newAuditDeadline, setNewAuditDeadline] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const loadAudits = useCallback(async () => {
+    try {
+      const [auditsRes, activeRes] = await Promise.all([
+        adminGetAudits(),
+        adminGetActiveAudit(),
+      ]);
+      setAudits(auditsRes.data);
+      setActiveAudit(activeRes.data);
+      if (activeRes.data) {
+        setSelectedAuditId(activeRes.data._id);
+      } else if (auditsRes.data.length > 0) {
+        setSelectedAuditId(auditsRes.data[0]._id);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
+    if (!selectedAuditId) return;
     setLoading(true);
     try {
       const [statsRes, reviewsRes] = await Promise.all([
-        adminGetReviewStats(),
-        adminGetReviewResults({ set: filterSet || undefined, status: filterStatus || undefined }),
+        adminGetReviewStats(selectedAuditId),
+        adminGetReviewResults({ auditId: selectedAuditId, set: filterSet || undefined, status: filterStatus || undefined }),
       ]);
       setStats(statsRes.data);
       setReviews(reviewsRes.data);
     } finally {
       setLoading(false);
     }
-  }, [filterSet, filterStatus]);
+  }, [selectedAuditId, filterSet, filterStatus]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadAudits().finally(() => setLoading(false));
+  }, [loadAudits]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Удалить этот отзыв?')) return;
-    await adminDeleteReview(id);
-    loadData();
+  useEffect(() => {
+    if (selectedAuditId) loadData();
+  }, [loadData, selectedAuditId]);
+
+  const handleCreateAudit = async () => {
+    if (!newAuditName.trim() || !newAuditDeadline) return;
+    setCreating(true);
+    try {
+      await adminCreateAudit({ name: newAuditName, deadline: newAuditDeadline });
+      setShowCreateModal(false);
+      setNewAuditName('');
+      setNewAuditDeadline('');
+      await loadAudits();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Ошибка создания аудита');
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const handleResetSet = async (setSlug) => {
-    if (!window.confirm(`Сбросить все отзывы сета "${setLabel(setSlug)}"?\n\nЭто позволит начать новый цикл аудита.`)) return;
-    await adminResetSetReviews(setSlug);
+  const handleCompleteAudit = async (id) => {
+    if (!window.confirm('Завершить аудит? Фронтмены больше не смогут вносить изменения.')) return;
+    try {
+      await adminCompleteAudit(id);
+      await loadAudits();
+      loadData();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Ошибка');
+    }
+  };
+
+  const handleDeleteAudit = async (id) => {
+    if (!window.confirm('Удалить аудит и все его результаты? Это действие необратимо.')) return;
+    try {
+      await adminDeleteAudit(id);
+      await loadAudits();
+      if (selectedAuditId === id) {
+        setSelectedAuditId(null);
+        setStats([]);
+        setReviews([]);
+      }
+    } catch (e) {
+      alert(e.response?.data?.error || 'Ошибка');
+    }
+  };
+
+  const handleDeleteReview = async (id) => {
+    if (!window.confirm('Удалить этот отзыв?')) return;
+    await adminDeleteReview(id);
     loadData();
   };
 
@@ -85,12 +161,8 @@ export default function AdminReviewResults() {
     return '/placeholder.png';
   };
 
-  const formatDate = (d) => {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('ru', { day: '2-digit', month: '2-digit', year: '2-digit' });
-  };
-
   const allSets = [...new Set(stats.map((s) => s._id).filter(Boolean))].sort();
+  const selectedAudit = audits.find(a => a._id === selectedAuditId);
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -99,303 +171,494 @@ export default function AdminReviewResults() {
         <div>
           <h1 className="admin-page-title">Результаты аудита</h1>
           <p style={{ color: 'var(--slate)', fontSize: 13, margin: '2px 0 0' }}>
-            Просмотр и управление результатами опроса фронтменов
+            Управление аудитами и просмотр результатов
           </p>
         </div>
+        {canEdit && !activeAudit && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            style={{
+              padding: '10px 20px',
+              fontSize: 14,
+              fontWeight: 700,
+              background: '#e10523',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+            }}
+          >
+            + Новый аудит
+          </button>
+        )}
       </div>
+
+      {/* Активный аудит */}
+      {activeAudit && (
+        <div
+          style={{
+            background: '#f0f9ff',
+            border: '2px solid #3b82f6',
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 20,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#3b82f6', marginBottom: 4 }}>
+              АКТИВНЫЙ АУДИТ
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#1c1c1c' }}>
+              {activeAudit.name}
+            </div>
+            <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
+              Срок: {formatDateLong(activeAudit.deadline)}
+            </div>
+          </div>
+          {canEdit && (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => handleCompleteAudit(activeAudit._id)}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: '#22c55e',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                ✓ Завершить аудит
+              </button>
+              <button
+                onClick={() => handleDeleteAudit(activeAudit._id)}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: '#fff',
+                  color: '#ef4444',
+                  border: '1px solid #fcc',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                Удалить
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Выбор аудита */}
+      {audits.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 8 }}>
+            История аудитов:
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {audits.map(a => (
+              <button
+                key={a._id}
+                onClick={() => setSelectedAuditId(a._id)}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: selectedAuditId === a._id ? '#1c1c1c' : '#f5f5f5',
+                  color: selectedAuditId === a._id ? '#fff' : '#555',
+                  border: 'none',
+                  borderRadius: 20,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {a.status === 'active' && <span style={{ color: '#22c55e' }}>●</span>}
+                {a.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Статистика по сетам */}
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          padding: 24,
-          marginBottom: 20,
-          boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
-        }}
-      >
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Статистика по сетам</h2>
-
-        {stats.length === 0 ? (
-          <div style={{ color: '#aaa', fontSize: 14, padding: '20px 0' }}>
-            Пока нет данных
+      {selectedAudit && (
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 12,
+            padding: 24,
+            marginBottom: 20,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+              Статистика: {selectedAudit.name}
+            </h2>
+            <div style={{ fontSize: 12, color: '#888' }}>
+              {selectedAudit.status === 'completed' ? (
+                <span style={{ color: '#22c55e' }}>✓ Завершён {formatDate(selectedAudit.completedAt)}</span>
+              ) : (
+                <span>Срок: {formatDateLong(selectedAudit.deadline)}</span>
+              )}
+            </div>
           </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-            {stats.map((s) => {
-              const statusMap = {};
-              (s.statuses || []).forEach((st) => { statusMap[st.status] = st.count; });
 
-              return (
-                <div
-                  key={s._id}
-                  style={{
-                    padding: 16,
-                    border: '1px solid #eee',
-                    borderRadius: 10,
-                    background: '#fafafa',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>{setLabel(s._id)}</div>
-                    <div style={{ fontSize: 13, color: '#888' }}>{s.total} проверено</div>
-                  </div>
+          {stats.length === 0 ? (
+            <div style={{ color: '#aaa', fontSize: 14, padding: '20px 0' }}>
+              Пока нет данных
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+              {stats.map((s) => {
+                const statusMap = {};
+                (s.statuses || []).forEach((st) => { statusMap[st.status] = st.count; });
 
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                      <div
-                        key={key}
-                        style={{
-                          flex: 1,
-                          padding: '8px 4px',
-                          background: cfg.bg,
-                          borderRadius: 8,
-                          textAlign: 'center',
-                        }}
-                      >
-                        <div style={{ fontSize: 18, fontWeight: 700, color: cfg.color }}>
-                          {statusMap[key] || 0}
+                return (
+                  <div
+                    key={s._id}
+                    style={{
+                      padding: 16,
+                      border: '1px solid #eee',
+                      borderRadius: 10,
+                      background: '#fafafa',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{setLabel(s._id)}</div>
+                      <div style={{ fontSize: 13, color: '#888' }}>{s.total} проверено</div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                        <div
+                          key={key}
+                          style={{
+                            flex: 1,
+                            padding: '8px 4px',
+                            background: cfg.bg,
+                            borderRadius: 8,
+                            textAlign: 'center',
+                          }}
+                        >
+                          <div style={{ fontSize: 18, fontWeight: 700, color: cfg.color }}>
+                            {statusMap[key] || 0}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{cfg.label}</div>
                         </div>
-                        <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{cfg.label}</div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-
-                  {canEdit && (
-                    <button
-                      onClick={() => handleResetSet(s._id)}
-                      style={{
-                        marginTop: 12,
-                        width: '100%',
-                        padding: '8px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        background: '#fff',
-                        border: '1px solid #ddd',
-                        borderRadius: 8,
-                        cursor: 'pointer',
-                        color: '#888',
-                      }}
-                    >
-                      Сбросить для нового аудита
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Фильтры */}
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          padding: '16px 24px',
-          marginBottom: 16,
-          boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
-          display: 'flex',
-          gap: 16,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#888' }}>Фильтры:</div>
-
-        <select
-          value={filterSet}
-          onChange={(e) => setFilterSet(e.target.value)}
+      {selectedAudit && (
+        <div
           style={{
-            padding: '8px 12px',
-            fontSize: 13,
-            border: '1px solid #ddd',
-            borderRadius: 8,
             background: '#fff',
-            cursor: 'pointer',
+            borderRadius: 12,
+            padding: '16px 24px',
+            marginBottom: 16,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+            display: 'flex',
+            gap: 16,
+            alignItems: 'center',
+            flexWrap: 'wrap',
           }}
         >
-          <option value="">Все сеты</option>
-          {allSets.map((s) => (
-            <option key={s} value={s}>{setLabel(s)}</option>
-          ))}
-        </select>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#888' }}>Фильтры:</div>
 
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{
-            padding: '8px 12px',
-            fontSize: 13,
-            border: '1px solid #ddd',
-            borderRadius: 8,
-            background: '#fff',
-            cursor: 'pointer',
-          }}
-        >
-          <option value="">Все статусы</option>
-          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-            <option key={key} value={key}>{cfg.label}</option>
-          ))}
-        </select>
+          <select
+            value={filterSet}
+            onChange={(e) => setFilterSet(e.target.value)}
+            style={{ padding: '8px 12px', fontSize: 13, border: '1px solid #ddd', borderRadius: 8, background: '#fff', cursor: 'pointer' }}
+          >
+            <option value="">Все сеты</option>
+            {allSets.map((s) => (
+              <option key={s} value={s}>{setLabel(s)}</option>
+            ))}
+          </select>
 
-        <div style={{ marginLeft: 'auto', fontSize: 13, color: '#888' }}>
-          Найдено: {reviews.length}
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            style={{ padding: '8px 12px', fontSize: 13, border: '1px solid #ddd', borderRadius: 8, background: '#fff', cursor: 'pointer' }}
+          >
+            <option value="">Все статусы</option>
+            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+              <option key={key} value={key}>{cfg.label}</option>
+            ))}
+          </select>
+
+          <div style={{ marginLeft: 'auto', fontSize: 13, color: '#888' }}>
+            Найдено: {reviews.length}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Таблица результатов */}
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          overflow: 'hidden',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
-        }}
-      >
-        {loading ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>Загрузка...</div>
-        ) : reviews.length === 0 ? (
-          <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
-            <div>Нет результатов</div>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#f8f8f8', borderBottom: '1px solid #eee' }}>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600 }}>Товар</th>
-                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: 600 }}>Сет</th>
-                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: 600 }}>Статус</th>
-                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: 600 }}>Комментарий</th>
-                  <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: 600 }}>Фронтмен</th>
-                  <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: 600 }}>Дата</th>
-                  {canEdit && <th style={{ padding: '14px 12px', width: 60 }}></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {reviews.map((r) => {
-                  const cfg = STATUS_CONFIG[r.status] || {};
-                  return (
-                    <tr key={r._id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <img
-                            src={getImageUrl(r)}
-                            alt=""
-                            style={{
-                              width: 44,
-                              height: 44,
-                              objectFit: 'contain',
-                              borderRadius: 6,
-                              background: '#f8f8f8',
-                            }}
-                            onError={(e) => { e.target.src = '/placeholder.png'; }}
-                          />
-                          <div>
-                            <div style={{ fontWeight: 600, marginBottom: 2 }}>
-                              {r.productSnapshot?.fullName || r.productSnapshot?.name || '—'}
-                            </div>
-                            <div style={{ fontSize: 11, color: '#aaa' }}>
-                              {r.productSnapshot?.sku || '—'}
+      {selectedAudit && (
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 12,
+            overflow: 'hidden',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+          }}
+        >
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>Загрузка...</div>
+          ) : reviews.length === 0 ? (
+            <div style={{ padding: 60, textAlign: 'center', color: '#aaa' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+              <div>Нет результатов</div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#f8f8f8', borderBottom: '1px solid #eee' }}>
+                    <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 600 }}>Товар</th>
+                    <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: 600 }}>Сет</th>
+                    <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: 600 }}>Статус</th>
+                    <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: 600 }}>Комментарий</th>
+                    <th style={{ padding: '14px 12px', textAlign: 'left', fontWeight: 600 }}>Фронтмен</th>
+                    <th style={{ padding: '14px 12px', textAlign: 'center', fontWeight: 600 }}>Дата</th>
+                    {canEdit && <th style={{ padding: '14px 12px', width: 60 }}></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviews.map((r) => {
+                    const cfg = STATUS_CONFIG[r.status] || {};
+                    return (
+                      <tr key={r._id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <img
+                              src={getImageUrl(r)}
+                              alt=""
+                              style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 6, background: '#f8f8f8' }}
+                              onError={(e) => { e.target.src = '/placeholder.png'; }}
+                            />
+                            <div>
+                              <div style={{ fontWeight: 600, marginBottom: 2 }}>
+                                {r.productSnapshot?.fullName || r.productSnapshot?.name || '—'}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#aaa' }}>
+                                {r.productSnapshot?.sku || '—'}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            padding: '4px 10px',
-                            background: '#f0f0f0',
-                            borderRadius: 6,
-                          }}
-                        >
-                          {setLabel(r.productSnapshot?.set)}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            padding: '6px 12px',
-                            background: cfg.bg,
-                            color: cfg.color,
-                            borderRadius: 20,
-                            fontWeight: 600,
-                            fontSize: 12,
-                          }}
-                        >
-                          {cfg.icon} {cfg.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', maxWidth: 250 }}>
-                        {r.comment ? (
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: '#555',
-                              lineHeight: 1.4,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                            }}
-                            title={r.comment}
-                          >
-                            {r.comment}
-                          </div>
-                        ) : (
-                          <span style={{ color: '#ccc' }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: '50%',
-                              background: r.frontman?.color || '#888',
-                            }}
-                          />
-                          <span style={{ fontWeight: 500 }}>{r.frontman?.name || '—'}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center', color: '#888', fontSize: 12 }}>
-                        {formatDate(r.updatedAt)}
-                      </td>
-                      {canEdit && (
-                        <td style={{ padding: '12px', textAlign: 'center' }}>
-                          <button
-                            onClick={() => handleDelete(r._id)}
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: 11,
-                              background: '#fff',
-                              border: '1px solid #fcc',
-                              borderRadius: 6,
-                              color: '#c00',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ✕
-                          </button>
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td style={{ padding: '12px' }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', background: '#f0f0f0', borderRadius: 6 }}>
+                            {setLabel(r.productSnapshot?.set)}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '6px 12px',
+                              background: cfg.bg,
+                              color: cfg.color,
+                              borderRadius: 20,
+                              fontWeight: 600,
+                              fontSize: 12,
+                            }}
+                          >
+                            {cfg.icon} {cfg.label}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', maxWidth: 250 }}>
+                          {r.comment ? (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: '#555',
+                                lineHeight: 1.4,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                              }}
+                              title={r.comment}
+                            >
+                              {r.comment}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#ccc' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: r.frontman?.color || '#888' }} />
+                            <span style={{ fontWeight: 500 }}>{r.frontman?.name || '—'}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center', color: '#888', fontSize: 12 }}>
+                          {formatDate(r.updatedAt)}
+                        </td>
+                        {canEdit && (
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => handleDeleteReview(r._id)}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: 11,
+                                background: '#fff',
+                                border: '1px solid #fcc',
+                                borderRadius: 6,
+                                color: '#c00',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Нет аудитов */}
+      {audits.length === 0 && !loading && (
+        <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
+          <div style={{ fontSize: 16, marginBottom: 8 }}>Нет аудитов</div>
+          <div style={{ fontSize: 13 }}>Создайте первый аудит, чтобы начать проверку товаров</div>
+        </div>
+      )}
+
+      {/* Модалка создания аудита */}
+      {showCreateModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false); }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 16,
+              padding: 32,
+              width: 400,
+              maxWidth: '90vw',
+            }}
+          >
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, margin: '0 0 24px' }}>
+              Новый аудит
+            </h2>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 6 }}>
+                НАЗВАНИЕ
+              </div>
+              <input
+                type="text"
+                value={newAuditName}
+                onChange={(e) => setNewAuditName(e.target.value)}
+                placeholder="Аудит Q2 2026"
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  fontSize: 14,
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 6 }}>
+                ДЕДЛАЙН
+              </div>
+              <input
+                type="date"
+                value={newAuditDeadline}
+                onChange={(e) => setNewAuditDeadline(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  fontSize: 14,
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: '#f5f5f5',
+                  color: '#555',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleCreateAudit}
+                disabled={!newAuditName.trim() || !newAuditDeadline || creating}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  background: '#e10523',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: !newAuditName.trim() || !newAuditDeadline || creating ? 'not-allowed' : 'pointer',
+                  opacity: !newAuditName.trim() || !newAuditDeadline || creating ? 0.5 : 1,
+                }}
+              >
+                {creating ? 'Создание...' : 'Создать и уведомить'}
+              </button>
+            </div>
+
+            <div style={{ marginTop: 16, fontSize: 12, color: '#888', textAlign: 'center' }}>
+              Фронтмены получат уведомление в Telegram и Email
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

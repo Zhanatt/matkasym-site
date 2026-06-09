@@ -51,32 +51,48 @@ const STOCK_STATUS_LABELS = {
   expected: 'Ожидается',
 };
 
+const formatDate = (d) => new Date(d).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' });
+const formatDeadline = (d) => {
+  const deadline = new Date(d);
+  const now = new Date();
+  const diff = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return { text: `Просрочен на ${Math.abs(diff)} дн.`, color: '#ef4444' };
+  if (diff === 0) return { text: 'Сегодня!', color: '#f59e0b' };
+  if (diff <= 3) return { text: `${diff} дн. осталось`, color: '#f59e0b' };
+  return { text: formatDate(d), color: '#666' };
+};
+
 export default function AdminProductReview() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [frontman, setFrontman] = useState(null);
   const [sets, setSets] = useState([]);
+  const [activeAudit, setActiveAudit] = useState(null);
+  const [overdueAudits, setOverdueAudits] = useState([]);
 
   // Режим опроса
   const [activeSet, setActiveSet] = useState(null);
+  const [currentAuditId, setCurrentAuditId] = useState(null);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [auditStatus, setAuditStatus] = useState(null);
   const [products, setProducts] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  // Комментарий для improve/discontinue
+  // Комментарий
   const [pendingStatus, setPendingStatus] = useState(null);
   const [comment, setComment] = useState('');
 
   // Детали товара
   const [showDetails, setShowDetails] = useState(false);
 
-  // Загрузка сетов
   const loadSets = useCallback(async () => {
     try {
       const res = await adminGetMySets();
       setSets(res.data.sets || []);
       setFrontman(res.data.frontman);
+      setActiveAudit(res.data.activeAudit);
+      setOverdueAudits(res.data.overdueAudits || []);
     } catch (e) {
       console.error(e);
     }
@@ -86,17 +102,18 @@ export default function AdminProductReview() {
     loadSets().finally(() => setLoading(false));
   }, [loadSets]);
 
-  // Открыть сет (все товары с отзывами)
-  const openSet = useCallback(async (setSlug) => {
+  const openSet = useCallback(async (setSlug, auditId = null) => {
     setLoading(true);
     try {
-      const res = await adminGetAllSetProducts(setSlug);
+      const aid = auditId || activeAudit?._id;
+      const res = await adminGetAllSetProducts(setSlug, aid);
       const prods = res.data.products || [];
       setProducts(prods);
       setIsCompleted(res.data.isCompleted);
       setActiveSet(setSlug);
+      setCurrentAuditId(res.data.audit?._id);
+      setAuditStatus(res.data.audit?.status);
 
-      // Найти первый непроверенный товар, или начать с первого
       const firstUnreviewed = prods.findIndex(p => !p.review);
       setCurrentIndex(firstUnreviewed >= 0 ? firstUnreviewed : 0);
 
@@ -106,9 +123,8 @@ export default function AdminProductReview() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeAudit]);
 
-  // Перейти к товару
   const goToProduct = (index) => {
     setCurrentIndex(index);
     setPendingStatus(null);
@@ -116,10 +132,8 @@ export default function AdminProductReview() {
     setShowDetails(false);
   };
 
-  // Отправка статуса
   const submitStatus = async (status) => {
     if (status === 'improve' || status === 'discontinue') {
-      // Если уже есть комментарий от предыдущего отзыва — подставить
       const existingReview = products[currentIndex]?.review;
       if (existingReview?.status === status && existingReview?.comment) {
         setComment(existingReview.comment);
@@ -140,9 +154,9 @@ export default function AdminProductReview() {
         productId: product._id,
         status,
         comment: commentText,
+        auditId: currentAuditId,
       });
 
-      // Обновить локально
       setProducts(prev => prev.map((p, i) =>
         i === currentIndex
           ? { ...p, review: { status, comment: commentText } }
@@ -153,17 +167,14 @@ export default function AdminProductReview() {
       setComment('');
       setShowDetails(false);
 
-      // Перейти к следующему непроверенному
       const nextUnreviewed = products.findIndex((p, i) => i > currentIndex && !p.review);
       if (nextUnreviewed >= 0) {
         setCurrentIndex(nextUnreviewed);
       } else {
-        // Проверить, есть ли ещё непроверенные до текущего
         const anyUnreviewed = products.findIndex((p, i) => i !== currentIndex && !p.review);
         if (anyUnreviewed >= 0) {
           setCurrentIndex(anyUnreviewed);
         } else {
-          // Все проверены!
           setIsCompleted(true);
           loadSets();
         }
@@ -178,13 +189,14 @@ export default function AdminProductReview() {
     setComment('');
   };
 
-  // Вернуться к выбору сетов
   const backToSets = async () => {
     setLoading(true);
     setActiveSet(null);
     setProducts([]);
     setCurrentIndex(0);
     setIsCompleted(false);
+    setCurrentAuditId(null);
+    setAuditStatus(null);
     setPendingStatus(null);
     setComment('');
     await loadSets();
@@ -195,7 +207,6 @@ export default function AdminProductReview() {
   const reviewedCount = products.filter(p => p.review).length;
   const progress = products.length > 0 ? (reviewedCount / products.length) * 100 : 0;
 
-  // Получить URL картинки
   const getImageUrl = (p) => {
     if (p.images?.[0]) return p.images[0];
     if (p.driveImages?.[0]) return `https://drive.google.com/thumbnail?id=${p.driveImages[0]}&sz=w600`;
@@ -224,9 +235,33 @@ export default function AdminProductReview() {
 
   // Экран выбора сета
   if (!activeSet) {
+    const deadlineInfo = activeAudit?.deadline ? formatDeadline(activeAudit.deadline) : null;
+
     return (
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '20px 16px' }}>
-        <div style={{ marginBottom: 32 }}>
+        {/* Предупреждение о просроченных аудитах */}
+        {overdueAudits.length > 0 && (
+          <div
+            style={{
+              background: '#fef2f2',
+              border: '2px solid #ef4444',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 20,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#ef4444', marginBottom: 8 }}>
+              ⚠️ У вас есть незавершённые аудиты:
+            </div>
+            {overdueAudits.map(a => (
+              <div key={a._id} style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>
+                • {a.name} (срок: {formatDate(a.deadline)})
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 6, letterSpacing: -0.5 }}>
             Аудит ассортимента
           </h1>
@@ -235,82 +270,132 @@ export default function AdminProductReview() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gap: 12 }}>
-          {sets.map((s) => {
-            const done = s.reviewed >= s.total && s.total > 0;
-            const pct = s.total > 0 ? Math.round((s.reviewed / s.total) * 100) : 0;
-
-            return (
-              <button
-                key={s.slug}
-                onClick={() => openSet(s.slug)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '20px 24px',
-                  background: done ? '#f0fdf4' : '#fff',
-                  border: `2px solid ${done ? '#22c55e' : frontman.color || '#333'}`,
-                  borderRadius: 12,
-                  cursor: 'pointer',
-                  transition: 'transform 0.15s, box-shadow 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: '#1c1c1c' }}>
-                    {setLabel(s.slug)}
-                  </div>
-                  <div style={{ fontSize: 13, color: done ? '#22c55e' : '#888', marginTop: 4 }}>
-                    {s.reviewed} из {s.total} проверено
-                  </div>
+        {/* Активный аудит */}
+        {activeAudit ? (
+          <div
+            style={{
+              background: '#f0f9ff',
+              border: '2px solid #3b82f6',
+              borderRadius: 12,
+              padding: 20,
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#3b82f6', marginBottom: 4 }}>
+                  АКТИВНЫЙ АУДИТ
                 </div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#1c1c1c' }}>
+                  {activeAudit.name}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: '#888' }}>Срок:</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: deadlineInfo?.color }}>
+                  {deadlineInfo?.text}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              background: '#f8f8f8',
+              borderRadius: 12,
+              padding: 40,
+              textAlign: 'center',
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
+            <div style={{ fontSize: 15, color: '#888' }}>
+              Нет активного аудита
+            </div>
+            <div style={{ fontSize: 13, color: '#aaa', marginTop: 4 }}>
+              Дождитесь объявления нового аудита администратором
+            </div>
+          </div>
+        )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  {/* Прогресс-бар */}
-                  <div style={{ width: 100, height: 6, background: done ? '#bbf7d0' : '#eee', borderRadius: 3 }}>
-                    <div
-                      style={{
-                        width: `${pct}%`,
-                        height: '100%',
-                        background: done ? '#22c55e' : frontman.color || '#333',
-                        borderRadius: 3,
-                        transition: 'width 0.3s',
-                      }}
-                    />
+        {/* Список сетов */}
+        {activeAudit && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {sets.map((s) => {
+              const done = s.reviewed >= s.total && s.total > 0;
+              const pct = s.total > 0 ? Math.round((s.reviewed / s.total) * 100) : 0;
+
+              return (
+                <button
+                  key={s.slug}
+                  onClick={() => openSet(s.slug)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '20px 24px',
+                    background: done ? '#f0fdf4' : '#fff',
+                    border: `2px solid ${done ? '#22c55e' : frontman.color || '#333'}`,
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1c1c1c' }}>
+                      {setLabel(s.slug)}
+                    </div>
+                    <div style={{ fontSize: 13, color: done ? '#22c55e' : '#888', marginTop: 4 }}>
+                      {s.reviewed} из {s.total} проверено
+                    </div>
                   </div>
 
-                  {done ? (
-                    <span style={{
-                      fontSize: 20,
-                      color: '#22c55e',
-                      background: '#dcfce7',
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>✓</span>
-                  ) : (
-                    <span style={{ fontSize: 14, fontWeight: 600, color: frontman.color || '#333' }}>
-                      {s.total - s.reviewed} →
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ width: 100, height: 6, background: done ? '#bbf7d0' : '#eee', borderRadius: 3 }}>
+                      <div
+                        style={{
+                          width: `${pct}%`,
+                          height: '100%',
+                          background: done ? '#22c55e' : frontman.color || '#333',
+                          borderRadius: 3,
+                          transition: 'width 0.3s',
+                        }}
+                      />
+                    </div>
 
-        {sets.length === 0 && (
+                    {done ? (
+                      <span style={{
+                        fontSize: 20,
+                        color: '#22c55e',
+                        background: '#dcfce7',
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>✓</span>
+                    ) : (
+                      <span style={{ fontSize: 14, fontWeight: 600, color: frontman.color || '#333' }}>
+                        {s.total - s.reviewed} →
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {sets.length === 0 && activeAudit && (
           <div style={{ textAlign: 'center', padding: 60, color: '#aaa' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
             <div>У вас нет назначенных сетов</div>
@@ -319,6 +404,9 @@ export default function AdminProductReview() {
       </div>
     );
   }
+
+  // Режим просмотра (сет завершён или аудит завершён)
+  const isReadOnly = isCompleted || auditStatus === 'completed';
 
   // Экран опроса / просмотра
   return (
@@ -433,7 +521,6 @@ export default function AdminProductReview() {
                 onError={(e) => { e.target.src = '/placeholder.png'; }}
               />
 
-              {/* Бейдж с текущим статусом */}
               {currentProduct.review && (
                 <div
                   style={{
@@ -470,29 +557,13 @@ export default function AdminProductReview() {
 
               {/* Цены */}
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                <div
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    background: '#f8f8f8',
-                    borderRadius: 10,
-                    textAlign: 'center',
-                  }}
-                >
+                <div style={{ flex: 1, padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, textAlign: 'center' }}>
                   <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
                     {currentProduct.price?.toLocaleString('ru')}
                   </div>
                   <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>розница</div>
                 </div>
-                <div
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    background: '#f8f8f8',
-                    borderRadius: 10,
-                    textAlign: 'center',
-                  }}
-                >
+                <div style={{ flex: 1, padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, textAlign: 'center' }}>
                   <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
                     {currentProduct.priceWholesale?.toLocaleString('ru') || '—'}
                   </div>
@@ -502,30 +573,13 @@ export default function AdminProductReview() {
 
               {/* Остаток и статус */}
               <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                <div
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    background: '#f8f8f8',
-                    borderRadius: 10,
-                    textAlign: 'center',
-                  }}
-                >
+                <div style={{ flex: 1, padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, textAlign: 'center' }}>
                   <div style={{ fontSize: 20, fontWeight: 700, color: currentProduct.stock > 0 ? '#22c55e' : '#ef4444' }}>
                     {currentProduct.stock}
                   </div>
                   <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>на складе</div>
                 </div>
-
-                <div
-                  style={{
-                    flex: 1,
-                    padding: '10px 12px',
-                    background: '#f8f8f8',
-                    borderRadius: 10,
-                    textAlign: 'center',
-                  }}
-                >
+                <div style={{ flex: 1, padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, textAlign: 'center' }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>
                     {PRODUCT_STATUS_LABELS[currentProduct.productStatus] || currentProduct.productStatus}
                   </div>
@@ -533,7 +587,7 @@ export default function AdminProductReview() {
                 </div>
               </div>
 
-              {/* Комментарий к отзыву (если есть) */}
+              {/* Комментарий к отзыву */}
               {currentProduct.review?.comment && (
                 <div
                   style={{
@@ -570,15 +624,7 @@ export default function AdminProductReview() {
               </button>
 
               {showDetails && (
-                <div
-                  style={{
-                    padding: '16px',
-                    background: '#fafafa',
-                    borderRadius: 10,
-                    marginBottom: 8,
-                    fontSize: 13,
-                  }}
-                >
+                <div style={{ padding: '16px', background: '#fafafa', borderRadius: 10, marginBottom: 8, fontSize: 13 }}>
                   <div style={{ marginBottom: 8 }}>
                     <strong>Статус склада:</strong> {STOCK_STATUS_LABELS[currentProduct.stockStatus] || currentProduct.stockStatus}
                   </div>
@@ -597,8 +643,8 @@ export default function AdminProductReview() {
             </div>
           </div>
 
-          {/* Кнопки действий — только если сет НЕ завершён или редактируем */}
-          {!isCompleted && !pendingStatus && (
+          {/* Кнопки действий */}
+          {!isReadOnly && !pendingStatus && (
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
                 const isSelected = currentProduct.review?.status === status;
@@ -629,7 +675,7 @@ export default function AdminProductReview() {
           )}
 
           {/* Форма комментария */}
-          {!isCompleted && pendingStatus && (
+          {!isReadOnly && pendingStatus && (
             <div
               style={{
                 marginTop: 20,
@@ -646,11 +692,7 @@ export default function AdminProductReview() {
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder={
-                  pendingStatus === 'improve'
-                    ? 'Опишите: упаковку, конструкцию, цвет...'
-                    : 'Укажите причину: низкий спрос, устарел...'
-                }
+                placeholder={pendingStatus === 'improve' ? 'Опишите: упаковку, конструкцию, цвет...' : 'Укажите причину: низкий спрос, устарел...'}
                 autoFocus
                 style={{
                   width: '100%',
@@ -668,17 +710,7 @@ export default function AdminProductReview() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   onClick={cancelComment}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    background: '#fff',
-                    color: '#666',
-                    border: '1px solid #ddd',
-                    borderRadius: 10,
-                    cursor: 'pointer',
-                  }}
+                  style={{ flex: 1, padding: '12px', fontSize: 14, fontWeight: 600, background: '#fff', color: '#666', border: '1px solid #ddd', borderRadius: 10, cursor: 'pointer' }}
                 >
                   Отмена
                 </button>
@@ -704,8 +736,8 @@ export default function AdminProductReview() {
             </div>
           )}
 
-          {/* Режим просмотра для завершённого сета */}
-          {isCompleted && (
+          {/* Режим просмотра */}
+          {isReadOnly && (
             <div
               style={{
                 marginTop: 20,
@@ -718,7 +750,7 @@ export default function AdminProductReview() {
             >
               <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#22c55e' }}>
-                Сет завершён
+                {auditStatus === 'completed' ? 'Аудит завершён' : 'Сет завершён'}
               </div>
               <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
                 Просмотр результатов. Редактирование недоступно.
