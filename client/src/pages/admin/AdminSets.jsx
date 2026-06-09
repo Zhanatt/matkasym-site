@@ -83,7 +83,7 @@ const BRAND_META = {
     staticSets: [
       'shirin-balalyk',    // 1 - наименее популярный
       'korkom-aiym',       // 2
-      '0-tashtandy',       // 3
+      '0-tashtandy-home',  // 3
       'konok-keldi',       // 4
       'baary-oorunda',     // 5
       'uydo-ishtoo',       // 6
