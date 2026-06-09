@@ -33,6 +33,7 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  height: 100dvh; /* iOS Safari fix */
 }
 
 .admin-sidebar-logo {
@@ -101,12 +102,14 @@
 
 .admin-sidebar-footer {
   padding: 16px 20px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); /* iOS safe area */
   border-top: 1px solid var(--admin-line);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 4px;
+  flex-shrink: 0; /* prevent footer from shrinking */
 }
 .admin-user-name {
   font-size: 13px;
@@ -550,6 +553,8 @@ table.admin-table {
     transition: transform .25s ease;
     z-index: 400;
     height: 100vh;
+    height: 100dvh; /* iOS Safari fix */
+    max-height: -webkit-fill-available; /* fallback for older iOS */
   }
   .admin-sidebar.open {
     transform: translateX(0);
