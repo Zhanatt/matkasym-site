@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 
 const productReviewSchema = new mongoose.Schema({
-  // Привязка к аудиту
+  // Привязка к аудиту (null для legacy записей)
   audit: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Audit',
-    required: true
+    default: null
   },
 
   product: {

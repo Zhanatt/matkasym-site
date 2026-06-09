@@ -102,6 +102,21 @@ mongoose
       console.error('⚠️ Migration split-onoi-sakta failed:', e.message);
     }
 
+    // Migration: drop old ProductReview unique index (product+frontman) to allow audit-based index
+    try {
+      const ProductReview = require('./models/ProductReview');
+      const indexes = await ProductReview.collection.indexes();
+      const oldIndex = indexes.find(idx => idx.key.product === 1 && idx.key.frontman === 1 && !idx.key.audit);
+      if (oldIndex) {
+        await ProductReview.collection.dropIndex(oldIndex.name);
+        console.log(`✅ Migration: dropped old ProductReview index ${oldIndex.name}`);
+      }
+    } catch (e) {
+      if (!e.message.includes('index not found')) {
+        console.error('⚠️ Migration ProductReview index failed:', e.message);
+      }
+    }
+
     app.listen(process.env.PORT, () =>
       console.log(`🚀 Сервер запущен на http://localhost:${process.env.PORT}`)
     );

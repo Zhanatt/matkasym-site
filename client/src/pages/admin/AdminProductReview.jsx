@@ -150,12 +150,16 @@ export default function AdminProductReview() {
 
     setSubmitting(true);
     try {
-      await adminSubmitReview({
+      const response = await adminSubmitReview({
         productId: product._id,
         status,
         comment: commentText,
         auditId: currentAuditId,
       });
+
+      if (!response.data.ok) {
+        throw new Error(response.data.error || 'Ошибка сохранения');
+      }
 
       setProducts(prev => prev.map((p, i) =>
         i === currentIndex
@@ -179,6 +183,9 @@ export default function AdminProductReview() {
           loadSets();
         }
       }
+    } catch (e) {
+      console.error('Review submit error:', e);
+      alert(e.response?.data?.error || e.message || 'Ошибка сохранения отзыва');
     } finally {
       setSubmitting(false);
     }
