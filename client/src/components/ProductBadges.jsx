@@ -8,6 +8,7 @@ export const STATUS_BADGE = {
   on_pause:       { icon: '⏸', label: 'На паузе',        bg: '#f0f4f8', color: '#475569' },
   discontinued:   { icon: '🚫', label: 'Снят',           bg: '#fff0f0', color: '#c0392b' },
   liquidation:    { icon: '🏷️', label: 'Ликвидация',     bg: '#fef3c7', color: '#92400e' },
+  test_sale:      { icon: '🧪', label: 'Тест',           bg: '#e0f7fa', color: '#00838f' },
 };
 
 export function SupplierBadge({ product, size = 'normal' }) {
