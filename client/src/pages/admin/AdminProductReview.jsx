@@ -106,13 +106,22 @@ export default function AdminProductReview() {
     setLoading(true);
     try {
       const aid = auditId || activeAudit?._id;
+      console.log('openSet: aid=', aid, 'activeAudit=', activeAudit);
       const res = await adminGetAllSetProducts(setSlug, aid);
+      console.log('openSet response:', res.data);
+
+      if (!res.data.audit?._id) {
+        alert('Ошибка: сервер не вернул audit ID. Возможно нет активного аудита.');
+        setLoading(false);
+        return;
+      }
+
       const prods = res.data.products || [];
       setProducts(prods);
       setIsCompleted(res.data.isCompleted);
       setActiveSet(setSlug);
-      setCurrentAuditId(res.data.audit?._id);
-      setAuditStatus(res.data.audit?.status);
+      setCurrentAuditId(res.data.audit._id);
+      setAuditStatus(res.data.audit.status);
 
       const firstUnreviewed = prods.findIndex(p => !p.review);
       setCurrentIndex(firstUnreviewed >= 0 ? firstUnreviewed : 0);
@@ -120,6 +129,9 @@ export default function AdminProductReview() {
       setPendingStatus(null);
       setComment('');
       setShowDetails(false);
+    } catch (e) {
+      console.error('openSet error:', e);
+      alert(e.response?.data?.error || e.message || 'Ошибка загрузки сета');
     } finally {
       setLoading(false);
     }
@@ -147,6 +159,11 @@ export default function AdminProductReview() {
   const doSubmit = async (status, commentText) => {
     const product = products[currentIndex];
     if (!product) return;
+
+    if (!currentAuditId) {
+      alert('Ошибка: нет активного аудита (currentAuditId is null)');
+      return;
+    }
 
     setSubmitting(true);
     try {
