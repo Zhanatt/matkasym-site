@@ -468,35 +468,68 @@ export default function AdminProductReview() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+              {/* Цены */}
+              <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                 <div
                   style={{
                     flex: 1,
-                    padding: '12px 16px',
+                    padding: '10px 12px',
                     background: '#f8f8f8',
                     borderRadius: 10,
                     textAlign: 'center',
                   }}
                 >
-                  <div style={{ fontSize: 24, fontWeight: 700, color: currentProduct.stock > 0 ? '#22c55e' : '#ef4444' }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
+                    {currentProduct.price?.toLocaleString('ru')}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>розница</div>
+                </div>
+                <div
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    background: '#f8f8f8',
+                    borderRadius: 10,
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
+                    {currentProduct.priceWholesale?.toLocaleString('ru') || '—'}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>опт</div>
+                </div>
+              </div>
+
+              {/* Остаток и статус */}
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    background: '#f8f8f8',
+                    borderRadius: 10,
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ fontSize: 20, fontWeight: 700, color: currentProduct.stock > 0 ? '#22c55e' : '#ef4444' }}>
                     {currentProduct.stock}
                   </div>
-                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>на складе</div>
+                  <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>на складе</div>
                 </div>
 
                 <div
                   style={{
                     flex: 1,
-                    padding: '12px 16px',
+                    padding: '10px 12px',
                     background: '#f8f8f8',
                     borderRadius: 10,
                     textAlign: 'center',
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#333' }}>
                     {PRODUCT_STATUS_LABELS[currentProduct.productStatus] || currentProduct.productStatus}
                   </div>
-                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>статус</div>
+                  <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>статус</div>
                 </div>
               </div>
 
@@ -547,10 +580,7 @@ export default function AdminProductReview() {
                   }}
                 >
                   <div style={{ marginBottom: 8 }}>
-                    <strong>Цена:</strong> {currentProduct.price?.toLocaleString('ru')} сом
-                  </div>
-                  <div style={{ marginBottom: 8 }}>
-                    <strong>Склад:</strong> {STOCK_STATUS_LABELS[currentProduct.stockStatus] || currentProduct.stockStatus}
+                    <strong>Статус склада:</strong> {STOCK_STATUS_LABELS[currentProduct.stockStatus] || currentProduct.stockStatus}
                   </div>
                   {currentProduct.specs?.length > 0 && (
                     <div>

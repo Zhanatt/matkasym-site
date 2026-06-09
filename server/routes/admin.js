@@ -2076,7 +2076,7 @@ router.get('/review/set/:setSlug/pending', async (req, res) => {
       brand: frontman.brand,
       _id: { $nin: reviewedIds },
     })
-      .select('name fullName sku set brand price stock stockStatus productStatus images driveImages specs')
+      .select('name fullName sku set brand price priceWholesale stock stockStatus productStatus images driveImages specs')
       .sort({ name: 1 })
       .lean();
 
@@ -2098,7 +2098,7 @@ router.get('/review/set/:setSlug/all', async (req, res) => {
       set: req.params.setSlug,
       brand: frontman.brand,
     })
-      .select('name fullName sku set brand price stock stockStatus productStatus images driveImages specs')
+      .select('name fullName sku set brand price priceWholesale stock stockStatus productStatus images driveImages specs')
       .sort({ name: 1 })
       .lean();
 
