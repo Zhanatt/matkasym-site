@@ -761,17 +761,21 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   // Группировка для Taza Kiym (товары для дома)
   const tazaKiymGroups = useMemo(() => {
     if (setSlug !== 'taza-kiym') return null;
-    const groups = {
-      'Корзина для белья': [],
-      'Гладильная доска': [],
-      'Сушилка': [],
-      'Складная полка для гардеробной вешалки': [],
-      'Гардеробная вешалка': [],
-      'Плечики': [],
-      'Костюмная вешалка': [],
-      'Прочее': [],
-      'Нет в наличии': [],
-    };
+    // Порядок: корзинки, сушилки, глад доски, плечики, гардеробные вешалки, складная полка, костюмные, прочее, нет в наличии
+    const groupOrder = [
+      'Корзина для белья',
+      'Сушилка',
+      'Гладильная доска',
+      'Плечики',
+      'Гардеробная вешалка',
+      'Складная полка для гардеробной вешалки',
+      'Костюмная вешалка',
+      'Прочее',
+      'Нет в наличии',
+    ];
+    const groups = {};
+    groupOrder.forEach(g => groups[g] = []);
+
     models.forEach(([name, variants]) => {
       const p = variants[0];
       const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
@@ -786,13 +790,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         groups['Прочее'].push([name, variants]);
       }
     });
-    const result = Object.entries(groups).filter(([, items]) => items.length > 0);
-    const outOfStockIdx = result.findIndex(([key]) => key === 'Нет в наличии');
-    if (outOfStockIdx > -1) {
-      const [outOfStock] = result.splice(outOfStockIdx, 1);
-      result.push(outOfStock);
-    }
-    return result;
+    return groupOrder.map(g => [g, groups[g]]).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
   // Группировка для Kooz Koopsuzduk (щиты безопасности)
@@ -1370,17 +1368,19 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
           ) : accordionGroups ? (
             /* Grid view with category sections */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-              {accordionGroups.map(([groupName, items]) => (
-                <div key={groupName}>
+              {accordionGroups.map(([groupName, items]) => {
+                const isOutOfStock = groupName === 'Нет в наличии';
+                return (
+                <div key={groupName} style={{ opacity: isOutOfStock ? 0.5 : 1 }}>
                   <div style={{
                     fontSize: 14,
                     fontWeight: 800,
-                    color: '#1c1c1c',
+                    color: isOutOfStock ? '#999' : '#1c1c1c',
                     textTransform: 'uppercase',
                     letterSpacing: 0.5,
                     marginBottom: 12,
                     paddingBottom: 8,
-                    borderBottom: `2px solid ${accent}`,
+                    borderBottom: `2px solid ${isOutOfStock ? '#ccc' : accent}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
@@ -1459,7 +1459,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     })}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           ) : (
             <div style={{
