@@ -482,6 +482,42 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
 const RETAIL_BRANDS = new Set(['matkasym-home', 'matkasym-shaar']);
 const NO_PHOTO      = '/logos/no-photo.png';
 
+// Компонент для отображения изображения или цвета (для красок)
+function ProductImage({ product, size = 80, className = '', style = {} }) {
+  const hasImage = product.images?.[0];
+  const hasColor = product.color;
+
+  if (hasColor && !hasImage) {
+    return (
+      <div
+        className={className}
+        style={{
+          width: size,
+          height: size,
+          minWidth: size,
+          background: product.color,
+          borderRadius: 8,
+          border: '1px solid rgba(0,0,0,0.1)',
+          boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)',
+          ...style
+        }}
+        title={product.name}
+      />
+    );
+  }
+
+  const img = cloudinaryOpt(hasImage || NO_PHOTO, size);
+  return (
+    <img
+      src={img}
+      alt={product.name}
+      className={className}
+      style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, ...style }}
+      onError={e => { e.target.src = NO_PHOTO; }}
+    />
+  );
+}
+
 const PRICE_MODES = [
   { key: 'retail',    label: 'Розничная', short: 'Розн.' },
   { key: 'wholesale', label: 'Оптовая',   short: 'Опт.'  },
@@ -1272,7 +1308,6 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       <div className={`tube-accordion-content ${isOpen ? 'open' : ''}`}>
                         {items.map(([name, variants], itemIdx) => {
                           const primary = variants[0];
-                          const img = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 80);
                           const price = getPrice(primary, priceMode);
                           const stockInfo = getStockInfo(primary);
                           const hasStock = stockInfo.hasStock;
@@ -1284,12 +1319,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               onClick={() => setDetailProduct(primary)}
                               style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none' }}
                             >
-                              <img
-                                src={img}
-                                alt={name}
-                                className="tube-item-img"
-                                onError={e => { e.target.src = NO_PHOTO; }}
-                              />
+                              <ProductImage product={primary} size={80} className="tube-item-img" />
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div className="tube-item-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {name}
@@ -1320,7 +1350,6 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             <div style={{ border: '1px solid #eee', borderRadius: 8, overflow: 'hidden' }}>
               {visible.map(([name, variants]) => {
                 const primary  = variants[0];
-                const img      = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 80);
                 const price    = getPrice(primary, priceMode);
                 const stockInfo = getStockInfo(primary);
                 const stockLabel = stockInfo.label;
@@ -1331,9 +1360,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     onMouseEnter={e => e.currentTarget.style.background = '#f7f8fa'}
                     onMouseLeave={e => e.currentTarget.style.background = '#fff'}
                   >
-                    <img src={img} alt={name}
-                      style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
-                      onError={e => { e.target.src = NO_PHOTO; }} />
+                    <ProductImage product={primary} size={44} style={{ flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <SupplierBadge product={primary} size="small" />
@@ -1383,11 +1410,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   }}>
                     {items.map(([name, variants]) => {
                       const primary    = variants[0];
-                      const img        = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400);
                       const price      = getPrice(primary, priceMode);
                       const stockInfo  = getStockInfo(primary);
                       const stockLabel = stockInfo.label;
                       const showBadge  = STATUS_BADGE[primary.productStatus];
+                      const hasColorOnly = primary.color && !primary.images?.[0];
                       return (
                         <div key={name} onClick={() => setDetailProduct(primary)}
                           style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
@@ -1396,10 +1423,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                           onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                         >
-                          <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={img} alt={name}
-                              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                              onError={e => { e.target.src = NO_PHOTO; }} />
+                          <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {!hasColorOnly && (
+                              <img src={cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400)} alt={name}
+                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                onError={e => { e.target.src = NO_PHOTO; }} />
+                            )}
                             {primary.isSupplied && (
                               <div style={{ position: 'absolute', top: 6, left: 6 }}>
                                 <SupplierBadge product={primary} />
@@ -1457,11 +1486,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             }}>
               {visible.map(([name, variants]) => {
                 const primary    = variants[0];
-                const img        = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400);
                 const price      = getPrice(primary, priceMode);
                 const stockInfo  = getStockInfo(primary);
                 const stockLabel = stockInfo.label;
                 const showBadge  = STATUS_BADGE[primary.productStatus];
+                const hasColorOnly = primary.color && !primary.images?.[0];
                 return (
                   <div key={name} onClick={() => setDetailProduct(primary)}
                     style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
@@ -1470,10 +1499,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
-                    <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img src={img} alt={name}
-                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                        onError={e => { e.target.src = NO_PHOTO; }} />
+                    <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {!hasColorOnly && (
+                        <img src={cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400)} alt={name}
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                          onError={e => { e.target.src = NO_PHOTO; }} />
+                      )}
                       {primary.isSupplied && (
                         <div style={{ position: 'absolute', top: 6, left: 6 }}>
                           <SupplierBadge product={primary} />
@@ -1548,9 +1579,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               }}>
                 {outOfStockModels.map(([name, variants]) => {
                   const primary    = variants[0];
-                  const img        = cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400);
                   const price      = getPrice(primary, priceMode);
                   const showBadge  = STATUS_BADGE[primary.productStatus];
+                  const hasColorOnly = primary.color && !primary.images?.[0];
                   return (
                     <div key={name} onClick={() => setDetailProduct(primary)}
                       style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
@@ -1559,10 +1590,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                     >
-                      <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img src={img} alt={name}
-                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                          onError={e => { e.target.src = NO_PHOTO; }} />
+                      <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {!hasColorOnly && (
+                          <img src={cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400)} alt={name}
+                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                            onError={e => { e.target.src = NO_PHOTO; }} />
+                        )}
                         {primary.isSupplied && (
                           <div style={{ position: 'absolute', top: 6, left: 6 }}>
                             <SupplierBadge product={primary} />
