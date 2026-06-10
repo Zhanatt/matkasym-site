@@ -77,7 +77,6 @@ export default function AdminProductReview() {
   const [auditStatus, setAuditStatus] = useState(null);
   const [products, setProducts] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
 
   // Комментарий
   const [pendingStatus, setPendingStatus] = useState(null);
@@ -85,6 +84,21 @@ export default function AdminProductReview() {
 
   // Детали товара
   const [showDetails, setShowDetails] = useState(false);
+
+  // Клавиатурные сокращения: 1=Оставить, 2=Улучшить, 3=Снять, ←/→ навигация
+  useEffect(() => {
+    if (!activeSet || pendingStatus) return;
+    const handleKey = (e) => {
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+      if (e.key === '1' || e.key === 'к' || e.key === 'K') submitStatus('keep');
+      else if (e.key === '2' || e.key === 'у' || e.key === 'Y') submitStatus('improve');
+      else if (e.key === '3' || e.key === 'с' || e.key === 'C') submitStatus('discontinue');
+      else if (e.key === 'ArrowLeft' && currentIndex > 0) goToProduct(currentIndex - 1);
+      else if (e.key === 'ArrowRight' && currentIndex < products.length - 1) goToProduct(currentIndex + 1);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [activeSet, pendingStatus, currentIndex, products.length]);
 
   const loadSets = useCallback(async () => {
     try {
@@ -165,7 +179,29 @@ export default function AdminProductReview() {
       return;
     }
 
-    setSubmitting(true);
+    // Оптимистичное обновление — сразу показываем результат
+    const savedIndex = currentIndex;
+    setProducts(prev => prev.map((p, i) =>
+      i === savedIndex ? { ...p, review: { status, comment: commentText } } : p
+    ));
+    setPendingStatus(null);
+    setComment('');
+    setShowDetails(false);
+
+    // Сразу переходим к следующему
+    const nextUnreviewed = products.findIndex((p, i) => i > currentIndex && !p.review);
+    if (nextUnreviewed >= 0) {
+      setCurrentIndex(nextUnreviewed);
+    } else {
+      const anyUnreviewed = products.findIndex((p, i) => i !== currentIndex && !p.review);
+      if (anyUnreviewed >= 0) {
+        setCurrentIndex(anyUnreviewed);
+      } else {
+        setIsCompleted(true);
+      }
+    }
+
+    // Отправляем на сервер в фоне (не блокируя UI)
     try {
       const response = await adminSubmitReview({
         productId: product._id,
@@ -173,38 +209,22 @@ export default function AdminProductReview() {
         comment: commentText,
         auditId: currentAuditId,
       });
-
       if (!response.data.ok) {
         throw new Error(response.data.error || 'Ошибка сохранения');
       }
-
-      setProducts(prev => prev.map((p, i) =>
-        i === currentIndex
-          ? { ...p, review: { status, comment: commentText } }
-          : p
-      ));
-
-      setPendingStatus(null);
-      setComment('');
-      setShowDetails(false);
-
-      const nextUnreviewed = products.findIndex((p, i) => i > currentIndex && !p.review);
-      if (nextUnreviewed >= 0) {
-        setCurrentIndex(nextUnreviewed);
-      } else {
-        const anyUnreviewed = products.findIndex((p, i) => i !== currentIndex && !p.review);
-        if (anyUnreviewed >= 0) {
-          setCurrentIndex(anyUnreviewed);
-        } else {
-          setIsCompleted(true);
-          loadSets();
-        }
+      // Если всё ок и это был последний — обновляем сеты
+      if (isCompleted || products.filter(p => !p.review).length <= 1) {
+        loadSets();
       }
     } catch (e) {
       console.error('Review submit error:', e);
-      alert(e.response?.data?.error || e.message || 'Ошибка сохранения отзыва');
-    } finally {
-      setSubmitting(false);
+      // Откатываем оптимистичное обновление
+      setProducts(prev => prev.map((p, i) =>
+        i === savedIndex ? { ...p, review: null } : p
+      ));
+      setCurrentIndex(savedIndex);
+      setIsCompleted(false);
+      alert(e.response?.data?.error || e.message || 'Ошибка сохранения');
     }
   };
 
@@ -676,7 +696,6 @@ export default function AdminProductReview() {
                   <button
                     key={status}
                     onClick={() => submitStatus(status)}
-                    disabled={submitting}
                     style={{
                       flex: 1,
                       padding: '16px 8px',
@@ -686,9 +705,8 @@ export default function AdminProductReview() {
                       color: isSelected ? '#fff' : cfg.color,
                       border: `2px solid ${cfg.color}`,
                       borderRadius: 12,
-                      cursor: submitting ? 'wait' : 'pointer',
-                      opacity: submitting ? 0.6 : 1,
-                      transition: 'all 0.15s',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s',
                     }}
                   >
                     {cfg.icon} {cfg.label}
@@ -740,7 +758,7 @@ export default function AdminProductReview() {
                 </button>
                 <button
                   onClick={() => doSubmit(pendingStatus, comment)}
-                  disabled={!comment.trim() || submitting}
+                  disabled={!comment.trim()}
                   style={{
                     flex: 2,
                     padding: '12px',
@@ -750,11 +768,11 @@ export default function AdminProductReview() {
                     color: '#fff',
                     border: 'none',
                     borderRadius: 10,
-                    cursor: !comment.trim() || submitting ? 'not-allowed' : 'pointer',
-                    opacity: !comment.trim() || submitting ? 0.5 : 1,
+                    cursor: !comment.trim() ? 'not-allowed' : 'pointer',
+                    opacity: !comment.trim() ? 0.5 : 1,
                   }}
                 >
-                  {submitting ? 'Сохранение...' : 'Подтвердить'}
+                  Подтвердить
                 </button>
               </div>
             </div>
