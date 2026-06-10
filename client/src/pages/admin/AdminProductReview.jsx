@@ -234,7 +234,7 @@ export default function AdminProductReview() {
   const getImageUrl = (p) => {
     if (p.images?.[0]) return p.images[0];
     if (p.driveImages?.[0]) return `https://drive.google.com/thumbnail?id=${p.driveImages[0]}&sz=w600`;
-    return '/placeholder.png';
+    return '/logos/no-photo.png';
   };
 
   if (loading) {
