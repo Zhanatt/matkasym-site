@@ -99,6 +99,10 @@ const SHAAR_CHANNELS = [
   { key: 'matkasym_horeca', label: 'MATKASYM_HORECA', short: 'HORECA', color: '#267846' },
 ];
 
+const KYZMAT_CHANNELS = [
+  { key: 'matkasym_kyzmat', label: 'MATKASYM_KYZMAT', short: 'KYZMAT', color: '#267846' },
+];
+
 function toTitle(slug) {
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -318,7 +322,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
       {/* Channel headers */}
       {!isMobile && (
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, paddingLeft: 200 }}>
-          {(brandKey === 'matkasym-shaar' ? SHAAR_CHANNELS : SALES_CHANNELS).map(ch => (
+          {(brandKey === 'matkasym-shaar' ? SHAAR_CHANNELS : brandKey === 'matkasym-kyzmat' ? KYZMAT_CHANNELS : SALES_CHANNELS).map(ch => (
             <div key={ch.key} style={{
               flex: 1,
               textAlign: 'center',
@@ -421,7 +425,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
               {/* Sales channels columns */}
               {!isMobile && !editing && (
                 <div style={{ display: 'flex', flex: 1, marginLeft: 8 }}>
-                  {(brandKey === 'matkasym-shaar' ? SHAAR_CHANNELS : SALES_CHANNELS).map(ch => {
+                  {(brandKey === 'matkasym-shaar' ? SHAAR_CHANNELS : brandKey === 'matkasym-kyzmat' ? KYZMAT_CHANNELS : SALES_CHANNELS).map(ch => {
                     const channelFrontmen = getFrontmenForSet(slug, ch.key);
                     return (
                       <div key={ch.key} style={{

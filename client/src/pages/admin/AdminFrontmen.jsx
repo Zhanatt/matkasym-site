@@ -23,6 +23,9 @@ const SALES_CHANNELS = {
     { key: 'make_in',         label: 'make_in',         desc: 'Оптовики' },
     { key: 'matkasym_horeca', label: 'matkasym_horeca', desc: 'HoReCa' },
   ],
+  'matkasym-kyzmat': [
+    { key: 'matkasym_kyzmat', label: 'matkasym_kyzmat', desc: 'Производство' },
+  ],
 };
 
 const getChannelsForBrand = (brand) => SALES_CHANNELS[brand] || SALES_CHANNELS.default;
