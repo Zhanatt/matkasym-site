@@ -77,25 +77,7 @@ const PROCHIYE = [
 ];
 
 const BRAND_META = {
-  'matkasym-home':   {
-    label: 'HOME',
-    accent: '#DC1E24',
-    staticSets: [
-      'shirin-balalyk',    // 1 - наименее популярный
-      'korkom-aiym',       // 2
-      '0-tashtandy-home',  // 3
-      'konok-keldi',       // 4
-      'baary-oorunda',     // 5
-      'uydo-ishtoo',       // 6
-      'zhashyl-ömür',      // 7
-      'achyk-asman',       // 8
-      'den-sooluk',        // 9
-      'jenil-ashkana',     // 10
-      'taza-kiym',         // 11
-      'kosh-keliniz',      // 12
-      'sanarip-tv',        // 13 - самый популярный
-    ],
-  },
+  'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
   'matkasym-shaar':  { label: 'SHAAR',  accent: '#3463A3' },
   'matkasym-kyzmat': { label: 'KYZMAT', accent: '#267846' },
 };
@@ -184,28 +166,11 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   // IMPORTANT: Static sets (from props) are ALWAYS shown. DB only stores order info.
   // localOrder is ONLY used during active drag operation
   const allSets = useMemo(() => {
-    // Map of saved order info from DB
-    const orderMap = new Map(customSets.map(s => [s.key, s.order]));
+    // All sets come from DB (customSets), sorted by order field
+    if (customSets.length === 0) return sets; // Fallback to props while loading
 
-    // Start with ALL static sets (from props - these are guaranteed)
-    const result = [...sets];
-
-    // Add custom-only sets (created by user, not in static list)
-    customSets.forEach(s => {
-      if (!sets.includes(s.key)) result.push(s.key);
-    });
-
-    // Sort by saved order if available
-    const hasOrderInfo = customSets.some(s => typeof s.order === 'number');
-    if (hasOrderInfo) {
-      result.sort((a, b) => {
-        const orderA = orderMap.has(a) ? orderMap.get(a) : 1000 + sets.indexOf(a);
-        const orderB = orderMap.has(b) ? orderMap.get(b) : 1000 + sets.indexOf(b);
-        return orderA - orderB;
-      });
-    }
-
-    return result;
+    const sorted = [...customSets].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    return sorted.map(s => s.key);
   }, [sets, customSets]);
 
   // During drag, use localOrder for visual feedback
@@ -1722,9 +1687,9 @@ export default function AdminSets() {
   }
 
   useEffect(() => {
-    const dynamicBrands = Object.entries(BRAND_META).filter(([, m]) => !m.staticSets);
+    // Load sets for all brands from API
     Promise.all(
-      dynamicBrands.map(([k]) =>
+      Object.keys(BRAND_META).map(k =>
         adminGetFacets({ brand: k }).then(r => [k, r.data.sets.filter(s => !EXCLUDE.has(s))])
       )
     ).then(res => { setSets(Object.fromEntries(res)); setLoad(false); });
@@ -1741,13 +1706,12 @@ export default function AdminSets() {
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {Object.entries(BRAND_META).map(([key, meta]) => {
-              const baseSets = meta.staticSets || sets[key] || [];
-              const allSets  = baseSets;
+              const baseSets = sets[key] || [];
               return (
                 <BrandSection
                   key={key}
                   brandKey={key}
-                  sets={allSets}
+                  sets={baseSets}
                   accent={meta.accent}
                   subItems={SET_SUB_ITEMS}
                   autoOpenSet={urlBrand === key ? urlSet : null}
