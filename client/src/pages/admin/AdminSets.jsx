@@ -162,16 +162,12 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     );
   };
 
-  // Merge static sets with custom sets, respecting saved order
-  // IMPORTANT: Static sets (from props) are ALWAYS shown. DB only stores order info.
-  // localOrder is ONLY used during active drag operation
+  // Sets come from DB (customSets), sorted by order field
   const allSets = useMemo(() => {
-    // All sets come from DB (customSets), sorted by order field
-    if (customSets.length === 0) return sets; // Fallback to props while loading
-
+    if (customSets.length === 0) return []; // Show nothing while loading
     const sorted = [...customSets].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
     return sorted.map(s => s.key);
-  }, [sets, customSets]);
+  }, [customSets]);
 
   // During drag, use localOrder for visual feedback
   const displaySets = localOrder.length > 0 ? localOrder : allSets;
