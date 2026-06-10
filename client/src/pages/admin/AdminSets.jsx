@@ -801,9 +801,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return result;
   }, [setSlug, models]);
 
-  // Группировка для Mazza Seiyl (уличная мебель)
-  const mazzaSeiylGroups = useMemo(() => {
-    if (setSlug !== 'mazza-seiyl') return null;
+  // Группировка для Mazza Seyil (уличная мебель)
+  const mazzaSeyilGroups = useMemo(() => {
+    if (setSlug !== 'mazza-seyil') return null;
     const categoryMap = {
       'pergola': 'Перголы',
       'скамейка': 'Скамейки',
@@ -858,8 +858,57 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return Object.entries(groups).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
-  // Общая переменная для групп (трубы, урны, ковка, taza-kiym, kooz-koopsuzduk или onuguu-set)
-  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeiylGroups || onuguuGroups;
+  // Универсальная группировка для SHAAR сетов (по категориям)
+  const shaarSets = ['0-tashtandy', 'bekem-tosmo', 'bekem-fasad', 'uzak-koldon'];
+  const shaarGroups = useMemo(() => {
+    if (!shaarSets.includes(setSlug)) return null;
+    const categoryLabels = {
+      'waste-container': 'Мусорные контейнеры',
+      'waste-bin-eco': 'Экологические урны',
+      'street-bin-wood': 'Уличные урны',
+      'planter': 'Клумбы и кашпо',
+      'industrial-shelf': 'Промышленные стеллажи',
+      'стеллаж': 'Стеллажи',
+      'wardrobe': 'Гардеробные',
+      'school-desk': 'Школьные парты',
+      'школьная-парта-/-стул': 'Школьные парты',
+      'ac-basket': 'Корзины для кондиционеров',
+      'ac-mount': 'Крепления для кондиционеров',
+      'electric-panel-outdoor': 'Электрощиты уличные',
+      'electric-panel-mount': 'ЩМП',
+      'electric-panel-floor': 'Этажные щиты',
+      'electric-panel-plumbing': 'Сантехнические щиты',
+      'electric-panel-gas': 'Газовые щиты',
+      'fire-cabinet': 'Пожарные шкафы',
+      'pergola': 'Перголы',
+      'скамейка': 'Скамейки',
+      'качели': 'Качели',
+      'навес-для-скамьи': 'Навесы',
+      'фонарь': 'Фонари',
+      'ландшафтный-светильник': 'Светильники',
+      'other': 'Прочее',
+    };
+    const groupsMap = {};
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+      const cat = p.category || 'other';
+      const label = categoryLabels[cat] || cat;
+      const targetGroup = hasStock ? label : 'Нет в наличии';
+      if (!groupsMap[targetGroup]) groupsMap[targetGroup] = [];
+      groupsMap[targetGroup].push([name, variants]);
+    });
+    const result = Object.entries(groupsMap).filter(([, items]) => items.length > 0);
+    const outOfStockIdx = result.findIndex(([key]) => key === 'Нет в наличии');
+    if (outOfStockIdx > -1) {
+      const [outOfStock] = result.splice(outOfStockIdx, 1);
+      result.push(outOfStock);
+    }
+    return result;
+  }, [setSlug, models]);
+
+  // Общая переменная для групп (трубы, урны, ковка, taza-kiym, kooz-koopsuzduk, mazza-seyil, onuguu-set или shaar)
+  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeyilGroups || onuguuGroups || shaarGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
