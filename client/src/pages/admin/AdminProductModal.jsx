@@ -94,6 +94,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
 
   const images = (product.images || []).filter(Boolean);
   const img    = images[imgIdx] || NO_PHOTO;
+  const hasColorOnly = product.color && images.length === 0;
 
   const downloadImage = async (url, index) => {
     const orig = url.includes('cloudinary.com')
@@ -265,15 +266,32 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
           }}>
 
             {/* Image gallery */}
-            <div style={{ background: '#f7f6f3', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: hasColorOnly ? product.color : '#f7f6f3', display: 'flex', flexDirection: 'column' }}>
               <div style={{ flex: 1, position: 'relative', minHeight: isMobile ? 280 : 380,
                 display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src={img} alt={product.name}
-                  style={{ maxWidth: '100%', maxHeight: isMobile ? 280 : 380, objectFit: 'contain', display: 'block', padding: 16 }}
-                  onError={e => { e.target.src = NO_PHOTO; }} />
+                {hasColorOnly ? (
+                  <div style={{
+                    width: '100%', height: isMobile ? 280 : 380,
+                    background: product.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'column', gap: 8,
+                  }}>
+                    <div style={{
+                      fontSize: 14, fontWeight: 700, color: '#fff',
+                      textShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                      background: 'rgba(0,0,0,0.2)', padding: '6px 14px', borderRadius: 8,
+                    }}>
+                      {product.color}
+                    </div>
+                  </div>
+                ) : (
+                  <img src={img} alt={product.name}
+                    style={{ maxWidth: '100%', maxHeight: isMobile ? 280 : 380, objectFit: 'contain', display: 'block', padding: 16 }}
+                    onError={e => { e.target.src = NO_PHOTO; }} />
+                )}
 
                 {/* Download icon — top-right corner */}
-                {img !== NO_PHOTO && (
+                {!hasColorOnly && img !== NO_PHOTO && (
                   <button
                     onClick={() => downloadImage(img, imgIdx)}
                     title="Скачать фото"
