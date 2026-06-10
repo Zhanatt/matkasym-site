@@ -899,10 +899,40 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return Object.entries(groups).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
+  // Группировка для Bilim Kelechek (школьная мебель)
+  const bilimGroups = useMemo(() => {
+    if (setSlug !== 'bilim-kelechek') return null;
+    const categoryLabels = {
+      'desk-standard': 'Стандартные',
+      'desk-group': 'Групповые',
+      'desk-interactive': 'Интерактивные',
+    };
+    const groupOrder = ['Стандартные', 'Групповые', 'Интерактивные', 'Прочее', 'Нет в наличии'];
+    const groups = {};
+    groupOrder.forEach(g => groups[g] = []);
+
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+      if (!hasStock) {
+        groups['Нет в наличии'].push([name, variants]);
+        return;
+      }
+      const cat = p.category || 'other';
+      const label = categoryLabels[cat] || 'Прочее';
+      if (groups[label]) {
+        groups[label].push([name, variants]);
+      } else {
+        groups['Прочее'].push([name, variants]);
+      }
+    });
+    return groupOrder.map(g => [g, groups[g]]).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
   // Универсальная группировка по категориям для ВСЕХ сетов без специфичной группировки
   const setsWithCustomGroups = new Set([
     'dayar-tutuk', '0-tashtandy', 'achyk-asman', 'bekem-fasad',
-    'poly-fabrikat', 'taza-kiym', 'kooz-koopsuzduk', 'mazza-seyil', 'onuguu-set'
+    'poly-fabrikat', 'taza-kiym', 'kooz-koopsuzduk', 'mazza-seyil', 'onuguu-set', 'bilim-kelechek'
   ]);
   const autoCategoryGroups = useMemo(() => {
     if (setsWithCustomGroups.has(setSlug)) return null;
@@ -926,7 +956,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   }, [setSlug, models]);
 
   // Общая переменная для групп
-  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeyilGroups || onuguuGroups || autoCategoryGroups;
+  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeyilGroups || onuguuGroups || bilimGroups || autoCategoryGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
