@@ -19,8 +19,9 @@ const SALES_CHANNELS = {
     { key: 'matkasym_kz',   label: 'matkasym_kz',   desc: 'Казахстан' },
   ],
   'matkasym-shaar': [
-    { key: 'matkasym_home', label: 'matkasym_shaar',  desc: 'B2G (госзакупки)' },
-    { key: 'make_in',       label: 'matkasym_horeca', desc: 'HoReCa' },
+    { key: 'matkasym_home',   label: 'matkasym_shaar',  desc: 'B2G (госзакупки)' },
+    { key: 'make_in',         label: 'make_in',         desc: 'Оптовики' },
+    { key: 'matkasym_horeca', label: 'matkasym_horeca', desc: 'HoReCa' },
   ],
 };
 
