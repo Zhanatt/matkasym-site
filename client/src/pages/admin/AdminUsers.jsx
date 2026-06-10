@@ -49,7 +49,10 @@ export default function AdminUsers() {
 
   useEffect(() => {
     adminGetUsers()
-      .then(r => setUsers(r.data))
+      .then(r => {
+        const sorted = [...r.data].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+        setUsers(sorted);
+      })
       .finally(() => setLoading(false));
   }, []);
 

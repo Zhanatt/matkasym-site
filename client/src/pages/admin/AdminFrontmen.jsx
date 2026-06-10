@@ -72,7 +72,11 @@ export default function AdminFrontmen() {
 
   useEffect(() => {
     adminGetUsers()
-      .then(res => setUsers(res.data.filter(u => ['owner', 'editor', 'viewer'].includes(u.role))))
+      .then(res => {
+        const filtered = res.data.filter(u => ['owner', 'editor', 'viewer'].includes(u.role));
+        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+        setUsers(filtered);
+      })
       .finally(() => setUsersLoading(false));
     adminGetBrands()
       .then(res => {
