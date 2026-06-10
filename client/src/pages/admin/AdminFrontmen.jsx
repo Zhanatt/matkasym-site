@@ -20,8 +20,8 @@ const SALES_CHANNELS = {
   ],
   'matkasym-shaar': [
     { key: 'matkasym_home',   label: 'matkasym_shaar',  desc: 'B2G (госзакупки)' },
-    { key: 'make_in',         label: 'make_in',         desc: 'Оптовики' },
     { key: 'matkasym_horeca', label: 'matkasym_horeca', desc: 'HoReCa' },
+    { key: 'make_in',         label: 'make_in',         desc: 'Оптовики' },
   ],
   'matkasym-kyzmat': [
     { key: 'matkasym_kyzmat', label: 'matkasym_kyzmat', desc: 'Производство' },
