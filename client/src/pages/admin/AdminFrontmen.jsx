@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useFrontmen } from '../../context/FrontmenContext';
-import { adminGetUsers } from '../../api/index';
+import { adminGetUsers, adminGetBrands } from '../../api/index';
 
 const BRAND_META = {
   'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
@@ -39,18 +39,20 @@ const SET_NAMES = {
   'shirin-balalyk':  'Shirin Balalyk',
   'taza-kiym':       'Taza Kiym',
   'uydo-ishtoo':     'Uydo Ishtoo',
-  'zhashyl-ömür':    'Zhashyl Omur',
+  'zhashyl-omur':    'Zhashyl Omur',
+  '0-tashtandy-home': '0-Tashtandy (HOME)',
   // SHAAR
+  '0-tashtandy':     '0-Tashtandy',
   'bekem-fasad':     'Bekem Fasad',
+  'bekem-tosmo':     'Bekem Tosmo',
   'bilim-kelechek':  'Bilim Kelechek',
   'kooz-koopsuzduk': 'Kooz Koopsuzduk',
-  'mazza-seiyl':     'Mazza Seiyl',
-  'onoi-sakta':      'Onoi Sakta',
+  'mazza-seyil':     'Mazza Seyil',
   'uzak-koldon':     'Uzak Koldon',
   // KYZMAT
-  '0-tashtandy':     '0-Tashtandy',
-  'dayar-tütük':     'Dayar Tutuk',
-  'önügüü-set':      'Onuguu Set',
+  'onuguu-set':      'Onuguu Set',
+  'dayar-tutuk':     'Dayar Tutuk',
+  'poly-fabrikat':   'Poly Fabrikat',
 };
 const setLabel = s => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
@@ -62,6 +64,7 @@ export default function AdminFrontmen() {
   const { frontmen, loading: frontmenLoading, createFrontman, updateFrontman, deleteFrontman } = useFrontmen();
   const [users,    setUsers]    = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [brandSets, setBrandSets] = useState({});
   const [editId,   setEditId]   = useState(null);
   const [form,     setForm]     = useState({});
   const [saving,   setSaving]   = useState(false);
@@ -70,6 +73,14 @@ export default function AdminFrontmen() {
     adminGetUsers()
       .then(res => setUsers(res.data.filter(u => ['owner', 'editor', 'viewer'].includes(u.role))))
       .finally(() => setUsersLoading(false));
+    adminGetBrands()
+      .then(res => {
+        const setsMap = {};
+        (res.data || []).forEach(b => {
+          setsMap[b.key] = (b.sets || []).map(s => s.key);
+        });
+        setBrandSets(setsMap);
+      });
   }, []);
 
   const loading = frontmenLoading || usersLoading;
@@ -334,11 +345,11 @@ export default function AdminFrontmen() {
                 </select>
               </div>
 
-              {/* Sets */}
+              {/* Sets — показываем только сеты из базы для выбранного бренда */}
               <div>
                 <div style={{ fontSize: 11, color: '#888', fontWeight: 600, marginBottom: 6 }}>СЕТЫ</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {Object.keys(SET_NAMES).map(s => {
+                  {(brandSets[form.brand] || []).map(s => {
                     const active = form.sets.includes(s);
                     return (
                       <button key={s}
