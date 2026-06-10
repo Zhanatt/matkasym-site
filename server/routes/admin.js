@@ -89,6 +89,7 @@ router.get('/products', async (req, res) => {
     ];
     if (brand)         filter.brand         = brand;
     if (set)           filter.set           = set;
+    if (set === 'zhashyl-omur') console.log('[DEBUG] zhashyl-omur query, filter:', filter);
     if (category)      filter.category      = category;
     if (inStock !== undefined) filter.inStock = inStock === 'true';
     if (productStatus) filter.productStatus = productStatus;
