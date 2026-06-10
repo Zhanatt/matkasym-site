@@ -152,6 +152,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   useEffect(() => {
     adminGetBrands().then(r => {
       const brand = r.data.find(b => b.key === brandKey);
+      console.log(`[${brandKey}] brand.sets:`, brand?.sets?.length, brand?.sets?.map(s => s.key));
       if (brand) setCustomSets(brand.sets || []);
     });
   }, [brandKey]);
