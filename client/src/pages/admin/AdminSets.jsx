@@ -859,7 +859,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   }, [setSlug, models]);
 
   // Универсальная группировка для SHAAR сетов (по категориям)
-  const shaarSets = ['0-tashtandy', 'bekem-tosmo', 'bekem-fasad', 'uzak-koldon'];
+  // НЕ включать сюда сеты, у которых уже есть своя группировка: kooz-koopsuzduk, mazza-seyil
+  const shaarSets = ['0-tashtandy', 'bekem-tosmo', 'bekem-fasad', 'uzak-koldon', 'bilim-kelechek'];
   const shaarGroups = useMemo(() => {
     if (!shaarSets.includes(setSlug)) return null;
     const categoryLabels = {
