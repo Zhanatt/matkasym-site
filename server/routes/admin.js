@@ -2483,6 +2483,49 @@ router.get('/review/stats', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/admin/review/frontmen-progress — прогресс фронтменов по аудиту
+router.get('/review/frontmen-progress', async (req, res) => {
+  try {
+    const { auditId } = req.query;
+    const ObjectId = require('mongoose').Types.ObjectId;
+
+    let audit;
+    if (auditId) {
+      audit = await Audit.findById(auditId);
+    } else {
+      audit = await Audit.findOne({ status: 'active' });
+    }
+    if (!audit) return res.json([]);
+
+    const frontmen = await Frontman.find().lean();
+    const result = [];
+
+    for (const fm of frontmen) {
+      if (!fm.sets || fm.sets.length === 0) continue;
+
+      const totalProducts = await Product.countDocuments({ set: { $in: fm.sets } });
+      const reviewedCount = await ProductReview.countDocuments({
+        audit: audit._id,
+        frontman: fm._id
+      });
+
+      result.push({
+        _id: fm._id,
+        name: fm.name,
+        color: fm.color,
+        sets: fm.sets,
+        total: totalProducts,
+        reviewed: reviewedCount,
+        progress: totalProducts > 0 ? Math.round((reviewedCount / totalProducts) * 100) : 0,
+        completed: totalProducts > 0 && reviewedCount >= totalProducts
+      });
+    }
+
+    result.sort((a, b) => b.progress - a.progress);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/admin/review/grouped — товары со всеми голосами фронтменов (для модалки)
 router.get('/review/grouped', async (req, res) => {
   try {

@@ -710,24 +710,30 @@ export default function AdminProductReview() {
             </div>
           )}
 
-          {/* Режим просмотра */}
+          {/* Благодарственное сообщение */}
           {isReadOnly && (
             <div
               style={{
                 marginTop: 20,
-                padding: 20,
-                background: '#f0fdf4',
+                padding: 24,
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
                 border: '2px solid #22c55e',
-                borderRadius: 14,
+                borderRadius: 16,
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#22c55e' }}>
-                {auditStatus === 'completed' ? 'Аудит завершён' : 'Сет завершён'}
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🌟</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#166534', marginBottom: 8 }}>
+                Спасибо за вашу работу!
               </div>
-              <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                Просмотр результатов. Редактирование недоступно.
+              <div style={{ fontSize: 14, color: '#15803d', lineHeight: 1.5 }}>
+                {auditStatus === 'completed'
+                  ? 'Аудит завершён. Ваш вклад очень важен для нас!'
+                  : `${frontman?.name || 'Вы'}, вы прошли все товары этого сета. Ваша обратная связь помогает делать ассортимент лучше!`
+                }
+              </div>
+              <div style={{ fontSize: 12, color: '#888', marginTop: 12 }}>
+                Просмотр результатов доступен выше
               </div>
             </div>
           )}

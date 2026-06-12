@@ -147,6 +147,7 @@ export const adminSubmitReview        = (data)           => api.post('/admin/rev
 export const adminGetReviewResults    = (params)         => api.get('/admin/review/results', { params });
 export const adminGetReviewStats      = (auditId)        => api.get('/admin/review/stats', { params: { auditId } });
 export const adminGetReviewGrouped    = (params)         => api.get('/admin/review/grouped', { params });
+export const adminGetFrontmenProgress = (auditId)        => api.get('/admin/review/frontmen-progress', { params: { auditId } });
 export const adminDeleteReview        = (id)             => api.delete(`/admin/review/${id}`);
 
 export default api;

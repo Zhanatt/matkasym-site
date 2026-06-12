@@ -9,6 +9,7 @@ import {
   adminDeleteAudit,
   adminGetReviewResults,
   adminGetReviewStats,
+  adminGetFrontmenProgress,
   adminDeleteReview,
 } from '../../api/index';
 
@@ -67,6 +68,9 @@ export default function AdminReviewResults() {
   const [newAuditDeadline, setNewAuditDeadline] = useState('');
   const [creating, setCreating] = useState(false);
 
+  // Чеклист фронтменов
+  const [showFrontmenChecklist, setShowFrontmenChecklist] = useState(false);
+  const [frontmenProgress, setFrontmenProgress] = useState([]);
 
   const loadAudits = useCallback(async () => {
     try {
@@ -108,6 +112,23 @@ export default function AdminReviewResults() {
   useEffect(() => {
     if (selectedAuditId) loadData();
   }, [loadData, selectedAuditId]);
+
+  const loadFrontmenProgress = async () => {
+    if (!selectedAuditId) return;
+    try {
+      const res = await adminGetFrontmenProgress(selectedAuditId);
+      setFrontmenProgress(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const toggleFrontmenChecklist = () => {
+    if (!showFrontmenChecklist) {
+      loadFrontmenProgress();
+    }
+    setShowFrontmenChecklist(!showFrontmenChecklist);
+  };
 
   const handleCreateAudit = async () => {
     if (!newAuditName.trim() || !newAuditDeadline) return;
@@ -234,7 +255,22 @@ export default function AdminReviewResults() {
             </div>
           </div>
           {canEdit && (
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button
+                onClick={toggleFrontmenChecklist}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: showFrontmenChecklist ? '#1c1c1c' : '#fff',
+                  color: showFrontmenChecklist ? '#fff' : '#555',
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                👥 Фронтмены {showFrontmenChecklist ? '▲' : '▼'}
+              </button>
               <button
                 onClick={() => handleCompleteAudit(activeAudit._id)}
                 style={{
@@ -265,6 +301,85 @@ export default function AdminReviewResults() {
               >
                 Удалить
               </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Чеклист фронтменов */}
+      {showFrontmenChecklist && canEdit && (
+        <div
+          style={{
+            background: '#fff',
+            border: '1px solid #e5e5e5',
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 20,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+          }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: '#333' }}>
+            Прогресс фронтменов
+          </div>
+          {frontmenProgress.length === 0 ? (
+            <div style={{ color: '#888', fontSize: 13 }}>Загрузка...</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {frontmenProgress.map(fm => (
+                <div
+                  key={fm._id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 14px',
+                    background: fm.completed ? '#f0fdf4' : '#fafafa',
+                    borderRadius: 8,
+                    border: fm.completed ? '1px solid #bbf7d0' : '1px solid #eee',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      background: fm.completed ? '#22c55e' : '#e5e5e5',
+                      color: fm.completed ? '#fff' : '#999',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {fm.completed ? '✓' : ''}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: fm.color || '#888' }} />
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{fm.name}</span>
+                  </div>
+                  <div style={{ width: 80 }}>
+                    <div style={{ height: 6, background: '#e5e5e5', borderRadius: 3, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${fm.progress}%`,
+                          height: '100%',
+                          background: fm.completed ? '#22c55e' : fm.color || '#3b82f6',
+                          borderRadius: 3,
+                          transition: 'width 0.3s',
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: fm.completed ? '#22c55e' : '#666', minWidth: 45, textAlign: 'right' }}>
+                    {fm.progress}%
+                  </div>
+                  <div style={{ fontSize: 12, color: '#888', minWidth: 70, textAlign: 'right' }}>
+                    {fm.reviewed}/{fm.total}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
