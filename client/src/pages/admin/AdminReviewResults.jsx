@@ -72,6 +72,11 @@ export default function AdminReviewResults() {
   const [showFrontmenChecklist, setShowFrontmenChecklist] = useState(false);
   const [frontmenProgress, setFrontmenProgress] = useState([]);
 
+  // Модалка итогов завершённого аудита
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryData, setSummaryData] = useState([]);
+  const [summaryAuditName, setSummaryAuditName] = useState('');
+
   const loadAudits = useCallback(async () => {
     try {
       const [auditsRes, activeRes] = await Promise.all([
@@ -149,11 +154,28 @@ export default function AdminReviewResults() {
   const handleCompleteAudit = async (id) => {
     if (!window.confirm('Завершить аудит? Фронтмены больше не смогут вносить изменения.')) return;
     try {
+      const progressRes = await adminGetFrontmenProgress(id);
+      setSummaryData(progressRes.data);
+      setSummaryAuditName(activeAudit?.name || 'Аудит');
+
       await adminCompleteAudit(id);
       await loadAudits();
       loadData();
+
+      setShowSummaryModal(true);
     } catch (e) {
       alert(e.response?.data?.error || 'Ошибка');
+    }
+  };
+
+  const openAuditSummary = async (audit) => {
+    try {
+      const progressRes = await adminGetFrontmenProgress(audit._id);
+      setSummaryData(progressRes.data);
+      setSummaryAuditName(audit.name);
+      setShowSummaryModal(true);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -422,6 +444,23 @@ export default function AdminReviewResults() {
                   {a.status === 'active' && <span style={{ color: '#22c55e' }}>●</span>}
                   {a.name}
                 </button>
+                {canEdit && a.status === 'completed' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openAuditSummary(a); }}
+                    title="Итоги аудита"
+                    style={{
+                      padding: '8px 6px 8px 6px',
+                      fontSize: 12,
+                      background: 'transparent',
+                      color: selectedAuditId === a._id ? '#fff' : '#888',
+                      border: 'none',
+                      cursor: 'pointer',
+                      lineHeight: 1,
+                    }}
+                  >
+                    📊
+                  </button>
+                )}
                 {canEdit && a.status !== 'active' && (
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteAudit(a._id); }}
@@ -826,6 +865,111 @@ export default function AdminReviewResults() {
 
             <div style={{ marginTop: 16, fontSize: 12, color: '#888', textAlign: 'center' }}>
               Фронтмены получат уведомление в Telegram и Email
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка итогов аудита */}
+      {showSummaryModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSummaryModal(false); }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 16,
+              padding: 32,
+              width: 480,
+              maxWidth: '95vw',
+              maxHeight: '85vh',
+              overflow: 'auto',
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+              <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 8px' }}>
+                Аудит завершён!
+              </h2>
+              <p style={{ color: '#666', fontSize: 14, margin: 0 }}>
+                {summaryAuditName}
+              </p>
+            </div>
+
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#888', marginBottom: 12 }}>
+              РЕЗУЛЬТАТЫ ФРОНТМЕНОВ
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+              {summaryData.map(fm => (
+                <div
+                  key={fm._id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '12px 16px',
+                    background: fm.completed ? '#f0fdf4' : '#fef2f2',
+                    borderRadius: 10,
+                    border: fm.completed ? '1px solid #bbf7d0' : '1px solid #fecaca',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      background: fm.completed ? '#22c55e' : '#ef4444',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {fm.completed ? '✓' : '!'}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: fm.color || '#888' }} />
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{fm.name}</span>
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: fm.completed ? '#22c55e' : '#ef4444' }}>
+                    {fm.progress}%
+                  </div>
+                  <div style={{ fontSize: 12, color: '#888', minWidth: 60, textAlign: 'right' }}>
+                    {fm.reviewed}/{fm.total}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <button
+                onClick={() => setShowSummaryModal(false)}
+                style={{
+                  padding: '12px 32px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  background: '#1c1c1c',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                Закрыть
+              </button>
             </div>
           </div>
         </div>
