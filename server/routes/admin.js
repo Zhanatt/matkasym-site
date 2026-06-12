@@ -2513,6 +2513,7 @@ router.get('/review/frontmen-progress', async (req, res) => {
         _id: fm._id,
         name: fm.name,
         color: fm.color,
+        channel: fm.channel || null,
         sets: fm.sets,
         total: totalProducts,
         reviewed: reviewedCount,
@@ -2521,7 +2522,10 @@ router.get('/review/frontmen-progress', async (req, res) => {
       });
     }
 
-    result.sort((a, b) => b.progress - a.progress);
+    result.sort((a, b) => {
+      if (a.channel !== b.channel) return (a.channel || 'zzz').localeCompare(b.channel || 'zzz');
+      return b.progress - a.progress;
+    });
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

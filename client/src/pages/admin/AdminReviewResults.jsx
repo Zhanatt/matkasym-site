@@ -346,62 +346,87 @@ export default function AdminReviewResults() {
           {frontmenProgress.length === 0 ? (
             <div style={{ color: '#888', fontSize: 13 }}>Загрузка...</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {frontmenProgress.map(fm => (
-                <div
-                  key={fm._id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 14px',
-                    background: fm.completed ? '#f0fdf4' : '#fafafa',
-                    borderRadius: 8,
-                    border: fm.completed ? '1px solid #bbf7d0' : '1px solid #eee',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      background: fm.completed ? '#22c55e' : '#e5e5e5',
-                      color: fm.completed ? '#fff' : '#999',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 14,
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {fm.completed ? '✓' : ''}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: fm.color || '#888' }} />
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{fm.name}</span>
-                  </div>
-                  <div style={{ width: 80 }}>
-                    <div style={{ height: 6, background: '#e5e5e5', borderRadius: 3, overflow: 'hidden' }}>
-                      <div
-                        style={{
-                          width: `${fm.progress}%`,
-                          height: '100%',
-                          background: fm.completed ? '#22c55e' : fm.color || '#3b82f6',
-                          borderRadius: 3,
-                          transition: 'width 0.3s',
-                        }}
-                      />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {(() => {
+                const CHANNEL_LABELS = {
+                  'matkasym_home': '🏠 Matkasym Home',
+                  'make_in': '🛠 Make In',
+                  'matkasym_kz': '🇰🇬 Matkasym KZ',
+                  'matkasym_horeca': '🍽 Matkasym HoReCa',
+                  'matkasym_kyzmat': '🔧 Matkasym Kyzmat',
+                };
+                const grouped = {};
+                frontmenProgress.forEach(fm => {
+                  const ch = fm.channel || 'other';
+                  if (!grouped[ch]) grouped[ch] = [];
+                  grouped[ch].push(fm);
+                });
+                const order = ['matkasym_home', 'make_in', 'matkasym_kz', 'matkasym_horeca', 'matkasym_kyzmat', 'other'];
+                return order.filter(ch => grouped[ch]).map(channel => (
+                  <div key={channel}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 8 }}>
+                      {CHANNEL_LABELS[channel] || '📦 Другие'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {grouped[channel].map(fm => (
+                        <div
+                          key={fm._id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '10px 14px',
+                            background: fm.completed ? '#f0fdf4' : '#fafafa',
+                            borderRadius: 8,
+                            border: fm.completed ? '1px solid #bbf7d0' : '1px solid #eee',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: '50%',
+                              background: fm.completed ? '#22c55e' : '#e5e5e5',
+                              color: fm.completed ? '#fff' : '#999',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 14,
+                              fontWeight: 700,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {fm.completed ? '✓' : ''}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: fm.color || '#888' }} />
+                            <span style={{ fontWeight: 600, fontSize: 14 }}>{fm.name}</span>
+                          </div>
+                          <div style={{ width: 80 }}>
+                            <div style={{ height: 6, background: '#e5e5e5', borderRadius: 3, overflow: 'hidden' }}>
+                              <div
+                                style={{
+                                  width: `${fm.progress}%`,
+                                  height: '100%',
+                                  background: fm.completed ? '#22c55e' : fm.color || '#3b82f6',
+                                  borderRadius: 3,
+                                  transition: 'width 0.3s',
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: fm.completed ? '#22c55e' : '#666', minWidth: 45, textAlign: 'right' }}>
+                            {fm.progress}%
+                          </div>
+                          <div style={{ fontSize: 12, color: '#888', minWidth: 70, textAlign: 'right' }}>
+                            {fm.reviewed}/{fm.total}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: fm.completed ? '#22c55e' : '#666', minWidth: 45, textAlign: 'right' }}>
-                    {fm.progress}%
-                  </div>
-                  <div style={{ fontSize: 12, color: '#888', minWidth: 70, textAlign: 'right' }}>
-                    {fm.reviewed}/{fm.total}
-                  </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           )}
         </div>
@@ -905,53 +930,74 @@ export default function AdminReviewResults() {
               </p>
             </div>
 
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#888', marginBottom: 12 }}>
-              РЕЗУЛЬТАТЫ ФРОНТМЕНОВ
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-              {summaryData.map(fm => (
-                <div
-                  key={fm._id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '12px 16px',
-                    background: fm.completed ? '#f0fdf4' : '#fef2f2',
-                    borderRadius: 10,
-                    border: fm.completed ? '1px solid #bbf7d0' : '1px solid #fecaca',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      background: fm.completed ? '#22c55e' : '#ef4444',
-                      color: '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 14,
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {fm.completed ? '✓' : '!'}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              {(() => {
+                const CHANNEL_LABELS = {
+                  'matkasym_home': '🏠 Matkasym Home',
+                  'make_in': '🛠 Make In',
+                  'matkasym_kz': '🇰🇬 Matkasym KZ',
+                  'matkasym_horeca': '🍽 Matkasym HoReCa',
+                  'matkasym_kyzmat': '🔧 Matkasym Kyzmat',
+                };
+                const grouped = {};
+                summaryData.forEach(fm => {
+                  const ch = fm.channel || 'other';
+                  if (!grouped[ch]) grouped[ch] = [];
+                  grouped[ch].push(fm);
+                });
+                const order = ['matkasym_home', 'make_in', 'matkasym_kz', 'matkasym_horeca', 'matkasym_kyzmat', 'other'];
+                return order.filter(ch => grouped[ch]).map(channel => (
+                  <div key={channel}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#888', marginBottom: 8 }}>
+                      {CHANNEL_LABELS[channel] || '📦 Другие'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {grouped[channel].map(fm => (
+                        <div
+                          key={fm._id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '10px 14px',
+                            background: fm.completed ? '#f0fdf4' : '#fef2f2',
+                            borderRadius: 10,
+                            border: fm.completed ? '1px solid #bbf7d0' : '1px solid #fecaca',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: '50%',
+                              background: fm.completed ? '#22c55e' : '#ef4444',
+                              color: '#fff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {fm.completed ? '✓' : '!'}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: fm.color || '#888' }} />
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>{fm.name}</span>
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: fm.completed ? '#22c55e' : '#ef4444' }}>
+                            {fm.progress}%
+                          </div>
+                          <div style={{ fontSize: 11, color: '#888', minWidth: 50, textAlign: 'right' }}>
+                            {fm.reviewed}/{fm.total}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: fm.color || '#888' }} />
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{fm.name}</span>
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: fm.completed ? '#22c55e' : '#ef4444' }}>
-                    {fm.progress}%
-                  </div>
-                  <div style={{ fontSize: 12, color: '#888', minWidth: 60, textAlign: 'right' }}>
-                    {fm.reviewed}/{fm.total}
-                  </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
 
             <div style={{ textAlign: 'center' }}>
