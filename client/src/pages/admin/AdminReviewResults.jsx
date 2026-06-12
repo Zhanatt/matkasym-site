@@ -8,6 +8,7 @@ import {
   adminDeleteAudit,
   adminGetReviewResults,
   adminGetReviewStats,
+  adminGetReviewGrouped,
   adminDeleteReview,
 } from '../../api/index';
 
@@ -34,9 +35,12 @@ const SET_NAMES = {
 const setLabel = (s) => SET_NAMES[s] || s?.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || '—';
 
 const STATUS_CONFIG = {
-  keep: { label: 'Оставить', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
-  improve: { label: 'Модернизировать', color: '#f59e0b', bg: '#fffbeb', icon: '⚙' },
+  selling: { label: 'Продаётся', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
+  not_tried: { label: 'Не пробовали', color: '#3b82f6', bg: '#eff6ff', icon: '?' },
+  improve: { label: 'Улучшить', color: '#f59e0b', bg: '#fffbeb', icon: '⚙' },
   discontinue: { label: 'Снять', color: '#ef4444', bg: '#fef2f2', icon: '✕' },
+  // Backward compatibility
+  keep: { label: 'Продаётся', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
 };
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('ru', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
@@ -63,6 +67,12 @@ export default function AdminReviewResults() {
   const [newAuditName, setNewAuditName] = useState('');
   const [newAuditDeadline, setNewAuditDeadline] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Модалка товаров с голосами
+  const [showVotesModal, setShowVotesModal] = useState(false);
+  const [votesModalTitle, setVotesModalTitle] = useState('');
+  const [votesModalData, setVotesModalData] = useState([]);
+  const [votesModalLoading, setVotesModalLoading] = useState(false);
 
   const loadAudits = useCallback(async () => {
     try {
@@ -151,6 +161,33 @@ export default function AdminReviewResults() {
     if (!window.confirm('Удалить этот отзыв?')) return;
     await adminDeleteReview(id);
     loadData();
+  };
+
+  const openVotesModal = async (setName, status, statusLabel) => {
+    setVotesModalLoading(true);
+    setShowVotesModal(true);
+    setVotesModalTitle(`${setLabel(setName)} — ${statusLabel}`);
+    try {
+      const res = await adminGetReviewGrouped({
+        auditId: selectedAuditId,
+        set: setName,
+        status: status
+      });
+      setVotesModalData(res.data);
+    } catch (e) {
+      console.error(e);
+      setVotesModalData([]);
+    } finally {
+      setVotesModalLoading(false);
+    }
+  };
+
+  const getGroupedImageUrl = (item) => {
+    const img = item.product?.images?.[0] || item.productSnapshot?.image;
+    if (img) return img;
+    const driveId = item.product?.driveImages?.[0];
+    if (driveId) return `https://drive.google.com/thumbnail?id=${driveId}&sz=w100`;
+    return '/placeholder.png';
   };
 
   const getImageUrl = (r) => {
@@ -265,26 +302,53 @@ export default function AdminReviewResults() {
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {audits.map(a => (
-              <button
+              <div
                 key={a._id}
-                onClick={() => setSelectedAuditId(a._id)}
                 style={{
-                  padding: '8px 16px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: selectedAuditId === a._id ? '#1c1c1c' : '#f5f5f5',
-                  color: selectedAuditId === a._id ? '#fff' : '#555',
-                  border: 'none',
-                  borderRadius: 20,
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 0,
+                  background: selectedAuditId === a._id ? '#1c1c1c' : '#f5f5f5',
+                  borderRadius: 20,
+                  overflow: 'hidden',
                 }}
               >
-                {a.status === 'active' && <span style={{ color: '#22c55e' }}>●</span>}
-                {a.name}
-              </button>
+                <button
+                  onClick={() => setSelectedAuditId(a._id)}
+                  style={{
+                    padding: '8px 12px 8px 16px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    background: 'transparent',
+                    color: selectedAuditId === a._id ? '#fff' : '#555',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  {a.status === 'active' && <span style={{ color: '#22c55e' }}>●</span>}
+                  {a.name}
+                </button>
+                {canEdit && a.status !== 'active' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteAudit(a._id); }}
+                    title="Удалить аудит"
+                    style={{
+                      padding: '8px 12px 8px 6px',
+                      fontSize: 14,
+                      background: 'transparent',
+                      color: selectedAuditId === a._id ? '#ff6b6b' : '#999',
+                      border: 'none',
+                      cursor: 'pointer',
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -340,23 +404,39 @@ export default function AdminReviewResults() {
                     </div>
 
                     <div style={{ display: 'flex', gap: 8 }}>
-                      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                        <div
-                          key={key}
-                          style={{
-                            flex: 1,
-                            padding: '8px 4px',
-                            background: cfg.bg,
-                            borderRadius: 8,
-                            textAlign: 'center',
-                          }}
-                        >
-                          <div style={{ fontSize: 18, fontWeight: 700, color: cfg.color }}>
-                            {statusMap[key] || 0}
+                      {Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'keep').map(([key, cfg]) => {
+                        const count = statusMap[key] || 0;
+                        return (
+                          <div
+                            key={key}
+                            onClick={() => count > 0 && openVotesModal(s._id, key, cfg.label)}
+                            style={{
+                              flex: 1,
+                              padding: '8px 4px',
+                              background: cfg.bg,
+                              borderRadius: 8,
+                              textAlign: 'center',
+                              cursor: count > 0 ? 'pointer' : 'default',
+                              transition: 'transform 0.1s, box-shadow 0.1s',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (count > 0) {
+                                e.currentTarget.style.transform = 'scale(1.02)';
+                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          >
+                            <div style={{ fontSize: 18, fontWeight: 700, color: cfg.color }}>
+                              {count}
+                            </div>
+                            <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{cfg.label}</div>
                           </div>
-                          <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{cfg.label}</div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -655,6 +735,143 @@ export default function AdminReviewResults() {
 
             <div style={{ marginTop: 16, fontSize: 12, color: '#888', textAlign: 'center' }}>
               Фронтмены получат уведомление в Telegram и Email
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка: товары с голосами фронтменов */}
+      {showVotesModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowVotesModal(false); }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 16,
+              width: 700,
+              maxWidth: '95vw',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Заголовок модалки */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{votesModalTitle}</h2>
+              <button
+                onClick={() => setShowVotesModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: 24, color: '#999', cursor: 'pointer', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Содержимое */}
+            <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+              {votesModalLoading ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Загрузка...</div>
+              ) : votesModalData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#aaa' }}>Нет товаров</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {votesModalData.map((item, idx) => (
+                    <div
+                      key={item.productId || idx}
+                      style={{
+                        border: '1px solid #eee',
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        background: '#fafafa',
+                      }}
+                    >
+                      {/* Товар */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, background: '#fff', borderBottom: '1px solid #f0f0f0' }}>
+                        <img
+                          src={getGroupedImageUrl(item)}
+                          alt=""
+                          style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: '#f8f8f8' }}
+                          onError={(e) => { e.target.src = '/placeholder.png'; }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>
+                            {item.productSnapshot?.fullName || item.productSnapshot?.name || '—'}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#888' }}>
+                            {item.productSnapshot?.sku || '—'}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#888', textAlign: 'right' }}>
+                          <div>{item.votes.length} голос{item.votes.length === 1 ? '' : item.votes.length < 5 ? 'а' : 'ов'}</div>
+                        </div>
+                      </div>
+
+                      {/* Голоса фронтменов */}
+                      <div style={{ padding: '12px 16px' }}>
+                        {item.votes.map((vote, vIdx) => {
+                          const vcfg = STATUS_CONFIG[vote.status] || {};
+                          return (
+                            <div
+                              key={vIdx}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 12,
+                                padding: '10px 0',
+                                borderBottom: vIdx < item.votes.length - 1 ? '1px solid #eee' : 'none',
+                              }}
+                            >
+                              {/* Фронтмен */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 120 }}>
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: vote.frontman?.color || '#888' }} />
+                                <span style={{ fontWeight: 600, fontSize: 13 }}>{vote.frontman?.name || '—'}</span>
+                              </div>
+
+                              {/* Статус */}
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  padding: '4px 10px',
+                                  background: vcfg.bg,
+                                  color: vcfg.color,
+                                  borderRadius: 16,
+                                  fontWeight: 600,
+                                  fontSize: 11,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {vcfg.icon} {vcfg.label}
+                              </span>
+
+                              {/* Комментарий */}
+                              <div style={{ flex: 1, fontSize: 12, color: '#555', lineHeight: 1.4 }}>
+                                {vote.comment || <span style={{ color: '#ccc' }}>—</span>}
+                              </div>
+
+                              {/* Дата */}
+                              <div style={{ fontSize: 11, color: '#aaa', whiteSpace: 'nowrap' }}>
+                                {formatDate(vote.updatedAt)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

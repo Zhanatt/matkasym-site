@@ -2483,6 +2483,58 @@ router.get('/review/stats', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/admin/review/grouped — товары со всеми голосами фронтменов (для модалки)
+router.get('/review/grouped', async (req, res) => {
+  try {
+    const { auditId, set, status } = req.query;
+    const ObjectId = require('mongoose').Types.ObjectId;
+
+    let auditMatch = {};
+    if (auditId) {
+      auditMatch.audit = new ObjectId(auditId);
+    } else {
+      const activeAudit = await Audit.findOne({ status: 'active' });
+      if (activeAudit) auditMatch.audit = activeAudit._id;
+    }
+
+    if (set) auditMatch['productSnapshot.set'] = set;
+    if (status) auditMatch.status = status;
+
+    const reviews = await ProductReview.find(auditMatch)
+      .populate('frontman', 'name color')
+      .populate('product', 'images driveImages')
+      .sort({ 'productSnapshot.fullName': 1 })
+      .lean();
+
+    // Группируем по productId
+    const grouped = {};
+    reviews.forEach(r => {
+      const pid = r.product?._id?.toString() || r.productSnapshot?.sku;
+      if (!grouped[pid]) {
+        grouped[pid] = {
+          productId: pid,
+          productSnapshot: r.productSnapshot,
+          product: r.product,
+          votes: []
+        };
+      }
+      grouped[pid].votes.push({
+        frontman: r.frontman,
+        status: r.status,
+        comment: r.comment,
+        updatedAt: r.updatedAt
+      });
+    });
+
+    // Сортируем голоса по дате
+    Object.values(grouped).forEach(g => {
+      g.votes.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    });
+
+    res.json(Object.values(grouped));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // DELETE /api/admin/review/:id — удалить отзыв (editor+)
 router.delete('/review/:id', editor, async (req, res) => {
   try {
