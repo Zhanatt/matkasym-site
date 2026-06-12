@@ -29,7 +29,8 @@ const SET_NAMES = {
 const setLabel = (s) => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 const STATUS_CONFIG = {
-  keep: { label: 'Оставить', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
+  selling: { label: 'Продаётся', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
+  not_tried: { label: 'Не пробовали', color: '#3b82f6', bg: '#eff6ff', icon: '?' },
   improve: { label: 'Улучшить', color: '#f59e0b', bg: '#fffbeb', icon: '⚙' },
   discontinue: { label: 'Снять', color: '#ef4444', bg: '#fef2f2', icon: '✕' },
 };
@@ -85,20 +86,21 @@ export default function AdminProductReview() {
   // Детали товара
   const [showDetails, setShowDetails] = useState(false);
 
-  // Клавиатурные сокращения: 1=Оставить, 2=Улучшить, 3=Снять, ←/→ навигация
+  // Клавиатурные сокращения: 1=Продаётся, 2=Не пробовали, 3=Улучшить, 4=Снять, ←/→ навигация
   useEffect(() => {
     if (!activeSet || pendingStatus) return;
     const handleKey = (e) => {
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
-      if (e.key === '1' || e.key === 'к' || e.key === 'K') submitStatus('keep');
-      else if (e.key === '2' || e.key === 'у' || e.key === 'Y') submitStatus('improve');
-      else if (e.key === '3' || e.key === 'с' || e.key === 'C') submitStatus('discontinue');
+      if (e.key === '1') submitStatus('selling');
+      else if (e.key === '2') submitStatus('not_tried');
+      else if (e.key === '3') submitStatus('improve');
+      else if (e.key === '4') submitStatus('discontinue');
       else if (e.key === 'ArrowLeft' && currentIndex > 0) goToProduct(currentIndex - 1);
       else if (e.key === 'ArrowRight' && currentIndex < products.length - 1) goToProduct(currentIndex + 1);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [activeSet, pendingStatus, currentIndex, products.length]);
+}, [activeSet, pendingStatus, currentIndex, products.length]);
 
   const loadSets = useCallback(async () => {
     try {
@@ -159,14 +161,6 @@ export default function AdminProductReview() {
   };
 
   const submitStatus = async (status) => {
-    if (status === 'improve' || status === 'discontinue') {
-      const existingReview = products[currentIndex]?.review;
-      if (existingReview?.status === status && existingReview?.comment) {
-        setComment(existingReview.comment);
-      }
-      setPendingStatus(status);
-      return;
-    }
     await doSubmit(status, '');
   };
 
@@ -687,8 +681,8 @@ export default function AdminProductReview() {
             </div>
           </div>
 
-          {/* Кнопки действий */}
-          {!isReadOnly && !pendingStatus && (
+          {/* Кнопки голосования */}
+          {!isReadOnly && (
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
                 const isSelected = currentProduct.review?.status === status;
@@ -713,68 +707,6 @@ export default function AdminProductReview() {
                   </button>
                 );
               })}
-            </div>
-          )}
-
-          {/* Форма комментария */}
-          {!isReadOnly && pendingStatus && (
-            <div
-              style={{
-                marginTop: 20,
-                padding: 20,
-                background: STATUS_CONFIG[pendingStatus].bg,
-                border: `2px solid ${STATUS_CONFIG[pendingStatus].color}`,
-                borderRadius: 14,
-              }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 700, color: STATUS_CONFIG[pendingStatus].color, marginBottom: 12 }}>
-                {pendingStatus === 'improve' ? 'Что нужно улучшить?' : 'Причина снятия с производства'}
-              </div>
-
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder={pendingStatus === 'improve' ? 'Опишите: упаковку, конструкцию, цвет...' : 'Укажите причину: низкий спрос, устарел...'}
-                autoFocus
-                style={{
-                  width: '100%',
-                  minHeight: 80,
-                  padding: 14,
-                  fontSize: 14,
-                  border: '1px solid #ddd',
-                  borderRadius: 10,
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                  marginBottom: 12,
-                }}
-              />
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  onClick={cancelComment}
-                  style={{ flex: 1, padding: '12px', fontSize: 14, fontWeight: 600, background: '#fff', color: '#666', border: '1px solid #ddd', borderRadius: 10, cursor: 'pointer' }}
-                >
-                  Отмена
-                </button>
-                <button
-                  onClick={() => doSubmit(pendingStatus, comment)}
-                  disabled={!comment.trim()}
-                  style={{
-                    flex: 2,
-                    padding: '12px',
-                    fontSize: 14,
-                    fontWeight: 700,
-                    background: STATUS_CONFIG[pendingStatus].color,
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 10,
-                    cursor: !comment.trim() ? 'not-allowed' : 'pointer',
-                    opacity: !comment.trim() ? 0.5 : 1,
-                  }}
-                >
-                  Подтвердить
-                </button>
-              </div>
             </div>
           )}
 

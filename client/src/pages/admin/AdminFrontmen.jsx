@@ -145,7 +145,7 @@ export default function AdminFrontmen() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const payload = { ...form, userId: form.userId || null };
+      const payload = { ...form, userId: form.userId || null, channel: form.channel || null };
       if (editId === 'new') {
         await createFrontman(payload);
       } else {
