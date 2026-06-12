@@ -26,6 +26,7 @@ const setLabel = (s) => SET_NAMES[s] || s?.replace(/-/g, ' ').replace(/\b\w/g, (
 
 const STATUS_CONFIG = {
   keep: { label: 'Оставить', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
+  not_tried: { label: 'Не пробовали', color: '#3b82f6', bg: '#eff6ff', icon: '?' },
   improve: { label: 'Модернизировать', color: '#f59e0b', bg: '#fffbeb', icon: '⚙' },
   discontinue: { label: 'Снять', color: '#ef4444', bg: '#fef2f2', icon: '✕' },
 };

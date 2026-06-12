@@ -29,9 +29,9 @@ const SET_NAMES = {
 const setLabel = (s) => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 const STATUS_CONFIG = {
-  selling: { label: 'Продаётся', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
+  keep: { label: 'Оставить', color: '#22c55e', bg: '#f0fdf4', icon: '✓' },
   not_tried: { label: 'Не пробовали', color: '#3b82f6', bg: '#eff6ff', icon: '?' },
-  improve: { label: 'Улучшить', color: '#f59e0b', bg: '#fffbeb', icon: '⚙' },
+  improve: { label: 'Модернизировать', color: '#f59e0b', bg: '#fffbeb', icon: '⚙' },
   discontinue: { label: 'Снять', color: '#ef4444', bg: '#fef2f2', icon: '✕' },
 };
 
@@ -86,12 +86,12 @@ export default function AdminProductReview() {
   // Детали товара
   const [showDetails, setShowDetails] = useState(false);
 
-  // Клавиатурные сокращения: 1=Продаётся, 2=Не пробовали, 3=Улучшить, 4=Снять, ←/→ навигация
+  // Клавиатурные сокращения: 1=Оставить, 2=Не пробовали, 3=Модернизировать, 4=Снять, ←/→ навигация
   useEffect(() => {
     if (!activeSet || pendingStatus) return;
     const handleKey = (e) => {
       if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
-      if (e.key === '1') submitStatus('selling');
+      if (e.key === '1') submitStatus('keep');
       else if (e.key === '2') submitStatus('not_tried');
       else if (e.key === '3') submitStatus('improve');
       else if (e.key === '4') submitStatus('discontinue');

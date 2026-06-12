@@ -2334,7 +2334,7 @@ router.post('/review', async (req, res) => {
   try {
     const { productId, status, comment, auditId } = req.body;
 
-    if (!['keep', 'improve', 'discontinue'].includes(status)) {
+    if (!['keep', 'not_tried', 'improve', 'discontinue'].includes(status)) {
       return res.status(400).json({ error: 'Неверный статус' });
     }
     if ((status === 'improve' || status === 'discontinue') && !comment?.trim()) {

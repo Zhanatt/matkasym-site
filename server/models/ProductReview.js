@@ -24,10 +24,10 @@ const productReviewSchema = new mongoose.Schema({
     required: true
   },
 
-  // Статус: keep (оставить), improve (модернизировать), discontinue (снять)
+  // Статус: keep (оставить), not_tried (не пробовали), improve (модернизировать), discontinue (снять)
   status: {
     type: String,
-    enum: ['keep', 'improve', 'discontinue'],
+    enum: ['keep', 'not_tried', 'improve', 'discontinue'],
     required: true
   },
 
