@@ -34,8 +34,6 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const canDelete   = user?.role === 'owner';
   const canReceive  = ['owner', 'editor', 'warehouse'].includes(user?.role);
   const [imgIdx,    setImgIdx]    = useState(0);
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [deleting,   setDeleting]   = useState(false);
   const [copying,    setCopying]    = useState(false);
@@ -117,15 +115,16 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const hasColorOnly = product.color && images.length === 0;
 
   // Swipe handlers
-  const minSwipeDistance = 50;
+  const minSwipeDistance = 40;
+  const touchStartRef = { current: null };
   const onTouchStart = (e) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    touchStartRef.current = e.touches[0].clientX;
   };
-  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
+  const onTouchEnd = (e) => {
+    if (touchStartRef.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const distance = touchStartRef.current - touchEndX;
+    touchStartRef.current = null;
     if (Math.abs(distance) < minSwipeDistance) return;
     if (distance > 0) {
       // swipe left → next
@@ -309,10 +308,9 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
             <div style={{ background: hasColorOnly ? product.color : '#f7f6f3', display: 'flex', flexDirection: 'column' }}>
               <div
                 onTouchStart={images.length > 1 ? onTouchStart : undefined}
-                onTouchMove={images.length > 1 ? onTouchMove : undefined}
                 onTouchEnd={images.length > 1 ? onTouchEnd : undefined}
                 style={{ flex: 1, position: 'relative', minHeight: isMobile ? 280 : 380,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'pan-y' }}>
+                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {hasColorOnly ? (
                   <div style={{
                     width: '100%', height: isMobile ? 280 : 380,
