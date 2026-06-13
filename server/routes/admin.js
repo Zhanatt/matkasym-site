@@ -1628,7 +1628,7 @@ router.post('/sync-stock', async (req, res) => {
 
 // ── Stock Log ────────────────────────────────────────────────────────────────
 // GET /api/admin/stock-log?productId=&source=&page=1&limit=50&dateFrom=&dateTo=
-router.get('/stock-log', editor, async (req, res) => {
+router.get('/stock-log', canReceiveStock, async (req, res) => {
   try {
     const { productId, source, page = 1, limit = 50, dateFrom, dateTo, search } = req.query;
     const filter = {};
