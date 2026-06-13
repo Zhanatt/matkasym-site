@@ -83,6 +83,7 @@ export default function AdminProductReview() {
   const [pendingStatus, setPendingStatus] = useState(null);
   const [comment, setComment] = useState('');
   const [suggestionPhotos, setSuggestionPhotos] = useState([]);
+  const [suggestedPrice, setSuggestedPrice] = useState('');
 
   // Детали товара
   const [showDetails, setShowDetails] = useState(false);
@@ -220,7 +221,13 @@ export default function AdminProductReview() {
       alert('Введите комментарий');
       return;
     }
-    await doSubmit(pendingStatus, comment.trim(), suggestionPhotos);
+    // Добавляем предложенную цену в комментарий если указана
+    let finalComment = comment.trim();
+    if (suggestedPrice && comment.includes('Высокая цена')) {
+      finalComment = finalComment.replace('Высокая цена', `Высокая цена (предл. ${suggestedPrice} сом)`);
+    }
+    await doSubmit(pendingStatus, finalComment, suggestionPhotos);
+    setSuggestedPrice('');
   };
 
   const doSubmit = async (status, commentText, photos = []) => {
@@ -287,6 +294,7 @@ export default function AdminProductReview() {
     setPendingStatus(null);
     setComment('');
     setSuggestionPhotos([]);
+    setSuggestedPrice('');
   };
 
   const backToSets = async () => {
@@ -817,6 +825,25 @@ export default function AdminProductReview() {
                     </button>
                   ))}
                 </div>
+
+                {/* Поле для предложенной цены — появляется если выбрали "Высокая цена" */}
+                {comment.includes('Высокая цена') && (
+                  <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#666' }}>💰 За сколько бы продавалось?</span>
+                    <input
+                      type="number"
+                      value={suggestedPrice}
+                      onChange={e => setSuggestedPrice(e.target.value)}
+                      placeholder="цена"
+                      style={{
+                        width: 90, padding: '6px 10px', fontSize: 13,
+                        border: '1.5px solid #ddd', borderRadius: 8,
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                    <span style={{ fontSize: 12, color: '#888' }}>сом</span>
+                  </div>
+                )}
 
                 {/* Загрузка фото замены — только для improve/discontinue */}
                 {(pendingStatus === 'improve' || pendingStatus === 'discontinue') && (
