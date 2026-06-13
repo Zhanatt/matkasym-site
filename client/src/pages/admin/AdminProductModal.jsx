@@ -34,6 +34,8 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const canDelete   = user?.role === 'owner';
   const canReceive  = ['owner', 'editor', 'warehouse'].includes(user?.role);
   const [imgIdx,    setImgIdx]    = useState(0);
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [deleting,   setDeleting]   = useState(false);
   const [copying,    setCopying]    = useState(false);
@@ -113,6 +115,26 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const images = (product.images || []).filter(Boolean);
   const img    = images[imgIdx] || NO_PHOTO;
   const hasColorOnly = product.color && images.length === 0;
+
+  // Swipe handlers
+  const minSwipeDistance = 50;
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    if (Math.abs(distance) < minSwipeDistance) return;
+    if (distance > 0) {
+      // swipe left → next
+      setImgIdx(i => (i + 1) % images.length);
+    } else {
+      // swipe right → prev
+      setImgIdx(i => (i - 1 + images.length) % images.length);
+    }
+  };
 
   const downloadImage = async (url, index) => {
     const orig = url.includes('cloudinary.com')
@@ -285,8 +307,12 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
 
             {/* Image gallery */}
             <div style={{ background: hasColorOnly ? product.color : '#f7f6f3', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ flex: 1, position: 'relative', minHeight: isMobile ? 280 : 380,
-                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div
+                onTouchStart={images.length > 1 ? onTouchStart : undefined}
+                onTouchMove={images.length > 1 ? onTouchMove : undefined}
+                onTouchEnd={images.length > 1 ? onTouchEnd : undefined}
+                style={{ flex: 1, position: 'relative', minHeight: isMobile ? 280 : 380,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'pan-y' }}>
                 {hasColorOnly ? (
                   <div style={{
                     width: '100%', height: isMobile ? 280 : 380,
