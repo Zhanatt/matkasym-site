@@ -80,7 +80,7 @@ export default function AdminLayout() {
     if (location.pathname === '/admin/news') setNewsUnread(0);
   }, [location.pathname]);
 
-  const ALLOWED = ['owner', 'editor', 'viewer', 'navigator'];
+  const ALLOWED = ['owner', 'editor', 'viewer', 'navigator', 'warehouse'];
 
   // Waiting for AuthContext to verify token
   if (loading) return (

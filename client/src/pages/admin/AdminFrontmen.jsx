@@ -31,7 +31,6 @@ const SALES_CHANNELS = {
 const getChannelsForBrand = (brand) => SALES_CHANNELS[brand] || SALES_CHANNELS.default;
 
 const SET_NAMES = {
-  // HOME
   'achyk-asman':     'Achyk Asman',
   'baary-oorunda':   'Baary Oorunda',
   'den-sooluk':      'Den Sooluk',
@@ -45,7 +44,6 @@ const SET_NAMES = {
   'uydo-ishtoo':     'Uydo Ishtoo',
   'zhashyl-omur':    'Zhashyl Omur',
   '0-tashtandy-home': '0-Tashtandy (HOME)',
-  // SHAAR
   '0-tashtandy':     '0-Tashtandy',
   'bekem-fasad':     'Bekem Fasad',
   'bekem-tosmo':     'Bekem Tosmo',
@@ -53,12 +51,19 @@ const SET_NAMES = {
   'kooz-koopsuzduk': 'Kooz Koopsuzduk',
   'mazza-seyil':     'Mazza Seyil',
   'uzak-koldon':     'Uzak Koldon',
-  // KYZMAT
   'onuguu-set':      'Onuguu Set',
   'dayar-tutuk':     'Dayar Tutuk',
   'poly-fabrikat':   'Poly Fabrikat',
 };
 const setLabel = s => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+const CHANNEL_LABELS = {
+  'matkasym_home': '🏠 Home',
+  'make_in': '🛠 Make In',
+  'matkasym_kz': '🇰🇿 KZ',
+  'matkasym_horeca': '🍽 HoReCa',
+  'matkasym_kyzmat': '🔧 Kyzmat',
+};
 
 export default function AdminFrontmen() {
   const { user } = useAuth();
@@ -66,12 +71,13 @@ export default function AdminFrontmen() {
   const canEdit = user?.role === 'owner' || user?.role === 'editor';
 
   const { frontmen, loading: frontmenLoading, createFrontman, updateFrontman, deleteFrontman } = useFrontmen();
-  const [users,    setUsers]    = useState([]);
+  const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [brandSets, setBrandSets] = useState({});
-  const [editId,   setEditId]   = useState(null);
-  const [form,     setForm]     = useState({});
-  const [saving,   setSaving]   = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     adminGetUsers()
@@ -93,21 +99,16 @@ export default function AdminFrontmen() {
 
   const loading = frontmenLoading || usersLoading;
 
-  // Sort: current user's frontman first, then by order/createdAt
-  function sortItems(items) {
-    return [...items].sort((a, b) => {
+  const grouped = Object.entries(BRAND_META).map(([key, meta]) => ({
+    brandKey: key,
+    meta,
+    items: frontmen.filter(f => f.brand === key).sort((a, b) => {
       const aIsMe = a.userId?._id === user?._id || a.userId === user?._id;
       const bIsMe = b.userId?._id === user?._id || b.userId === user?._id;
       if (aIsMe && !bIsMe) return -1;
       if (!aIsMe && bIsMe) return 1;
-      return 0;
-    });
-  }
-
-  const grouped = Object.entries(BRAND_META).map(([key, meta]) => ({
-    brandKey: key,
-    meta,
-    items: sortItems(frontmen.filter(f => f.brand === key)),
+      return (a.name || '').localeCompare(b.name || '', 'ru');
+    }),
   }));
 
   function startNew(brandKey) {
@@ -164,116 +165,156 @@ export default function AdminFrontmen() {
   if (loading) return <div className="admin-empty">Загрузка...</div>;
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto' }}>
-      <div className="admin-page-header" style={{ marginBottom: 24 }}>
+    <div style={{ maxWidth: 700, margin: '0 auto' }}>
+      <div className="admin-page-header" style={{ marginBottom: 32 }}>
         <div>
           <h1 className="admin-page-title">Фронтмены</h1>
           <p style={{ color: 'var(--slate)', fontSize: 13, margin: '2px 0 0' }}>
-            Представители брендов — {frontmen.length} чел.
+            {frontmen.length} человек
           </p>
         </div>
       </div>
 
       {grouped.map(({ brandKey, meta, items }) => (
-        <div key={brandKey} style={{
-          background: '#fff', borderRadius: 12, padding: '28px 32px',
-          boxShadow: '0 1px 4px rgba(0,0,0,.07)', marginBottom: 20,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <div>
-              <div style={{ fontSize: 36, fontWeight: 800, color: '#1c1c1c', letterSpacing: -1, lineHeight: 1 }}>
-                {meta.label}
-              </div>
-              <div style={{ height: 3, width: 40, background: meta.accent, borderRadius: 2, marginTop: 6 }} />
+        <div key={brandKey} style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 4, height: 20, background: meta.accent, borderRadius: 2 }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#888', letterSpacing: 0.5 }}>{meta.label}</span>
+              <span style={{ fontSize: 12, color: '#bbb' }}>{items.length}</span>
             </div>
             {canEdit && (
               <button
                 onClick={() => startNew(brandKey)}
                 style={{
-                  padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
-                  background: meta.accent, color: '#fff', border: 'none',
-                  fontWeight: 700, fontSize: 13,
+                  padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
+                  background: 'transparent', color: meta.accent, border: `1px solid ${meta.accent}`,
+                  fontWeight: 600, fontSize: 12,
                 }}
               >
-                + Фронтмен
+                + Добавить
               </button>
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {items.map(fm => {
               const isMe = fm.userId?._id === user?._id || fm.userId === user?._id;
+              const isExpanded = expandedId === fm._id;
+              const initials = fm.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
               return (
-                <div key={fm._id} style={{
-                  borderRadius: 10,
-                  border: isMe ? `2px solid ${fm.color}` : `2px solid ${fm.color}30`,
-                  background: `${fm.color}08`, padding: '14px 16px', position: 'relative',
-                }}>
-                  {isMe && (
+                <div key={fm._id}>
+                  <div
+                    onClick={() => setExpandedId(isExpanded ? null : fm._id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '10px 14px',
+                      background: isExpanded ? '#f8f8f8' : '#fff',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = '#fafafa'; }}
+                    onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = '#fff'; }}
+                  >
                     <div style={{
-                      position: 'absolute', top: 8, right: 8,
-                      fontSize: 9, fontWeight: 700, color: fm.color,
-                      background: fm.color + '18', borderRadius: 8, padding: '2px 6px',
-                      letterSpacing: 0.5,
-                    }}>ВЫ</div>
-                  )}
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: fm.color, borderRadius: '10px 0 0 10px' }} />
-                  <div style={{ paddingLeft: 8 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1c1c1c' }}>{fm.name}</div>
-                    {fm.userId?.email && (
-                      <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>{fm.userId.email}</div>
-                    )}
-                    {fm.instagram && (
-                      <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{fm.instagram}</div>
-                    )}
-                    {fm.channel && (
-                      <div style={{
-                        fontSize: 10, fontWeight: 700, color: '#fff',
-                        background: fm.color, padding: '2px 8px', borderRadius: 4,
-                        marginTop: 4, display: 'inline-block',
-                      }}>
-                        {fm.channel}
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: fm.color,
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}>
+                      {initials}
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: 14, color: '#1c1c1c' }}>{fm.name}</span>
+                        {isMe && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 700, color: fm.color,
+                            background: fm.color + '18', borderRadius: 4, padding: '1px 5px',
+                          }}>ВЫ</span>
+                        )}
                       </div>
-                    )}
-                    {fm.sets.length > 0 && (
-                      <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {fm.sets.map(s => (
-                          <button key={s}
-                            onClick={() => navigate('/admin/sets', { state: { autoOpen: { brand: fm.brand, set: s } } })}
-                            style={{
-                              fontSize: 13, fontWeight: 600, padding: '8px 14px', borderRadius: 8,
-                              background: fm.color + '18', color: fm.color,
-                              border: `1.5px solid ${fm.color}40`, cursor: 'pointer',
-                              transition: 'background .15s, transform .1s',
-                              lineHeight: 1,
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = fm.color + '35'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = fm.color + '18'; e.currentTarget.style.transform = 'none'; }}
-                          >
-                            {setLabel(s)}
-                          </button>
-                        ))}
+                      <div style={{ fontSize: 12, color: '#999', marginTop: 1 }}>
+                        {fm.sets.length} сет{fm.sets.length === 1 ? '' : fm.sets.length < 5 ? 'а' : 'ов'}
+                        {fm.channel && <span style={{ marginLeft: 8 }}>{CHANNEL_LABELS[fm.channel] || fm.channel}</span>}
                       </div>
-                    )}
-                    {canEdit && (
-                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                        <button onClick={() => startEdit(fm)} style={{
-                          fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #e0e0e0',
-                          background: '#fff', cursor: 'pointer', color: '#555', fontWeight: 600,
-                        }}>Изменить</button>
-                        <button onClick={() => del(fm._id)} style={{
-                          fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #fcc',
-                          background: '#fff8f8', cursor: 'pointer', color: '#c00', fontWeight: 600,
-                        }}>Удалить</button>
-                      </div>
-                    )}
+                    </div>
+
+                    <div style={{ color: '#ccc', fontSize: 12 }}>
+                      {isExpanded ? '▲' : '▼'}
+                    </div>
                   </div>
+
+                  {isExpanded && (
+                    <div style={{
+                      padding: '12px 14px 14px 62px',
+                      background: '#f8f8f8',
+                      borderRadius: '0 0 10px 10px',
+                      marginTop: -4,
+                    }}>
+                      {fm.userId?.email && (
+                        <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
+                          ✉️ {fm.userId.email}
+                        </div>
+                      )}
+                      {fm.instagram && (
+                        <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>
+                          📷 {fm.instagram}
+                        </div>
+                      )}
+
+                      {fm.sets.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                          {fm.sets.map(s => (
+                            <button key={s}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate('/admin/sets', { state: { autoOpen: { brand: fm.brand, set: s } } });
+                              }}
+                              style={{
+                                fontSize: 11, fontWeight: 500, padding: '5px 10px', borderRadius: 6,
+                                background: '#fff', color: '#555',
+                                border: '1px solid #e0e0e0', cursor: 'pointer',
+                              }}
+                            >
+                              {setLabel(s)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {canEdit && (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={(e) => { e.stopPropagation(); startEdit(fm); }} style={{
+                            fontSize: 11, padding: '5px 12px', borderRadius: 6, border: '1px solid #ddd',
+                            background: '#fff', cursor: 'pointer', color: '#555', fontWeight: 500,
+                          }}>Изменить</button>
+                          <button onClick={(e) => { e.stopPropagation(); del(fm._id); }} style={{
+                            fontSize: 11, padding: '5px 12px', borderRadius: 6, border: 'none',
+                            background: '#fee', cursor: 'pointer', color: '#c00', fontWeight: 500,
+                          }}>Удалить</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
 
             {items.length === 0 && (
-              <div style={{ fontSize: 13, color: '#ccc', padding: '20px 0' }}>Нет фронтменов</div>
+              <div style={{ fontSize: 13, color: '#ccc', padding: '16px 14px' }}>Нет фронтменов</div>
             )}
           </div>
         </div>
@@ -288,22 +329,20 @@ export default function AdminFrontmen() {
           onClick={e => { if (e.target === e.currentTarget) cancelEdit(); }}
         >
           <div style={{
-            background: '#fff', borderRadius: 14, padding: '28px 32px',
-            width: 400, maxWidth: '90vw', boxShadow: '0 8px 40px rgba(0,0,0,.18)',
+            background: '#fff', borderRadius: 14, padding: '24px 28px',
+            width: 380, maxWidth: '90vw', boxShadow: '0 8px 40px rgba(0,0,0,.18)',
           }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 20px' }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 20px' }}>
               {editId === 'new' ? 'Новый фронтмен' : 'Редактировать'}
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-              {/* User selector */}
               <div>
-                <div style={{ fontSize: 11, color: '#888', fontWeight: 600, marginBottom: 6 }}>ПОЛЬЗОВАТЕЛЬ</div>
+                <div style={{ fontSize: 10, color: '#888', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Пользователь</div>
                 <select
                   value={form.userId}
                   onChange={e => handleUserSelect(e.target.value)}
-                  style={{ width: '100%', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 8, padding: '8px 12px', outline: 'none' }}
+                  style={{ width: '100%', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 8, padding: '10px 12px', outline: 'none', background: '#fff' }}
                 >
                   <option value="">— Не привязан —</option>
                   {users.map(u => (
@@ -314,48 +353,41 @@ export default function AdminFrontmen() {
                 </select>
               </div>
 
-              {/* Color + Name */}
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <input type="color" value={form.color}
                   onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-                  style={{ width: 36, height: 36, border: 'none', cursor: 'pointer', borderRadius: 6, padding: 0 }} />
+                  style={{ width: 40, height: 40, border: 'none', cursor: 'pointer', borderRadius: 8, padding: 0 }} />
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="Имя"
-                  style={{ flex: 1, fontSize: 14, border: '1px solid #e0e0e0', borderRadius: 8, padding: '8px 12px', outline: 'none' }} />
+                  style={{ flex: 1, fontSize: 14, border: '1px solid #e5e5e5', borderRadius: 8, padding: '10px 12px', outline: 'none' }} />
               </div>
 
               <input value={form.instagram} onChange={e => setForm(f => ({ ...f, instagram: e.target.value }))}
                 placeholder="@instagram"
-                style={{ fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 8, padding: '8px 12px', outline: 'none' }} />
+                style={{ fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 8, padding: '10px 12px', outline: 'none' }} />
 
-              {/* Brand */}
-              <select value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
-                style={{ fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 8, padding: '8px 12px', outline: 'none' }}>
-                {Object.entries(BRAND_META).map(([k, m]) => (
-                  <option key={k} value={k}>{m.label}</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <select value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
+                  style={{ flex: 1, fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 8, padding: '10px 12px', outline: 'none', background: '#fff' }}>
+                  {Object.entries(BRAND_META).map(([k, m]) => (
+                    <option key={k} value={k}>{m.label}</option>
+                  ))}
+                </select>
 
-              {/* Channel */}
-              <div>
-                <div style={{ fontSize: 11, color: '#888', fontWeight: 600, marginBottom: 6 }}>КАНАЛ ПРОДАЖ</div>
                 <select
                   value={form.channel}
                   onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}
-                  style={{ width: '100%', fontSize: 13, border: '1px solid #e0e0e0', borderRadius: 8, padding: '8px 12px', outline: 'none' }}
+                  style={{ flex: 1, fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 8, padding: '10px 12px', outline: 'none', background: '#fff' }}
                 >
-                  <option value="">— Не выбран —</option>
+                  <option value="">Канал</option>
                   {getChannelsForBrand(form.brand).map(ch => (
-                    <option key={ch.key} value={ch.key}>
-                      {ch.label} ({ch.desc})
-                    </option>
+                    <option key={ch.key} value={ch.key}>{ch.label}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Sets — показываем только сеты из базы для выбранного бренда */}
               <div>
-                <div style={{ fontSize: 11, color: '#888', fontWeight: 600, marginBottom: 6 }}>СЕТЫ</div>
+                <div style={{ fontSize: 10, color: '#888', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>Сеты</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {(brandSets[form.brand] || []).map(s => {
                     const active = form.sets.includes(s);
@@ -366,11 +398,11 @@ export default function AdminFrontmen() {
                           sets: active ? f.sets.filter(x => x !== s) : [...f.sets, s],
                         }))}
                         style={{
-                          fontSize: 11, padding: '4px 10px', borderRadius: 12,
-                          border: `1.5px solid ${active ? form.color : '#e0e0e0'}`,
+                          fontSize: 11, padding: '5px 10px', borderRadius: 6,
+                          border: active ? 'none' : '1px solid #e5e5e5',
                           background: active ? form.color : '#fff',
-                          color: active ? '#fff' : '#555',
-                          cursor: 'pointer', fontWeight: 600,
+                          color: active ? '#fff' : '#666',
+                          cursor: 'pointer', fontWeight: 500,
                         }}
                       >
                         {setLabel(s)}
@@ -381,17 +413,17 @@ export default function AdminFrontmen() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
               <button onClick={cancelEdit} style={{
-                padding: '9px 20px', borderRadius: 8, border: '1px solid #e0e0e0',
-                background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#555',
+                padding: '10px 20px', borderRadius: 8, border: 'none',
+                background: '#f5f5f5', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#555',
               }}>Отмена</button>
               <button onClick={save} disabled={saving || !form.name?.trim()} style={{
-                padding: '9px 20px', borderRadius: 8, border: 'none',
+                padding: '10px 20px', borderRadius: 8, border: 'none',
                 background: '#1c1c1c', color: '#fff', cursor: saving ? 'wait' : 'pointer',
                 fontSize: 13, fontWeight: 700, opacity: saving ? 0.7 : 1,
               }}>
-                {saving ? 'Сохранение...' : 'Сохранить'}
+                {saving ? '...' : 'Сохранить'}
               </button>
             </div>
           </div>
