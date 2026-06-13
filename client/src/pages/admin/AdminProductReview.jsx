@@ -160,9 +160,16 @@ export default function AdminProductReview() {
     setShowDetails(false);
   };
 
+  // Шаблоны комментариев по статусам
+  const COMMENT_TEMPLATES = {
+    not_tried: ['Низкий спрос', 'Нет запросов', 'Не выставлялся', 'Новинка'],
+    improve: ['Нужна модернизация', 'Устаревший дизайн', 'Улучшить качество', 'Изменить упаковку'],
+    discontinue: ['Не продаётся', 'Низкий спрос', 'Брак', 'Нерентабельно', 'Аналог лучше'],
+  };
+
   const submitStatus = async (status) => {
-    // Для improve и discontinue требуется комментарий
-    if (status === 'improve' || status === 'discontinue') {
+    // Для not_tried, improve и discontinue требуется комментарий
+    if (status === 'not_tried' || status === 'improve' || status === 'discontinue') {
       setPendingStatus(status);
       setComment('');
       return;
@@ -735,7 +742,9 @@ export default function AdminProductReview() {
                 boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
               }}>
                 <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#333' }}>
-                  {pendingStatus === 'improve' ? '⚙ Модернизировать' : '✕ Снять с производства'}
+                  {pendingStatus === 'not_tried' && '? Не пробовали продавать'}
+                  {pendingStatus === 'improve' && '⚙ Модернизировать'}
+                  {pendingStatus === 'discontinue' && '✕ Снять с производства'}
                 </div>
                 <div style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
                   Укажите причину:
@@ -746,11 +755,27 @@ export default function AdminProductReview() {
                   placeholder="Введите комментарий..."
                   autoFocus
                   style={{
-                    width: '100%', minHeight: 100, padding: 12, fontSize: 14,
+                    width: '100%', minHeight: 80, padding: 12, fontSize: 14,
                     border: '1.5px solid #ddd', borderRadius: 10, resize: 'vertical',
-                    fontFamily: 'inherit',
+                    fontFamily: 'inherit', boxSizing: 'border-box',
                   }}
                 />
+                {/* Шаблоны быстрого выбора */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                  {COMMENT_TEMPLATES[pendingStatus]?.map(tpl => (
+                    <button
+                      key={tpl}
+                      onClick={() => setComment(prev => prev ? `${prev}, ${tpl}` : tpl)}
+                      style={{
+                        padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                        background: '#f0f0f0', color: '#555', border: 'none', borderRadius: 16,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {tpl}
+                    </button>
+                  ))}
+                </div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                   <button
                     onClick={cancelComment}
@@ -767,7 +792,7 @@ export default function AdminProductReview() {
                     disabled={!comment.trim()}
                     style={{
                       flex: 1, padding: '12px 16px', fontSize: 14, fontWeight: 700,
-                      background: pendingStatus === 'improve' ? '#f59e0b' : '#ef4444',
+                      background: pendingStatus === 'not_tried' ? '#3b82f6' : pendingStatus === 'improve' ? '#f59e0b' : '#ef4444',
                       color: '#fff', border: 'none', borderRadius: 10,
                       cursor: comment.trim() ? 'pointer' : 'not-allowed',
                       opacity: comment.trim() ? 1 : 0.5,
