@@ -73,34 +73,6 @@ mongoose
   .then(async () => {
     console.log('✅ MongoDB подключён');
 
-    // Migration: split onoi-sakta into SHAAR/onoi-sakta + HOME/baary-oorunda
-    try {
-      const Product  = require('./models/Product');
-      const Frontman = require('./models/Frontman');
-
-      // Products
-      const needsMigration = await Product.exists({ set: 'onoi-sakta', fullName: /промышленный/i, brand: { $ne: 'matkasym-shaar' } });
-      if (needsMigration) {
-        const r1 = await Product.updateMany(
-          { set: 'onoi-sakta', fullName: /промышленный/i },
-          { $set: { brand: 'matkasym-shaar' } }
-        );
-        const r2 = await Product.updateMany(
-          { set: 'onoi-sakta', fullName: { $not: /промышленный/i } },
-          { $set: { brand: 'matkasym-home', set: 'baary-oorunda' } }
-        );
-        console.log(`✅ Migration split-onoi-sakta products: shaar=${r1.modifiedCount} home=${r2.modifiedCount}`);
-      }
-
-      // Frontmen: replace onoi-sakta → baary-oorunda in sets array (two steps — can't combine $addToSet + $pull)
-      await Frontman.updateMany({ sets: 'onoi-sakta' }, { $addToSet: { sets: 'baary-oorunda' } });
-      const fmPull = await Frontman.updateMany({ sets: 'onoi-sakta' }, { $pull: { sets: 'onoi-sakta' } });
-      if (fmPull.modifiedCount > 0) {
-        console.log(`✅ Migration split-onoi-sakta frontmen: pulled onoi-sakta from ${fmPull.modifiedCount}`);
-      }
-    } catch (e) {
-      console.error('⚠️ Migration split-onoi-sakta failed:', e.message);
-    }
 
     // Migration: drop old ProductReview unique index (product+frontman) to allow audit-based index
     try {
