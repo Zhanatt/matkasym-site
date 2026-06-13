@@ -2384,12 +2384,12 @@ router.get('/review/set/:setSlug/all', async (req, res) => {
 // POST /api/admin/review — сохранить отзыв фронтмена
 router.post('/review', async (req, res) => {
   try {
-    const { productId, status, comment, auditId } = req.body;
+    const { productId, status, comment, suggestionPhotos, auditId } = req.body;
 
     if (!['keep', 'not_tried', 'improve', 'discontinue'].includes(status)) {
       return res.status(400).json({ error: 'Неверный статус' });
     }
-    if ((status === 'improve' || status === 'discontinue') && !comment?.trim()) {
+    if ((status === 'not_tried' || status === 'improve' || status === 'discontinue') && !comment?.trim()) {
       return res.status(400).json({ error: 'Комментарий обязателен' });
     }
 
@@ -2430,6 +2430,7 @@ router.post('/review', async (req, res) => {
         reviewer: req.user._id,
         status,
         comment: comment?.trim() || '',
+        suggestionPhotos: suggestionPhotos || [],
         productSnapshot: {
           name: product.name,
           fullName: product.fullName,

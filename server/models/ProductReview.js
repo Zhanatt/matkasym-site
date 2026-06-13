@@ -37,6 +37,11 @@ const productReviewSchema = new mongoose.Schema({
     default: ''
   },
 
+  // Фото предложений на замену (от фронтмена)
+  suggestionPhotos: [{
+    type: String
+  }],
+
   // Снапшот данных товара на момент проверки
   productSnapshot: {
     name:     { type: String },

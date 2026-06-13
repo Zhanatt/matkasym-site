@@ -82,6 +82,7 @@ export default function AdminProductReview() {
   // Комментарий
   const [pendingStatus, setPendingStatus] = useState(null);
   const [comment, setComment] = useState('');
+  const [suggestionPhotos, setSuggestionPhotos] = useState([]);
 
   // Детали товара
   const [showDetails, setShowDetails] = useState(false);
@@ -162,9 +163,46 @@ export default function AdminProductReview() {
 
   // Шаблоны комментариев по статусам
   const COMMENT_TEMPLATES = {
-    not_tried: ['Не выставлялся', 'Не были в курсе', 'Новинка', 'Нет образца'],
-    improve: ['Устаревший дизайн', 'Улучшить качество', 'Изменить упаковку', 'Добавить размеры'],
-    discontinue: ['Не продаётся', 'Низкий спрос', 'Брак', 'Нерентабельно', 'Есть аналог лучше'],
+    not_tried: ['Не знали о товаре', 'Новинка', 'Нет в каталоге'],
+    improve: ['Устаревший дизайн', 'Улучшить качество', 'Изменить упаковку', 'Добавить размеры', 'Есть замена'],
+    discontinue: ['Низкий спрос', 'Брак/дефект', 'Есть замена лучше'],
+  };
+
+  // Cloudinary upload widget
+  const CLOUD_NAME = 'dnbg21ef8';
+  const UPLOAD_PRESET = 'Matkasym';
+
+  const openPhotoWidget = () => {
+    const batch = [];
+    window.cloudinary.openUploadWidget(
+      {
+        cloudName: CLOUD_NAME,
+        uploadPreset: UPLOAD_PRESET,
+        sources: ['local', 'camera'],
+        multiple: true,
+        maxFiles: 3,
+        language: 'ru',
+        styles: {
+          palette: {
+            window: '#FFFFFF', windowBorder: '#E8E8E8', tabIcon: '#E10523',
+            link: '#E10523', action: '#E10523', complete: '#2D7A3A',
+          },
+        },
+      },
+      (error, result) => {
+        if (error) return;
+        if (result.event === 'success') {
+          batch.push(result.info.secure_url);
+        }
+        if (result.event === 'queues-end' && batch.length > 0) {
+          setSuggestionPhotos(prev => [...prev, ...batch]);
+        }
+      }
+    );
+  };
+
+  const removePhoto = (idx) => {
+    setSuggestionPhotos(prev => prev.filter((_, i) => i !== idx));
   };
 
   const submitStatus = async (status) => {
@@ -182,10 +220,10 @@ export default function AdminProductReview() {
       alert('Введите комментарий');
       return;
     }
-    await doSubmit(pendingStatus, comment.trim());
+    await doSubmit(pendingStatus, comment.trim(), suggestionPhotos);
   };
 
-  const doSubmit = async (status, commentText) => {
+  const doSubmit = async (status, commentText, photos = []) => {
     const product = products[currentIndex];
     if (!product) return;
 
@@ -197,10 +235,11 @@ export default function AdminProductReview() {
     // Оптимистичное обновление — сразу показываем результат
     const savedIndex = currentIndex;
     setProducts(prev => prev.map((p, i) =>
-      i === savedIndex ? { ...p, review: { status, comment: commentText } } : p
+      i === savedIndex ? { ...p, review: { status, comment: commentText, suggestionPhotos: photos } } : p
     ));
     setPendingStatus(null);
     setComment('');
+    setSuggestionPhotos([]);
     setShowDetails(false);
 
     // Сразу переходим к следующему
@@ -222,6 +261,7 @@ export default function AdminProductReview() {
         productId: product._id,
         status,
         comment: commentText,
+        suggestionPhotos: photos,
         auditId: currentAuditId,
       });
       if (!response.data.ok) {
@@ -246,6 +286,7 @@ export default function AdminProductReview() {
   const cancelComment = () => {
     setPendingStatus(null);
     setComment('');
+    setSuggestionPhotos([]);
   };
 
   const backToSets = async () => {
@@ -776,6 +817,45 @@ export default function AdminProductReview() {
                     </button>
                   ))}
                 </div>
+
+                {/* Загрузка фото замены — только для improve/discontinue */}
+                {(pendingStatus === 'improve' || pendingStatus === 'discontinue') && (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>
+                      📷 Есть предложение на замену? Прикрепите фото:
+                    </div>
+                    {suggestionPhotos.length > 0 && (
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                        {suggestionPhotos.map((url, i) => (
+                          <div key={url} style={{ position: 'relative' }}>
+                            <img src={url} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover' }} />
+                            <button
+                              onClick={() => removePhoto(i)}
+                              style={{
+                                position: 'absolute', top: -6, right: -6,
+                                width: 20, height: 20, borderRadius: '50%',
+                                background: '#ef4444', color: '#fff', border: 'none',
+                                fontSize: 12, cursor: 'pointer', lineHeight: 1,
+                              }}
+                            >✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={openPhotoWidget}
+                      style={{
+                        padding: '8px 14px', fontSize: 12, fontWeight: 600,
+                        background: '#e0f2fe', color: '#0284c7', border: 'none', borderRadius: 8,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      📎 {suggestionPhotos.length > 0 ? 'Добавить ещё' : 'Прикрепить фото'}
+                    </button>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                   <button
                     onClick={cancelComment}
