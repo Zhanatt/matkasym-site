@@ -25,7 +25,7 @@ export default function AdminLogin() {
       const role = res.data.user.role;
       if (role === 'banned')
         return setError('Ваш доступ к Продакт матрице запрещён.');
-      if (!['owner','editor','viewer'].includes(role))
+      if (!['owner','editor','viewer','navigator','warehouse'].includes(role))
         return setError('У вас нет доступа к Продакт матрице.');
       saveLogin(res.data.token, res.data.user);
       navigate('/admin');
