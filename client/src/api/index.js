@@ -132,6 +132,10 @@ export const adminCreateSupplier   = (data)        => api.post('/admin/suppliers
 export const adminUpdateSupplier   = (id, data)    => api.patch(`/admin/suppliers/${id}`, data);
 export const adminDeleteSupplier   = (id)          => api.delete(`/admin/suppliers/${id}`);
 
+// Warehouse (склад) — приём товара
+export const adminGetInTransit     = ()            => api.get('/admin/products/in-transit');
+export const adminReceiveProduct   = (id, qty)     => api.post(`/admin/products/${id}/receive`, { qty });
+
 // Audits Management
 export const adminGetAudits           = ()               => api.get('/admin/audits');
 export const adminGetActiveAudit      = ()               => api.get('/admin/audits/active');

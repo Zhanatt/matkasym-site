@@ -13,7 +13,7 @@ const Frontman     = require('../models/Frontman');
 const Supplier     = require('../models/Supplier');
 const PhotoLog     = require('../models/PhotoLog');
 const cloudinary   = require('../lib/cloudinary');
-const { protect, admin, editor, viewer } = require('../middleware/auth');
+const { protect, admin, editor, viewer, warehouse, canReceiveStock } = require('../middleware/auth');
 
 const FONTS_DIR = path.join(__dirname, '../fonts');
 
@@ -50,14 +50,14 @@ const FIELD_LABELS = {
   specs: 'Характеристики',
 };
 
-// All admin routes require valid JWT + at least viewer role
-router.use(protect, viewer);
+// All admin routes require valid JWT + at least warehouse role
+router.use(protect, warehouse);
 
 // ── Dashboard stats ──────────────────────────────
 router.get('/stats', async (req, res) => {
   try {
     const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
-    const adminRoles = ['owner', 'editor', 'viewer', 'banned'];
+    const adminRoles = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'banned'];
 
     const [products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen] = await Promise.all([
       Product.countDocuments(),
@@ -563,7 +563,7 @@ router.delete('/frontmen/:id', protect, editor, async (req, res) => {
 
 // ── Suppliers (индивидуальные поставщики) ─────────────────────────────────────
 
-router.get('/suppliers', protect, viewer, async (req, res) => {
+router.get('/suppliers', protect, warehouse, async (req, res) => {
   try {
     const list = await Supplier.find().populate('products', 'name fullName images brand set').sort({ createdAt: -1 });
     res.json(list);
@@ -589,6 +589,58 @@ router.delete('/suppliers/:id', protect, editor, async (req, res) => {
   try {
     await Supplier.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// ── Приём товара на склад (warehouse) ─────────────────────────────────────────
+// POST /api/admin/products/:id/receive — принять товар "в пути" на склад
+router.post('/products/:id/receive', protect, canReceiveStock, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+
+    if (!product.inTransit && product.inTransitQty === 0) {
+      return res.status(400).json({ error: 'Товар не в пути' });
+    }
+
+    const receivedQty = req.body.qty || product.inTransitQty || 1;
+
+    // Добавляем к остаткам, убираем статус "в пути"
+    product.stock = (product.stock || 0) + receivedQty;
+    product.inStock = true;
+    product.stockStatus = 'in_stock';
+    product.inTransit = false;
+    product.inTransitQty = 0;
+
+    await product.save();
+
+    // Логируем приём
+    await StockLog.create({
+      product: product._id,
+      action: 'receive',
+      qty: receivedQty,
+      note: `Принято на склад пользователем ${req.user.name}`,
+      user: req.user._id,
+    });
+
+    res.json({
+      ok: true,
+      message: `Принято ${receivedQty} шт.`,
+      product
+    });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// GET /api/admin/products/in-transit — товары в пути (для склада)
+router.get('/products/in-transit', protect, warehouse, async (req, res) => {
+  try {
+    const products = await Product.find({
+      $or: [
+        { inTransit: true },
+        { inTransitQty: { $gt: 0 } }
+      ]
+    }).select('name fullName sku images inTransitQty supplier set brand').sort({ updatedAt: -1 });
+    res.json(products);
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 

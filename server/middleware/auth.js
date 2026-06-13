@@ -43,3 +43,15 @@ exports.viewer = (req, res, next) => {
   if (!['owner', 'editor', 'viewer'].includes(req.user?.role)) return res.status(403).json({ message: 'Доступ запрещён' });
   next();
 };
+
+// owner + editor + viewer + warehouse (может видеть админку и поставщиков)
+exports.warehouse = (req, res, next) => {
+  if (!['owner', 'editor', 'viewer', 'navigator', 'warehouse'].includes(req.user?.role)) return res.status(403).json({ message: 'Доступ запрещён' });
+  next();
+};
+
+// warehouse can receive stock (owner, editor, warehouse)
+exports.canReceiveStock = (req, res, next) => {
+  if (!['owner', 'editor', 'warehouse'].includes(req.user?.role)) return res.status(403).json({ message: 'Нет прав для приёма товара' });
+  next();
+};

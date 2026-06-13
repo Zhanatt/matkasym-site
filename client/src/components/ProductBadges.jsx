@@ -13,7 +13,7 @@ export const STATUS_BADGE = {
 
 export function SupplierBadge({ product, size = 'normal' }) {
   const { user } = useAuth();
-  const canSeeSupplier = user?.role === 'owner' || user?.role === 'navigator';
+  const canSeeSupplier = ['owner', 'navigator', 'warehouse'].includes(user?.role);
 
   if (!product.isSupplied || !canSeeSupplier) return null;
 

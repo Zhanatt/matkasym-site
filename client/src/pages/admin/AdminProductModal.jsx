@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminDeleteProduct, adminCreateProduct } from '../../api';
+import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -32,10 +32,28 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const isMobile    = useIsMobile();
   const canEdit     = user?.role === 'owner' || user?.role === 'editor';
   const canDelete   = user?.role === 'owner';
+  const canReceive  = ['owner', 'editor', 'warehouse'].includes(user?.role);
   const [imgIdx,    setImgIdx]    = useState(0);
   const [confirming, setConfirming] = useState(false);
   const [deleting,   setDeleting]   = useState(false);
   const [copying,    setCopying]    = useState(false);
+  const [receiving,  setReceiving]  = useState(false);
+  const [localProduct, setLocalProduct] = useState(product);
+
+  const handleReceive = async () => {
+    if (!localProduct.inTransit && !localProduct.inTransitQty) return;
+    setReceiving(true);
+    try {
+      const qty = localProduct.inTransitQty || 1;
+      const res = await adminReceiveProduct(localProduct._id, qty);
+      setLocalProduct(res.data.product);
+      alert(`✓ Принято ${qty} шт. на склад`);
+    } catch (e) {
+      alert('Ошибка: ' + (e.response?.data?.error || e.message));
+    } finally {
+      setReceiving(false);
+    }
+  };
 
   const handleCopy = async () => {
     setCopying(true);
@@ -351,13 +369,29 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
                     background: '#fff3cd', color: '#856404' }}>Новинка</span>
                 )}
-                {product.inTransit && (
+                {localProduct.inTransit && (
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                    background: '#eef6ff', color: '#1d4ed8' }}>🚚 В пути</span>
+                    background: '#eef6ff', color: '#1d4ed8' }}>
+                    🚚 В пути {localProduct.inTransitQty > 0 && `(${localProduct.inTransitQty} шт)`}
+                  </span>
+                )}
+                {canReceive && localProduct.inTransit && (
+                  <button
+                    onClick={handleReceive}
+                    disabled={receiving}
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
+                      background: receiving ? '#ccc' : '#2d7a3a', color: '#fff',
+                      border: 'none', cursor: receiving ? 'not-allowed' : 'pointer',
+                    }}>
+                    {receiving ? '⏳...' : '📦 Принять'}
+                  </button>
                 )}
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                  background: product.inStock ? '#e8f5e9' : '#fce8e8',
-                  color: product.inStock ? '#2d7a3a' : '#c00' }}>{stockLabel}</span>
+                  background: localProduct.inStock ? '#e8f5e9' : '#fce8e8',
+                  color: localProduct.inStock ? '#2d7a3a' : '#c00' }}>
+                  {localProduct.stock > 0 ? `${localProduct.stock} шт.` : (localProduct.inStock ? 'Есть' : 'Нет')}
+                </span>
               </div>
 
               {/* Status note (pause reason, etc.) */}
