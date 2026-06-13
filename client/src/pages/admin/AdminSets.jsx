@@ -796,28 +796,27 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return groupOrder.map(g => [g, groups[g]]).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
-  // Группировка для Kooz Koopsuzduk (щиты безопасности)
+  // Группировка для Kooz Koopsuzduk (электрощиты)
   const koozGroups = useMemo(() => {
     if (setSlug !== 'kooz-koopsuzduk') return null;
-    const categoryLabels = {
-      'electric-panel-outdoor': 'Электрощиты',
-      'electric-panel-mount': 'ЩМП (с монтажной панелью)',
-      'electric-panel-floor': 'Этажные щиты',
-      'electric-panel-plumbing': 'Сантехнические щиты',
-      'electric-panel-gas': 'Газовые щиты',
-      'fire-cabinet': 'Пожарные шкафы',
-      'other': 'Прочее',
-    };
-    const groups = {
-      'Электрощиты': [],
-      'ЩМП (с монтажной панелью)': [],
-      'Этажные щиты': [],
-      'Сантехнические щиты': [],
-      'Газовые щиты': [],
-      'Пожарные шкафы': [],
-      'Прочее': [],
-      'Нет в наличии': [],
-    };
+    const groupOrder = [
+      'Электрощиты настенные',
+      'Электрощиты из нержавейки',
+      'Распред. щиты накладные',
+      'Распред. щиты встраиваемые',
+      'Щиты монтажные (ЩМП)',
+      'Щиты этажные',
+      'Щиты сантехнические',
+      'Электрощиты газовые',
+      'Электрощиты уличные',
+      'Электрощиты напольные',
+      'Шкафы пожарные',
+      'Прочее',
+      'Нет в наличии',
+    ];
+    const groups = {};
+    groupOrder.forEach(g => groups[g] = []);
+
     models.forEach(([name, variants]) => {
       const p = variants[0];
       const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
@@ -825,21 +824,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         groups['Нет в наличии'].push([name, variants]);
         return;
       }
-      const cat = p.category || 'other';
-      const label = categoryLabels[cat] || 'Прочее';
-      if (groups[label]) {
-        groups[label].push([name, variants]);
+      const cat = p.category || 'Прочее';
+      if (groups[cat]) {
+        groups[cat].push([name, variants]);
       } else {
         groups['Прочее'].push([name, variants]);
       }
     });
-    const result = Object.entries(groups).filter(([, items]) => items.length > 0);
-    const outOfStockIdx = result.findIndex(([key]) => key === 'Нет в наличии');
-    if (outOfStockIdx > -1) {
-      const [outOfStock] = result.splice(outOfStockIdx, 1);
-      result.push(outOfStock);
-    }
-    return result;
+    return groupOrder.map(g => [g, groups[g]]).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
   // Группировка для Mazza Seyil (уличная мебель)
