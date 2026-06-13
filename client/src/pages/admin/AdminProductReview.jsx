@@ -161,7 +161,21 @@ export default function AdminProductReview() {
   };
 
   const submitStatus = async (status) => {
+    // Для improve и discontinue требуется комментарий
+    if (status === 'improve' || status === 'discontinue') {
+      setPendingStatus(status);
+      setComment('');
+      return;
+    }
     await doSubmit(status, '');
+  };
+
+  const submitWithComment = async () => {
+    if (!comment.trim()) {
+      alert('Введите комментарий');
+      return;
+    }
+    await doSubmit(pendingStatus, comment.trim());
   };
 
   const doSubmit = async (status, commentText) => {
@@ -707,6 +721,62 @@ export default function AdminProductReview() {
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {/* Модальное окно для комментария */}
+          {pendingStatus && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+            }}>
+              <div style={{
+                background: '#fff', borderRadius: 16, padding: 24, width: '90%', maxWidth: 400,
+                boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+              }}>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#333' }}>
+                  {pendingStatus === 'improve' ? '⚙ Модернизировать' : '✕ Снять с производства'}
+                </div>
+                <div style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
+                  Укажите причину:
+                </div>
+                <textarea
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  placeholder="Введите комментарий..."
+                  autoFocus
+                  style={{
+                    width: '100%', minHeight: 100, padding: 12, fontSize: 14,
+                    border: '1.5px solid #ddd', borderRadius: 10, resize: 'vertical',
+                    fontFamily: 'inherit',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                  <button
+                    onClick={cancelComment}
+                    style={{
+                      flex: 1, padding: '12px 16px', fontSize: 14, fontWeight: 600,
+                      background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    onClick={submitWithComment}
+                    disabled={!comment.trim()}
+                    style={{
+                      flex: 1, padding: '12px 16px', fontSize: 14, fontWeight: 700,
+                      background: pendingStatus === 'improve' ? '#f59e0b' : '#ef4444',
+                      color: '#fff', border: 'none', borderRadius: 10,
+                      cursor: comment.trim() ? 'pointer' : 'not-allowed',
+                      opacity: comment.trim() ? 1 : 0.5,
+                    }}
+                  >
+                    Подтвердить
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
