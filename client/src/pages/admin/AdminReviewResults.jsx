@@ -351,7 +351,7 @@ export default function AdminReviewResults() {
                 const CHANNEL_LABELS = {
                   'matkasym_home': '🏠 Matkasym Home',
                   'make_in': '🛠 Make In',
-                  'matkasym_kz': '🇰🇬 Matkasym KZ',
+                  'matkasym_kz': '🇰🇿 Matkasym KZ',
                   'matkasym_horeca': '🍽 Matkasym HoReCa',
                   'matkasym_kyzmat': '🔧 Matkasym Kyzmat',
                 };
@@ -935,7 +935,7 @@ export default function AdminReviewResults() {
                 const CHANNEL_LABELS = {
                   'matkasym_home': '🏠 Matkasym Home',
                   'make_in': '🛠 Make In',
-                  'matkasym_kz': '🇰🇬 Matkasym KZ',
+                  'matkasym_kz': '🇰🇿 Matkasym KZ',
                   'matkasym_horeca': '🍽 Matkasym HoReCa',
                   'matkasym_kyzmat': '🔧 Matkasym Kyzmat',
                 };
