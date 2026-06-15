@@ -61,6 +61,12 @@ const products = [
   { category: 'Щит премиум (уличный)', size: '800×600×200', qty: 3, priceYuan: 267, weight: '14.5 кг', sku: 'SF-012-800x600x200' },
 ];
 
+function getMaterial(category) {
+  if (category.includes('нержавейк')) return 'Нержавеющая сталь';
+  if (category.includes('Распред')) return 'Пластик';
+  return 'Сталь с покрытием';
+}
+
 async function importProducts() {
   try {
     await mongoose.connect(MONGO_URI);
@@ -108,7 +114,7 @@ async function importProducts() {
         dimensions: p.size,
         specs: [
           { key: 'Вес', value: p.weight },
-          { key: 'Материал', value: p.category.includes('нержавейк') ? 'Нержавеющая сталь' : 'Сталь с покрытием' },
+          { key: 'Материал', value: getMaterial(p.category) },
         ],
 
         // Склад

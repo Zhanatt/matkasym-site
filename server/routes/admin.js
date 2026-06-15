@@ -697,6 +697,43 @@ router.put('/receive-alerts/:id', protect, editor, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/admin/products/:id/add-stock — добавить остатки (для склада)
+router.post('/products/:id/add-stock', protect, canReceiveStock, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+
+    const { qty, comment } = req.body;
+    if (!qty || qty <= 0) return res.status(400).json({ error: 'Укажите количество' });
+
+    const oldStock = product.stock || 0;
+    product.stock = oldStock + qty;
+    product.inStock = true;
+    product.stockStatus = 'in_stock';
+
+    await product.save();
+
+    // Логируем добавление
+    await StockLog.create({
+      product: product._id,
+      productId: product._id,
+      productName: product.fullName || product.name,
+      action: 'add',
+      oldValue: oldStock,
+      newValue: product.stock,
+      source: 'warehouse',
+      note: comment || `Добавлено ${qty} шт. пользователем ${req.user.name}`,
+      user: req.user._id,
+    });
+
+    res.json({
+      ok: true,
+      message: `Добавлено ${qty} шт.`,
+      product
+    });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
 // GET /api/admin/products/in-transit — товары в пути (для склада)
 router.get('/products/in-transit', protect, warehouse, async (req, res) => {
   try {

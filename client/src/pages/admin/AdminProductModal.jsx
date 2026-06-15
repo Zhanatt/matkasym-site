@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct } from '../../api';
+import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -42,6 +42,10 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const [receiveQty, setReceiveQty] = useState(0);
   const [receiveAlert, setReceiveAlert] = useState('ok');
   const [receiveComment, setReceiveComment] = useState('');
+  const [showAddStockModal, setShowAddStockModal] = useState(false);
+  const [addStockQty, setAddStockQty] = useState(1);
+  const [addStockComment, setAddStockComment] = useState('');
+  const [addingStock, setAddingStock] = useState(false);
   const [localProduct, setLocalProduct] = useState(product);
 
   const openReceiveModal = () => {
@@ -49,6 +53,30 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
     setReceiveAlert('ok');
     setReceiveComment('');
     setShowReceiveModal(true);
+  };
+
+  const openAddStockModal = () => {
+    setAddStockQty(1);
+    setAddStockComment('');
+    setShowAddStockModal(true);
+  };
+
+  const handleAddStock = async () => {
+    if (addStockQty <= 0) return;
+    setAddingStock(true);
+    try {
+      const res = await adminAddStock(localProduct._id, {
+        qty: addStockQty,
+        comment: addStockComment,
+      });
+      setLocalProduct(res.data.product);
+      setShowAddStockModal(false);
+      alert(`✓ Добавлено ${addStockQty} шт.`);
+    } catch (e) {
+      alert('Ошибка: ' + (e.response?.data?.error || e.message));
+    } finally {
+      setAddingStock(false);
+    }
   };
 
   const handleReceive = async () => {
@@ -425,6 +453,17 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                     {receiving ? '⏳...' : '📦 Принять'}
                   </button>
                 )}
+                {canReceive && !localProduct.inTransit && (
+                  <button
+                    onClick={openAddStockModal}
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
+                      background: '#3b82f6', color: '#fff',
+                      border: 'none', cursor: 'pointer',
+                    }}>
+                    ➕ Добавить
+                  </button>
+                )}
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
                   background: localProduct.inStock ? '#e8f5e9' : '#fce8e8',
                   color: localProduct.inStock ? '#2d7a3a' : '#c00' }}>
@@ -745,6 +784,85 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                 }}
               >
                 {receiving ? '⏳...' : '✓ Принять'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка добавления остатков */}
+      {showAddStockModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+        }} onClick={() => setShowAddStockModal(false)}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 24, width: '90%', maxWidth: 360,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+              ➕ Добавить остатки
+            </div>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+              <strong>{localProduct.fullName || localProduct.name}</strong>
+              <br />Сейчас на складе: <strong>{localProduct.stock || 0} шт.</strong>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
+                Добавить:
+              </label>
+              <input
+                type="number"
+                value={addStockQty}
+                onChange={e => setAddStockQty(Number(e.target.value))}
+                min={1}
+                style={{
+                  width: '100%', padding: '10px 12px', fontSize: 16, fontWeight: 700,
+                  border: '2px solid #ddd', borderRadius: 8, textAlign: 'center',
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
+                Комментарий (необязательно):
+              </label>
+              <input
+                type="text"
+                value={addStockComment}
+                onChange={e => setAddStockComment(e.target.value)}
+                placeholder="Откуда поступление..."
+                style={{
+                  width: '100%', padding: '8px 12px', fontSize: 13,
+                  border: '1.5px solid #ddd', borderRadius: 8,
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setShowAddStockModal(false)}
+                style={{
+                  flex: 1, padding: '12px', fontSize: 14, fontWeight: 600,
+                  background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10,
+                  cursor: 'pointer',
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleAddStock}
+                disabled={addingStock || addStockQty <= 0}
+                style={{
+                  flex: 1, padding: '12px', fontSize: 14, fontWeight: 700,
+                  background: addingStock || addStockQty <= 0 ? '#ccc' : '#3b82f6', color: '#fff',
+                  border: 'none', borderRadius: 10,
+                  cursor: addingStock || addStockQty <= 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {addingStock ? '⏳...' : '✓ Добавить'}
               </button>
             </div>
           </div>
