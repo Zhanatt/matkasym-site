@@ -48,8 +48,11 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const [addingStock, setAddingStock] = useState(false);
   const [localProduct, setLocalProduct] = useState(product);
 
+  const needsReceive = localProduct.inTransit || localProduct.pendingReceive;
+  const expectedQty = localProduct.inTransitQty || localProduct.pendingReceiveQty || 0;
+
   const openReceiveModal = () => {
-    setReceiveQty(localProduct.inTransitQty || 1);
+    setReceiveQty(expectedQty || 1);
     setReceiveAlert('ok');
     setReceiveComment('');
     setShowReceiveModal(true);
@@ -80,7 +83,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   };
 
   const handleReceive = async () => {
-    if (!localProduct.inTransit && !localProduct.inTransitQty) return;
+    if (!needsReceive) return;
     setReceiving(true);
     try {
       const res = await adminReceiveProduct(localProduct._id, {
@@ -442,7 +445,13 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                     🚚 В пути {localProduct.inTransitQty > 0 && `(${localProduct.inTransitQty} шт)`}
                   </span>
                 )}
-                {canReceive && localProduct.inTransit && (
+                {localProduct.pendingReceive && !localProduct.inTransit && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+                    background: '#fef3c7', color: '#92400e' }}>
+                    📋 Ожидает приёмки {localProduct.pendingReceiveQty > 0 && `(${localProduct.pendingReceiveQty} шт)`}
+                  </span>
+                )}
+                {canReceive && needsReceive && (
                   <button
                     onClick={openReceiveModal}
                     style={{
@@ -453,7 +462,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                     {receiving ? '⏳...' : '📦 Принять'}
                   </button>
                 )}
-                {canReceive && !localProduct.inTransit && (
+                {canReceive && !needsReceive && (
                   <button
                     onClick={openAddStockModal}
                     style={{
@@ -699,15 +708,15 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
               <strong>{localProduct.fullName || localProduct.name}</strong>
             </div>
 
-            {/* Сравнение заказано/получено */}
+            {/* Сравнение ожидаемое/получено */}
             <div style={{
               display: 'flex', gap: 12, marginBottom: 16, padding: 12,
               background: '#f8f8f8', borderRadius: 10,
             }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>ЗАКАЗАНО</div>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>ОЖИДАЕТСЯ</div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: '#333' }}>
-                  {localProduct.inTransitQty || 1}
+                  {expectedQty || '—'}
                 </div>
               </div>
               <div style={{ width: 1, background: '#ddd' }} />
@@ -719,33 +728,32 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                   onChange={e => {
                     const qty = Number(e.target.value);
                     setReceiveQty(qty);
-                    const expected = localProduct.inTransitQty || 1;
-                    if (qty === expected) setReceiveAlert('ok');
-                    else if (qty < expected) setReceiveAlert('shortage');
+                    if (qty === expectedQty) setReceiveAlert('ok');
+                    else if (qty < expectedQty) setReceiveAlert('shortage');
                     else setReceiveAlert('excess');
                   }}
                   min={0}
                   style={{
                     width: 80, padding: '8px', fontSize: 24, fontWeight: 700,
                     border: '2px solid #3b82f6', borderRadius: 8, textAlign: 'center',
-                    color: receiveQty === (localProduct.inTransitQty || 1) ? '#22c55e' :
-                           receiveQty < (localProduct.inTransitQty || 1) ? '#ef4444' : '#3b82f6',
+                    color: receiveQty === expectedQty ? '#22c55e' :
+                           receiveQty < expectedQty ? '#ef4444' : '#3b82f6',
                   }}
                 />
               </div>
             </div>
 
             {/* Автоматический статус */}
-            {receiveQty !== (localProduct.inTransitQty || 1) && (
+            {expectedQty > 0 && receiveQty !== expectedQty && (
               <div style={{
                 padding: '10px 14px', borderRadius: 8, marginBottom: 16,
-                background: receiveQty < (localProduct.inTransitQty || 1) ? '#fef2f2' : '#eff6ff',
-                color: receiveQty < (localProduct.inTransitQty || 1) ? '#dc2626' : '#2563eb',
+                background: receiveQty < expectedQty ? '#fef2f2' : '#eff6ff',
+                color: receiveQty < expectedQty ? '#dc2626' : '#2563eb',
                 fontSize: 13, fontWeight: 600,
               }}>
-                {receiveQty < (localProduct.inTransitQty || 1)
-                  ? `⚠️ Недостача: не хватает ${(localProduct.inTransitQty || 1) - receiveQty} шт.`
-                  : `📈 Излишек: пришло на ${receiveQty - (localProduct.inTransitQty || 1)} шт. больше`
+                {receiveQty < expectedQty
+                  ? `⚠️ Недостача: не хватает ${expectedQty - receiveQty} шт.`
+                  : `📈 Излишек: пришло на ${receiveQty - expectedQty} шт. больше`
                 }
               </div>
             )}
@@ -775,7 +783,7 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
               </div>
             </div>
 
-            {(receiveQty !== (localProduct.inTransitQty || 1) || receiveAlert === 'damaged' || receiveAlert === 'wrong') && (
+            {((expectedQty > 0 && receiveQty !== expectedQty) || receiveAlert === 'damaged' || receiveAlert === 'wrong') && (
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
                   Комментарий (опционально):

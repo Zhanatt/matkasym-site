@@ -57,6 +57,8 @@ const productSchema = new mongoose.Schema({
   stockStatus:      { type: String, enum: ['in_stock', 'out_of_stock', 'expected'], default: 'in_stock' },
   inTransit:        { type: Boolean, default: false },  // товар в пути, ещё не на складе
   inTransitQty:     { type: Number, default: 0 },       // количество товара в пути
+  pendingReceive:   { type: Boolean, default: false },  // товар на складе, ожидает приёмки (подсчёта)
+  pendingReceiveQty:{ type: Number, default: 0 },       // ожидаемое количество для приёмки
   isOnOrder:        { type: Boolean, default: false },  // товар под заказ (производим/закупаем по запросу)
 
   productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development', 'liquidation', 'on_pause', 'test_sale'], default: 'for_sale' },

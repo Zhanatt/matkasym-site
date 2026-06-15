@@ -594,26 +594,29 @@ router.delete('/suppliers/:id', protect, editor, async (req, res) => {
 });
 
 // ── Приём товара на склад (warehouse) ─────────────────────────────────────────
-// POST /api/admin/products/:id/receive — принять товар "в пути" на склад
+// POST /api/admin/products/:id/receive — принять товар "в пути" или "ожидает приёмки" на склад
 router.post('/products/:id/receive', protect, canReceiveStock, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Товар не найден' });
 
-    if (!product.inTransit && product.inTransitQty === 0) {
-      return res.status(400).json({ error: 'Товар не в пути' });
+    const needsReceive = product.inTransit || product.pendingReceive;
+    if (!needsReceive && product.inTransitQty === 0 && product.pendingReceiveQty === 0) {
+      return res.status(400).json({ error: 'Товар не требует приёмки' });
     }
 
-    const expectedQty = product.inTransitQty || 1;
+    const expectedQty = product.inTransitQty || product.pendingReceiveQty || 0;
     const { receivedQty, alertType, comment } = req.body;
     const actualQty = receivedQty ?? expectedQty;
 
-    // Добавляем к остаткам, убираем статус "в пути"
+    // Добавляем к остаткам, убираем статусы "в пути" и "ожидает приёмки"
     product.stock = (product.stock || 0) + actualQty;
     product.inStock = actualQty > 0;
     product.stockStatus = actualQty > 0 ? 'in_stock' : 'out_of_stock';
     product.inTransit = false;
     product.inTransitQty = 0;
+    product.pendingReceive = false;
+    product.pendingReceiveQty = 0;
 
     await product.save();
 
