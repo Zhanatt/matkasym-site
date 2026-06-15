@@ -5,9 +5,20 @@ import { adminGetProducts, adminReceiveProduct } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setMob(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return mob;
+}
+
 export default function AdminPendingReceive() {
   const { user } = useAuth();
   const isWarehouse = user?.role === 'warehouse';
+  const isMobile = useIsMobile();
 
   const [tab, setTab] = useState('pending'); // 'inTransit' | 'pending' | 'received'
   const [inTransitProducts, setInTransitProducts] = useState([]);
@@ -201,24 +212,30 @@ export default function AdminPendingReceive() {
                   background: isInTransit ? '#dbeafe' : isPending ? '#fef3c7' : '#dcfce7',
                   color: isInTransit ? '#1d4ed8' : isPending ? '#92400e' : '#166534',
                   padding: '6px 12px', borderRadius: 20,
-                  fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap'
+                  fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}>
                   {isReceived ? p.stock : (p.pendingReceiveQty || p.inTransitQty || '?')} шт
                 </div>
-                {canReceive && (
+                {canReceive && !isMobile && (
                   <div style={{
                     background: '#22c55e', color: '#fff',
                     padding: '8px 16px', borderRadius: 10,
                     fontSize: 13, fontWeight: 700,
+                    flexShrink: 0,
                   }}>
                     Принять
                   </div>
+                )}
+                {canReceive && isMobile && (
+                  <div style={{ fontSize: 18, color: '#22c55e' }}>→</div>
                 )}
                 {isReceived && (
                   <div style={{
                     background: '#dcfce7', color: '#166534',
                     padding: '6px 12px', borderRadius: 10,
                     fontSize: 12, fontWeight: 600,
+                    flexShrink: 0,
                   }}>
                     ✓ В продаже
                   </div>
