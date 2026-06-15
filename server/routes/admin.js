@@ -81,8 +81,17 @@ router.get('/stats', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort } = req.query;
+    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending } = req.query;
     const filter = {};
+
+    // Если запрашиваем товары для приёмки
+    if (pendingReceive === 'true') {
+      filter.$or = [{ pendingReceive: true }, { inTransit: true }];
+    } else if (includePending !== 'true') {
+      // По умолчанию скрываем товары, ожидающие приёмки (не показываем в каталоге)
+      filter.pendingReceive = { $ne: true };
+    }
+    if (inTransit === 'true') filter.inTransit = true;
     if (search) filter.$or = [
       { name: new RegExp(search, 'i') },
       { fullName: new RegExp(search, 'i') },
@@ -747,6 +756,16 @@ router.get('/products/in-transit', protect, warehouse, async (req, res) => {
       ]
     }).select('name fullName sku images inTransitQty supplier set brand').sort({ updatedAt: -1 });
     res.json(products);
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// GET /api/admin/products/pending-receive-count — количество товаров, ожидающих приёмки
+router.get('/products/pending-receive-count', protect, async (req, res) => {
+  try {
+    const count = await Product.countDocuments({
+      $or: [{ pendingReceive: true }, { inTransit: true }]
+    });
+    res.json({ count });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 

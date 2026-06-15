@@ -28,6 +28,7 @@ import AdminProductReview from './pages/admin/AdminProductReview';
 import AdminReviewResults from './pages/admin/AdminReviewResults';
 import AdminReviewVotes   from './pages/admin/AdminReviewVotes';
 import AdminReceiveAlerts from './pages/admin/AdminReceiveAlerts';
+import AdminPendingReceive from './pages/admin/AdminPendingReceive';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="review/results" element={<AdminReviewResults />} />
           <Route path="review/votes" element={<AdminReviewVotes />} />
           <Route path="receive-alerts" element={<AdminReceiveAlerts />} />
+          <Route path="pending-receive" element={<AdminPendingReceive />} />
         </Route>
       </Routes>
     );
