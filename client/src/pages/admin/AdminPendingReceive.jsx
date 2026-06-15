@@ -65,6 +65,12 @@ export default function AdminPendingReceive() {
     setReceiveQty(p.pendingReceiveQty || p.inTransitQty || 1);
     setReceiveAlert('ok');
     setReceiveComment('');
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeModal = () => {
+    setSelected(null);
+    document.body.style.overflow = '';
   };
 
   const handleReceive = async () => {
@@ -76,7 +82,7 @@ export default function AdminPendingReceive() {
         alertType: receiveAlert,
         comment: receiveComment,
       });
-      setSelected(null);
+      closeModal();
       load();
     } catch (e) {
       alert('Ошибка: ' + (e.response?.data?.error || e.message));
@@ -226,17 +232,19 @@ export default function AdminPendingReceive() {
       {selected && (
         <>
           <div
-            onClick={() => setSelected(null)}
+            onClick={closeModal}
             style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-              zIndex: 1000
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 9998,
             }}
           />
           <div style={{
             position: 'fixed', bottom: 0, left: 0, right: 0,
             background: '#fff', borderRadius: '24px 24px 0 0',
-            padding: '24px', zIndex: 1001, maxHeight: '85vh',
+            padding: '24px', zIndex: 9999, maxHeight: '85vh',
             overflow: 'auto',
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
           }}>
             {/* Header */}
             <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
@@ -262,7 +270,7 @@ export default function AdminPendingReceive() {
                 </span>
               </div>
               <button
-                onClick={() => setSelected(null)}
+                onClick={closeModal}
                 style={{
                   width: 36, height: 36, borderRadius: 10,
                   background: '#f5f5f5', border: 'none',
