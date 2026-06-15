@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { adminGetProducts, adminReceiveProduct } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
 export default function AdminPendingReceive() {
-  const [tab, setTab] = useState('pending'); // 'pending' | 'inTransit'
-  const [pendingProducts, setPendingProducts] = useState([]);
+  const { user } = useAuth();
+  const isWarehouse = user?.role === 'warehouse';
+
+  const [tab, setTab] = useState('pending'); // 'inTransit' | 'pending' | 'received'
   const [inTransitProducts, setInTransitProducts] = useState([]);
+  const [pendingProducts, setPendingProducts] = useState([]);
+  const [receivedProducts, setReceivedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [receiveQty, setReceiveQty] = useState(0);
@@ -17,11 +22,24 @@ export default function AdminPendingReceive() {
   const load = async () => {
     setLoading(true);
     try {
+      // Товары в пути и ожидающие приёмки
       const res = await adminGetProducts({ pendingReceive: true, limit: 500 });
       const all = res.data.products || [];
-      // Разделяем: pendingReceive (на складе) vs inTransit (в пути)
-      setPendingProducts(all.filter(p => p.pendingReceive && !p.inTransit));
       setInTransitProducts(all.filter(p => p.inTransit));
+      setPendingProducts(all.filter(p => p.pendingReceive && !p.inTransit));
+
+      // Недавно принятые (последние 50 с stock > 0, которые были приняты)
+      const recentRes = await adminGetProducts({
+        includePending: true,
+        sort: 'newest',
+        limit: 50,
+        inStock: true
+      });
+      // Фильтруем только те, что из набора китайских щитов или недавно принятые
+      const recent = (recentRes.data.products || []).filter(p =>
+        p.sku?.startsWith('MKS-SF-') || p.sku?.startsWith('MKS-W')
+      );
+      setReceivedProducts(recent.slice(0, 30));
     } catch (e) {
       console.error(e);
     } finally {
@@ -31,10 +49,18 @@ export default function AdminPendingReceive() {
 
   useEffect(() => { load(); }, []);
 
-  const products = tab === 'pending' ? pendingProducts : inTransitProducts;
+  const tabs = [
+    { key: 'inTransit', label: '🚚 В пути', count: inTransitProducts.length, color: '#3b82f6' },
+    { key: 'pending', label: '📋 Ожидают приёмки', count: pendingProducts.length, color: '#f59e0b' },
+    { key: 'received', label: '✓ В продаже', count: receivedProducts.length, color: '#22c55e' },
+  ];
+
+  const products = tab === 'inTransit' ? inTransitProducts
+                 : tab === 'pending' ? pendingProducts
+                 : receivedProducts;
 
   const openReceive = (p) => {
-    if (p.inTransit) return; // Нельзя принять товар в пути
+    if (p.inTransit || tab === 'received') return;
     setSelected(p);
     setReceiveQty(p.pendingReceiveQty || p.inTransitQty || 1);
     setReceiveAlert('ok');
@@ -62,50 +88,46 @@ export default function AdminPendingReceive() {
   const expectedQty = selected ? (selected.pendingReceiveQty || selected.inTransitQty || 0) : 0;
 
   return (
-    <div style={{ padding: '24px', maxWidth: 800, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>📦 Приём товара</h1>
-      <p style={{ color: '#888', marginBottom: 20 }}>Поступления на склад</p>
+    <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>📦 Поступления товаров</h1>
+      <p style={{ color: '#888', marginBottom: 20 }}>Отслеживание этапов поставки</p>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        <button
-          onClick={() => setTab('pending')}
-          style={{
-            padding: '10px 20px', fontSize: 14, fontWeight: 600,
-            borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: tab === 'pending' ? '#22c55e' : '#f0f0f0',
-            color: tab === 'pending' ? '#fff' : '#555',
-          }}
-        >
-          📋 Ожидают приёмки
-          {pendingProducts.length > 0 && (
-            <span style={{
-              marginLeft: 8, background: tab === 'pending' ? 'rgba(255,255,255,0.3)' : '#22c55e',
-              color: '#fff', padding: '2px 8px', borderRadius: 10, fontSize: 12,
-            }}>
-              {pendingProducts.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setTab('inTransit')}
-          style={{
-            padding: '10px 20px', fontSize: 14, fontWeight: 600,
-            borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: tab === 'inTransit' ? '#3b82f6' : '#f0f0f0',
-            color: tab === 'inTransit' ? '#fff' : '#555',
-          }}
-        >
-          🚚 В пути
-          {inTransitProducts.length > 0 && (
-            <span style={{
-              marginLeft: 8, background: tab === 'inTransit' ? 'rgba(255,255,255,0.3)' : '#3b82f6',
-              color: '#fff', padding: '2px 8px', borderRadius: 10, fontSize: 12,
-            }}>
-              {inTransitProducts.length}
-            </span>
-          )}
-        </button>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            style={{
+              padding: '10px 16px', fontSize: 14, fontWeight: 600,
+              borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: tab === t.key ? t.color : '#f0f0f0',
+              color: tab === t.key ? '#fff' : '#555',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}
+          >
+            {t.label}
+            {t.count > 0 && (
+              <span style={{
+                background: tab === t.key ? 'rgba(255,255,255,0.3)' : t.color,
+                color: '#fff', padding: '2px 8px', borderRadius: 10, fontSize: 12,
+              }}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Status explanation */}
+      <div style={{
+        background: tab === 'inTransit' ? '#eff6ff' : tab === 'pending' ? '#fef3c7' : '#dcfce7',
+        padding: '12px 16px', borderRadius: 10, marginBottom: 20,
+        fontSize: 13, color: tab === 'inTransit' ? '#1d4ed8' : tab === 'pending' ? '#92400e' : '#166534',
+      }}>
+        {tab === 'inTransit' && '🚚 Товары в процессе доставки. Когда поступят на склад — переведите в "Ожидают приёмки"'}
+        {tab === 'pending' && '📋 Товары на складе, ждут подсчёта. Нажмите "Принять" чтобы посчитать и добавить в продажу'}
+        {tab === 'received' && '✓ Товары приняты и доступны в каталоге для фронтменов'}
       </div>
 
       {loading ? (
@@ -116,32 +138,38 @@ export default function AdminPendingReceive() {
           borderRadius: 16, color: '#888'
         }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>
-            {tab === 'pending' ? '✓' : '📭'}
+            {tab === 'inTransit' ? '📭' : tab === 'pending' ? '✓' : '📦'}
           </div>
           <div style={{ fontSize: 16 }}>
-            {tab === 'pending' ? 'Нет товаров для приёмки' : 'Нет товаров в пути'}
+            {tab === 'inTransit' && 'Нет товаров в пути'}
+            {tab === 'pending' && 'Нет товаров для приёмки'}
+            {tab === 'received' && 'Нет принятых товаров'}
           </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {products.map(p => {
-            const isPending = p.pendingReceive && !p.inTransit;
             const isInTransit = p.inTransit;
+            const isPending = p.pendingReceive && !p.inTransit;
+            const isReceived = tab === 'received';
+            const canReceive = isPending && isWarehouse;
+
             return (
               <div
                 key={p._id}
-                onClick={() => openReceive(p)}
+                onClick={() => canReceive && openReceive(p)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 16,
                   background: '#fff',
-                  border: `1.5px solid ${isInTransit ? '#bfdbfe' : '#e5e5e5'}`,
+                  border: `1.5px solid ${isInTransit ? '#bfdbfe' : isPending ? '#fde68a' : '#bbf7d0'}`,
                   borderRadius: 12, padding: 16,
-                  cursor: isPending ? 'pointer' : 'default',
-                  opacity: isInTransit ? 0.8 : 1,
+                  cursor: canReceive ? 'pointer' : 'default',
                   transition: 'all 0.15s',
                 }}
-                onMouseOver={e => { if (isPending) e.currentTarget.style.borderColor = '#22c55e'; }}
-                onMouseOut={e => { e.currentTarget.style.borderColor = isInTransit ? '#bfdbfe' : '#e5e5e5'; }}
+                onMouseOver={e => { if (canReceive) e.currentTarget.style.borderColor = '#22c55e'; }}
+                onMouseOut={e => {
+                  e.currentTarget.style.borderColor = isInTransit ? '#bfdbfe' : isPending ? '#fde68a' : '#bbf7d0';
+                }}
               >
                 <img
                   src={p.images?.[0] || NO_PHOTO}
@@ -158,19 +186,19 @@ export default function AdminPendingReceive() {
                   </div>
                   {isInTransit && (
                     <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 4 }}>
-                      🚚 Ещё в пути, ждём поступления
+                      🚚 В пути
                     </div>
                   )}
                 </div>
                 <div style={{
-                  background: isPending ? '#dcfce7' : '#dbeafe',
-                  color: isPending ? '#166534' : '#1d4ed8',
+                  background: isInTransit ? '#dbeafe' : isPending ? '#fef3c7' : '#dcfce7',
+                  color: isInTransit ? '#1d4ed8' : isPending ? '#92400e' : '#166534',
                   padding: '6px 12px', borderRadius: 20,
                   fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap'
                 }}>
-                  {p.pendingReceiveQty || p.inTransitQty || '?'} шт
+                  {isReceived ? p.stock : (p.pendingReceiveQty || p.inTransitQty || '?')} шт
                 </div>
-                {isPending && (
+                {canReceive && (
                   <div style={{
                     background: '#22c55e', color: '#fff',
                     padding: '8px 16px', borderRadius: 10,
@@ -179,13 +207,22 @@ export default function AdminPendingReceive() {
                     Принять
                   </div>
                 )}
+                {isReceived && (
+                  <div style={{
+                    background: '#dcfce7', color: '#166534',
+                    padding: '6px 12px', borderRadius: 10,
+                    fontSize: 12, fontWeight: 600,
+                  }}>
+                    ✓ В продаже
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Receive Modal */}
       {selected && (
         <>
           <div
@@ -217,11 +254,11 @@ export default function AdminPendingReceive() {
                   {selected.sku}
                 </div>
                 <span style={{
-                  background: '#dcfce7', color: '#166534',
+                  background: '#fef3c7', color: '#92400e',
                   padding: '4px 10px', borderRadius: 16,
                   fontSize: 12, fontWeight: 700,
                 }}>
-                  📋 Готов к приёмке
+                  📋 Ожидает приёмки
                 </span>
               </div>
               <button
@@ -247,7 +284,7 @@ export default function AdminPendingReceive() {
               </div>
               <div style={{ width: 1, background: '#ddd' }} />
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>ПОЛУЧЕНО</div>
+                <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>ФАКТИЧЕСКИ</div>
                 <input
                   type="number"
                   value={receiveQty}
@@ -279,7 +316,7 @@ export default function AdminPendingReceive() {
               }}>
                 {receiveQty < expectedQty
                   ? `⚠️ Недостача: не хватает ${expectedQty - receiveQty} шт.`
-                  : `📈 Излишек: пришло на ${receiveQty - expectedQty} шт. больше`
+                  : `📈 Излишек: больше на ${receiveQty - expectedQty} шт.`
                 }
               </div>
             )}
@@ -289,7 +326,7 @@ export default function AdminPendingReceive() {
               <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 8 }}>
                 Проблемы (если есть):
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {[
                   { key: 'damaged', label: '💔 Повреждён', color: '#ef4444' },
                   { key: 'wrong', label: '❌ Не тот товар', color: '#ef4444' },
@@ -339,7 +376,7 @@ export default function AdminPendingReceive() {
                 border: 'none', borderRadius: 14, cursor: receiving ? 'not-allowed' : 'pointer',
               }}
             >
-              {receiving ? '⏳ Принимаем...' : `✓ Принять ${receiveQty} шт.`}
+              {receiving ? '⏳ Принимаем...' : `✓ Принять ${receiveQty} шт. в продажу`}
             </button>
           </div>
         </>

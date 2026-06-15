@@ -8,7 +8,7 @@ import './Admin.css';
 const NAV_ALL = [
   { to: '/admin',          label: 'Дашборд',             icon: '◻', end: true, roles: ['owner','editor','viewer','navigator','warehouse'] },
   { to: '/admin/sets',     label: 'Каталог по сетам',    icon: '🗂', roles: ['owner','editor','viewer','navigator'] },
-  { to: '/admin/pending-receive', label: 'Приём товара', icon: '📦', roles: ['warehouse'], badge: 'pending_receive' },
+  { to: '/admin/pending-receive', label: 'Поступления', icon: '📦', roles: ['owner','editor','warehouse'], badge: 'pending_receive' },
   { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','navigator','warehouse'] },
   { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer','navigator','warehouse'], badge: 'news' },
@@ -16,7 +16,6 @@ const NAV_ALL = [
   { to: '/admin/review/results', label: 'Результаты аудита', icon: '📊', roles: ['owner','editor'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },
   { to: '/admin/tenders',      label: 'Тендеры',            icon: '🎯', roles: ['owner','editor','viewer','navigator'] },
-  { to: '/admin/receive-alerts', label: 'Уведомления приёма', icon: '🚨', roles: ['owner','editor'], badge: 'alerts' },
   { to: '/admin/stock-log',   label: 'История остатков',  icon: '📦', roles: ['owner','editor','warehouse'] },
   { to: '/admin/price-log',   label: 'История цен',       icon: '💰', roles: ['owner','editor'] },
   { to: '/admin/photo-log',   label: 'История фото',      icon: '🖼', roles: ['owner','editor'] },
