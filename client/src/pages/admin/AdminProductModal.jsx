@@ -695,42 +695,73 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
               📦 Приём товара
             </div>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
               <strong>{localProduct.fullName || localProduct.name}</strong>
-              <br />Ожидается: <strong>{localProduct.inTransitQty || 1} шт.</strong>
             </div>
+
+            {/* Сравнение заказано/получено */}
+            <div style={{
+              display: 'flex', gap: 12, marginBottom: 16, padding: 12,
+              background: '#f8f8f8', borderRadius: 10,
+            }}>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>ЗАКАЗАНО</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#333' }}>
+                  {localProduct.inTransitQty || 1}
+                </div>
+              </div>
+              <div style={{ width: 1, background: '#ddd' }} />
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>ПОЛУЧЕНО</div>
+                <input
+                  type="number"
+                  value={receiveQty}
+                  onChange={e => {
+                    const qty = Number(e.target.value);
+                    setReceiveQty(qty);
+                    const expected = localProduct.inTransitQty || 1;
+                    if (qty === expected) setReceiveAlert('ok');
+                    else if (qty < expected) setReceiveAlert('shortage');
+                    else setReceiveAlert('excess');
+                  }}
+                  min={0}
+                  style={{
+                    width: 80, padding: '8px', fontSize: 24, fontWeight: 700,
+                    border: '2px solid #3b82f6', borderRadius: 8, textAlign: 'center',
+                    color: receiveQty === (localProduct.inTransitQty || 1) ? '#22c55e' :
+                           receiveQty < (localProduct.inTransitQty || 1) ? '#ef4444' : '#3b82f6',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Автоматический статус */}
+            {receiveQty !== (localProduct.inTransitQty || 1) && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+                background: receiveQty < (localProduct.inTransitQty || 1) ? '#fef2f2' : '#eff6ff',
+                color: receiveQty < (localProduct.inTransitQty || 1) ? '#dc2626' : '#2563eb',
+                fontSize: 13, fontWeight: 600,
+              }}>
+                {receiveQty < (localProduct.inTransitQty || 1)
+                  ? `⚠️ Недостача: не хватает ${(localProduct.inTransitQty || 1) - receiveQty} шт.`
+                  : `📈 Излишек: пришло на ${receiveQty - (localProduct.inTransitQty || 1)} шт. больше`
+                }
+              </div>
+            )}
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
-                Фактически получено:
-              </label>
-              <input
-                type="number"
-                value={receiveQty}
-                onChange={e => setReceiveQty(Number(e.target.value))}
-                min={0}
-                style={{
-                  width: '100%', padding: '10px 12px', fontSize: 16, fontWeight: 700,
-                  border: '2px solid #ddd', borderRadius: 8, textAlign: 'center',
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
-                Статус поставки:
+                Дополнительно (если есть проблемы):
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {[
-                  { key: 'ok', label: '✓ Всё ок', color: '#22c55e' },
-                  { key: 'shortage', label: '📉 Недостача', color: '#f59e0b' },
-                  { key: 'excess', label: '📈 Больше', color: '#3b82f6' },
                   { key: 'damaged', label: '💔 Повреждён', color: '#ef4444' },
                   { key: 'wrong', label: '❌ Не тот товар', color: '#ef4444' },
                 ].map(opt => (
                   <button
                     key={opt.key}
-                    onClick={() => setReceiveAlert(opt.key)}
+                    onClick={() => setReceiveAlert(receiveAlert === opt.key ? 'ok' : opt.key)}
                     style={{
                       padding: '6px 12px', fontSize: 12, fontWeight: 600, borderRadius: 16,
                       background: receiveAlert === opt.key ? opt.color : '#f0f0f0',
@@ -744,15 +775,15 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
               </div>
             </div>
 
-            {receiveAlert !== 'ok' && (
+            {(receiveQty !== (localProduct.inTransitQty || 1) || receiveAlert === 'damaged' || receiveAlert === 'wrong') && (
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
-                  Комментарий:
+                  Комментарий (опционально):
                 </label>
                 <textarea
                   value={receiveComment}
                   onChange={e => setReceiveComment(e.target.value)}
-                  placeholder="Опишите проблему..."
+                  placeholder="Опишите ситуацию..."
                   style={{
                     width: '100%', minHeight: 60, padding: 10, fontSize: 13,
                     border: '1.5px solid #ddd', borderRadius: 8, resize: 'vertical',
