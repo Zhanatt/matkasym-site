@@ -12,6 +12,7 @@ const CategorySpec = require('../models/CategorySpec');
 const Frontman     = require('../models/Frontman');
 const Supplier     = require('../models/Supplier');
 const PhotoLog     = require('../models/PhotoLog');
+const ReceiveAlert = require('../models/ReceiveAlert');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock } = require('../middleware/auth');
 
@@ -603,32 +604,97 @@ router.post('/products/:id/receive', protect, canReceiveStock, async (req, res) 
       return res.status(400).json({ error: 'Товар не в пути' });
     }
 
-    const receivedQty = req.body.qty || product.inTransitQty || 1;
+    const expectedQty = product.inTransitQty || 1;
+    const { receivedQty, alertType, comment } = req.body;
+    const actualQty = receivedQty ?? expectedQty;
 
     // Добавляем к остаткам, убираем статус "в пути"
-    product.stock = (product.stock || 0) + receivedQty;
-    product.inStock = true;
-    product.stockStatus = 'in_stock';
+    product.stock = (product.stock || 0) + actualQty;
+    product.inStock = actualQty > 0;
+    product.stockStatus = actualQty > 0 ? 'in_stock' : 'out_of_stock';
     product.inTransit = false;
     product.inTransitQty = 0;
 
     await product.save();
 
     // Логируем приём
+    let note = `Принято на склад: ${actualQty} шт. (ожидалось ${expectedQty})`;
+    if (alertType) note += ` — ${alertType}`;
+    if (comment) note += `: ${comment}`;
+
     await StockLog.create({
       product: product._id,
+      productId: product._id,
+      productName: product.fullName || product.name,
       action: 'receive',
-      qty: receivedQty,
-      note: `Принято на склад пользователем ${req.user.name}`,
+      oldValue: 0,
+      newValue: actualQty,
+      source: 'warehouse',
+      note,
       user: req.user._id,
     });
 
+    // Если есть проблема — создаём алерт для админа
+    if (alertType && alertType !== 'ok') {
+      await ReceiveAlert.create({
+        product: product._id,
+        productName: product.fullName || product.name,
+        productSku: product.sku,
+        expectedQty,
+        receivedQty: actualQty,
+        alertType,
+        comment: comment || '',
+        receivedBy: req.user._id,
+        receivedByName: req.user.name,
+      });
+    }
+
     res.json({
       ok: true,
-      message: `Принято ${receivedQty} шт.`,
+      message: `Принято ${actualQty} шт.`,
       product
     });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// GET /api/admin/receive-alerts — уведомления о проблемах при приёме (для owner/editor)
+router.get('/receive-alerts', protect, editor, async (req, res) => {
+  try {
+    const { status = 'pending' } = req.query;
+    const filter = status === 'all' ? {} : { status };
+    const alerts = await ReceiveAlert.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+    res.json(alerts);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/receive-alerts/count — количество непросмотренных алертов
+router.get('/receive-alerts/count', protect, editor, async (req, res) => {
+  try {
+    const count = await ReceiveAlert.countDocuments({ status: 'pending' });
+    res.json({ count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/admin/receive-alerts/:id — обновить статус алерта
+router.put('/receive-alerts/:id', protect, editor, async (req, res) => {
+  try {
+    const { status, resolvedComment } = req.body;
+    const alert = await ReceiveAlert.findByIdAndUpdate(
+      req.params.id,
+      {
+        status,
+        resolvedBy: req.user._id,
+        resolvedAt: new Date(),
+        resolvedComment: resolvedComment || '',
+      },
+      { new: true }
+    );
+    if (!alert) return res.status(404).json({ error: 'Не найдено' });
+    res.json(alert);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/admin/products/in-transit — товары в пути (для склада)

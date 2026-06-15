@@ -38,16 +38,31 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
   const [deleting,   setDeleting]   = useState(false);
   const [copying,    setCopying]    = useState(false);
   const [receiving,  setReceiving]  = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [receiveQty, setReceiveQty] = useState(0);
+  const [receiveAlert, setReceiveAlert] = useState('ok');
+  const [receiveComment, setReceiveComment] = useState('');
   const [localProduct, setLocalProduct] = useState(product);
+
+  const openReceiveModal = () => {
+    setReceiveQty(localProduct.inTransitQty || 1);
+    setReceiveAlert('ok');
+    setReceiveComment('');
+    setShowReceiveModal(true);
+  };
 
   const handleReceive = async () => {
     if (!localProduct.inTransit && !localProduct.inTransitQty) return;
     setReceiving(true);
     try {
-      const qty = localProduct.inTransitQty || 1;
-      const res = await adminReceiveProduct(localProduct._id, qty);
+      const res = await adminReceiveProduct(localProduct._id, {
+        receivedQty: receiveQty,
+        alertType: receiveAlert,
+        comment: receiveComment,
+      });
       setLocalProduct(res.data.product);
-      alert(`✓ Принято ${qty} шт. на склад`);
+      setShowReceiveModal(false);
+      alert(`✓ Принято ${receiveQty} шт. на склад`);
     } catch (e) {
       alert('Ошибка: ' + (e.response?.data?.error || e.message));
     } finally {
@@ -401,12 +416,11 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                 )}
                 {canReceive && localProduct.inTransit && (
                   <button
-                    onClick={handleReceive}
-                    disabled={receiving}
+                    onClick={openReceiveModal}
                     style={{
                       fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
-                      background: receiving ? '#ccc' : '#2d7a3a', color: '#fff',
-                      border: 'none', cursor: receiving ? 'not-allowed' : 'pointer',
+                      background: '#2d7a3a', color: '#fff',
+                      border: 'none', cursor: 'pointer',
                     }}>
                     {receiving ? '⏳...' : '📦 Принять'}
                   </button>
@@ -627,6 +641,114 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
             </div>
           </div>
         </>
+      )}
+
+      {/* Модалка приёма товара */}
+      {showReceiveModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+        }} onClick={() => setShowReceiveModal(false)}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 24, width: '90%', maxWidth: 400,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+              📦 Приём товара
+            </div>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
+              <strong>{localProduct.fullName || localProduct.name}</strong>
+              <br />Ожидается: <strong>{localProduct.inTransitQty || 1} шт.</strong>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
+                Фактически получено:
+              </label>
+              <input
+                type="number"
+                value={receiveQty}
+                onChange={e => setReceiveQty(Number(e.target.value))}
+                min={0}
+                style={{
+                  width: '100%', padding: '10px 12px', fontSize: 16, fontWeight: 700,
+                  border: '2px solid #ddd', borderRadius: 8, textAlign: 'center',
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
+                Статус поставки:
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {[
+                  { key: 'ok', label: '✓ Всё ок', color: '#22c55e' },
+                  { key: 'shortage', label: '📉 Недостача', color: '#f59e0b' },
+                  { key: 'excess', label: '📈 Больше', color: '#3b82f6' },
+                  { key: 'damaged', label: '💔 Повреждён', color: '#ef4444' },
+                  { key: 'wrong', label: '❌ Не тот товар', color: '#ef4444' },
+                ].map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setReceiveAlert(opt.key)}
+                    style={{
+                      padding: '6px 12px', fontSize: 12, fontWeight: 600, borderRadius: 16,
+                      background: receiveAlert === opt.key ? opt.color : '#f0f0f0',
+                      color: receiveAlert === opt.key ? '#fff' : '#555',
+                      border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {receiveAlert !== 'ok' && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}>
+                  Комментарий:
+                </label>
+                <textarea
+                  value={receiveComment}
+                  onChange={e => setReceiveComment(e.target.value)}
+                  placeholder="Опишите проблему..."
+                  style={{
+                    width: '100%', minHeight: 60, padding: 10, fontSize: 13,
+                    border: '1.5px solid #ddd', borderRadius: 8, resize: 'vertical',
+                    fontFamily: 'inherit', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setShowReceiveModal(false)}
+                style={{
+                  flex: 1, padding: '12px', fontSize: 14, fontWeight: 600,
+                  background: '#f5f5f5', color: '#666', border: 'none', borderRadius: 10,
+                  cursor: 'pointer',
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleReceive}
+                disabled={receiving}
+                style={{
+                  flex: 1, padding: '12px', fontSize: 14, fontWeight: 700,
+                  background: receiving ? '#ccc' : '#2d7a3a', color: '#fff',
+                  border: 'none', borderRadius: 10,
+                  cursor: receiving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {receiving ? '⏳...' : '✓ Принять'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>,
     document.body

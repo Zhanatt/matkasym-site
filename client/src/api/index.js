@@ -134,7 +134,12 @@ export const adminDeleteSupplier   = (id)          => api.delete(`/admin/supplie
 
 // Warehouse (склад) — приём товара
 export const adminGetInTransit     = ()            => api.get('/admin/products/in-transit');
-export const adminReceiveProduct   = (id, qty)     => api.post(`/admin/products/${id}/receive`, { qty });
+export const adminReceiveProduct   = (id, data)    => api.post(`/admin/products/${id}/receive`, data);
+
+// Receive Alerts (уведомления о приёме)
+export const adminGetReceiveAlerts      = (status) => api.get('/admin/receive-alerts', { params: { status } });
+export const adminGetReceiveAlertsCount = ()       => api.get('/admin/receive-alerts/count');
+export const adminUpdateReceiveAlert    = (id, data) => api.put(`/admin/receive-alerts/${id}`, data);
 
 // Audits Management
 export const adminGetAudits           = ()               => api.get('/admin/audits');
