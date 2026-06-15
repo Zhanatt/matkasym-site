@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminGetProducts, adminReceiveProduct } from '../../api';
 
@@ -229,55 +230,60 @@ export default function AdminPendingReceive() {
       )}
 
       {/* Receive Modal */}
-      {selected && (
+      {selected && createPortal(
         <>
           <div
             onClick={closeModal}
             style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.5)',
-              zIndex: 9998,
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,0.6)',
+              zIndex: 1600,
             }}
           />
           <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: '#fff', borderRadius: '24px 24px 0 0',
-            padding: '24px', zIndex: 9999, maxHeight: '85vh',
-            overflow: 'auto',
-            boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+            position: 'fixed', inset: 0, zIndex: 1601,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24, pointerEvents: 'none',
           }}>
-            {/* Header */}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-              <img
-                src={selected.images?.[0] || NO_PHOTO}
-                alt=""
-                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, background: '#f5f5f5' }}
-                onError={e => { e.target.src = NO_PHOTO; }}
-              />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 4 }}>
-                  {selected.fullName || selected.name}
+            <div style={{
+              background: '#fff', borderRadius: 18,
+              width: '100%', maxWidth: 500,
+              maxHeight: '90vh', overflow: 'auto',
+              padding: 24, pointerEvents: 'auto',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+            }}>
+              {/* Header */}
+              <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+                <img
+                  src={selected.images?.[0] || NO_PHOTO}
+                  alt=""
+                  style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, background: '#f5f5f5' }}
+                  onError={e => { e.target.src = NO_PHOTO; }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 4 }}>
+                    {selected.fullName || selected.name}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
+                    {selected.sku}
+                  </div>
+                  <span style={{
+                    background: '#fef3c7', color: '#92400e',
+                    padding: '4px 10px', borderRadius: 16,
+                    fontSize: 12, fontWeight: 700,
+                  }}>
+                    📋 Ожидает приёмки
+                  </span>
                 </div>
-                <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
-                  {selected.sku}
-                </div>
-                <span style={{
-                  background: '#fef3c7', color: '#92400e',
-                  padding: '4px 10px', borderRadius: 16,
-                  fontSize: 12, fontWeight: 700,
-                }}>
-                  📋 Ожидает приёмки
-                </span>
+                <button
+                  onClick={closeModal}
+                  style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    background: '#f5f5f5', border: 'none',
+                    fontSize: 18, cursor: 'pointer',
+                  }}
+                >✕</button>
               </div>
-              <button
-                onClick={closeModal}
-                style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  background: '#f5f5f5', border: 'none',
-                  fontSize: 18, cursor: 'pointer',
-                }}
-              >✕</button>
-            </div>
 
             {/* Qty comparison */}
             <div style={{
@@ -386,8 +392,10 @@ export default function AdminPendingReceive() {
             >
               {receiving ? '⏳ Принимаем...' : `✓ Принять ${receiveQty} шт. в продажу`}
             </button>
+            </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
