@@ -350,6 +350,7 @@ export default function AdminReviewResults() {
               {(() => {
                 const CHANNEL_LABELS = {
                   'matkasym_home': '🏠 Matkasym Home',
+                  'matkasym_shaar': '🏙 Matkasym Shaar',
                   'make_in': '🛠 Make In',
                   'matkasym_kz': '🇰🇿 Matkasym KZ',
                   'matkasym_horeca': '🍽 Matkasym HoReCa',
@@ -361,7 +362,7 @@ export default function AdminReviewResults() {
                   if (!grouped[ch]) grouped[ch] = [];
                   grouped[ch].push(fm);
                 });
-                const order = ['matkasym_home', 'make_in', 'matkasym_kz', 'matkasym_horeca', 'matkasym_kyzmat', 'other'];
+                const order = ['matkasym_home', 'matkasym_shaar', 'make_in', 'matkasym_kz', 'matkasym_horeca', 'matkasym_kyzmat', 'other'];
                 return order.filter(ch => grouped[ch]).map(channel => (
                   <div key={channel}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 8 }}>
