@@ -19,7 +19,7 @@ const SALES_CHANNELS = {
     { key: 'matkasym_kz',   label: 'matkasym_kz',   desc: 'Казахстан' },
   ],
   'matkasym-shaar': [
-    { key: 'matkasym_home',   label: 'matkasym_shaar',  desc: 'B2G (госзакупки)' },
+    { key: 'matkasym_shaar',  label: 'matkasym_shaar',  desc: 'B2G (госзакупки)' },
     { key: 'matkasym_horeca', label: 'matkasym_horeca', desc: 'HoReCa' },
     { key: 'make_in',         label: 'make_in',         desc: 'Оптовики' },
   ],
@@ -59,6 +59,7 @@ const setLabel = s => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, c =>
 
 const CHANNEL_LABELS = {
   'matkasym_home': '🏠 Home',
+  'matkasym_shaar': '🏙 Shaar',
   'make_in': '🛠 Make In',
   'matkasym_kz': '🇰🇿 KZ',
   'matkasym_horeca': '🍽 HoReCa',
