@@ -62,6 +62,7 @@ const productSchema = new mongoose.Schema({
   isOnOrder:        { type: Boolean, default: false },  // товар под заказ (производим/закупаем по запросу)
 
   productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development', 'liquidation', 'on_pause', 'test_sale'], default: 'for_sale' },
+  liquidatedAt:     { type: Date },  // дата когда товар был переведён в статус liquidation
   pauseNote:        { type: String, default: '' },
   developmentStage: { type: String, default: '' },  // e.g. 'производство', 'моделирование', 'чертеж'
 

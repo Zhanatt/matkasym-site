@@ -268,6 +268,12 @@ router.patch('/products/:id', editor, async (req, res) => {
           changedBy: { id: req.user._id, name: req.user.name, email: req.user.email },
         });
       }
+
+      // Установка liquidatedAt при смене статуса на liquidation
+      if (statusChange && statusChange.to === 'liquidation' && !old.liquidatedAt) {
+        p.liquidatedAt = new Date();
+        await p.save();
+      }
     }
 
     res.json(p);

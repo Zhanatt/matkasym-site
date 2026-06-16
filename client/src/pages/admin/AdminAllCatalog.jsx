@@ -222,7 +222,12 @@ export default function AdminAllCatalog() {
     if (fPhoto === 'yes') list = list.filter(p => hasPhoto(p));
     // Сортировка
     if (sortNewest === 'newest') {
-      list = [...list].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+      // Для ликвидаций сортируем по liquidatedAt, затем по updatedAt
+      list = [...list].sort((a, b) => {
+        const aDate = a.liquidatedAt || a.updatedAt || a.createdAt;
+        const bDate = b.liquidatedAt || b.updatedAt || b.createdAt;
+        return new Date(bDate) - new Date(aDate);
+      });
     } else if (sortStock === 'asc') {
       list = [...list].sort((a, b) => (a.stock || 0) - (b.stock || 0));
     } else if (sortStock === 'desc') {
@@ -387,6 +392,15 @@ export default function AdminAllCatalog() {
         <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
       ) : filtered.length === 0 ? (
         <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Ничего не найдено</div>
+      ) : sortNewest === 'newest' ? (
+        /* Плоский список для сортировки "Новые ликвидации" */
+        <div style={{ paddingBottom: 40 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+            {filtered.map(p => (
+              <AdminProductCard key={p._id} product={p} priceMode={priceMode} accent="#92400e" onOpen={setDetailProduct} viewMode="grid" />
+            ))}
+          </div>
+        </div>
       ) : (
         <div style={{ paddingBottom: 40 }}>
           {visibleSections.map(({ brandKey, setSlug, prods }, idx) => {
