@@ -393,13 +393,38 @@ export default function AdminAllCatalog() {
       ) : filtered.length === 0 ? (
         <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Ничего не найдено</div>
       ) : sortNewest === 'newest' ? (
-        /* Плоский список для сортировки "Новые ликвидации" */
+        /* Группировка по датам ликвидации */
         <div style={{ paddingBottom: 40 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
-            {filtered.map(p => (
-              <AdminProductCard key={p._id} product={p} priceMode={priceMode} accent="#92400e" onOpen={setDetailProduct} viewMode="grid" />
-            ))}
-          </div>
+          {(() => {
+            const byDate = {};
+            filtered.forEach(p => {
+              const d = p.liquidatedAt ? new Date(p.liquidatedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Без даты';
+              if (!byDate[d]) byDate[d] = [];
+              byDate[d].push(p);
+            });
+            const sortedDates = Object.keys(byDate).sort((a, b) => {
+              if (a === 'Без даты') return 1;
+              if (b === 'Без даты') return -1;
+              const parseDate = (s) => { const [d, m, y] = s.split(' '); return new Date(`${m} ${d}, ${y}`); };
+              return parseDate(b) - parseDate(a);
+            });
+            return sortedDates.map((dateStr, idx) => (
+              <div key={dateStr} style={{ marginBottom: 28 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: idx === 0 ? 0 : 28,
+                  borderLeft: '4px solid #92400e', paddingLeft: 12
+                }}>
+                  <span style={{ fontWeight: 900, fontSize: 14, color: '#92400e' }}>{dateStr}</span>
+                  <span style={{ fontSize: 12, color: '#aaa' }}>{byDate[dateStr].length} тов.</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12 }}>
+                  {byDate[dateStr].map(p => (
+                    <AdminProductCard key={p._id} product={p} priceMode={priceMode} accent="#92400e" onOpen={setDetailProduct} viewMode="grid" />
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
         </div>
       ) : (
         <div style={{ paddingBottom: 40 }}>
