@@ -171,6 +171,9 @@ export default function AdminAllCatalog() {
   const [fStatus,   setFStatus]   = useState(urlStatus);
   const [fPhoto,    setFPhoto]    = useState(''); // '' | 'no' | 'yes'
   const [sortStock, setSortStock] = useState('desc'); // '' | 'asc' | 'desc'
+  const [sortNewest, setSortNewest] = useState(urlStatus === 'liquidation' ? 'newest' : ''); // '' | 'newest'
+
+  const isLiquidation = fStatus === 'liquidation';
 
   useEffect(() => {
     adminGetProducts({ limit: 1000 })
@@ -217,10 +220,16 @@ export default function AdminAllCatalog() {
     if (fStatus)  list = list.filter(p => p.productStatus === fStatus);
     if (fPhoto === 'no')  list = list.filter(p => !hasPhoto(p));
     if (fPhoto === 'yes') list = list.filter(p => hasPhoto(p));
-    if (sortStock === 'asc')  list = [...list].sort((a, b) => (a.stock || 0) - (b.stock || 0));
-    if (sortStock === 'desc') list = [...list].sort((a, b) => (b.stock || 0) - (a.stock || 0));
+    // Сортировка
+    if (sortNewest === 'newest') {
+      list = [...list].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+    } else if (sortStock === 'asc') {
+      list = [...list].sort((a, b) => (a.stock || 0) - (b.stock || 0));
+    } else if (sortStock === 'desc') {
+      list = [...list].sort((a, b) => (b.stock || 0) - (a.stock || 0));
+    }
     return list;
-  }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, fPhoto, sortStock]);
+  }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, fPhoto, sortStock, sortNewest]);
 
   // Разделение на товары в наличии и без
   const { inStockFiltered, outOfStockFiltered } = useMemo(() => {
@@ -279,7 +288,9 @@ export default function AdminAllCatalog() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingTop: 4 }}>
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, padding: '0 4px', color: '#888' }}>←</button>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>📦 Все товары</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: isLiquidation ? '#92400e' : '#111' }}>
+              {isLiquidation ? '🏷️ Ликвидированные товары' : '📦 Все товары'}
+            </div>
             <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>
               {loading ? '…' : `${filtered.length} из ${products.length} товаров`}
             </div>
@@ -328,13 +339,15 @@ export default function AdminAllCatalog() {
             {availableCategories.map(c => <option key={c} value={c}>{catLabel(c)}</option>)}
           </select>
 
-          <select value={fStock} onChange={e => setFStock(e.target.value)} style={SEL}>
-            <option value="">Любой склад</option>
-            <option value="in">В наличии</option>
-            <option value="out">Нет в наличии</option>
-          </select>
+          {!isLiquidation && (
+            <select value={fStock} onChange={e => setFStock(e.target.value)} style={SEL}>
+              <option value="">Любой склад</option>
+              <option value="in">В наличии</option>
+              <option value="out">Нет в наличии</option>
+            </select>
+          )}
 
-          <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={SEL}>
+          <select value={fStatus} onChange={e => { setFStatus(e.target.value); if (e.target.value === 'liquidation') setSortNewest('newest'); else setSortNewest(''); }} style={SEL}>
             <option value="">Все статусы</option>
             {statuses.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
           </select>
@@ -345,11 +358,18 @@ export default function AdminAllCatalog() {
             <option value="yes">✅ С фото</option>
           </select>
 
-          <select value={sortStock} onChange={e => setSortStock(e.target.value)} style={SEL}>
-            <option value="">Сортировка склада</option>
-            <option value="desc">Склад: много → мало</option>
-            <option value="asc">Склад: мало → много</option>
-          </select>
+          {isLiquidation ? (
+            <select value={sortNewest} onChange={e => setSortNewest(e.target.value)} style={SEL}>
+              <option value="newest">🆕 Новые ликвидации</option>
+              <option value="">По умолчанию</option>
+            </select>
+          ) : (
+            <select value={sortStock} onChange={e => setSortStock(e.target.value)} style={SEL}>
+              <option value="">Сортировка склада</option>
+              <option value="desc">Склад: много → мало</option>
+              <option value="asc">Склад: мало → много</option>
+            </select>
+          )}
 
           {activeFilters > 0 && (
             <button onClick={resetFilters} style={{
