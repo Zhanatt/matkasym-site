@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminGetProducts, adminReceiveProduct } from '../../api';
+import AdminProductModal from './AdminProductModal';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -30,6 +31,7 @@ export default function AdminPendingReceive() {
   const [receiveAlert, setReceiveAlert] = useState('ok');
   const [receiveComment, setReceiveComment] = useState('');
   const [receiving, setReceiving] = useState(false);
+  const [viewProduct, setViewProduct] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -175,16 +177,16 @@ export default function AdminPendingReceive() {
             return (
               <div
                 key={p._id}
-                onClick={() => canReceive && openReceive(p)}
+                onClick={() => setViewProduct(p)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 16,
                   background: '#fff',
                   border: `1.5px solid ${isInTransit ? '#bfdbfe' : isPending ? '#fde68a' : '#bbf7d0'}`,
                   borderRadius: 12, padding: 16,
-                  cursor: canReceive ? 'pointer' : 'default',
+                  cursor: 'pointer',
                   transition: 'all 0.15s',
                 }}
-                onMouseOver={e => { if (canReceive) e.currentTarget.style.borderColor = '#22c55e'; }}
+                onMouseOver={e => e.currentTarget.style.borderColor = '#888'}
                 onMouseOut={e => {
                   e.currentTarget.style.borderColor = isInTransit ? '#bfdbfe' : isPending ? '#fde68a' : '#bbf7d0';
                 }}
@@ -413,6 +415,30 @@ export default function AdminPendingReceive() {
           </div>
         </>,
         document.body
+      )}
+
+      {/* Product View Modal */}
+      {viewProduct && (
+        <AdminProductModal
+          product={viewProduct}
+          onClose={() => setViewProduct(null)}
+          onSaved={() => { setViewProduct(null); load(); }}
+          extraActions={
+            viewProduct.pendingReceive && !viewProduct.inTransit && isWarehouse ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); setViewProduct(null); openReceive(viewProduct); }}
+                style={{
+                  padding: '12px 24px', fontSize: 15, fontWeight: 700,
+                  background: '#22c55e', color: '#fff',
+                  border: 'none', borderRadius: 10, cursor: 'pointer',
+                  marginTop: 12, width: '100%',
+                }}
+              >
+                ✓ Принять товар
+              </button>
+            ) : null
+          }
+        />
       )}
     </div>
   );

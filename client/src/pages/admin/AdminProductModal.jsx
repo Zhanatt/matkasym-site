@@ -26,7 +26,7 @@ function useIsMobile() {
   return mob;
 }
 
-export default function AdminProductModal({ product, onClose, onDeleted }) {
+export default function AdminProductModal({ product, onClose, onDeleted, onSaved, extraActions }) {
   const { user }    = useAuth();
   const navigate    = useNavigate();
   const isMobile    = useIsMobile();
@@ -656,6 +656,9 @@ export default function AdminProductModal({ product, onClose, onDeleted }) {
                   )}
                 </div>
               )}
+
+              {/* Extra actions slot */}
+              {extraActions}
             </div>
           </div>
         </div>
