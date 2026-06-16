@@ -2389,53 +2389,61 @@ router.delete('/audits/:id', editor, async (req, res) => {
 // GET /api/admin/review/my-sets — сеты текущего фронтмена для активного аудита
 router.get('/review/my-sets', async (req, res) => {
   try {
-    const frontman = await Frontman.findOne({ userId: req.user._id });
-    if (!frontman) return res.json({ sets: [], frontman: null, activeAudit: null, overdueAudits: [] });
+    // Ищем ВСЕХ фронтменов с этим userId (может быть в нескольких брендах)
+    const frontmen = await Frontman.find({ userId: req.user._id });
+    if (!frontmen.length) return res.json({ sets: [], frontman: null, activeAudit: null, overdueAudits: [] });
+
+    // Используем первого для имени/цвета, но собираем сеты со всех
+    const primaryFrontman = frontmen[0];
 
     // Найти активный аудит
     const activeAudit = await Audit.findOne({ status: 'active' }).lean();
 
-    // Найти просроченные незавершённые аудиты для этого фронтмена
+    // Найти просроченные незавершённые аудиты для всех фронтменов этого пользователя
+    const frontmanIds = frontmen.map(f => f._id);
     const overdueAudits = await Audit.find({
       status: 'active',
       deadline: { $lt: new Date() },
-      'frontmenProgress.frontman': frontman._id,
+      'frontmenProgress.frontman': { $in: frontmanIds },
       'frontmenProgress.completedAt': null,
     }).lean();
 
     // Фильтруем только те, где этот фронтмен не завершил
     const reallyOverdue = overdueAudits.filter(a => {
-      const fp = a.frontmenProgress.find(p => p.frontman.toString() === frontman._id.toString());
-      return fp && !fp.completedAt;
+      return frontmanIds.some(fid => {
+        const fp = a.frontmenProgress.find(p => p.frontman.toString() === fid.toString());
+        return fp && !fp.completedAt;
+      });
     });
 
     if (!activeAudit) {
       return res.json({
         sets: [],
-        frontman: { _id: frontman._id, name: frontman.name, brand: frontman.brand, color: frontman.color },
+        frontman: { _id: primaryFrontman._id, name: primaryFrontman.name, brand: primaryFrontman.brand, color: primaryFrontman.color },
         activeAudit: null,
         overdueAudits: reallyOverdue,
       });
     }
 
-    // Для каждого сета: подсчитать товары и проверенные в текущем аудите
-    const setsData = await Promise.all(
-      frontman.sets.map(async (setSlug) => {
+    // Собираем сеты со ВСЕХ фронтменов пользователя
+    const allSetsData = [];
+    for (const fm of frontmen) {
+      for (const setSlug of fm.sets) {
         const [total, reviewed] = await Promise.all([
-          Product.countDocuments({ set: setSlug, brand: frontman.brand }),
+          Product.countDocuments({ set: setSlug, brand: fm.brand }),
           ProductReview.countDocuments({
             audit: activeAudit._id,
-            frontman: frontman._id,
+            frontman: fm._id,
             'productSnapshot.set': setSlug
           }),
         ]);
-        return { slug: setSlug, total, reviewed };
-      })
-    );
+        allSetsData.push({ slug: setSlug, total, reviewed, brand: fm.brand, frontmanId: fm._id });
+      }
+    }
 
     res.json({
-      sets: setsData,
-      frontman: { _id: frontman._id, name: frontman.name, brand: frontman.brand, color: frontman.color },
+      sets: allSetsData,
+      frontman: { _id: primaryFrontman._id, name: primaryFrontman.name, brand: primaryFrontman.brand, color: primaryFrontman.color },
       activeAudit: {
         _id: activeAudit._id,
         name: activeAudit.name,
