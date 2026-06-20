@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
+import * as pdfjsLib from 'pdfjs-dist';
 import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
+
+// PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 function StatCard({ label, value, sub, red, green, to, icon }) {
   const navigate = useNavigate();
@@ -153,6 +157,64 @@ export default function AdminDashboard() {
     }
   };
 
+  // Extract images from PDF file - renders each page and extracts embedded images
+  const extractPhotosFromPdf = async (file) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const results = [];
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const ops = await page.getOperatorList();
+
+      // Find image objects in the page
+      for (let i = 0; i < ops.fnArray.length; i++) {
+        if (ops.fnArray[i] === pdfjsLib.OPS.paintImageXObject ||
+            ops.fnArray[i] === pdfjsLib.OPS.paintJpegXObject) {
+          const imgName = ops.argsArray[i][0];
+          try {
+            const img = await page.objs.get(imgName);
+            if (img && img.data) {
+              // Convert image data to blob
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              const imgData = ctx.createImageData(img.width, img.height);
+
+              // Handle different image formats
+              if (img.data.length === img.width * img.height * 4) {
+                imgData.data.set(img.data);
+              } else if (img.data.length === img.width * img.height * 3) {
+                // RGB to RGBA
+                for (let j = 0; j < img.width * img.height; j++) {
+                  imgData.data[j * 4] = img.data[j * 3];
+                  imgData.data[j * 4 + 1] = img.data[j * 3 + 1];
+                  imgData.data[j * 4 + 2] = img.data[j * 3 + 2];
+                  imgData.data[j * 4 + 3] = 255;
+                }
+              }
+
+              ctx.putImageData(imgData, 0, 0);
+              const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+              if (blob && blob.size > 5000) { // Skip tiny images
+                results.push({
+                  name: `pdf_page${pageNum}_img${results.length + 1}`,
+                  blob,
+                  ext: 'jpg'
+                });
+              }
+            }
+          } catch (e) {
+            // Skip problematic images
+          }
+        }
+      }
+    }
+
+    return results;
+  };
+
   // Extract images from Excel file on client side
   const extractPhotosFromExcel = async (file) => {
     const arrayBuffer = await file.arrayBuffer();
@@ -285,12 +347,22 @@ export default function AdminDashboard() {
         });
       }
 
-      // PDF not supported for direct extraction yet
+      // Extract images from PDF
       if (files.length === 1 && files[0].name.endsWith('.pdf')) {
-        setSyncResult({ ok: false, error: '❌ PDF пока не поддерживается. Сохраните фото из PDF как отдельные картинки или используйте Excel файл.' });
-        setPhotoLoading(false);
-        e.target.value = '';
-        return;
+        setSyncResult({ ok: true, msg: '📦 Извлекаем фото из PDF...' });
+        sourceFile = files[0].name;
+        const extracted = await extractPhotosFromPdf(files[0]);
+        if (extracted.length === 0) {
+          setSyncResult({ ok: false, error: '❌ Не удалось извлечь фото из PDF. Попробуйте Excel файл.' });
+          setPhotoLoading(false);
+          e.target.value = '';
+          return;
+        }
+        setSyncResult({ ok: true, msg: `📦 Извлечено ${extracted.length} фото, загружаем...` });
+        filesToUpload = extracted.map(({ name, blob, ext }) => {
+          const file = new File([blob], `${name}.${ext}`, { type: `image/${ext}` });
+          return file;
+        });
       }
 
       // Upload in batches of 10 to avoid memory issues
