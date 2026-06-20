@@ -588,6 +588,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       'Квадратные': [],
       'Овальные': [],
       'Прямоугольные': [],
+      'Лазерная резка': [],
       'Прочие': [],
     };
     models.forEach(([name, variants]) => {
@@ -596,6 +597,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       else if (lowerName.includes('квадратная')) groups['Квадратные'].push([name, variants]);
       else if (lowerName.includes('овальная')) groups['Овальные'].push([name, variants]);
       else if (lowerName.includes('прямоугольная')) groups['Прямоугольные'].push([name, variants]);
+      else if (lowerName.includes('лазерн') || lowerName.includes('резка')) groups['Лазерная резка'].push([name, variants]);
       else groups['Прочие'].push([name, variants]);
     });
     return Object.entries(groups).filter(([, items]) => items.length > 0);
@@ -921,10 +923,35 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return groupOrder.map(g => [g, groups[g]]).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
+  // Группировка для konok-keldi (гостевые товары)
+  const konokKeldiGroups = useMemo(() => {
+    if (setSlug !== 'konok-keldi') return null;
+    const groups = {
+      'Столы и столики': [],
+      'Стулья и кресла': [],
+      'Полки и стеллажи': [],
+      'Хранение': [],
+      'Текстиль': [],
+      'Свечи и декор': [],
+      'Прочее': [],
+    };
+    models.forEach(([name, variants]) => {
+      const lowerName = name.toLowerCase();
+      if (lowerName.includes('стол') || lowerName.includes('столик')) groups['Столы и столики'].push([name, variants]);
+      else if (lowerName.includes('стул') || lowerName.includes('кресло') || lowerName.includes('табурет') || lowerName.includes('диван')) groups['Стулья и кресла'].push([name, variants]);
+      else if (lowerName.includes('полк') || lowerName.includes('стеллаж') || lowerName.includes('кронштейн') || lowerName.includes('подставка')) groups['Полки и стеллажи'].push([name, variants]);
+      else if (lowerName.includes('корзин') || lowerName.includes('ящик') || lowerName.includes('короб') || lowerName.includes('контейнер')) groups['Хранение'].push([name, variants]);
+      else if (lowerName.includes('подушк') || lowerName.includes('плед') || lowerName.includes('чехол') || lowerName.includes('покрывал')) groups['Текстиль'].push([name, variants]);
+      else if (lowerName.includes('свеч') || lowerName.includes('ваза') || lowerName.includes('горшок')) groups['Свечи и декор'].push([name, variants]);
+      else groups['Прочее'].push([name, variants]);
+    });
+    return Object.entries(groups).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
   // Универсальная группировка по категориям для ВСЕХ сетов без специфичной группировки
   const setsWithCustomGroups = new Set([
     'dayar-tutuk', '0-tashtandy', 'achyk-asman', 'bekem-fasad',
-    'poly-fabrikat', 'taza-kiym', 'kooz-koopsuzduk', 'mazza-seyil', 'onuguu-set', 'bilim-kelechek'
+    'poly-fabrikat', 'taza-kiym', 'kooz-koopsuzduk', 'mazza-seyil', 'onuguu-set', 'bilim-kelechek', 'konok-keldi'
   ]);
   const autoCategoryGroups = useMemo(() => {
     if (setsWithCustomGroups.has(setSlug)) return null;
@@ -948,7 +975,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   }, [setSlug, models]);
 
   // Общая переменная для групп
-  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeyilGroups || onuguuGroups || bilimGroups || autoCategoryGroups;
+  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeyilGroups || onuguuGroups || bilimGroups || konokKeldiGroups || autoCategoryGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 

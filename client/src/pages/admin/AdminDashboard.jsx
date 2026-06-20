@@ -285,6 +285,14 @@ export default function AdminDashboard() {
         });
       }
 
+      // PDF not supported for direct extraction yet
+      if (files.length === 1 && files[0].name.endsWith('.pdf')) {
+        setSyncResult({ ok: false, error: '❌ PDF пока не поддерживается. Сохраните фото из PDF как отдельные картинки или используйте Excel файл.' });
+        setPhotoLoading(false);
+        e.target.value = '';
+        return;
+      }
+
       // Upload in batches of 10 to avoid memory issues
       const BATCH_SIZE = 10;
       let matched = 0, notFound = 0, total = filesToUpload.length;
@@ -404,7 +412,7 @@ export default function AdminDashboard() {
             { key: 'stock',     label: '📥 Остатки из 1С',   color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading,             onChange: handleStockUpload,                         accept: '.xlsx' },
             { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail'),        accept: '.xlsx' },
             { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale'),     accept: '.xlsx' },
-            { key: 'photos',    label: '🖼 Фото',             color: '#7b2d8b', bg: '#f8e8ff', disabled: photoLoading,            onChange: handlePhotoUpload,                          accept: 'image/*,.xlsx,.xls', multiple: true },
+            { key: 'photos',    label: '🖼 Фото',             color: '#7b2d8b', bg: '#f8e8ff', disabled: photoLoading,            onChange: handlePhotoUpload,                          accept: 'image/*,.xlsx,.xls,.pdf', multiple: true },
             { key: 'nomenclature', label: '📥 Новые из 1С',  color: '#7c3aed', bg: '#f3e8ff', disabled: nomenclatureLoading,        onChange: handleNomenclatureUpload,                   accept: '.xlsx' },
           ].map(({ key, label, color, bg, disabled, onChange, accept, multiple }) => {
             const pct = uploadProgress[key] || 0;
