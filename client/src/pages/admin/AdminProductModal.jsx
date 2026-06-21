@@ -678,7 +678,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       ⚠️ Не хватает деталей для сборки комплекта
                     </div>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {product.kitParts.map((part, i) => {
                       const p = part.product;
                       if (!p) return null;
@@ -687,25 +687,31 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       const isMissing = available < needed;
                       return (
                         <div key={i} style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
+                          display: 'flex', alignItems: 'center', gap: 12,
                           background: isMissing ? '#fee2e2' : '#fff',
-                          borderRadius: 8, padding: '8px 10px',
-                          border: isMissing ? '1px solid #fecaca' : 'none'
+                          borderRadius: 10, padding: '12px 14px',
+                          border: isMissing ? '1px solid #fecaca' : '1px solid #e5e7eb'
                         }}>
                           {p.images?.[0] && (
-                            <img src={p.images[0]} alt="" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6, background: '#f8f8f8' }} />
+                            <img src={p.images[0]} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, background: '#f8f8f8' }} />
                           )}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {p.fullName || p.name}
                             </div>
-                            <div style={{ fontSize: 11, color: '#888' }}>
-                              {needed > 1 && <span>{needed} шт × </span>}
-                              {p.price?.toLocaleString('ru')} сом
-                              <span style={{ marginLeft: 8, color: isMissing ? '#dc2626' : '#16a34a', fontWeight: isMissing ? 700 : 400 }}>
-                                {available} шт{isMissing && ` (нужно ${needed})`}
-                              </span>
+                            <div style={{ fontSize: 12, color: isMissing ? '#dc2626' : '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                              {available} шт{isMissing && ` (нужно ${needed})`}
                             </div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>
+                              {p.price?.toLocaleString('ru')} сом
+                            </div>
+                            {needed > 1 && (
+                              <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                                × {needed} шт
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
