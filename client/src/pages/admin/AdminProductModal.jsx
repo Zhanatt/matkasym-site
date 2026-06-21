@@ -657,6 +657,46 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 </div>
               )}
 
+              {/* Kit parts — состав комплекта */}
+              {product.isKit && product.kitParts?.length > 0 && (
+                <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+                    📦 Состав комплекта ({product.kitParts.length} деталей)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {product.kitParts.map((part, i) => {
+                      const p = part.product;
+                      if (!p) return null;
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', borderRadius: 8, padding: '8px 10px' }}>
+                          {p.images?.[0] && (
+                            <img src={p.images[0]} alt="" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6, background: '#f8f8f8' }} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {p.fullName || p.name}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#888' }}>
+                              {part.qty > 1 && <span>{part.qty} шт × </span>}
+                              {p.price?.toLocaleString('ru')} сом
+                              <span style={{ marginLeft: 8, color: p.stock > 0 ? '#16a34a' : '#dc2626' }}>
+                                {p.stock > 0 ? `${p.stock} шт` : 'Нет'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>Итого</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
+                      {product.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} сом
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Extra actions slot */}
               {extraActions}
             </div>

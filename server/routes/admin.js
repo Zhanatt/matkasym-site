@@ -109,7 +109,8 @@ router.get('/products', async (req, res) => {
     const sortObj = sortMap[sort] || { stock: -1, createdAt: -1 };
 
     const [products, total] = await Promise.all([
-      Product.find(filter).sort(sortObj).skip((page - 1) * limit).limit(Number(limit)),
+      Product.find(filter).sort(sortObj).skip((page - 1) * limit).limit(Number(limit))
+        .populate('kitParts.product', 'name fullName price priceWholesale stock images'),
       Product.countDocuments(filter),
     ]);
     res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });
@@ -145,7 +146,8 @@ router.get('/products/facets', async (req, res) => {
 router.get('/products/:id', async (req, res) => {
   if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate('kitParts.product', 'name fullName price priceWholesale stock images');
     if (!product) return res.status(404).json({ error: 'Товар не найден' });
     res.json(product);
   } catch (e) {

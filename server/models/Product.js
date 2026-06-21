@@ -97,6 +97,13 @@ const productSchema = new mongoose.Schema({
   // Stats
   rating:      { type: Number, default: 0, min: 0, max: 5 },
   reviewCount: { type: Number, default: 0 },
+
+  // Kit / Bundle — комплект из нескольких товаров
+  isKit: { type: Boolean, default: false },
+  kitParts: [{
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    qty:     { type: Number, default: 1 },
+  }],
 }, { timestamps: true });
 
 productSchema.virtual('discount').get(function () {
