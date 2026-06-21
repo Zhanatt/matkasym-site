@@ -16,6 +16,10 @@ import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/Produ
 // ── helpers ────────────────────────────────────────────────────────────────────
 
 function getStockInfo(product) {
+  // Для комплектов с stock=0 показываем "Не хватает деталей"
+  if (product.isKit && product.stock === 0) {
+    return { label: 'Не хватает деталей', hasStock: false, color: '#9ca3af', bg: '#f3f4f6', isKitMissing: true };
+  }
   if (product.stock > 0) {
     return { label: `${product.stock} шт.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
   }
@@ -1473,7 +1477,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                         <div key={name} onClick={() => setDetailProduct(primary)}
                           style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                             background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                            cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
+                            cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
+                            opacity: stockInfo.isKitMissing ? 0.5 : 1 }}
                           onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                           onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                         >
@@ -1549,7 +1554,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   <div key={name} onClick={() => setDetailProduct(primary)}
                     style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                       background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                      cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
+                      cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
+                      opacity: stockInfo.isKitMissing ? 0.5 : 1 }}
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
