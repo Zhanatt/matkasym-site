@@ -505,8 +505,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 {product.sku && <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>SKU: {product.sku}</div>}
               </div>
 
-              {/* Prices */}
-              {prices.length > 0 && (
+              {/* Prices — скрыть для независимых комплектов */}
+              {prices.length > 0 && !(product.isKit && product.kitType === 'independent') && (
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                     Цены

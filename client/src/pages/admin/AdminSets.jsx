@@ -1516,7 +1516,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                             ))}
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
                               <div>
-                                {primary.priceUndefined ? (
+                                {primary.isKit && primary.kitType === 'independent' ? (
+                                  <div style={{ fontSize: 11, color: '#7c3aed', fontStyle: 'italic' }}>Цены в деталях</div>
+                                ) : primary.priceUndefined ? (
                                   <div style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}>Цена не определена</div>
                                 ) : (
                                   <>
@@ -1593,7 +1595,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       ))}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 }}>
                         <div>
-                          {primary.priceUndefined ? (
+                          {primary.isKit && primary.kitType === 'independent' ? (
+                            <div style={{ fontSize: 11, color: '#7c3aed', fontStyle: 'italic' }}>Цены в деталях</div>
+                          ) : primary.priceUndefined ? (
                             <div style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}>Цена не определена</div>
                           ) : (
                             <>
