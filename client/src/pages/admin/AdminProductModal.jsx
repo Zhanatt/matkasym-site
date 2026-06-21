@@ -717,12 +717,14 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       );
                     })}
                   </div>
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: hasMissing ? '#dc2626' : '#16a34a', fontWeight: 600 }}>Итого</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
-                      {product.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} сом
-                    </span>
-                  </div>
+                  {product.kitType !== 'independent' && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: hasMissing ? '#dc2626' : '#16a34a', fontWeight: 600 }}>Итого</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
+                        {product.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} сом
+                      </span>
+                    </div>
+                  )}
                 </div>
                 );
               })()}
