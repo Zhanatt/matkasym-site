@@ -474,9 +474,9 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   </button>
                 )}
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                  background: localProduct.inStock ? '#e8f5e9' : '#fce8e8',
-                  color: localProduct.inStock ? '#2d7a3a' : '#c00' }}>
-                  {localProduct.stock > 0 ? `${localProduct.stock} шт.` : (localProduct.inStock ? 'Есть' : 'Нет')}
+                  background: localProduct.isKit ? '#f0fdf4' : (localProduct.inStock ? '#e8f5e9' : '#fce8e8'),
+                  color: localProduct.isKit ? '#16a34a' : (localProduct.inStock ? '#2d7a3a' : '#c00') }}>
+                  {localProduct.isKit ? 'Комплект' : (localProduct.stock > 0 ? `${localProduct.stock} шт.` : (localProduct.inStock ? 'Есть' : 'Нет'))}
                 </span>
               </div>
 
