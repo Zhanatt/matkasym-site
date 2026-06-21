@@ -16,7 +16,11 @@ import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/Produ
 // ── helpers ────────────────────────────────────────────────────────────────────
 
 function getStockInfo(product) {
-  // Для комплектов с stock=0 показываем "Не хватает деталей"
+  // Для независимых комплектов (SKÅDIS, BOAXEL) показываем "Комплект"
+  if (product.isKit && product.kitType === 'independent') {
+    return { label: 'Комплект', hasStock: true, color: '#7c3aed', bg: '#f5f3ff' };
+  }
+  // Для зависимых комплектов с stock=0 показываем "Не хватает деталей"
   if (product.isKit && product.stock === 0) {
     return { label: 'Не хватает деталей', hasStock: false, color: '#9ca3af', bg: '#f3f4f6', isKitMissing: true };
   }

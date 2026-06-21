@@ -100,6 +100,9 @@ const productSchema = new mongoose.Schema({
 
   // Kit / Bundle — комплект из нескольких товаров
   isKit: { type: Boolean, default: false },
+  kitType: { type: String, enum: ['dependent', 'independent'], default: 'dependent' },
+  // dependent = зависимый (стол, стул) — считать по минимуму деталей
+  // independent = независимый (SKÅDIS, BOAXEL) — детали самостоятельные, показывать "Комплект"
   kitParts: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
     qty:     { type: Number, default: 1 },
