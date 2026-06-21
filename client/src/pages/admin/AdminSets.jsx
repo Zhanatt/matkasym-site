@@ -16,6 +16,10 @@ import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/Produ
 // ── helpers ────────────────────────────────────────────────────────────────────
 
 function getStockInfo(product) {
+  // Для комплектов не показываем количество
+  if (product.isKit) {
+    return { label: 'Комплект', hasStock: true, color: '#16a34a', bg: '#f0fdf4' };
+  }
   if (product.stock > 0) {
     return { label: `${product.stock} шт.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
   }
