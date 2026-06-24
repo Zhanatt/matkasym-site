@@ -101,9 +101,7 @@ const SALES_CHANNELS = [
 ];
 
 const SHAAR_CHANNELS = [
-  { key: 'matkasym_home',   label: 'MATKASYM_SHAAR',  short: 'SHAAR',  color: '#3463A3' },
-  { key: 'matkasym_horeca', label: 'MATKASYM_HORECA', short: 'HORECA', color: '#267846' },
-  { key: 'make_in',         label: 'MAKE_IN',         short: 'OPT',    color: '#F39C12' },
+  { key: 'matkasym_shaar', label: 'MATKASYM_SHAAR', short: 'SHAAR', color: '#3463A3' },
 ];
 
 const KYZMAT_CHANNELS = [
