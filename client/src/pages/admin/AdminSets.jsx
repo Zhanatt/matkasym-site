@@ -581,10 +581,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   const models = useMemo(() => {
     const grouped = {};
-    products.forEach(p => {
-      if (!grouped[p.name]) grouped[p.name] = [];
-      grouped[p.name].push(p);
-    });
+    products
+      .filter(p => p.productStatus !== 'kit_part') // скрываем детали комплектов
+      .forEach(p => {
+        if (!grouped[p.name]) grouped[p.name] = [];
+        grouped[p.name].push(p);
+      });
     return Object.entries(grouped);
   }, [products]);
 
@@ -956,10 +958,95 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return Object.entries(groups).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
+  // Группировка для Den Sooluk (товары для ванной и уборки)
+  const denSoolukGroups = useMemo(() => {
+    if (setSlug !== 'den-sooluk') return null;
+    const groupOrder = [
+      'Угловые полки',
+      'Полки для стиральных машин',
+      'Полки для туалета',
+      'Шторки для ванной',
+      'Карнизы для шторок',
+      'Дозаторы и мыльницы',
+      'Подставки и органайзеры',
+      'Ёршики и вантузы',
+      'Корзины',
+      'Коврики для ванной',
+      'Швабры',
+      'Наборы для уборки',
+      'Стремянки',
+      'Тележки',
+      'Шкафы и зеркала',
+      'Прочее',
+      'Нет в наличии',
+    ];
+    const groups = {};
+    groupOrder.forEach(g => groups[g] = []);
+
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+      if (!hasStock) {
+        groups['Нет в наличии'].push([name, variants]);
+        return;
+      }
+      const cat = p.category || 'Прочее';
+      if (groups[cat]) {
+        groups[cat].push([name, variants]);
+      } else {
+        groups['Прочее'].push([name, variants]);
+      }
+    });
+    return groupOrder.map(g => [g, groups[g]]).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
+  // Группировка для Jenil Ashkana (кухонные товары)
+  const jenilAshkanaGroups = useMemo(() => {
+    if (setSlug !== 'jenil-ashkana') return null;
+    const groupOrder = [
+      'Кухонные гарнитуры',
+      'Мойки и смесители',
+      'Столы',
+      'Стулья и табуреты',
+      'Полки и стеллажи',
+      'Тележки',
+      'Сушилки для посуды',
+      'Контейнеры и банки',
+      'Органайзеры',
+      'Подставки',
+      'Крючки',
+      'Посуда',
+      'Щётки для посуды',
+      'Кухонные принадлежности',
+      'Детские товары',
+      'Коврики',
+      'Прочее',
+      'Нет в наличии',
+    ];
+    const groups = {};
+    groupOrder.forEach(g => groups[g] = []);
+
+    models.forEach(([name, variants]) => {
+      const p = variants[0];
+      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+      if (!hasStock) {
+        groups['Нет в наличии'].push([name, variants]);
+        return;
+      }
+      const cat = p.category || 'Прочее';
+      if (groups[cat]) {
+        groups[cat].push([name, variants]);
+      } else {
+        groups['Прочее'].push([name, variants]);
+      }
+    });
+    return groupOrder.map(g => [g, groups[g]]).filter(([, items]) => items.length > 0);
+  }, [setSlug, models]);
+
   // Универсальная группировка по категориям для ВСЕХ сетов без специфичной группировки
   const setsWithCustomGroups = new Set([
     'dayar-tutuk', '0-tashtandy', 'achyk-asman', 'bekem-fasad',
-    'poly-fabrikat', 'taza-kiym', 'kooz-koopsuzduk', 'mazza-seyil', 'onuguu-set', 'bilim-kelechek', 'konok-keldi'
+    'poly-fabrikat', 'taza-kiym', 'kooz-koopsuzduk', 'mazza-seyil', 'onuguu-set', 'bilim-kelechek', 'konok-keldi', 'den-sooluk', 'jenil-ashkana'
   ]);
   const autoCategoryGroups = useMemo(() => {
     if (setsWithCustomGroups.has(setSlug)) return null;
@@ -983,7 +1070,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   }, [setSlug, models]);
 
   // Общая переменная для групп
-  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeyilGroups || onuguuGroups || bilimGroups || konokKeldiGroups || autoCategoryGroups;
+  const accordionGroups = tubeGroups || trashGroups || achykAsmanGroups || fasadGroups || forgeGroups || tazaKiymGroups || koozGroups || mazzaSeyilGroups || onuguuGroups || bilimGroups || konokKeldiGroups || denSoolukGroups || jenilAshkanaGroups || autoCategoryGroups;
 
   const [openGroups, setOpenGroups] = useState({});
 
