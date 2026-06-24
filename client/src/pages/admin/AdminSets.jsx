@@ -1198,6 +1198,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             }}>
               {viewMode === 'grid' ? '☰' : '⊞'}
             </button>
+
+            {/* PDF button on desktop */}
+            {!isMobile && (
+              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} />
+            )}
           </div>
 
           {/* Row 2 on mobile: Stats + PDF button */}
@@ -1219,12 +1224,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             </div>
           )}
 
-          {/* PDF button on desktop - inside header */}
-          {!isMobile && (
-            <div style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)' }}>
-              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} />
-            </div>
-          )}
+          {/* PDF button on desktop - inline in header row */}
         </div>
 
         {/* Product grid — scrollable */}
