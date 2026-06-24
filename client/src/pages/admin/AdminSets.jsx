@@ -97,8 +97,6 @@ const SET_SUB_ITEMS = {
 
 const SALES_CHANNELS = [
   { key: 'matkasym_home', label: 'MATKASYM_HOME', short: 'HOME', color: '#DC1E24' },
-  { key: 'make_in',       label: 'MAKE_IN',       short: 'OPT',  color: '#3463A3' },
-  { key: 'matkasym_kz',   label: 'MATKASYM_KZ',   short: 'KZ',   color: '#267846' },
 ];
 
 const SHAAR_CHANNELS = [
