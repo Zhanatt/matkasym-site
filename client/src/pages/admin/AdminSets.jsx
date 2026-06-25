@@ -672,7 +672,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       'Уличные столы': 'Столы',
       'Уличные стулья': 'Стулья и лежаки',
     };
-    const groupOrder = ['Мангалы', 'Шампуры', 'Сетки BBQ', 'Столы', 'Стулья и лежаки', 'Прочее', 'Нет в наличии'];
+    const groupOrder = ['Стулья и лежаки', 'Столы', 'Сетки BBQ', 'Шампуры', 'Мангалы', 'Прочее', 'Нет в наличии'];
     const groups = {};
     groupOrder.forEach(g => groups[g] = []);
 
