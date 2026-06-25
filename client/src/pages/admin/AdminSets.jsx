@@ -666,22 +666,16 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const achykAsmanGroups = useMemo(() => {
     if (setSlug !== 'achyk-asman') return null;
     const categoryLabels = {
-      'bbq-grill': 'Мангалы',
-      'bbq-skewer': 'Шампуры',
-      'bbq-net': 'Сетки BBQ',
-      'outdoor-table': 'Столы',
-      'outdoor-chair': 'Стулья и лежаки',
-      'other': 'Прочее',
+      'Грили для барбекю': 'Мангалы',
+      'Шампуры': 'Шампуры',
+      'Решётки для барбекю': 'Сетки BBQ',
+      'Уличные столы': 'Столы',
+      'Уличные стулья': 'Стулья и лежаки',
     };
-    const groups = {
-      'Мангалы': [],
-      'Шампуры': [],
-      'Сетки BBQ': [],
-      'Столы': [],
-      'Стулья и лежаки': [],
-      'Прочее': [],
-      'Нет в наличии': [],
-    };
+    const groupOrder = ['Мангалы', 'Шампуры', 'Сетки BBQ', 'Столы', 'Стулья и лежаки', 'Прочее', 'Нет в наличии'];
+    const groups = {};
+    groupOrder.forEach(g => groups[g] = []);
+
     models.forEach(([name, variants]) => {
       const p = variants[0];
       const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
@@ -689,7 +683,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         groups['Нет в наличии'].push([name, variants]);
         return;
       }
-      const cat = p.category || 'other';
+      const cat = p.category || '';
       const label = categoryLabels[cat] || 'Прочее';
       if (groups[label]) {
         groups[label].push([name, variants]);
@@ -697,13 +691,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         groups['Прочее'].push([name, variants]);
       }
     });
-    const result = Object.entries(groups).filter(([, items]) => items.length > 0);
-    const outOfStockIdx = result.findIndex(([key]) => key === 'Нет в наличии');
-    if (outOfStockIdx > -1) {
-      const [outOfStock] = result.splice(outOfStockIdx, 1);
-      result.push(outOfStock);
-    }
-    return result;
+    return groupOrder.map(key => [key, groups[key]]).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
   // Группировка для Bekem Fasad (кронштейны и корзины для кондиционеров)
