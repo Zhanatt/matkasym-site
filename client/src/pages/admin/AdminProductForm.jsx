@@ -260,9 +260,12 @@ export default function AdminProductForm() {
           // Combine with static categories but prioritize facet ones
           const facetKeys = new Set(facetCategories.map(c => c.value));
           const staticFiltered = CATEGORIES.filter(c => !facetKeys.has(c.value));
-          setCategories([...facetCategories, ...staticFiltered]);
+          const combined = [...facetCategories, ...staticFiltered];
+          combined.sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+          setCategories(combined);
         } else {
-          setCategories(CATEGORIES);
+          const sorted = [...CATEGORIES].sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+          setCategories(sorted);
         }
       })
       .catch(() => {});
@@ -276,7 +279,12 @@ export default function AdminProductForm() {
           setCategories(prev => {
             const existingKeys = new Set(prev.map(c => c.value));
             const extra = r.data.filter(c => !existingKeys.has(c.value));
-            return extra.length > 0 ? [...prev, ...extra] : prev;
+            if (extra.length > 0) {
+              const combined = [...prev, ...extra];
+              combined.sort((a, b) => a.label.localeCompare(b.label, 'ru'));
+              return combined;
+            }
+            return prev;
           });
         }
       })
