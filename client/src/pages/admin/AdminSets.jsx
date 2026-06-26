@@ -108,6 +108,19 @@ const KYZMAT_CHANNELS = [
   { key: 'matkasym_kyzmat', label: 'MATKASYM_KYZMAT', short: 'KYZMAT', color: '#267846' },
 ];
 
+// Порядок категорий для конкретных сетов (чем меньше число, тем выше в списке)
+const SET_CATEGORY_ORDER = {
+  'taza-kiym': {
+    'Плечики': 1,
+    'Корзина для белья': 2,
+    'Гладильная доска': 3,
+    'Сушилка': 4,
+    'Гардеробная вешалка': 5,
+    'Костюмная вешалка': 6,
+    'Складная полка для гардеробной вешалки': 7,
+  },
+};
+
 function toTitle(slug) {
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -606,7 +619,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       if (!groupsMap[targetGroup]) groupsMap[targetGroup] = [];
       groupsMap[targetGroup].push([name, variants]);
     });
-    // Сортировка категорий по алфавиту, "Нет в наличии" и "Прочее" в конце
+    // Порядок категорий: сначала по кастомному порядку для сета, потом по алфавиту
+    const customOrder = SET_CATEGORY_ORDER[setSlug] || {};
     const result = Object.entries(groupsMap)
       .filter(([, items]) => items.length > 0)
       .sort((a, b) => {
@@ -614,10 +628,13 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         if (b[0] === 'Нет в наличии') return -1;
         if (a[0] === 'Прочее') return 1;
         if (b[0] === 'Прочее') return -1;
+        const orderA = customOrder[a[0]] ?? 999;
+        const orderB = customOrder[b[0]] ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
         return a[0].localeCompare(b[0], 'ru');
       });
     return result;
-  }, [models]);
+  }, [models, setSlug]);
 
   // Общая переменная для групп — теперь только categoryGroups
   const accordionGroups = categoryGroups;
