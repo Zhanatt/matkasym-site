@@ -131,7 +131,7 @@ function slugify(name) {
     .replace(/-+/g, '-');
 }
 
-function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog, frontmen }) {
+function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog, frontmen, productCount = 0 }) {
   const [editing, setEditing]     = useState(false);
   const [catalogSlug, setCatalog] = useState(() => autoOpenSet || null);
   const isMobile                  = useIsMobile();
@@ -274,8 +274,15 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ fontSize: isMobile ? 36 : 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>
-            {BRAND_META[brandKey].label}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <div style={{ fontSize: isMobile ? 36 : 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>
+              {BRAND_META[brandKey].label}
+            </div>
+            {productCount > 0 && (
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#888' }}>
+                {productCount} тов.
+              </div>
+            )}
           </div>
           <div style={{ height: 3, width: 50, background: accent, borderRadius: 2, margin: '8px 0 6px' }} />
           <div style={{ fontSize: 12, color: '#6b8997' }}>
@@ -1882,13 +1889,25 @@ export default function AdminSets() {
     setSearchParams({});
   }
 
+  const [brandCounts, setBrandCounts] = useState({});
+
   useEffect(() => {
     // Load sets for all brands from API
     Promise.all(
       Object.keys(BRAND_META).map(k =>
-        adminGetFacets({ brand: k }).then(r => [k, r.data.sets.filter(s => !EXCLUDE.has(s))])
+        adminGetFacets({ brand: k }).then(r => [k, { sets: r.data.sets.filter(s => !EXCLUDE.has(s)), count: r.data.productCount || 0 }])
       )
-    ).then(res => { setSets(Object.fromEntries(res)); setLoad(false); });
+    ).then(res => {
+      const setsObj = {};
+      const countsObj = {};
+      res.forEach(([k, data]) => {
+        setsObj[k] = data.sets;
+        countsObj[k] = data.count;
+      });
+      setSets(setsObj);
+      setBrandCounts(countsObj);
+      setLoad(false);
+    });
   }, []);
 
   return (
@@ -1914,6 +1933,7 @@ export default function AdminSets() {
                   onOpenCatalog={handleOpenCatalog}
                   onCloseCatalog={handleCloseCatalog}
                   frontmen={frontmen}
+                  productCount={brandCounts[key] || 0}
                 />
               );
             })}

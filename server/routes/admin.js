@@ -133,11 +133,12 @@ router.get('/products/facets', async (req, res) => {
     ];
     const filterForSets = { ...base }; delete filterForSets.set;
     const filterForCats = { ...base }; delete filterForCats.category;
-    const [sets, categories] = await Promise.all([
+    const [sets, categories, productCount] = await Promise.all([
       Product.distinct('set', filterForSets),
       Product.distinct('category', filterForCats),
+      brand ? Product.countDocuments({ brand, productStatus: { $nin: ['kit_part'] } }) : null,
     ]);
-    res.json({ sets: sets.filter(Boolean).sort(), categories: categories.filter(Boolean).sort() });
+    res.json({ sets: sets.filter(Boolean).sort(), categories: categories.filter(Boolean).sort(), productCount });
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }
