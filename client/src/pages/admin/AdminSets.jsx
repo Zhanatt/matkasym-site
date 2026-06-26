@@ -617,62 +617,35 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return Object.entries(groups).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
-  // Группировка для урн (0-tashtandy)
+  // Группировка для урн (0-tashtandy) — напрямую по category
   const trashGroups = useMemo(() => {
     if (setSlug !== '0-tashtandy') return null;
-    const groups = {
-      'Пластиковые баки': [],
-      'Уличные металлические': [],
-      'Уличные дерево+металл': [],
-      'Подвесные': [],
-      'Большие контейнеры': [],
-      'Серия KARAKOL': [],
-      'Прочие': [],
-    };
+
+    // Порядок категорий
+    const categoryOrder = [
+      'Подвесные урны',
+      'Уличные напольные урны',
+      'Уличные урны деревянные',
+      'Уличные урны',
+      'Большие контейнеры',
+      'Пластиковые баки',
+      'Прочее',
+    ];
+
+    const groups = {};
+    categoryOrder.forEach(c => groups[c] = []);
+
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const lowerName = name.toLowerCase();
-      const type = (p.specs?.find(s => s.key.toLowerCase().includes('тип'))?.value || '').toLowerCase();
-      const material = (p.specs?.find(s => s.key.toLowerCase().includes('материал'))?.value || '').toLowerCase();
-      const series = (p.specs?.find(s => s.key.toLowerCase().includes('серия'))?.value || '').toLowerCase();
-      const volume = parseInt(p.specs?.find(s => s.key.toLowerCase().includes('объём') || s.key.toLowerCase().includes('объем'))?.value || '0');
-
-      const cat = (p.category || '').toLowerCase();
-
-      // Пластиковые баки (120л-660л)
-      if (lowerName.includes('пластиков') || material.includes('пластик') || cat.includes('пластиков')) {
-        groups['Пластиковые баки'].push([name, variants]);
-      }
-      // Подвесные (серия asma или категория)
-      else if (type.includes('подвесн') || series.includes('asma') || cat.includes('подвесн')) {
-        groups['Подвесные'].push([name, variants]);
-      }
-      // Большие контейнеры Tazalyk (660л+)
-      else if (lowerName.includes('tazalyk') || volume >= 660 || cat.includes('большие контейнер') || lowerName.includes('ecomayak')) {
-        groups['Большие контейнеры'].push([name, variants]);
-      }
-      // Серия KARAKOL
-      else if (series.includes('karakol') || lowerName.includes('karakol') || lowerName.includes('plaza') || lowerName.includes('bp')) {
-        groups['Серия KARAKOL'].push([name, variants]);
-      }
-      // Уличные дерево+металл (категория или GWR/Novotel/ARNUR/BAZAR)
-      else if (cat.includes('деревянн') || material.includes('дерево') || series.includes('wood') || /^(gwr|novotel|arnur|bazar)/i.test(name)) {
-        groups['Уличные дерево+металл'].push([name, variants]);
-      }
-      // Уличные металлические (G серия, GW, SW) или уличные напольные
-      else if (cat.includes('напольн') || type.includes('уличн') || /^(g\d|g tegerek|gw|sw)\d?$/i.test(name)) {
-        groups['Уличные металлические'].push([name, variants]);
-      }
-      // Уличные урны (категория)
-      else if (cat.includes('уличные урны')) {
-        groups['Серия KARAKOL'].push([name, variants]);
-      }
-      // Прочие
-      else {
-        groups['Прочие'].push([name, variants]);
+      const cat = p.category || 'Прочее';
+      if (groups[cat]) {
+        groups[cat].push([name, variants]);
+      } else {
+        groups['Прочее'].push([name, variants]);
       }
     });
-    return Object.entries(groups).filter(([, items]) => items.length > 0);
+
+    return categoryOrder.map(key => [key, groups[key]]).filter(([, items]) => items.length > 0);
   }, [setSlug, models]);
 
   // Группировка для Achyk Asman (товары для улицы/BBQ)
