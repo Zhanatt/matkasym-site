@@ -637,29 +637,35 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       const series = (p.specs?.find(s => s.key.toLowerCase().includes('серия'))?.value || '').toLowerCase();
       const volume = parseInt(p.specs?.find(s => s.key.toLowerCase().includes('объём') || s.key.toLowerCase().includes('объем'))?.value || '0');
 
+      const cat = (p.category || '').toLowerCase();
+
       // Пластиковые баки (120л-660л)
-      if (lowerName.includes('пластиков') || material.includes('пластик')) {
+      if (lowerName.includes('пластиков') || material.includes('пластик') || cat.includes('пластиков')) {
         groups['Пластиковые баки'].push([name, variants]);
       }
-      // Подвесные (серия asma)
-      else if (type.includes('подвесн') || series.includes('asma')) {
+      // Подвесные (серия asma или категория)
+      else if (type.includes('подвесн') || series.includes('asma') || cat.includes('подвесн')) {
         groups['Подвесные'].push([name, variants]);
       }
       // Большие контейнеры Tazalyk (660л+)
-      else if (lowerName.includes('tazalyk') || volume >= 660) {
+      else if (lowerName.includes('tazalyk') || volume >= 660 || cat.includes('большие контейнер') || lowerName.includes('ecomayak')) {
         groups['Большие контейнеры'].push([name, variants]);
       }
       // Серия KARAKOL
       else if (series.includes('karakol') || lowerName.includes('karakol') || lowerName.includes('plaza') || lowerName.includes('bp')) {
         groups['Серия KARAKOL'].push([name, variants]);
       }
-      // Уличные дерево+металл (категория street-bin-wood или GWR/Novotel/ARNUR/BAZAR)
-      else if (p.category === 'street-bin-wood' || material.includes('дерево') || series.includes('wood') || /^(gwr|novotel|arnur|bazar)/i.test(name)) {
+      // Уличные дерево+металл (категория или GWR/Novotel/ARNUR/BAZAR)
+      else if (cat.includes('деревянн') || material.includes('дерево') || series.includes('wood') || /^(gwr|novotel|arnur|bazar)/i.test(name)) {
         groups['Уличные дерево+металл'].push([name, variants]);
       }
-      // Уличные металлические (G серия, GW, SW)
-      else if (p.category === 'street-bin' || type.includes('уличн') || /^(g\d|g tegerek|gw|sw)\d?$/i.test(name)) {
+      // Уличные металлические (G серия, GW, SW) или уличные напольные
+      else if (cat.includes('напольн') || type.includes('уличн') || /^(g\d|g tegerek|gw|sw)\d?$/i.test(name)) {
         groups['Уличные металлические'].push([name, variants]);
+      }
+      // Уличные урны (категория)
+      else if (cat.includes('уличные урны')) {
+        groups['Серия KARAKOL'].push([name, variants]);
       }
       // Прочие
       else {
