@@ -351,14 +351,23 @@ export default function AdminProductForm() {
         const extraSpecs = (r.data || [])
           .filter(s => !allKeys.has(s.key))
           .map(s => ({ key: s.key, value: '', options: s.options || [] }));
-        setForm(f => ({
-          ...f, category: value,
-          specs: [...staticSpecs.map(t => ({ key: t.key, value: '' })), ...extraSpecs],
-        }));
+        setForm(f => {
+          const existingMap = Object.fromEntries(f.specs.map(s => [s.key, s.value]));
+          const newSpecs = [...staticSpecs.map(t => ({ key: t.key, value: existingMap[t.key] || '' })), ...extraSpecs.map(s => ({ ...s, value: existingMap[s.key] || '' }))];
+          const usedKeys = new Set(newSpecs.map(s => s.key));
+          const keptSpecs = f.specs.filter(s => s.value && !usedKeys.has(s.key));
+          return { ...f, category: value, specs: [...newSpecs, ...keptSpecs] };
+        });
       })
       .catch(() => {
         setSavedCatSpecs([]);
-        setForm(f => ({ ...f, category: value, specs: staticSpecs.map(t => ({ key: t.key, value: '' })) }));
+        setForm(f => {
+          const existingMap = Object.fromEntries(f.specs.map(s => [s.key, s.value]));
+          const newSpecs = staticSpecs.map(t => ({ key: t.key, value: existingMap[t.key] || '' }));
+          const usedKeys = new Set(newSpecs.map(s => s.key));
+          const keptSpecs = f.specs.filter(s => s.value && !usedKeys.has(s.key));
+          return { ...f, category: value, specs: [...newSpecs, ...keptSpecs] };
+        });
       });
   };
 
