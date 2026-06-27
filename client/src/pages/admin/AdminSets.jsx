@@ -9,6 +9,7 @@ import {
   adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
+import BrandPdfButton from './BrandPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
@@ -302,7 +303,10 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
             Линейки <span style={{ fontWeight: 700, color: accent }}>сетов</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+          {!editing && (
+            <BrandPdfButton brandKey={brandKey} sets={customSets} brandLabel={BRAND_META[brandKey].label} />
+          )}
           {editing ? (
             <>
               <button onClick={() => setShowAddSet(v => !v)} style={btn('#f0fff4','#267846')}>+ Сет</button>
