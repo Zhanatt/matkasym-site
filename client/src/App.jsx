@@ -20,6 +20,9 @@ import AdminFrontmen      from './pages/admin/AdminFrontmen';
 import AdminSuppliers     from './pages/admin/AdminSuppliers';
 import AdminOutOfStock    from './pages/admin/AdminOutOfStock';
 import AdminTenders       from './pages/admin/AdminTenders';
+import AdminFeedback      from './pages/admin/AdminFeedback';
+import AdminFeedbackForm  from './pages/admin/AdminFeedbackForm';
+import AdminFeedbackDetail from './pages/admin/AdminFeedbackDetail';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import AdminProductLog   from './pages/admin/AdminProductLog';
 import AdminNews         from './pages/admin/AdminNews';
@@ -61,6 +64,9 @@ export default function App() {
           <Route path="suppliers" element={<AdminSuppliers />} />
           <Route path="out-of-stock" element={<AdminOutOfStock />} />
           <Route path="tenders"     element={<AdminTenders />} />
+          <Route path="feedback"     element={<AdminFeedback />} />
+          <Route path="feedback/new" element={<AdminFeedbackForm />} />
+          <Route path="feedback/:id" element={<AdminFeedbackDetail />} />
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="stock-log"    element={<AdminStockLog />} />

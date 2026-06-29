@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FrontmenProvider } from '../../context/FrontmenContext';
-import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram, adminGetReceiveAlertsCount, adminGetPendingReceiveCount } from '../../api';
+import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram, adminGetReceiveAlertsCount, adminGetPendingReceiveCount, adminGetFeedbackCount } from '../../api';
 import './Admin.css';
 
 const NAV_ALL = [
@@ -16,6 +16,7 @@ const NAV_ALL = [
   { to: '/admin/review/results', label: 'Результаты аудита', icon: '📊', roles: ['owner','editor'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },
   { to: '/admin/tenders',      label: 'Тендеры',            icon: '🎯', roles: ['owner','editor','viewer','navigator'] },
+  { to: '/admin/feedback',     label: 'Обратная связь',     icon: '💬', roles: ['owner','editor','viewer','navigator'], badge: 'feedback' },
   { to: '/admin/stock-log',   label: 'История остатков',  icon: '📦', roles: ['owner','editor','warehouse'] },
   { to: '/admin/price-log',   label: 'История цен',       icon: '💰', roles: ['owner','editor'] },
   { to: '/admin/photo-log',   label: 'История фото',      icon: '🖼', roles: ['owner','editor'] },
@@ -33,6 +34,7 @@ export default function AdminLayout() {
   const [newsUnread,   setNewsUnread]   = useState(0);
   const [alertsCount,  setAlertsCount]  = useState(0);
   const [pendingReceiveCount, setPendingReceiveCount] = useState(0);
+  const [feedbackCount, setFeedbackCount] = useState(0);
   const [tgLink,       setTgLink]       = useState('');
   const [tgConnected,  setTgConnected]  = useState(false);
   const [tgBannerDismissed, setTgBannerDismissed] = useState(
@@ -52,6 +54,7 @@ export default function AdminLayout() {
       adminGetNewsUnread().then(r => setNewsUnread(r.data.count || 0)).catch(() => {});
       adminGetReceiveAlertsCount().then(r => setAlertsCount(r.data.count || 0)).catch(() => {});
       adminGetPendingReceiveCount().then(r => setPendingReceiveCount(r.data.count || 0)).catch(() => {});
+      adminGetFeedbackCount().then(r => setFeedbackCount(r.data.newCount || 0)).catch(() => {});
     };
     load();
     adminGetTelegramLink().then(r => { setTgLink(r.data.link); setTgConnected(r.data.connected); }).catch(() => {});
@@ -137,7 +140,7 @@ export default function AdminLayout() {
 
         <nav className="admin-nav">
           {NAV_ALL.filter(n => n.roles.includes(user.role)).map(n => {
-            const badgeCount = n.badge === 'pending' ? pendingCount : n.badge === 'news' ? newsUnread : n.badge === 'alerts' ? alertsCount : n.badge === 'pending_receive' ? pendingReceiveCount : 0;
+            const badgeCount = n.badge === 'pending' ? pendingCount : n.badge === 'news' ? newsUnread : n.badge === 'alerts' ? alertsCount : n.badge === 'pending_receive' ? pendingReceiveCount : n.badge === 'feedback' ? feedbackCount : 0;
             return (
               <NavLink
                 key={n.to}

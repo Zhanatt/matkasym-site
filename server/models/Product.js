@@ -79,6 +79,18 @@ const productSchema = new mongoose.Schema({
     files: [{ name: { type: String }, url: { type: String } }],
   },
 
+  // История улучшений продукта
+  improvementHistory: [{
+    feedbackId: { type: mongoose.Schema.Types.ObjectId, ref: 'Feedback' },
+    date:       { type: Date, default: Date.now },
+    resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    resolvedByName: { type: String },
+    problem:    { type: String },
+    solution:   { type: String },
+    beforeMedia: [{ type: String }],
+    afterMedia:  [{ type: String }],
+  }],
+
   // Tech sheets for SHAAR products
   techSheet: {
     files: [{ name: { type: String }, url: { type: String } }],

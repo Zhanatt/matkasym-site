@@ -13,6 +13,7 @@ const Frontman     = require('../models/Frontman');
 const Supplier     = require('../models/Supplier');
 const PhotoLog     = require('../models/PhotoLog');
 const ReceiveAlert = require('../models/ReceiveAlert');
+const Feedback     = require('../models/Feedback');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock } = require('../middleware/auth');
 
@@ -2782,6 +2783,193 @@ router.delete('/review/:id', editor, async (req, res) => {
   try {
     await ProductReview.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FEEDBACK — обратная связь от фронтменов
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/admin/feedback — список всех заявок
+router.get('/feedback', async (req, res) => {
+  try {
+    const { status, priority, frontman, product, limit = 50, skip = 0 } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (priority) filter.priority = priority;
+    if (frontman) filter.frontman = frontman;
+    if (product) filter.product = product;
+
+    const [feedbacks, total, newCount] = await Promise.all([
+      Feedback.find(filter)
+        .populate('product', 'name fullName sku images')
+        .populate('frontman', 'name phone channel')
+        .populate('assignedTo', 'name email')
+        .sort({ createdAt: -1 })
+        .skip(Number(skip))
+        .limit(Number(limit)),
+      Feedback.countDocuments(filter),
+      Feedback.countDocuments({ status: 'new' })
+    ]);
+
+    res.json({ feedbacks, total, newCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/feedback/count — счётчик новых заявок (для бейджа в меню)
+router.get('/feedback/count', async (req, res) => {
+  try {
+    const newCount = await Feedback.countDocuments({ status: 'new' });
+    const inProgressCount = await Feedback.countDocuments({ status: 'in_progress' });
+    res.json({ newCount, inProgressCount, total: newCount + inProgressCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/feedback/:id — одна заявка
+router.get('/feedback/:id', async (req, res) => {
+  try {
+    const feedback = await Feedback.findById(req.params.id)
+      .populate('product', 'name fullName sku images productStatus improvementHistory')
+      .populate('frontman', 'name phone channel sets brand')
+      .populate('assignedTo', 'name email')
+      .populate('comments.author', 'name email')
+      .populate('resolution.resolvedBy', 'name email');
+
+    if (!feedback) return res.status(404).json({ error: 'Заявка не найдена' });
+    res.json(feedback);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/feedback — создать заявку (от фронтмена)
+router.post('/feedback', async (req, res) => {
+  try {
+    const { productId, frontmanId, type, priority, problem, alternatives } = req.body;
+
+    if (!productId || !frontmanId || !type || !problem?.description) {
+      return res.status(400).json({ error: 'Не все обязательные поля заполнены' });
+    }
+
+    const feedback = await Feedback.create({
+      product: productId,
+      frontman: frontmanId,
+      type,
+      priority: priority || 'medium',
+      problem: {
+        description: problem.description,
+        media: problem.media || []
+      },
+      alternatives: {
+        description: alternatives?.description || '',
+        media: alternatives?.media || []
+      },
+      statusHistory: [{ from: null, to: 'new', changedBy: req.user._id }]
+    });
+
+    const populated = await Feedback.findById(feedback._id)
+      .populate('product', 'name fullName sku images')
+      .populate('frontman', 'name phone channel');
+
+    res.status(201).json(populated);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/feedback/:id — обновить заявку (статус, решение, комментарий)
+router.patch('/feedback/:id', editor, async (req, res) => {
+  try {
+    const feedback = await Feedback.findById(req.params.id);
+    if (!feedback) return res.status(404).json({ error: 'Заявка не найдена' });
+
+    const { status, resolution, comment, assignedTo } = req.body;
+    const oldStatus = feedback.status;
+
+    // Обновляем assignedTo
+    if (assignedTo !== undefined) {
+      feedback.assignedTo = assignedTo || null;
+    }
+
+    // Добавляем комментарий
+    if (comment) {
+      feedback.comments.push({
+        author: req.user._id,
+        authorName: req.user.name,
+        text: comment
+      });
+    }
+
+    // Меняем статус
+    if (status && status !== oldStatus) {
+      feedback.status = status;
+      feedback.statusHistory.push({
+        from: oldStatus,
+        to: status,
+        changedBy: req.user._id
+      });
+
+      // Если статус "в работе" — ставим продукту статус "improvement"
+      if (status === 'in_progress') {
+        await Product.findByIdAndUpdate(feedback.product, {
+          productStatus: 'improvement'
+        });
+      }
+
+      // Если статус "решена" — сохраняем решение и добавляем в историю улучшений
+      if (status === 'resolved' && resolution) {
+        feedback.resolution = {
+          description: resolution.description || '',
+          media: resolution.media || [],
+          resolvedAt: new Date(),
+          resolvedBy: req.user._id
+        };
+
+        // Возвращаем продукту статус "for_sale" и добавляем в историю
+        const product = await Product.findById(feedback.product);
+        if (product) {
+          product.productStatus = 'for_sale';
+          product.improvementHistory = product.improvementHistory || [];
+          product.improvementHistory.push({
+            feedbackId: feedback._id,
+            date: new Date(),
+            resolvedBy: req.user._id,
+            resolvedByName: req.user.name,
+            problem: feedback.problem.description,
+            solution: resolution.description || '',
+            beforeMedia: feedback.problem.media || [],
+            afterMedia: resolution.media || []
+          });
+          await product.save();
+        }
+      }
+    }
+
+    await feedback.save();
+
+    const populated = await Feedback.findById(feedback._id)
+      .populate('product', 'name fullName sku images productStatus')
+      .populate('frontman', 'name phone channel')
+      .populate('assignedTo', 'name email')
+      .populate('comments.author', 'name email');
+
+    res.json(populated);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/feedback/:id — удалить заявку
+router.delete('/feedback/:id', admin, async (req, res) => {
+  try {
+    await Feedback.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/products/:id/improvements — история улучшений продукта
+router.get('/products/:id/improvements', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id)
+      .select('name fullName sku improvementHistory')
+      .populate('improvementHistory.resolvedBy', 'name email');
+
+    if (!product) return res.status(404).json({ error: 'Продукт не найден' });
+    res.json(product.improvementHistory || []);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
