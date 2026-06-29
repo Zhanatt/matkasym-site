@@ -160,7 +160,7 @@ export default function AdminFeedbackForm() {
           </label>
 
           {/* Product search */}
-          <label style={{ display: 'block', marginBottom: 16 }}>
+          <div style={{ display: 'block', marginBottom: 16 }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: '#333', display: 'block', marginBottom: 6 }}>
               Товар *
             </span>
@@ -177,7 +177,7 @@ export default function AdminFeedbackForm() {
                   <div style={{ fontWeight: 600 }}>{selectedProduct.name}</div>
                   <div style={{ fontSize: 12, color: '#666' }}>{selectedProduct.sku}</div>
                 </div>
-                <button onClick={() => { setSelectedProduct(null); setProductId(''); }}
+                <button type="button" onClick={() => { setSelectedProduct(null); setProductId(''); }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#999' }}>
                   ✕
                 </button>
@@ -201,7 +201,7 @@ export default function AdminFeedbackForm() {
                     overflowY: 'auto', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                   }}>
                     {products.map(p => (
-                      <div key={p._id} onClick={() => handleSelectProduct(p)}
+                      <div key={p._id} onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSelectProduct(p); }}
                         style={{
                           display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px',
                           cursor: 'pointer', borderBottom: '1px solid #f0f0f0'
@@ -223,7 +223,7 @@ export default function AdminFeedbackForm() {
                 )}
               </div>
             )}
-          </label>
+          </div>
         </div>
       )}
 
