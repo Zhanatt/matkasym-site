@@ -8,10 +8,7 @@ import AdminResetPassword from './pages/admin/AdminResetPassword';
 import AdminDashboard     from './pages/admin/AdminDashboard';
 import AdminProductForm   from './pages/admin/AdminProductForm';
 import AdminUsers         from './pages/admin/AdminUsers';
-import AdminChangelog     from './pages/admin/AdminChangelog';
-import AdminStockLog     from './pages/admin/AdminStockLog';
-import AdminPriceLog     from './pages/admin/AdminPriceLog';
-import AdminPhotoLog     from './pages/admin/AdminPhotoLog';
+import AdminHistory       from './pages/admin/AdminHistory';
 import AdminSalesChart    from './pages/admin/AdminSalesChart';
 import AdminSetSalesChart from './pages/admin/AdminSetSalesChart';
 import AdminProductView   from './pages/admin/AdminProductView';
@@ -24,7 +21,6 @@ import AdminFeedback      from './pages/admin/AdminFeedback';
 import AdminFeedbackForm  from './pages/admin/AdminFeedbackForm';
 import AdminFeedbackDetail from './pages/admin/AdminFeedbackDetail';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
-import AdminProductLog   from './pages/admin/AdminProductLog';
 import AdminNews         from './pages/admin/AdminNews';
 import AdminNewsCreate   from './pages/admin/AdminNewsCreate';
 import AdminProductReview from './pages/admin/AdminProductReview';
@@ -69,13 +65,9 @@ export default function App() {
           <Route path="feedback/:id" element={<AdminFeedbackDetail />} />
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
           <Route path="users" element={<AdminUsers />} />
-          <Route path="stock-log"    element={<AdminStockLog />} />
-          <Route path="price-log"    element={<AdminPriceLog />} />
-          <Route path="photo-log"    element={<AdminPhotoLog />} />
+          <Route path="history" element={<AdminHistory />} />
           <Route path="sales-chart"           element={<AdminSalesChart />} />
           <Route path="sales-chart/:setSlug" element={<AdminSetSalesChart />} />
-          <Route path="changelog" element={<AdminChangelog />} />
-          <Route path="product-log" element={<AdminProductLog />} />
           <Route path="news" element={<AdminNews />} />
           <Route path="news/create" element={<AdminNewsCreate />} />
           <Route path="review" element={<AdminProductReview />} />

@@ -200,25 +200,39 @@ export default function AdminFeedbackForm() {
                     border: '1px solid #e0e0e0', borderRadius: 8, marginTop: 4, maxHeight: 300,
                     overflowY: 'auto', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                   }}>
-                    {products.map(p => (
-                      <div key={p._id} onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSelectProduct(p); }}
-                        style={{
-                          display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px',
-                          cursor: 'pointer', borderBottom: '1px solid #f0f0f0'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f5f5f5'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                      >
-                        {p.images?.[0] && (
-                          <img src={cloudinaryOpt(p.images[0], 60)} alt=""
-                            style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover' }} />
-                        )}
-                        <div>
-                          <div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div>
-                          <div style={{ fontSize: 11, color: '#888' }}>{p.sku}</div>
+                    {products.map(p => {
+                      const isOnImprovement = p.productStatus === 'improvement';
+                      return (
+                        <div key={p._id}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!isOnImprovement) handleSelectProduct(p);
+                          }}
+                          style={{
+                            display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px',
+                            cursor: isOnImprovement ? 'not-allowed' : 'pointer',
+                            borderBottom: '1px solid #f0f0f0',
+                            opacity: isOnImprovement ? 0.5 : 1,
+                            background: isOnImprovement ? '#f9f9f9' : '#fff'
+                          }}
+                          onMouseEnter={e => { if (!isOnImprovement) e.currentTarget.style.background = '#f5f5f5'; }}
+                          onMouseLeave={e => e.currentTarget.style.background = isOnImprovement ? '#f9f9f9' : '#fff'}
+                        >
+                          {p.images?.[0] && (
+                            <img src={cloudinaryOpt(p.images[0], 60)} alt=""
+                              style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', opacity: isOnImprovement ? 0.5 : 1 }} />
+                          )}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 500, fontSize: 14, color: isOnImprovement ? '#999' : '#333' }}>
+                              {p.name}
+                              {isOnImprovement && <span style={{ color: '#999', fontWeight: 400 }}> (на улучшении)</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#888' }}>{p.sku}</div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
