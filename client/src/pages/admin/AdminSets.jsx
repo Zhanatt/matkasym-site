@@ -741,7 +741,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
             {/* Price toggle */}
             <div style={{ display: 'flex', gap: 0, background: '#f5f5f5', borderRadius: 8, padding: 3, flexShrink: 0 }}>
-              {PRICE_MODES.filter(m => m.key !== 'none').map(m => (
+              {PRICE_MODES.map(m => (
                 <button key={m.key} onClick={() => setPriceMode(m.key)} style={{
                   padding: isMobile ? '5px 8px' : '4px 10px',
                   borderRadius: 6,
@@ -772,7 +772,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
             {/* PDF button on desktop */}
             {!isMobile && (
-              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} />
+              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} />
             )}
           </div>
 
@@ -791,7 +791,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   {products.length} тов. · {models.length} мод.
                 </div>
               )}
-              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} />
+              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} />
             </div>
           )}
 

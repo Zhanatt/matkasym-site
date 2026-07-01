@@ -1,10 +1,17 @@
 import { useState, useRef } from 'react';
 import { downloadCatalogPDF } from './CatalogPDF';
 
-export default function AdminPdfButton({ products, groups, label = 'Каталог' }) {
+const PRICE_MODE_TO_TYPE = {
+  retail: 'price',
+  wholesale: 'priceWholesale',
+  dealer: 'priceDealer',
+  none: 'none',
+};
+
+export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail' }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
-  const [priceType, setPriceType] = useState('price');
+  const priceType = PRICE_MODE_TO_TYPE[priceMode] || 'price';
   const timerRef = useRef(null);
 
   if (!products?.length) return null;
@@ -69,21 +76,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
   };
 
   return (
-    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-      <select
-        value={priceType}
-        onChange={e => setPriceType(e.target.value)}
-        disabled={loading}
-        style={{ padding: '5px 8px', borderRadius: 6, border: '1.5px solid #e0e0e0',
-          fontSize: 12, background: '#fff', cursor: 'pointer', outline: 'none' }}
-      >
-        <option value="price">Розничная</option>
-        <option value="priceWholesale">Оптовая</option>
-        <option value="priceDealer">Дилерская</option>
-        <option value="none">Без цены</option>
-      </select>
-
-      <button
+    <button
         onClick={handleClick}
         disabled={loading}
         style={{
@@ -108,6 +101,5 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           {loading ? `⏳ ${Math.round(progress)}%` : '📄 PDF'}
         </span>
       </button>
-    </div>
   );
 }
