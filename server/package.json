@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
+    "axios": "^1.18.1",
     "bcryptjs": "^2.4.3",
     "canvas": "^3.2.3",
     "cloudinary": "^2.10.0",
