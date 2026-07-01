@@ -2879,12 +2879,22 @@ router.patch('/feedback/:id', editor, async (req, res) => {
     const feedback = await Feedback.findById(req.params.id);
     if (!feedback) return res.status(404).json({ error: 'Заявка не найдена' });
 
-    const { status, resolution, comment, assignedTo } = req.body;
+    const { status, resolution, comment, assignedTo, deadline, startedAt } = req.body;
     const oldStatus = feedback.status;
 
     // Обновляем assignedTo
     if (assignedTo !== undefined) {
       feedback.assignedTo = assignedTo || null;
+    }
+
+    // Обновляем deadline
+    if (deadline !== undefined) {
+      feedback.deadline = deadline || null;
+    }
+
+    // Обновляем startedAt
+    if (startedAt !== undefined) {
+      feedback.startedAt = startedAt || null;
     }
 
     // Добавляем комментарий
@@ -2905,8 +2915,13 @@ router.patch('/feedback/:id', editor, async (req, res) => {
         changedBy: req.user._id
       });
 
-      // Если статус "в работе" — ставим продукту статус "improvement"
-      if (status === 'in_progress') {
+      // Если статус "в работе" — записываем startedAt
+      if (status === 'in_progress' && !feedback.startedAt) {
+        feedback.startedAt = new Date();
+      }
+
+      // Если статус "на улучшении" — ставим продукту статус "improvement"
+      if (status === 'improvement') {
         await Product.findByIdAndUpdate(feedback.product, {
           productStatus: 'improvement'
         });

@@ -20,12 +20,18 @@ const feedbackSchema = new mongoose.Schema({
     default: 'medium'
   },
 
-  // Статус
+  // Статус (канбан-колонки)
   status: {
     type: String,
-    enum: ['new', 'in_progress', 'resolved', 'rejected'],
+    enum: ['new', 'in_progress', 'improvement', 'resolved', 'rejected'],
     default: 'new'
   },
+
+  // Срок выполнения
+  deadline: { type: Date },
+
+  // Дата начала работы
+  startedAt: { type: Date },
 
   // Описание проблемы
   problem: {
