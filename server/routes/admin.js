@@ -2879,7 +2879,7 @@ router.patch('/feedback/:id', editor, async (req, res) => {
     const feedback = await Feedback.findById(req.params.id);
     if (!feedback) return res.status(404).json({ error: 'Заявка не найдена' });
 
-    const { status, resolution, comment, assignedTo, deadline, startedAt } = req.body;
+    const { status, resolution, comment, assignedTo, deadline, startedAt, improvementSpec } = req.body;
     const oldStatus = feedback.status;
 
     // Обновляем assignedTo
@@ -2895,6 +2895,16 @@ router.patch('/feedback/:id', editor, async (req, res) => {
     // Обновляем startedAt
     if (startedAt !== undefined) {
       feedback.startedAt = startedAt || null;
+    }
+
+    // Обновляем техлист
+    if (improvementSpec) {
+      feedback.improvementSpec = {
+        description: improvementSpec.description || '',
+        media: improvementSpec.media || [],
+        createdAt: new Date(),
+        createdBy: req.user._id,
+      };
     }
 
     // Добавляем комментарий
@@ -2920,8 +2930,12 @@ router.patch('/feedback/:id', editor, async (req, res) => {
         feedback.startedAt = new Date();
       }
 
-      // Если статус "на улучшении" — ставим продукту статус "improvement"
+      // Если статус "на улучшении" — проверяем наличие техлиста
       if (status === 'improvement') {
+        const hasSpec = feedback.improvementSpec?.description || improvementSpec?.description;
+        if (!hasSpec) {
+          return res.status(400).json({ error: 'Нельзя отправить на улучшение без техлиста' });
+        }
         await Product.findByIdAndUpdate(feedback.product, {
           productStatus: 'improvement'
         });

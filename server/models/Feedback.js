@@ -45,6 +45,14 @@ const feedbackSchema = new mongoose.Schema({
     media: [{ type: String }],
   },
 
+  // Техлист на улучшение (заполняется перед отправкой на улучшение)
+  improvementSpec: {
+    description: { type: String, default: '' },
+    media: [{ type: String }],
+    createdAt: { type: Date },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  },
+
   // Решение (от PM)
   resolution: {
     description: { type: String, default: '' },

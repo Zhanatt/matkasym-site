@@ -41,7 +41,7 @@ function daysLeft(deadline) {
   return diff;
 }
 
-function FeedbackCard({ fb, onMove, users, onAssign, onSetDeadline }) {
+function FeedbackCard({ fb, onMove, onMoveWithSpec, users, onAssign, onSetDeadline }) {
   const navigate = useNavigate();
   const type = TYPE_LABELS[fb.type] || TYPE_LABELS.question;
   const priority = PRIORITY_LABELS[fb.priority] || PRIORITY_LABELS.medium;
@@ -49,9 +49,13 @@ function FeedbackCard({ fb, onMove, users, onAssign, onSetDeadline }) {
   const days = daysLeft(fb.deadline);
   const isOverdue = days !== null && days < 0;
   const isUrgent = days !== null && days >= 0 && days <= 2;
+  const hasSpec = fb.improvementSpec?.description;
 
   const [showAssign, setShowAssign] = useState(false);
   const [showDeadline, setShowDeadline] = useState(false);
+  const [showSpecModal, setShowSpecModal] = useState(false);
+  const [specText, setSpecText] = useState(fb.improvementSpec?.description || '');
+  const [specLoading, setSpecLoading] = useState(false);
   const [deadlineVal, setDeadlineVal] = useState(fb.deadline ? fb.deadline.split('T')[0] : '');
 
   const handleAssign = (userId) => {
@@ -66,172 +70,250 @@ function FeedbackCard({ fb, onMove, users, onAssign, onSetDeadline }) {
     setShowDeadline(false);
   };
 
-  return (
-    <div
-      style={{
-        background: '#fff',
-        borderRadius: 12,
-        padding: 14,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-        border: isOverdue ? '2px solid #d32f2f' : isUrgent ? '2px solid #f57c00' : '1px solid rgba(0,0,0,0.06)',
-        cursor: 'pointer',
-        transition: 'transform 0.15s, box-shadow 0.15s',
-        position: 'relative',
-      }}
-      onClick={() => navigate(`/admin/feedback/${fb._id}`)}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
-    >
-      {/* Header: Type + Priority */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-        <span style={{ background: type.bg, color: type.color, padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
-          {type.icon} {type.label}
-        </span>
-        <span style={{ background: priority.bg, color: priority.color, padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
-          {priority.label}
-        </span>
-        {fb.problem?.media?.length > 0 && (
-          <span style={{ fontSize: 10, color: '#888' }}>📎 {fb.problem.media.length}</span>
-        )}
-      </div>
+  const handleSendToImprovement = async () => {
+    if (!specText.trim()) {
+      alert('Заполните техлист перед отправкой на улучшение');
+      return;
+    }
+    setSpecLoading(true);
+    await onMoveWithSpec(fb._id, 'improvement', { description: specText.trim() });
+    setSpecLoading(false);
+    setShowSpecModal(false);
+  };
 
-      {/* Product */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-        <div style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', background: '#f5f5f5', flexShrink: 0 }}>
-          {productImg ? (
-            <img src={cloudinaryOpt(productImg, 96)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 20 }}>📦</div>
+  return (
+    <>
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: 14,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          border: isOverdue ? '2px solid #d32f2f' : isUrgent ? '2px solid #f57c00' : '1px solid rgba(0,0,0,0.06)',
+          cursor: 'pointer',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+          position: 'relative',
+        }}
+        onClick={() => navigate(`/admin/feedback/${fb._id}`)}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
+      >
+        {/* Header: Type + Priority */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+          <span style={{ background: type.bg, color: type.color, padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+            {type.icon} {type.label}
+          </span>
+          <span style={{ background: priority.bg, color: priority.color, padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+            {priority.label}
+          </span>
+          {hasSpec && (
+            <span style={{ background: '#e8f5e9', color: '#388e3c', padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+              📋 Техлист
+            </span>
+          )}
+          {fb.problem?.media?.length > 0 && (
+            <span style={{ fontSize: 10, color: '#888' }}>📎 {fb.problem.media.length}</span>
           )}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.3, marginBottom: 2 }}>
-            {fb.product?.name || 'Товар'}
+
+        {/* Product */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', background: '#f5f5f5', flexShrink: 0 }}>
+            {productImg ? (
+              <img src={cloudinaryOpt(productImg, 96)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 20 }}>📦</div>
+            )}
           </div>
-          <div style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {fb.problem?.description?.slice(0, 60) || ''}...
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#111', lineHeight: 1.3, marginBottom: 2 }}>
+              {fb.product?.name || 'Товар'}
+            </div>
+            <div style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {fb.problem?.description?.slice(0, 60) || ''}...
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Meta: Frontman + Date */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#888', marginBottom: 10, flexWrap: 'wrap' }}>
-        <span>👤 {fb.frontman?.name || '—'}</span>
-        <span>📅 {formatDate(fb.createdAt)}</span>
-      </div>
+        {/* Meta: Frontman + Date */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#888', marginBottom: 10, flexWrap: 'wrap' }}>
+          <span>👤 {fb.frontman?.name || '—'}</span>
+          <span>📅 {formatDate(fb.createdAt)}</span>
+        </div>
 
-      {/* Deadline */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, position: 'relative' }} onClick={e => e.stopPropagation()}>
-        {fb.deadline ? (
-          <div
-            onClick={() => setShowDeadline(true)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6,
-              background: isOverdue ? '#ffebee' : isUrgent ? '#fff3e0' : '#f5f5f5',
-              color: isOverdue ? '#d32f2f' : isUrgent ? '#f57c00' : '#666',
-              fontSize: 11, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            🗓 {formatDate(fb.deadline)}
-            {isOverdue && <span style={{ marginLeft: 4 }}>просрочено</span>}
-            {isUrgent && !isOverdue && <span style={{ marginLeft: 4 }}>{days} дн.</span>}
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowDeadline(true)}
-            style={{ background: 'none', border: '1px dashed #ccc', borderRadius: 6, padding: '4px 10px', fontSize: 11, color: '#888', cursor: 'pointer' }}
-          >
-            + Срок
-          </button>
-        )}
-
-        {showDeadline && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: 4, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, padding: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-            <input type="date" value={deadlineVal} onChange={e => setDeadlineVal(e.target.value)} style={{ padding: 6, borderRadius: 4, border: '1px solid #ddd', fontSize: 12 }} />
-            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-              <button onClick={handleDeadline} style={{ flex: 1, padding: '6px 12px', borderRadius: 6, border: 'none', background: '#1976d2', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>ОК</button>
-              <button onClick={() => setShowDeadline(false)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #ddd', background: '#fff', fontSize: 11, cursor: 'pointer' }}>✕</button>
+        {/* Deadline */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, position: 'relative' }} onClick={e => e.stopPropagation()}>
+          {fb.deadline ? (
+            <div
+              onClick={() => setShowDeadline(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6,
+                background: isOverdue ? '#ffebee' : isUrgent ? '#fff3e0' : '#f5f5f5',
+                color: isOverdue ? '#d32f2f' : isUrgent ? '#f57c00' : '#666',
+                fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              🗓 {formatDate(fb.deadline)}
+              {isOverdue && <span style={{ marginLeft: 4 }}>просрочено</span>}
+              {isUrgent && !isOverdue && <span style={{ marginLeft: 4 }}>{days} дн.</span>}
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Assignee */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }} onClick={e => e.stopPropagation()}>
-        {fb.assignee ? (
-          <div
-            onClick={() => setShowAssign(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-          >
-            <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#1976d2', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
-              {avatar(fb.assignee.name)}
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#333' }}>{fb.assignee.name}</span>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowAssign(true)}
-            style={{ background: 'none', border: '1px dashed #ccc', borderRadius: 6, padding: '4px 10px', fontSize: 11, color: '#888', cursor: 'pointer' }}
-          >
-            + Ответственный
-          </button>
-        )}
-
-        {showAssign && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: 4, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 200, maxHeight: 220, overflowY: 'auto' }}>
-            <div style={{ padding: '6px 10px', fontSize: 10, color: '#888', fontWeight: 600, borderBottom: '1px solid #f0f0f0' }}>ВЫБРАТЬ</div>
-            {users.map(u => (
-              <div key={u._id} onClick={() => handleAssign(u._id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #fafafa' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#f5f8ff'}
-                onMouseLeave={e => e.currentTarget.style.background = ''}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#1976d2', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
-                  {avatar(u.name)}
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 500 }}>{u.name}</span>
-              </div>
-            ))}
-            {fb.assignee && (
-              <div onClick={() => handleAssign(null)} style={{ padding: '8px 10px', cursor: 'pointer', color: '#d32f2f', fontSize: 11, fontWeight: 600, borderTop: '1px solid #f0f0f0' }}>
-                Снять ответственного
-              </div>
-            )}
-            <div onClick={() => setShowAssign(false)} style={{ padding: '6px 10px', cursor: 'pointer', color: '#888', fontSize: 11, textAlign: 'center', borderTop: '1px solid #f0f0f0' }}>
-              Отмена
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Move buttons */}
-      {fb.status !== 'resolved' && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 12, paddingTop: 10, borderTop: '1px solid #f0f0f0' }} onClick={e => e.stopPropagation()}>
-          {fb.status === 'new' && (
-            <button onClick={() => onMove(fb._id, 'in_progress')} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', background: '#fff3e0', color: '#f57c00', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-              ⚡ В работу
+          ) : (
+            <button
+              onClick={() => setShowDeadline(true)}
+              style={{ background: 'none', border: '1px dashed #ccc', borderRadius: 6, padding: '4px 10px', fontSize: 11, color: '#888', cursor: 'pointer' }}
+            >
+              + Срок
             </button>
           )}
-          {fb.status === 'in_progress' && (
-            <>
-              <button onClick={() => onMove(fb._id, 'improvement')} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', background: '#f3e5f5', color: '#9c27b0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                🔧 На улучшение
+
+          {showDeadline && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: 4, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, padding: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+              <input type="date" value={deadlineVal} onChange={e => setDeadlineVal(e.target.value)} style={{ padding: 6, borderRadius: 4, border: '1px solid #ddd', fontSize: 12 }} />
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button onClick={handleDeadline} style={{ flex: 1, padding: '6px 12px', borderRadius: 6, border: 'none', background: '#1976d2', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>ОК</button>
+                <button onClick={() => setShowDeadline(false)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #ddd', background: '#fff', fontSize: 11, cursor: 'pointer' }}>✕</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Assignee */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }} onClick={e => e.stopPropagation()}>
+          {fb.assignee ? (
+            <div
+              onClick={() => setShowAssign(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+            >
+              <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#1976d2', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
+                {avatar(fb.assignee.name)}
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#333' }}>{fb.assignee.name}</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAssign(true)}
+              style={{ background: 'none', border: '1px dashed #ccc', borderRadius: 6, padding: '4px 10px', fontSize: 11, color: '#888', cursor: 'pointer' }}
+            >
+              + Ответственный
+            </button>
+          )}
+
+          {showAssign && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: 4, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 200, maxHeight: 220, overflowY: 'auto' }}>
+              <div style={{ padding: '6px 10px', fontSize: 10, color: '#888', fontWeight: 600, borderBottom: '1px solid #f0f0f0' }}>ВЫБРАТЬ</div>
+              {users.map(u => (
+                <div key={u._id} onClick={() => handleAssign(u._id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #fafafa' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f5f8ff'}
+                  onMouseLeave={e => e.currentTarget.style.background = ''}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#1976d2', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
+                    {avatar(u.name)}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 500 }}>{u.name}</span>
+                </div>
+              ))}
+              {fb.assignee && (
+                <div onClick={() => handleAssign(null)} style={{ padding: '8px 10px', cursor: 'pointer', color: '#d32f2f', fontSize: 11, fontWeight: 600, borderTop: '1px solid #f0f0f0' }}>
+                  Снять ответственного
+                </div>
+              )}
+              <div onClick={() => setShowAssign(false)} style={{ padding: '6px 10px', cursor: 'pointer', color: '#888', fontSize: 11, textAlign: 'center', borderTop: '1px solid #f0f0f0' }}>
+                Отмена
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Move buttons */}
+        {fb.status !== 'resolved' && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 12, paddingTop: 10, borderTop: '1px solid #f0f0f0' }} onClick={e => e.stopPropagation()}>
+            {fb.status === 'new' && (
+              <button onClick={() => onMove(fb._id, 'in_progress')} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', background: '#fff3e0', color: '#f57c00', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                ⚡ Взять в работу
               </button>
+            )}
+            {fb.status === 'in_progress' && (
+              <>
+                <button onClick={() => setShowSpecModal(true)} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', background: '#f3e5f5', color: '#9c27b0', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  📋 {hasSpec ? 'На улучшение' : 'Составить техлист'}
+                </button>
+                <button onClick={() => onMove(fb._id, 'resolved')} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', background: '#e8f5e9', color: '#388e3c', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  ✅ Решено
+                </button>
+              </>
+            )}
+            {fb.status === 'improvement' && (
               <button onClick={() => onMove(fb._id, 'resolved')} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', background: '#e8f5e9', color: '#388e3c', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                 ✅ Решено
               </button>
-            </>
-          )}
-          {fb.status === 'improvement' && (
-            <button onClick={() => onMove(fb._id, 'resolved')} style={{ flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', background: '#e8f5e9', color: '#388e3c', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-              ✅ Решено
-            </button>
-          )}
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Spec Modal */}
+      {showSpecModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setShowSpecModal(false)}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 500, maxHeight: '80vh', overflow: 'auto' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800 }}>📋 Техлист на улучшение</h3>
+            <p style={{ margin: '0 0 16px', color: '#666', fontSize: 13 }}>
+              Опишите что нужно улучшить. Без техлиста нельзя отправить на улучшение.
+            </p>
+
+            {/* Product info */}
+            <div style={{ display: 'flex', gap: 12, padding: 12, background: '#f5f5f5', borderRadius: 8, marginBottom: 16 }}>
+              {productImg && (
+                <img src={cloudinaryOpt(productImg, 80)} alt="" style={{ width: 50, height: 50, borderRadius: 6, objectFit: 'cover' }} />
+              )}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{fb.product?.name}</div>
+                <div style={{ fontSize: 12, color: '#888' }}>{fb.product?.sku}</div>
+              </div>
+            </div>
+
+            {/* Problem from frontman */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>ПРОБЛЕМА ОТ ФРОНТМЕНА:</div>
+              <div style={{ padding: 10, background: '#ffebee', borderRadius: 8, fontSize: 13, color: '#c62828' }}>
+                {fb.problem?.description}
+              </div>
+            </div>
+
+            {/* Spec textarea */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>ВАШ ТЕХЛИСТ:</div>
+              <textarea
+                value={specText}
+                onChange={e => setSpecText(e.target.value)}
+                placeholder="Опишите детально: что нужно изменить, какие материалы, размеры, требования..."
+                rows={6}
+                style={{ width: '100%', padding: 12, borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowSpecModal(false)} style={{ flex: 1, padding: '12px 0', borderRadius: 8, border: '1.5px solid #e0e0e0', background: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                Отмена
+              </button>
+              <button onClick={handleSendToImprovement} disabled={specLoading || !specText.trim()} style={{
+                flex: 2, padding: '12px 0', borderRadius: 8, border: 'none',
+                background: specText.trim() ? '#9c27b0' : '#e0e0e0',
+                color: specText.trim() ? '#fff' : '#999',
+                fontSize: 14, fontWeight: 700, cursor: specText.trim() ? 'pointer' : 'not-allowed'
+              }}>
+                {specLoading ? 'Отправка...' : '🔧 Отправить на улучшение'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-function KanbanColumn({ column, feedbacks, onMove, users, onAssign, onSetDeadline }) {
+function KanbanColumn({ column, feedbacks, onMove, onMoveWithSpec, users, onAssign, onSetDeadline }) {
   return (
     <div style={{ flex: 1, minWidth: 300, maxWidth: 360 }}>
       {/* Column header */}
@@ -249,7 +331,7 @@ function KanbanColumn({ column, feedbacks, onMove, users, onAssign, onSetDeadlin
           <div style={{ textAlign: 'center', padding: 24, color: '#ccc', fontSize: 12 }}>Пусто</div>
         )}
         {feedbacks.map(fb => (
-          <FeedbackCard key={fb._id} fb={fb} onMove={onMove} users={users} onAssign={onAssign} onSetDeadline={onSetDeadline} />
+          <FeedbackCard key={fb._id} fb={fb} onMove={onMove} onMoveWithSpec={onMoveWithSpec} users={users} onAssign={onAssign} onSetDeadline={onSetDeadline} />
         ))}
       </div>
     </div>
@@ -260,7 +342,6 @@ export default function AdminFeedback() {
   const [feedbacks, setFeedbacks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('kanban');
   const [showRejected, setShowRejected] = useState(false);
 
   const load = useCallback(async () => {
@@ -295,7 +376,17 @@ export default function AdminFeedback() {
       await adminUpdateFeedback(id, updates);
       setFeedbacks(prev => prev.map(fb => fb._id === id ? { ...fb, status: newStatus, ...updates } : fb));
     } catch (e) {
-      alert('Ошибка при обновлении статуса');
+      alert(e.response?.data?.error || 'Ошибка при обновлении статуса');
+    }
+  };
+
+  const handleMoveWithSpec = async (id, newStatus, spec) => {
+    try {
+      const updates = { status: newStatus, improvementSpec: spec };
+      await adminUpdateFeedback(id, updates);
+      setFeedbacks(prev => prev.map(fb => fb._id === id ? { ...fb, status: newStatus, improvementSpec: spec } : fb));
+    } catch (e) {
+      alert(e.response?.data?.error || 'Ошибка при обновлении');
     }
   };
 
@@ -392,6 +483,7 @@ export default function AdminFeedback() {
                 column={col}
                 feedbacks={grouped[col.key] || []}
                 onMove={handleMove}
+                onMoveWithSpec={handleMoveWithSpec}
                 users={users}
                 onAssign={handleAssign}
                 onSetDeadline={handleSetDeadline}
@@ -412,7 +504,7 @@ export default function AdminFeedback() {
               {showRejected && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12, marginTop: 12 }}>
                   {grouped.rejected.map(fb => (
-                    <FeedbackCard key={fb._id} fb={fb} onMove={handleMove} users={users} onAssign={handleAssign} onSetDeadline={handleSetDeadline} />
+                    <FeedbackCard key={fb._id} fb={fb} onMove={handleMove} onMoveWithSpec={handleMoveWithSpec} users={users} onAssign={handleAssign} onSetDeadline={handleSetDeadline} />
                   ))}
                 </div>
               )}
