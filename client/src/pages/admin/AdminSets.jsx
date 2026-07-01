@@ -1009,15 +1009,17 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {accordionGroups.map(([groupName, items], groupIdx) => {
                   const isOpen = openGroups[groupName] ?? false;
+                  const isOutOfStockGroup = groupName === 'Нет в наличии';
                   return (
                     <div
                       key={groupName}
                       className="tube-accordion-group"
-                      style={{ animation: `tubeAccordionSlideIn 0.4s ease ${groupIdx * 0.08}s both` }}
+                      style={{ animation: `tubeAccordionSlideIn 0.4s ease ${groupIdx * 0.08}s both`, marginTop: isOutOfStockGroup ? 24 : 0 }}
                     >
                       <div
                         className={`tube-accordion-header ${isOpen ? 'open' : ''}`}
                         onClick={() => setOpenGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }))}
+                        style={{ opacity: isOutOfStockGroup ? 0.7 : 1 }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div className={`tube-accordion-icon ${isOpen ? 'open' : ''}`}>▶</div>
@@ -1037,7 +1039,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               key={name}
                               className="tube-item"
                               onClick={() => setDetailProduct(primary)}
-                              style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none' }}
+                              style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none', opacity: isOutOfStockGroup ? 0.5 : 1 }}
                             >
                               <ProductImage product={primary} size={80} className="tube-item-img" />
                               <div style={{ flex: 1, minWidth: 0 }}>
@@ -1106,7 +1108,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               {accordionGroups.map(([groupName, items]) => {
                 const isOutOfStock = groupName === 'Нет в наличии';
                 return (
-                <div key={groupName} style={{ opacity: isOutOfStock ? 0.5 : 1 }}>
+                <div key={groupName} style={{ marginTop: isOutOfStock ? 24 : 0 }}>
                   <div style={{
                     fontSize: 14,
                     fontWeight: 800,
@@ -1115,7 +1117,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     letterSpacing: 0.5,
                     marginBottom: 12,
                     paddingBottom: 8,
-                    borderBottom: `2px solid ${isOutOfStock ? '#ccc' : accent}`,
+                    borderBottom: `2px solid ${isOutOfStock ? '#e0e0e0' : accent}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
@@ -1135,12 +1137,13 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       const stockLabel = stockInfo.label;
                       const showBadge  = STATUS_BADGE[primary.productStatus];
                       const hasColorOnly = primary.color && !primary.images?.[0];
+                      const cardOpacity = isOutOfStock ? 0.5 : (stockInfo.isKitMissing ? 0.5 : 1);
                       return (
                         <div key={name} onClick={() => setDetailProduct(primary)}
                           style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                             background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
                             cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
-                            opacity: stockInfo.isKitMissing ? 0.5 : 1 }}
+                            opacity: cardOpacity }}
                           onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                           onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                         >
@@ -1301,7 +1304,6 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 display: 'grid',
                 gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))',
                 gap: isMobile ? 10 : 16,
-                opacity: 0.7,
               }}>
                 {outOfStockModels.map(([name, variants]) => {
                   const primary    = variants[0];
@@ -1312,7 +1314,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     <div key={name} onClick={() => setDetailProduct(primary)}
                       style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                         background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                        cursor: 'pointer', transition: 'box-shadow .15s, transform .15s' }}
+                        cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
+                        opacity: 0.5 }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                     >
