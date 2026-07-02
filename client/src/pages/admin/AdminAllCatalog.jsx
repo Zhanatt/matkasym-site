@@ -241,7 +241,7 @@ export default function AdminAllCatalog() {
     const inStock = [];
     const outOfStock = [];
     filtered.forEach(p => {
-      const hasStock = p.stock > 0 || p.inStock;
+      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
       if (hasStock) {
         inStock.push(p);
       } else {
@@ -488,10 +488,11 @@ export default function AdminAllCatalog() {
                 gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(170px, 1fr))' : undefined,
                 flexDirection: viewMode === 'list' ? 'column' : undefined,
                 gap: 12,
-                opacity: 0.7,
               }}>
                 {outOfStockFiltered.map(p => (
-                  <AdminProductCard key={p._id} product={p} priceMode={priceMode} accent="#888" onOpen={setDetailProduct} viewMode={viewMode} />
+                  <div key={p._id} style={{ opacity: 0.5 }}>
+                    <AdminProductCard product={p} priceMode={priceMode} accent="#888" onOpen={setDetailProduct} viewMode={viewMode} />
+                  </div>
                 ))}
               </div>
             </>
