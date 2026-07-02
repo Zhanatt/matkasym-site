@@ -14,6 +14,7 @@ const Supplier     = require('../models/Supplier');
 const PhotoLog     = require('../models/PhotoLog');
 const ReceiveAlert = require('../models/ReceiveAlert');
 const Feedback     = require('../models/Feedback');
+const VideoSchedule = require('../models/VideoSchedule');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock } = require('../middleware/auth');
 
@@ -2999,6 +3000,170 @@ router.get('/products/:id/improvements', async (req, res) => {
 
     if (!product) return res.status(404).json({ error: 'Продукт не найден' });
     res.json(product.improvementHistory || []);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// =====================
+// VIDEO SCHEDULE (фронтмен — планирование съёмок)
+// =====================
+
+// GET /api/admin/video-schedule/my — получить данные текущего фронтмена
+router.get('/video-schedule/my', protect, async (req, res) => {
+  try {
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+
+    const products = await Product.find({
+      brand: frontman.brand,
+      set: { $in: frontman.sets },
+      productStatus: { $in: ['for_sale', 'test_sale'] },
+    }).select('name fullName sku set images driveImages hasVideo').lean();
+
+    const schedules = await VideoSchedule.find({ frontman: frontman._id })
+      .populate('product', 'name fullName sku set images driveImages hasVideo')
+      .lean();
+
+    const stats = {
+      total: products.length,
+      withVideo: products.filter(p => p.hasVideo).length,
+      scheduled: schedules.length,
+      completed: schedules.filter(s => s.isCompleted).length,
+    };
+
+    res.json({ frontman, products, schedules, stats });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/video-schedule — запланировать съёмку
+router.post('/video-schedule', protect, async (req, res) => {
+  try {
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+
+    const { productId, plannedDate } = req.body;
+
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+    if (!frontman.sets.includes(product.set)) {
+      return res.status(403).json({ error: 'Этот товар не в вашем сете' });
+    }
+
+    const existing = await VideoSchedule.findOne({ frontman: frontman._id, product: productId });
+    if (existing) {
+      existing.plannedDate = new Date(plannedDate);
+      await existing.save();
+      const populated = await VideoSchedule.findById(existing._id)
+        .populate('product', 'name fullName sku set images driveImages hasVideo');
+      return res.json(populated);
+    }
+
+    const schedule = await VideoSchedule.create({
+      frontman: frontman._id,
+      product: productId,
+      plannedDate: new Date(plannedDate),
+    });
+
+    const populated = await VideoSchedule.findById(schedule._id)
+      .populate('product', 'name fullName sku set images driveImages hasVideo');
+    res.json(populated);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/video-schedule/:id/complete — отметить съёмку выполненной
+router.patch('/video-schedule/:id/complete', protect, async (req, res) => {
+  try {
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+
+    const schedule = await VideoSchedule.findById(req.params.id);
+    if (!schedule) return res.status(404).json({ error: 'Запись не найдена' });
+    if (schedule.frontman.toString() !== frontman._id.toString()) {
+      return res.status(403).json({ error: 'Это не ваша запись' });
+    }
+
+    schedule.isCompleted = true;
+    schedule.completedAt = new Date();
+    await schedule.save();
+
+    await Product.findByIdAndUpdate(schedule.product, { hasVideo: true });
+
+    const populated = await VideoSchedule.findById(schedule._id)
+      .populate('product', 'name fullName sku set images driveImages hasVideo');
+    res.json(populated);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/video-schedule/:id/uncomplete — снять отметку о съёмке
+router.patch('/video-schedule/:id/uncomplete', protect, async (req, res) => {
+  try {
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+
+    const schedule = await VideoSchedule.findById(req.params.id);
+    if (!schedule) return res.status(404).json({ error: 'Запись не найдена' });
+    if (schedule.frontman.toString() !== frontman._id.toString()) {
+      return res.status(403).json({ error: 'Это не ваша запись' });
+    }
+
+    schedule.isCompleted = false;
+    schedule.completedAt = null;
+    await schedule.save();
+
+    await Product.findByIdAndUpdate(schedule.product, { hasVideo: false });
+
+    const populated = await VideoSchedule.findById(schedule._id)
+      .populate('product', 'name fullName sku set images driveImages hasVideo');
+    res.json(populated);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/video-schedule/:id — удалить запись из расписания
+router.delete('/video-schedule/:id', protect, async (req, res) => {
+  try {
+    const frontman = await Frontman.findOne({ userId: req.user._id });
+    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+
+    const schedule = await VideoSchedule.findById(req.params.id);
+    if (!schedule) return res.status(404).json({ error: 'Запись не найдена' });
+    if (schedule.frontman.toString() !== frontman._id.toString()) {
+      return res.status(403).json({ error: 'Это не ваша запись' });
+    }
+
+    await VideoSchedule.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/video-schedule/report — отчёт по всем фронтменам (для админа)
+router.get('/video-schedule/report', protect, viewer, async (req, res) => {
+  try {
+    const frontmen = await Frontman.find().populate('userId', 'name email').lean();
+
+    const report = await Promise.all(frontmen.map(async (fm) => {
+      const products = await Product.countDocuments({
+        brand: fm.brand,
+        set: { $in: fm.sets },
+        productStatus: { $in: ['for_sale', 'test_sale'] },
+      });
+
+      const withVideo = await Product.countDocuments({
+        brand: fm.brand,
+        set: { $in: fm.sets },
+        productStatus: { $in: ['for_sale', 'test_sale'] },
+        hasVideo: true,
+      });
+
+      const scheduled = await VideoSchedule.countDocuments({ frontman: fm._id });
+      const completed = await VideoSchedule.countDocuments({ frontman: fm._id, isCompleted: true });
+
+      return {
+        frontman: { _id: fm._id, name: fm.name, color: fm.color, brand: fm.brand },
+        user: fm.userId,
+        stats: { total: products, withVideo, scheduled, completed, remaining: products - withVideo },
+      };
+    }));
+
+    res.json(report.filter(r => r.stats.total > 0));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

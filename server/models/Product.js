@@ -61,6 +61,9 @@ const productSchema = new mongoose.Schema({
   pendingReceiveQty:{ type: Number, default: 0 },       // ожидаемое количество для приёмки
   isOnOrder:        { type: Boolean, default: false },  // товар под заказ (производим/закупаем по запросу)
 
+  // Video
+  hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар
+
   productStatus:    { type: String, enum: ['planned', 'improvement', 'discontinued', 'for_sale', 'in_development', 'liquidation', 'on_pause', 'test_sale', 'kit_part'], default: 'for_sale' },
   liquidatedAt:     { type: Date },  // дата когда товар был переведён в статус liquidation
   pauseNote:        { type: String, default: '' },

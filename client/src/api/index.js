@@ -170,4 +170,12 @@ export const adminGetReviewGrouped    = (params)         => api.get('/admin/revi
 export const adminGetFrontmenProgress = (auditId)        => api.get('/admin/review/frontmen-progress', { params: { auditId } });
 export const adminDeleteReview        = (id)             => api.delete(`/admin/review/${id}`);
 
+// Video Schedule (планирование съёмок)
+export const adminGetVideoScheduleMy     = ()             => api.get('/admin/video-schedule/my');
+export const adminCreateVideoSchedule    = (data)         => api.post('/admin/video-schedule', data);
+export const adminCompleteVideoSchedule  = (id)           => api.patch(`/admin/video-schedule/${id}/complete`);
+export const adminUncompleteVideoSchedule= (id)           => api.patch(`/admin/video-schedule/${id}/uncomplete`);
+export const adminDeleteVideoSchedule    = (id)           => api.delete(`/admin/video-schedule/${id}`);
+export const adminGetVideoScheduleReport = ()             => api.get('/admin/video-schedule/report');
+
 export default api;

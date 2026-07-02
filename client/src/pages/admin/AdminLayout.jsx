@@ -10,6 +10,8 @@ const NAV_ALL = [
   { to: '/admin/sets',     label: 'Каталог по сетам',    icon: '🗂', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/pending-receive', label: 'Поступления', icon: '📦', roles: ['owner','editor','warehouse'], badge: 'pending_receive' },
   { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer','navigator'] },
+  { to: '/admin/video-schedule', label: 'Планирование съёмок', icon: '🎬', roles: ['owner','editor','viewer','navigator'] },
+  { to: '/admin/video-report', label: 'Отчёт по видео', icon: '📹', roles: ['owner','editor'] },
   { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','navigator','warehouse'] },
   { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer','navigator','warehouse'], badge: 'news' },
   { to: '/admin/review',   label: 'Аудит товаров',       icon: '✅', roles: ['owner','editor','viewer','navigator'] },
