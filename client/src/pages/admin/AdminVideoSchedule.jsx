@@ -191,133 +191,71 @@ export default function AdminVideoSchedule() {
   const { frontman, stats } = data;
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div className="admin-page-header" style={{ marginBottom: 24 }}>
-        <div>
-          <h1 className="admin-page-title">Планирование съёмок</h1>
-          <p style={{ color: 'var(--slate)', fontSize: 13, margin: '2px 0 0' }}>
-            {frontman.name} — {frontman.brand}
-          </p>
-        </div>
+    <div className="video-schedule">
+      <div className="schedule-header">
+        <h1 className="schedule-title">Планирование съёмок</h1>
+        <p className="schedule-subtitle">{frontman.name} — {frontman.brand}</p>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      {/* Stats - горизонтальный скролл на мобильных */}
+      <div className="schedule-stats">
         {[
           { label: 'Всего товаров', value: stats.total, color: '#3498db' },
           { label: 'С видео', value: stats.withVideo, color: '#27ae60' },
           { label: 'Запланировано', value: stats.scheduled, color: '#f39c12' },
           { label: 'Осталось', value: stats.total - stats.withVideo, color: '#e74c3c' },
         ].map(s => (
-          <div key={s.label} style={{
-            background: '#fff',
-            borderRadius: 12,
-            padding: '16px 20px',
-            borderLeft: `4px solid ${s.color}`,
-          }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{s.label}</div>
+          <div key={s.label} className="stat-card" style={{ '--stat-color': s.color }}>
+            <div className="stat-value">{s.value}</div>
+            <div className="stat-label">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Week calendar */}
-      <div style={{ background: '#fff', borderRadius: 12, padding: 20, marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <button
-            onClick={() => setWeekOffset(w => w - 1)}
-            style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer' }}
-          >
+      <div className="schedule-calendar">
+        <div className="calendar-nav">
+          <button onClick={() => setWeekOffset(w => w - 1)} className="nav-btn">
             ← Пред
           </button>
-          <span style={{ fontWeight: 600 }}>
+          <span className="calendar-range">
             {weekDates[0].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
             {' — '}
             {weekDates[6].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
-          <button
-            onClick={() => setWeekOffset(w => w + 1)}
-            style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer' }}
-          >
+          <button onClick={() => setWeekOffset(w => w + 1)} className="nav-btn">
             След →
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+        <div className="calendar-grid">
           {weekDates.map(date => {
             const key = formatDate(date);
             const items = scheduleByDate[key] || [];
             const isToday = isSameDay(date, new Date());
 
             return (
-              <div
-                key={key}
-                style={{
-                  border: isToday ? '2px solid #3498db' : '1px solid #e8e8e8',
-                  borderRadius: 10,
-                  padding: 10,
-                  minHeight: 120,
-                  background: isToday ? '#f0f8ff' : '#fafafa',
-                }}
-              >
-                <div style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: isToday ? '#3498db' : '#888',
-                  marginBottom: 8,
-                  textAlign: 'center',
-                }}>
-                  {WEEKDAYS[date.getDay()]} {date.getDate()}
+              <div key={key} className={`calendar-day ${isToday ? 'is-today' : ''}`}>
+                <div className="day-header">
+                  <span className="day-name">{WEEKDAYS[date.getDay()]}</span>
+                  <span className="day-num">{date.getDate()}</span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="day-items">
                   {items.map(item => (
-                    <div
-                      key={item._id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: 6,
-                        borderRadius: 6,
-                        background: item.isCompleted ? '#e8f8f0' : '#fff',
-                        border: `1px solid ${item.isCompleted ? '#27ae60' : '#e0e0e0'}`,
-                        fontSize: 11,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={item.isCompleted}
-                        onChange={() => item.isCompleted ? handleUncomplete(item._id) : handleComplete(item._id)}
-                        disabled={saving}
-                        style={{ cursor: 'pointer' }}
-                      />
+                    <div key={item._id} className={`schedule-item ${item.isCompleted ? 'completed' : ''}`}>
+                      <label className="item-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={item.isCompleted}
+                          onChange={() => item.isCompleted ? handleUncomplete(item._id) : handleComplete(item._id)}
+                          disabled={saving}
+                        />
+                        <span className="checkmark"></span>
+                      </label>
                       <ProductThumb product={item.product} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontWeight: 500,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          textDecoration: item.isCompleted ? 'line-through' : 'none',
-                          color: item.isCompleted ? '#888' : '#333',
-                        }}>
-                          {item.product.name}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDelete(item._id)}
-                        style={{
-                          padding: 2,
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          opacity: 0.5,
-                          fontSize: 10,
-                        }}
-                      >
-                        ✕
-                      </button>
+                      <span className="item-name">{item.product.name}</span>
+                      <button onClick={() => handleDelete(item._id)} className="item-delete">✕</button>
                     </div>
                   ))}
                 </div>
@@ -328,21 +266,15 @@ export default function AdminVideoSchedule() {
       </div>
 
       {/* Unscheduled products */}
-      <div style={{ background: '#fff', borderRadius: 12, padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div>
-            <span style={{ fontWeight: 700, fontSize: 16 }}>Товары без расписания</span>
-            <span style={{ color: '#888', marginLeft: 8, fontSize: 13 }}>({filteredUnscheduled.length})</span>
-          </div>
+      <div className="unscheduled-section">
+        <div className="unscheduled-header">
+          <h2 className="section-title">
+            Товары без расписания <span className="count">({filteredUnscheduled.length})</span>
+          </h2>
           <select
             value={selectedSet}
             onChange={e => setSelectedSet(e.target.value)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 6,
-              border: '1px solid #e0e0e0',
-              fontSize: 13,
-            }}
+            className="set-select"
           >
             <option value="all">Все сеты</option>
             {uniqueSets.map(s => (
@@ -352,139 +284,59 @@ export default function AdminVideoSchedule() {
         </div>
 
         {filteredUnscheduled.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>
-            Все товары запланированы
-          </div>
+          <div className="empty-state">Все товары запланированы</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+          <div className="products-list">
             {filteredUnscheduled.map(product => (
-              <div
-                key={product._id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: 10,
-                  borderRadius: 8,
-                  border: '1px solid #e8e8e8',
-                  background: product.hasVideo ? '#f0fff4' : '#fff',
-                }}
-              >
+              <div key={product._id} className={`product-card ${product.hasVideo ? 'has-video' : ''}`}>
                 <ProductThumb product={product} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 13,
-                    fontWeight: 500,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {product.name}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#888' }}>{setLabel(product.set)}</div>
-                  {product.hasVideo && (
-                    <span style={{
-                      fontSize: 10,
-                      color: '#27ae60',
-                      fontWeight: 600,
-                    }}>
-                      ✓ Есть видео
-                    </span>
-                  )}
+                <div className="product-info">
+                  <div className="product-name">{product.name}</div>
+                  <div className="product-set">{setLabel(product.set)}</div>
+                  {product.hasVideo && <span className="video-badge">✓ Видео</span>}
                 </div>
                 <button
                   onClick={() => {
                     setShowPicker(product._id);
                     setPickerDate(formatDate(new Date()));
                   }}
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    border: 'none',
-                    background: frontman.color || '#3498db',
-                    color: '#fff',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
+                  className="add-btn"
+                  style={{ '--btn-color': frontman.color || '#3498db' }}
                 >
                   +
                 </button>
-
-                {showPicker === product._id && (
-                  <div
-                    style={{
-                      position: 'fixed',
-                      inset: 0,
-                      background: 'rgba(0,0,0,0.4)',
-                      zIndex: 2000,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onClick={e => e.target === e.currentTarget && setShowPicker(null)}
-                  >
-                    <div style={{
-                      background: '#fff',
-                      borderRadius: 12,
-                      padding: 24,
-                      minWidth: 280,
-                    }}>
-                      <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Выберите дату съёмки</h3>
-                      <div style={{ marginBottom: 8, fontSize: 14 }}>{product.name}</div>
-                      <input
-                        type="date"
-                        value={pickerDate}
-                        onChange={e => setPickerDate(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '10px 12px',
-                          borderRadius: 8,
-                          border: '1px solid #e0e0e0',
-                          fontSize: 14,
-                          marginBottom: 16,
-                        }}
-                      />
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          onClick={() => setShowPicker(null)}
-                          style={{
-                            flex: 1,
-                            padding: '10px',
-                            borderRadius: 8,
-                            border: 'none',
-                            background: '#f5f5f5',
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                          }}
-                        >
-                          Отмена
-                        </button>
-                        <button
-                          onClick={() => handleSchedule(product._id, pickerDate)}
-                          disabled={saving || !pickerDate}
-                          style={{
-                            flex: 1,
-                            padding: '10px',
-                            borderRadius: 8,
-                            border: 'none',
-                            background: frontman.color || '#3498db',
-                            color: '#fff',
-                            cursor: saving ? 'wait' : 'pointer',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {saving ? '...' : 'Запланировать'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Date picker modal */}
+      {showPicker && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowPicker(null)}>
+          <div className="modal-content">
+            <h3 className="modal-title">Выберите дату съёмки</h3>
+            <p className="modal-product">{filteredUnscheduled.find(p => p._id === showPicker)?.name}</p>
+            <input
+              type="date"
+              value={pickerDate}
+              onChange={e => setPickerDate(e.target.value)}
+              className="date-input"
+            />
+            <div className="modal-actions">
+              <button onClick={() => setShowPicker(null)} className="btn-cancel">Отмена</button>
+              <button
+                onClick={() => handleSchedule(showPicker, pickerDate)}
+                disabled={saving || !pickerDate}
+                className="btn-confirm"
+                style={{ '--btn-color': frontman.color || '#3498db' }}
+              >
+                {saving ? '...' : 'Запланировать'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
