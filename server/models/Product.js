@@ -54,6 +54,7 @@ const productSchema = new mongoose.Schema({
   isNew:         { type: Boolean, default: false },
   inStock:       { type: Boolean, default: true },
   stock:         { type: Number, default: 50 },
+  bufferStock:   { type: Number, default: 0 },  // минимальный (буферный) запас на складе
   stockStatus:      { type: String, enum: ['in_stock', 'out_of_stock', 'expected'], default: 'in_stock' },
   inTransit:        { type: Boolean, default: false },  // товар в пути, ещё не на складе
   inTransitQty:     { type: Number, default: 0 },       // количество товара в пути

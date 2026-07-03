@@ -144,4 +144,29 @@ async function sendAuditNotificationTelegram({ auditName, deadline }, recipients
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram };
+// Уведомление о падении остатка ниже буферного запаса.
+// alerts: [{ name, sku, stock, bufferStock }]
+async function sendBufferStockAlerts(alerts) {
+  if (!alerts || !alerts.length) return;
+  const User = require('../models/User');
+  const recipients = await User.find({ canSetBufferStock: true, telegramChatId: { $nin: ['', null] } });
+  if (!recipients.length) {
+    console.log('[Telegram] Buffer alert: no recipients with telegram connected');
+    return;
+  }
+
+  let text = `<b>⚠️ Остаток ниже буферного запаса!</b>\n\n`;
+  for (const a of alerts.slice(0, 25)) {
+    text += `📦 <b>${a.name}</b>${a.sku ? ` (${a.sku})` : ''}\n`;
+    text += `Остаток: <b>${a.stock} шт.</b> — буфер: ${a.bufferStock} шт.\n\n`;
+  }
+  if (alerts.length > 25) text += `…и ещё ${alerts.length - 25} товаров\n\n`;
+  text += `<a href="${SITE_URL}/admin/sets">Открыть матрицу →</a>`;
+
+  console.log(`[Telegram] Sending buffer alert (${alerts.length} products) to ${recipients.length} users`);
+  for (const r of recipients) {
+    await sendTelegramMessage(r.telegramChatId, text, { disablePreview: true });
+  }
+}
+
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts };

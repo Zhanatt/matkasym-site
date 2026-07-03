@@ -18,6 +18,9 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: { type: Date },
   lastSeen: { type: Date, default: null },
   telegramChatId: { type: String, default: '' },
+  canViewUsers: { type: Boolean, default: false },
+  canSetBufferStock: { type: Boolean, default: false }, // может менять буферный запас + получает алерты
+
 }, { timestamps: true });
 
 // Hash password before save

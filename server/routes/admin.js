@@ -17,7 +17,12 @@ const Feedback     = require('../models/Feedback');
 const VideoSchedule = require('../models/VideoSchedule');
 const LoginLog     = require('../models/LoginLog');
 const cloudinary   = require('../lib/cloudinary');
+const { sendBufferStockAlerts } = require('../lib/telegram');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock } = require('../middleware/auth');
+
+// Остаток пересёк буферный запас сверху вниз → нужен алерт
+const crossedBuffer = (oldStock, newStock, bufferStock) =>
+  bufferStock > 0 && newStock < bufferStock && oldStock >= bufferStock;
 
 const FONTS_DIR = path.join(__dirname, '../fonts');
 
@@ -159,6 +164,31 @@ router.get('/products/:id', async (req, res) => {
   }
 });
 
+// PATCH /admin/products/:id/buffer-stock — установить буферный запас
+// Доступ: owner или пользователи с флагом canSetBufferStock
+router.patch('/products/:id/buffer-stock', async (req, res) => {
+  if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
+  if (req.user.role !== 'owner' && !req.user.canSetBufferStock) {
+    return res.status(403).json({ error: 'Нет прав менять буферный запас' });
+  }
+  try {
+    const bufferStock = Math.max(0, Math.floor(Number(req.body.bufferStock) || 0));
+    const old = await Product.findById(req.params.id);
+    if (!old) return res.status(404).json({ error: 'Товар не найден' });
+    if ((old.bufferStock || 0) !== bufferStock) {
+      await ChangeLog.create({
+        productId:   old._id,
+        productName: old.fullName || old.name,
+        changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
+        changes:     [{ field: 'Буферный запас', from: old.bufferStock || 0, to: bufferStock }],
+      });
+    }
+    old.bufferStock = bufferStock;
+    await old.save();
+    res.json(old);
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
 // Editor+ required for mutations
 router.post('/products', editor, async (req, res) => {
   try {
@@ -228,6 +258,10 @@ router.patch('/products/:id', editor, async (req, res) => {
           source:      'manual',
           changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
         });
+        if (crossedBuffer(fromStock, toStock, p.bufferStock)) {
+          sendBufferStockAlerts([{ name: p.fullName || p.name, sku: p.sku, stock: toStock, bufferStock: p.bufferStock }])
+            .catch(e => console.error('[BufferAlert]', e.message));
+        }
       }
 
       const priceChanges = changes.filter(c => {
@@ -1233,10 +1267,11 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       stockMap.set(normName(name), osnNum + kommNum);
     }
 
-    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock');
+    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock bufferStock');
     let matched = 0, zeroed = 0;
     const notFoundRows = [];
     const stockLogDocs = [];
+    const bufferAlerts = [];
     const ops = products.map(p => {
       const key      = normName(p.fullName || p.name || '');
       const newStock = stockMap.has(key) ? stockMap.get(key) : 0;
@@ -1265,10 +1300,14 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
           source:      'excel',
           changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
         });
+        if (crossedBuffer(oldStock, newStock, p.bufferStock)) {
+          bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: p.bufferStock });
+        }
       }
       return { updateOne: { filter: { _id: p._id }, update: { $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' } } } };
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
+    if (bufferAlerts.length) sendBufferStockAlerts(bufferAlerts).catch(e => console.error('[BufferAlert]', e.message));
 
     // Upload Excel to Cloudinary for source link, then save logs
     let excelSourceUrl = '';
@@ -1756,6 +1795,7 @@ router.post('/sync-stock', async (req, res) => {
   const products = await Product.find({});
   let matched = 0, zeroed = 0;
   const stockLogDocs = [];
+  const bufferAlerts = [];
 
   for (const p of products) {
     const key2     = normName(p.fullName || p.name || '');
@@ -1777,9 +1817,13 @@ router.post('/sync-stock', async (req, res) => {
         source:      'sync_1c',
         changedBy:   {},
       });
+      if (crossedBuffer(oldStock, newStock, p.bufferStock)) {
+        bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: p.bufferStock });
+      }
     }
   }
   if (stockLogDocs.length) await StockLog.insertMany(stockLogDocs, { ordered: false });
+  if (bufferAlerts.length) sendBufferStockAlerts(bufferAlerts).catch(e => console.error('[BufferAlert]', e.message));
 
   console.log(`[sync-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
   res.json({ success: true, matched, zeroed, total: matched + zeroed, date: new Date().toISOString() });

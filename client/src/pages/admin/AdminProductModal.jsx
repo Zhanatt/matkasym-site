@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock } from '../../api';
+import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -48,6 +48,24 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const [addingStock, setAddingStock] = useState(false);
   const [localProduct, setLocalProduct] = useState(product);
   const [partPreview, setPartPreview] = useState(null); // for kit part image preview
+  const canSetBuffer = user?.role === 'owner' || user?.canSetBufferStock;
+  const [bufferEdit, setBufferEdit] = useState(false);
+  const [bufferVal, setBufferVal] = useState(product.bufferStock || 0);
+  const [savingBuffer, setSavingBuffer] = useState(false);
+
+  const saveBuffer = async () => {
+    setSavingBuffer(true);
+    try {
+      const res = await adminSetBufferStock(localProduct._id, Number(bufferVal) || 0);
+      setLocalProduct(res.data);
+      onSaved && onSaved(res.data);
+      setBufferEdit(false);
+    } catch (e) {
+      alert(e.response?.data?.error || 'Не удалось сохранить буферный запас');
+    } finally {
+      setSavingBuffer(false);
+    }
+  };
 
   const needsReceive = localProduct.inTransit || localProduct.pendingReceive;
   const expectedQty = localProduct.inTransitQty || localProduct.pendingReceiveQty || 0;
@@ -480,6 +498,53 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   {localProduct.isKit && localProduct.kitType === 'independent' ? 'Комплект' : (localProduct.stock > 0 ? `${localProduct.stock} шт.` : (localProduct.inStock ? 'Есть' : 'Нет'))}
                 </span>
               </div>
+
+              {/* Буферный запас — видят все, менять могут owner и canSetBufferStock */}
+              {!(localProduct.isKit && localProduct.kitType === 'independent') && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                  background: (localProduct.bufferStock > 0 && (localProduct.stock || 0) < localProduct.bufferStock) ? '#fef2f2' : '#f8f8f8',
+                  border: (localProduct.bufferStock > 0 && (localProduct.stock || 0) < localProduct.bufferStock) ? '1.5px solid #fecaca' : '1px solid #eee',
+                  borderRadius: 10, padding: '10px 14px',
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>🛡 Буферный запас:</span>
+                  {bufferEdit ? (
+                    <>
+                      <input
+                        type="number" min="0" value={bufferVal}
+                        onChange={e => setBufferVal(e.target.value)}
+                        style={{ width: 80, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: 14, fontWeight: 700 }}
+                        autoFocus
+                      />
+                      <button onClick={saveBuffer} disabled={savingBuffer} style={{
+                        padding: '6px 14px', borderRadius: 8, border: 'none', background: '#2d7a3a',
+                        color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      }}>{savingBuffer ? '...' : '✓ Сохранить'}</button>
+                      <button onClick={() => { setBufferEdit(false); setBufferVal(localProduct.bufferStock || 0); }} style={{
+                        padding: '6px 12px', borderRadius: 8, border: 'none', background: '#f3f4f6',
+                        color: '#555', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      }}>Отмена</button>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
+                        {localProduct.bufferStock > 0 ? `${localProduct.bufferStock} шт.` : 'не задан'}
+                      </span>
+                      {localProduct.bufferStock > 0 && (localProduct.stock || 0) < localProduct.bufferStock && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: '#fee2e2', color: '#dc2626' }}>
+                          ⚠️ ниже буфера
+                        </span>
+                      )}
+                      {canSetBuffer && (
+                        <button onClick={() => setBufferEdit(true)} style={{
+                          marginLeft: 'auto', padding: '5px 12px', borderRadius: 8, border: '1.5px solid #d1d5db',
+                          background: '#fff', color: '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        }}>✏️ Изменить</button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Status note (pause reason, etc.) */}
               {product.pauseNote && (
