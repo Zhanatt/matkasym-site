@@ -1856,7 +1856,7 @@ router.get('/product-log', editor, async (req, res) => {
 });
 
 // GET /api/admin/sales-chart?period=day|week|month&dateFrom=&dateTo=&brand=&set=&groupBy=set|product
-router.get('/sales-chart', editor, async (req, res) => {
+router.get('/sales-chart', viewer, async (req, res) => {
   try {
     const { period = 'day', dateFrom, dateTo, brand, set, groupBy = 'set' } = req.query;
 

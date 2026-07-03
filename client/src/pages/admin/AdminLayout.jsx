@@ -19,7 +19,7 @@ const NAV_ALL = [
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },
   { to: '/admin/feedback',     label: 'Обратная связь',     icon: '💬', roles: ['owner','editor','viewer','navigator'], badge: 'feedback' },
   { to: '/admin/history',     label: 'История',           icon: '📜', roles: ['owner','editor','warehouse'] },
-  { to: '/admin/sales-chart', label: 'Продажи по сетам',  icon: '📈', roles: ['owner','editor'] },
+  { to: '/admin/sales-chart', label: 'Продажи по сетам',  icon: '📈', roles: ['owner','editor','viewer'] },
 ];
 
 export default function AdminLayout() {
