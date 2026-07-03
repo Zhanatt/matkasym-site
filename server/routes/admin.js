@@ -1961,6 +1961,7 @@ router.get('/sales-chart', viewer, async (req, res) => {
         brand:      { $first: '$prod.brand' },
         images:     { $first: '$prod.images' },
         driveImages:{ $first: '$prod.driveImages' },
+        productId:  { $first: '$prod._id' },
       }},
       { $sort: { '_id.period': 1 } },
     );
@@ -1974,6 +1975,7 @@ router.get('/sales-chart', viewer, async (req, res) => {
     const revByKey = {};
     const brandByKey = {};
     const imagesByKey = {};
+    const productIdByKey = {};
     let grandRevenue = 0;
     rows.forEach(r => {
       const k = r._id.key;
@@ -1984,6 +1986,7 @@ router.get('/sales-chart', viewer, async (req, res) => {
       grandRevenue += r.revenue || 0;
       if (!brandByKey[k]) brandByKey[k] = r.brand || '';
       if (!imagesByKey[k]) imagesByKey[k] = { images: r.images || [], driveImages: r.driveImages || [] };
+      if (!productIdByKey[k]) productIdByKey[k] = r.productId || null;
     });
 
     const datasets = keys.map(k => ({
@@ -1993,6 +1996,7 @@ router.get('/sales-chart', viewer, async (req, res) => {
       brand:      brandByKey[k] || '',
       images:     imagesByKey[k]?.images || [],
       driveImages:imagesByKey[k]?.driveImages || [],
+      productId:  productIdByKey[k] || null,
     }));
 
     res.json({ labels: labelSet, datasets, grandRevenue: Math.round(grandRevenue) });

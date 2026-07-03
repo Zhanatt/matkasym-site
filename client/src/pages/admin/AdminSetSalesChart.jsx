@@ -4,7 +4,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Label,
 } from 'recharts';
-import { adminGetSalesChartSet } from '../../api';
+import { adminGetSalesChartSet, adminGetProduct } from '../../api';
+import AdminProductModal from './AdminProductModal';
 
 const LINE_COLORS = [
   '#DC1E24','#3463A3','#2ECC71','#F39C12','#9B59B6',
@@ -79,6 +80,17 @@ export default function AdminSetSalesChart() {
   const [dateTo,   setDateTo]   = useState(() => new Date().toISOString().slice(0,10));
   const [data,     setData]     = useState(null);
   const [loading,  setLoading]  = useState(false);
+  const [modalProduct, setModalProduct] = useState(null);
+  const [loadingProductId, setLoadingProductId] = useState(null);
+
+  const openProduct = (productId) => {
+    if (!productId || loadingProductId) return;
+    setLoadingProductId(productId);
+    adminGetProduct(productId)
+      .then(r => setModalProduct(r.data))
+      .catch(() => {})
+      .finally(() => setLoadingProductId(null));
+  };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -101,6 +113,7 @@ export default function AdminSetSalesChart() {
           revenue: ds.revenue || 0,
           images: ds.images || [],
           driveImages: ds.driveImages || [],
+          productId: ds.productId || null,
         }))
         .filter(x => x.total > 0)
         .sort((a,b) => b.total - a.total)
@@ -218,7 +231,8 @@ export default function AdminSetSalesChart() {
                 const abcStyle = ABC_STYLE[item.abc];
                 const imgUrl = getProductImg(item);
                 return (
-                  <div key={item.name} style={{ display:'grid', gridTemplateColumns:'24px 28px 44px 1fr 80px 100px', padding:'9px 14px', borderBottom:'1px solid #f5f5f5', fontSize:13, alignItems:'center' }}
+                  <div key={item.name} style={{ display:'grid', gridTemplateColumns:'24px 28px 44px 1fr 80px 100px', padding:'9px 14px', borderBottom:'1px solid #f5f5f5', fontSize:13, alignItems:'center', cursor: item.productId ? 'pointer' : 'default', opacity: loadingProductId === item.productId ? 0.6 : 1 }}
+                    onClick={() => openProduct(item.productId)}
                     onMouseEnter={e=>e.currentTarget.style.background='#fafafa'}
                     onMouseLeave={e=>e.currentTarget.style.background=''}>
                     <span style={{ fontSize:11, color:'#ccc', fontWeight:600 }}>{i+1}</span>
@@ -251,6 +265,15 @@ export default function AdminSetSalesChart() {
             </div>
           )}
         </>
+      )}
+
+      {modalProduct && (
+        <AdminProductModal
+          product={modalProduct}
+          onClose={() => setModalProduct(null)}
+          onDeleted={() => { setModalProduct(null); load(); }}
+          onSaved={p => setModalProduct(p)}
+        />
       )}
     </div>
   );
