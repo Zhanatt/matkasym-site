@@ -432,19 +432,9 @@ export default function AdminUsers() {
                 <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12, textAlign: 'center' }}>
                   Отсчёт времени начался с 3 июля 2026
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
-                  <div style={{ background: '#f0f9ff', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0369a1' }}>{activityData.totalMinutes || 0}</div>
-                    <div style={{ fontSize: 11, color: '#0369a1' }}>Всего минут</div>
-                  </div>
-                  <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#16a34a' }}>{activityData.last7DaysMin || 0}</div>
-                    <div style={{ fontSize: 11, color: '#16a34a' }}>За 7 дней</div>
-                  </div>
-                  <div style={{ background: '#fef3c7', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#d97706' }}>{activityData.last30DaysMin || 0}</div>
-                    <div style={{ fontSize: 11, color: '#d97706' }}>За 30 дней</div>
-                  </div>
+                <div style={{ background: '#f0f9ff', borderRadius: 12, padding: 20, textAlign: 'center', marginBottom: 24 }}>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: '#0369a1' }}>{activityData.totalMinutes || 0}</div>
+                  <div style={{ fontSize: 13, color: '#0369a1' }}>Всего минут на сайте</div>
                 </div>
 
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>📊 Минуты на сайте по дням</div>
