@@ -25,6 +25,22 @@ function daysSinceLastSeen(lastSeen) {
   return Math.floor((Date.now() - new Date(lastSeen).getTime()) / 86400000);
 }
 
+function formatHours(minutes) {
+  if (!minutes) return '0';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}м`;
+  return m > 0 ? `${h}ч ${m}м` : `${h}ч`;
+}
+
+function formatTime(minutes) {
+  if (!minutes) return '0м';
+  if (minutes < 60) return `${minutes}м`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}ч ${m}м` : `${h}ч`;
+}
+
 const AVATAR_COLORS = {
   owner:     '#000',
   editor:    '#7b3fa0',
@@ -415,38 +431,38 @@ export default function AdminUsers() {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
                   <div style={{ background: '#f0f9ff', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0369a1' }}>{activityData.totalVisits || 0}</div>
-                    <div style={{ fontSize: 11, color: '#0369a1' }}>Всего визитов</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0369a1' }}>{formatHours(activityData.totalMinutes)}</div>
+                    <div style={{ fontSize: 11, color: '#0369a1' }}>Всего часов</div>
                   </div>
                   <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#16a34a' }}>{activityData.last7Days || 0}</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#16a34a' }}>{formatHours(activityData.last7DaysMin)}</div>
                     <div style={{ fontSize: 11, color: '#16a34a' }}>За 7 дней</div>
                   </div>
                   <div style={{ background: '#fef3c7', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#d97706' }}>{activityData.last30Days || 0}</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#d97706' }}>{formatHours(activityData.last30DaysMin)}</div>
                     <div style={{ fontSize: 11, color: '#d97706' }}>За 30 дней</div>
                   </div>
                 </div>
 
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>📊 Посещения по дням</div>
-                {activityData.visits?.length > 0 ? (
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>📊 Время по дням</div>
+                {activityData.days?.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflow: 'auto' }}>
-                    {activityData.visits.map((v, i) => (
+                    {activityData.days.map((d, i) => (
                       <div key={i} style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '10px 14px', background: '#f9fafb', borderRadius: 10,
                       }}>
                         <span style={{ fontSize: 14, color: '#374151' }}>
-                          {new Date(v.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', weekday: 'short' })}
+                          {new Date(d.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', weekday: 'short' })}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{
-                            width: Math.min(v.count * 20, 100), height: 8,
-                            background: v.count > 3 ? '#22c55e' : v.count > 1 ? '#fbbf24' : '#ef4444',
+                            width: Math.min(d.minutes, 120), height: 8,
+                            background: d.minutes >= 60 ? '#22c55e' : d.minutes >= 15 ? '#fbbf24' : '#ef4444',
                             borderRadius: 4,
                           }} />
-                          <span style={{ fontWeight: 700, fontSize: 14, color: '#111', minWidth: 30, textAlign: 'right' }}>
-                            {v.count}
+                          <span style={{ fontWeight: 700, fontSize: 14, color: '#111', minWidth: 50, textAlign: 'right' }}>
+                            {formatTime(d.minutes)}
                           </span>
                         </div>
                       </div>
@@ -454,7 +470,7 @@ export default function AdminUsers() {
                   </div>
                 ) : (
                   <div style={{ textAlign: 'center', padding: 24, color: '#888', background: '#f9fafb', borderRadius: 10 }}>
-                    Нет данных о посещениях
+                    Нет данных о времени
                   </div>
                 )}
               </>

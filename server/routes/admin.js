@@ -469,25 +469,24 @@ router.delete('/users/:id', admin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
-// GET /admin/users/:id/activity — статистика посещений пользователя
+// GET /admin/users/:id/activity — статистика времени пользователя
 router.get('/users/:id/activity', viewer, async (req, res) => {
   try {
     const userId = req.params.id;
     const now = new Date();
-    const today = now.toISOString().slice(0, 10);
     const date7 = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const date30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     const logs = await LoginLog.find({ userId }).sort({ date: -1 }).limit(90);
-    const totalVisits = logs.reduce((sum, l) => sum + l.count, 0);
-    const last7Days = logs.filter(l => l.date >= date7).reduce((sum, l) => sum + l.count, 0);
-    const last30Days = logs.filter(l => l.date >= date30).reduce((sum, l) => sum + l.count, 0);
+    const totalMinutes = logs.reduce((sum, l) => sum + (l.minutes || 0), 0);
+    const last7DaysMin = logs.filter(l => l.date >= date7).reduce((sum, l) => sum + (l.minutes || 0), 0);
+    const last30DaysMin = logs.filter(l => l.date >= date30).reduce((sum, l) => sum + (l.minutes || 0), 0);
 
     res.json({
-      totalVisits,
-      last7Days,
-      last30Days,
-      visits: logs.map(l => ({ date: l.date, count: l.count })),
+      totalMinutes,
+      last7DaysMin,
+      last30DaysMin,
+      days: logs.map(l => ({ date: l.date, minutes: l.minutes || 0 })),
     });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });

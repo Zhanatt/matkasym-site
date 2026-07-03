@@ -197,7 +197,7 @@ router.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/auth/heartbeat — update lastSeen and log visit
+// POST /api/auth/heartbeat — update lastSeen and log time spent (1 min per heartbeat)
 router.post('/heartbeat', protect, async (req, res) => {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10);
@@ -205,7 +205,7 @@ router.post('/heartbeat', protect, async (req, res) => {
     User.findByIdAndUpdate(req.user._id, { lastSeen: now }),
     LoginLog.findOneAndUpdate(
       { userId: req.user._id, date: dateStr },
-      { $inc: { count: 1 } },
+      { $inc: { minutes: 1 } },
       { upsert: true }
     ),
   ]);
