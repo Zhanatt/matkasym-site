@@ -397,9 +397,12 @@ table.admin-table {
 .admin-pagination-btn:hover { border-color: var(--black); }
 .admin-pagination-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-/* ── Page transition wrapper ────────────────────── */
+/* ── Page transition wrapper ──────────────────────
+   ВАЖНО: без fill-mode "both"! Иначе transform остаётся на элементе
+   навсегда и все position:fixed модалки внутри позиционируются
+   относительно страницы, а не экрана (viewport). */
 .admin-page {
-  animation: fadeInUp .28s cubic-bezier(.2,.8,.4,1) both;
+  animation: fadeInUp .28s cubic-bezier(.2,.8,.4,1);
 }
 
 /* ── Modal / Form ───────────────────────────────── */
