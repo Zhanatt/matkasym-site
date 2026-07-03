@@ -38,9 +38,11 @@ exports.editor = (req, res, next) => {
   next();
 };
 
-// owner + editor + viewer
+// owner + editor + viewer (or canViewUsers flag)
 exports.viewer = (req, res, next) => {
-  if (!['owner', 'editor', 'viewer'].includes(req.user?.role)) return res.status(403).json({ message: 'Доступ запрещён' });
+  if (!['owner', 'editor', 'viewer'].includes(req.user?.role) && !req.user?.canViewUsers) {
+    return res.status(403).json({ message: 'Доступ запрещён' });
+  }
   next();
 };
 

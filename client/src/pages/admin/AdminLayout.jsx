@@ -136,7 +136,10 @@ export default function AdminLayout() {
         </div>
 
         <nav className="admin-nav">
-          {NAV_ALL.filter(n => n.roles.includes(user.role)).map(n => {
+          {NAV_ALL.filter(n => {
+            if (n.to === '/admin/users' && user.canViewUsers) return true;
+            return n.roles.includes(user.role);
+          }).map(n => {
             const badgeCount = n.badge === 'pending' ? pendingCount : n.badge === 'news' ? newsUnread : n.badge === 'alerts' ? alertsCount : n.badge === 'pending_receive' ? pendingReceiveCount : n.badge === 'feedback' ? feedbackCount : 0;
             return (
               <NavLink
