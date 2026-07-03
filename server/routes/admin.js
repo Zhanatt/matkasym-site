@@ -15,6 +15,7 @@ const PhotoLog     = require('../models/PhotoLog');
 const ReceiveAlert = require('../models/ReceiveAlert');
 const Feedback     = require('../models/Feedback');
 const VideoSchedule = require('../models/VideoSchedule');
+const LoginLog     = require('../models/LoginLog');
 const cloudinary   = require('../lib/cloudinary');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock } = require('../middleware/auth');
 
@@ -465,6 +466,29 @@ router.delete('/users/:id', admin, async (req, res) => {
       return res.status(403).json({ error: 'Нельзя удалить владельца' });
     await User.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// GET /admin/users/:id/activity — статистика посещений пользователя
+router.get('/users/:id/activity', viewer, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const date7 = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const date30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const logs = await LoginLog.find({ userId }).sort({ date: -1 }).limit(90);
+    const totalVisits = logs.reduce((sum, l) => sum + l.count, 0);
+    const last7Days = logs.filter(l => l.date >= date7).reduce((sum, l) => sum + l.count, 0);
+    const last30Days = logs.filter(l => l.date >= date30).reduce((sum, l) => sum + l.count, 0);
+
+    res.json({
+      totalVisits,
+      last7Days,
+      last30Days,
+      visits: logs.map(l => ({ date: l.date, count: l.count })),
+    });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 

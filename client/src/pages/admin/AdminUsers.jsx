@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { adminGetUsers, adminDeleteUser, adminUpdateUser } from '../../api/index';
+import { adminGetUsers, adminDeleteUser, adminUpdateUser, adminGetUserActivity } from '../../api/index';
 
-const ONLINE_MS = 3 * 60 * 1000; // 3 minutes
+const ONLINE_MS = 3 * 60 * 1000;
 
 function isOnline(lastSeen) {
   if (!lastSeen) return false;
@@ -18,6 +18,11 @@ function timeAgo(date) {
   const days = Math.floor(diff / 86400);
   if (days < 30)    return days + ' дн назад';
   return new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+function daysSinceLastSeen(lastSeen) {
+  if (!lastSeen) return 999;
+  return Math.floor((Date.now() - new Date(lastSeen).getTime()) / 86400000);
 }
 
 const AVATAR_COLORS = {
@@ -41,22 +46,79 @@ const ROLE_LABELS = {
   user:      '👤 Пользователь',
 };
 
+function ActivityBadge({ days }) {
+  if (days === 0) return <span style={{ background: '#dcfce7', color: '#16a34a', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>Сегодня</span>;
+  if (days === 1) return <span style={{ background: '#dbeafe', color: '#2563eb', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>Вчера</span>;
+  if (days <= 7) return <span style={{ background: '#fef3c7', color: '#d97706', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{days} дн</span>;
+  if (days <= 30) return <span style={{ background: '#fee2e2', color: '#dc2626', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{days} дн</span>;
+  return <span style={{ background: '#f3f4f6', color: '#6b7280', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>30+ дн</span>;
+}
+
 export default function AdminUsers() {
   const { user: me } = useAuth();
   const isOwner = me?.role === 'owner';
-  const [users, setUsers]     = useState([]);
+  const canViewUsers = me?.canViewUsers;
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState(null);
-  const [saving, setSaving]   = useState(null); // id being saved
+  const [saving, setSaving] = useState(null);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('activity');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [activityData, setActivityData] = useState(null);
+  const [activityLoading, setActivityLoading] = useState(false);
 
   useEffect(() => {
     adminGetUsers()
-      .then(r => {
-        const sorted = [...r.data].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
-        setUsers(sorted);
-      })
+      .then(r => setUsers(r.data))
       .finally(() => setLoading(false));
   }, []);
+
+  const loadActivity = async (userId) => {
+    setActivityLoading(true);
+    try {
+      const res = await adminGetUserActivity(userId);
+      setActivityData(res.data);
+    } catch (e) {
+      setActivityData({ visits: [], totalVisits: 0 });
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  const openUserActivity = (u) => {
+    setSelectedUser(u);
+    loadActivity(u._id);
+  };
+
+  const filteredUsers = useMemo(() => {
+    let result = users.filter(u => !u.isPending);
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(u =>
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q)
+      );
+    }
+
+    if (sortBy === 'activity') {
+      result.sort((a, b) => {
+        const aOnline = isOnline(a.lastSeen);
+        const bOnline = isOnline(b.lastSeen);
+        if (aOnline !== bOnline) return bOnline - aOnline;
+        return daysSinceLastSeen(a.lastSeen) - daysSinceLastSeen(b.lastSeen);
+      });
+    } else if (sortBy === 'name') {
+      result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+    } else if (sortBy === 'inactive') {
+      result.sort((a, b) => daysSinceLastSeen(b.lastSeen) - daysSinceLastSeen(a.lastSeen));
+    }
+
+    return result;
+  }, [users, search, sortBy]);
+
+  const pending = users.filter(u => u.isPending);
 
   const handleDelete = async (id) => {
     await adminDeleteUser(id);
@@ -87,16 +149,17 @@ export default function AdminUsers() {
   if (loading) return <div className="admin-empty">Загрузка...</div>;
 
   const onlineCount = users.filter(u => isOnline(u.lastSeen)).length;
-  const pending = users.filter(u => u.isPending);
-  const active  = users.filter(u => !u.isPending);
+  const activeToday = users.filter(u => daysSinceLastSeen(u.lastSeen) === 0).length;
+  const inactive7d = users.filter(u => daysSinceLastSeen(u.lastSeen) > 7 && !u.isPending).length;
 
   const renderUser = (u) => {
     const online = isOnline(u.lastSeen);
     const avatarColor = u.isPending ? AVATAR_COLORS.pending : AVATAR_COLORS[u.role] || '#888';
     const isSelf = u._id === me?._id;
+    const days = daysSinceLastSeen(u.lastSeen);
 
     return (
-      <div key={u._id} className="admin-user-card" style={{
+      <div key={u._id} style={{
         background: '#fff',
         border: u.isPending ? '1.5px solid #ecd9ad' : '1px solid var(--admin-line)',
         borderRadius: 14,
@@ -104,10 +167,13 @@ export default function AdminUsers() {
         display: 'flex', alignItems: 'center', gap: 14,
         flexWrap: 'wrap',
         opacity: saving === u._id ? 0.6 : 1,
-        transition: 'opacity .2s',
-      }}>
-
-        {/* Avatar + online dot */}
+        transition: 'all .2s',
+        cursor: 'pointer',
+      }}
+      onClick={() => !u.isPending && openUserActivity(u)}
+      onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+      >
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
             width: 42, height: 42, borderRadius: '50%',
@@ -122,13 +188,11 @@ export default function AdminUsers() {
             width: 11, height: 11, borderRadius: '50%',
             background: online ? '#2d7a3a' : '#ccc',
             border: '2px solid #fff',
-            title: online ? 'Онлайн' : 'Оффлайн',
           }} title={online ? 'Онлайн' : 'Оффлайн'} />
         </div>
 
-        {/* Info */}
         <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#000', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#000', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {u.name}
             {isSelf && <span style={{ fontSize: 10, background: '#e8e8e8', color: '#555', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>Это вы</span>}
             {online && <span style={{ fontSize: 10, background: '#e6f4ea', color: '#2d7a3a', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>● онлайн</span>}
@@ -146,13 +210,15 @@ export default function AdminUsers() {
           <div style={{ fontSize: 13, color: 'var(--slate)', marginTop: 2 }}>{u.email}</div>
         </div>
 
-        {/* Last seen */}
-        <div className="admin-user-meta" style={{ fontSize: 12, color: 'var(--slate)', minWidth: 90, textAlign: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!u.isPending && <ActivityBadge days={days} />}
+        </div>
+
+        <div style={{ fontSize: 12, color: 'var(--slate)', minWidth: 90, textAlign: 'center' }}>
           {online ? <span style={{ color: '#2d7a3a', fontWeight: 600 }}>сейчас</span> : timeAgo(u.lastSeen || u.updatedAt)}
         </div>
 
-        {/* Role + Delete actions */}
-        <div className="admin-user-actions">
+        <div className="admin-user-actions" onClick={e => e.stopPropagation()}>
           {u.isPending ? (
             isOwner ? (
               <button
@@ -161,7 +227,7 @@ export default function AdminUsers() {
                 onClick={() => handleApprove(u)}
                 disabled={saving === u._id}
               >
-                ✓ Одобрить доступ
+                ✓ Одобрить
               </button>
             ) : (
               <div style={{ padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, background: '#fff8e1', color: '#c47a00', border: '1.5px solid #f0c060' }}>
@@ -171,7 +237,7 @@ export default function AdminUsers() {
           ) : u.role === 'owner' ? (
             <div style={{
               padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              background: '#000', color: '#fff', minWidth: 140, textAlign: 'center',
+              background: '#000', color: '#fff', minWidth: 120, textAlign: 'center',
             }}>
               👑 Владелец
             </div>
@@ -187,20 +253,20 @@ export default function AdminUsers() {
                 cursor: isSelf ? 'not-allowed' : 'pointer',
                 background: '#fff',
                 color: AVATAR_COLORS[u.role] || '#333',
-                outline: 'none', minWidth: 160,
+                outline: 'none', minWidth: 140,
               }}
             >
               <option value="editor">✏️ Редактор</option>
               <option value="viewer">👁️ Просмотр</option>
               <option value="navigator">🧭 Навигатор</option>
               <option value="warehouse">📦 Склад</option>
-              <option value="banned">🚫 Запретить доступ</option>
+              <option value="banned">🚫 Запретить</option>
             </select>
           ) : (
             <div style={{
               padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
               background: '#f4f3f0', color: AVATAR_COLORS[u.role] || '#333',
-              border: '1.5px solid var(--admin-line)', minWidth: 140, textAlign: 'center',
+              border: '1.5px solid var(--admin-line)', minWidth: 120, textAlign: 'center',
             }}>
               {ROLE_LABELS[u.role] || u.role}
             </div>
@@ -231,6 +297,50 @@ export default function AdminUsers() {
         </div>
       </div>
 
+      {/* Статистика */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ background: '#e6f4ea', borderRadius: 10, padding: '12px 20px', flex: 1, minWidth: 120 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#2d7a3a' }}>{onlineCount}</div>
+          <div style={{ fontSize: 12, color: '#2d7a3a' }}>Онлайн сейчас</div>
+        </div>
+        <div style={{ background: '#dbeafe', borderRadius: 10, padding: '12px 20px', flex: 1, minWidth: 120 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#2563eb' }}>{activeToday}</div>
+          <div style={{ fontSize: 12, color: '#2563eb' }}>Активны сегодня</div>
+        </div>
+        <div style={{ background: '#fee2e2', borderRadius: 10, padding: '12px 20px', flex: 1, minWidth: 120 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#dc2626' }}>{inactive7d}</div>
+          <div style={{ fontSize: 12, color: '#dc2626' }}>Неактивны 7+ дн</div>
+        </div>
+      </div>
+
+      {/* Поиск и сортировка */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="🔍 Поиск по имени или email..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10,
+            border: '1.5px solid var(--admin-line)', fontSize: 14,
+            outline: 'none',
+          }}
+        />
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value)}
+          style={{
+            padding: '10px 14px', borderRadius: 10,
+            border: '1.5px solid var(--admin-line)', fontSize: 14,
+            background: '#fff', fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          <option value="activity">🔥 По активности</option>
+          <option value="name">📝 По имени</option>
+          <option value="inactive">😴 Неактивные первые</option>
+        </select>
+      </div>
+
       {pending.length > 0 && (
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontWeight: 800, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: '#c47a00', marginBottom: 12 }}>
@@ -242,18 +352,118 @@ export default function AdminUsers() {
         </div>
       )}
 
-      {active.length > 0 && (
+      {filteredUsers.length > 0 && (
         <div>
           <div style={{ fontWeight: 800, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--slate)', marginBottom: 12 }}>
-            Все пользователи — {active.length}
+            {search ? `Найдено — ${filteredUsers.length}` : `Все сотрудники — ${filteredUsers.length}`}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {active.sort((a, b) => isOnline(b.lastSeen) - isOnline(a.lastSeen)).map(renderUser)}
+            {filteredUsers.map(renderUser)}
           </div>
         </div>
       )}
 
-      {!users.length && <div className="admin-empty">Нет пользователей</div>}
+      {!filteredUsers.length && search && (
+        <div className="admin-empty">Ничего не найдено по запросу "{search}"</div>
+      )}
+
+      {/* Модалка активности пользователя */}
+      {selectedUser && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: 16,
+        }} onClick={() => { setSelectedUser(null); setActivityData(null); }}>
+          <div style={{
+            background: '#fff', borderRadius: 20, padding: 28,
+            maxWidth: 500, width: '100%', maxHeight: '85vh', overflow: 'auto',
+            boxShadow: '0 20px 60px rgba(0,0,0,.25)',
+          }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%',
+                background: AVATAR_COLORS[selectedUser.role] || '#888', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 800, fontSize: 22,
+              }}>
+                {selectedUser.name?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{selectedUser.name}</h3>
+                <div style={{ color: 'var(--slate)', fontSize: 14 }}>{selectedUser.email}</div>
+                <div style={{ marginTop: 6 }}>
+                  <span style={{
+                    background: AVATAR_COLORS[selectedUser.role] + '20',
+                    color: AVATAR_COLORS[selectedUser.role],
+                    padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                  }}>
+                    {ROLE_LABELS[selectedUser.role] || selectedUser.role}
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => { setSelectedUser(null); setActivityData(null); }} style={{
+                width: 36, height: 36, borderRadius: '50%', border: 'none',
+                background: '#f3f4f6', fontSize: 18, cursor: 'pointer',
+              }}>✕</button>
+            </div>
+
+            {/* Activity stats */}
+            {activityLoading ? (
+              <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Загрузка...</div>
+            ) : activityData ? (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+                  <div style={{ background: '#f0f9ff', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0369a1' }}>{activityData.totalVisits || 0}</div>
+                    <div style={{ fontSize: 11, color: '#0369a1' }}>Всего визитов</div>
+                  </div>
+                  <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#16a34a' }}>{activityData.last7Days || 0}</div>
+                    <div style={{ fontSize: 11, color: '#16a34a' }}>За 7 дней</div>
+                  </div>
+                  <div style={{ background: '#fef3c7', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#d97706' }}>{activityData.last30Days || 0}</div>
+                    <div style={{ fontSize: 11, color: '#d97706' }}>За 30 дней</div>
+                  </div>
+                </div>
+
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>📊 Посещения по дням</div>
+                {activityData.visits?.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflow: 'auto' }}>
+                    {activityData.visits.map((v, i) => (
+                      <div key={i} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 14px', background: '#f9fafb', borderRadius: 10,
+                      }}>
+                        <span style={{ fontSize: 14, color: '#374151' }}>
+                          {new Date(v.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', weekday: 'short' })}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{
+                            width: Math.min(v.count * 20, 100), height: 8,
+                            background: v.count > 3 ? '#22c55e' : v.count > 1 ? '#fbbf24' : '#ef4444',
+                            borderRadius: 4,
+                          }} />
+                          <span style={{ fontWeight: 700, fontSize: 14, color: '#111', minWidth: 30, textAlign: 'right' }}>
+                            {v.count}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: 24, color: '#888', background: '#f9fafb', borderRadius: 10 }}>
+                    Нет данных о посещениях
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Нет данных</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Confirm delete */}
       {confirm && (

@@ -1,6 +1,7 @@
 const router  = require('express').Router();
 const jwt     = require('jsonwebtoken');
 const User    = require('../models/User');
+const LoginLog = require('../models/LoginLog');
 const { protect } = require('../middleware/auth');
 const crypto  = require('crypto');
 const { sendApprovalRequest, sendApproved, sendRejected, sendPasswordReset } = require('../lib/mailer');
@@ -196,9 +197,18 @@ router.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/auth/heartbeat — update lastSeen
+// POST /api/auth/heartbeat — update lastSeen and log visit
 router.post('/heartbeat', protect, async (req, res) => {
-  await User.findByIdAndUpdate(req.user._id, { lastSeen: new Date() });
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  await Promise.all([
+    User.findByIdAndUpdate(req.user._id, { lastSeen: now }),
+    LoginLog.findOneAndUpdate(
+      { userId: req.user._id, date: dateStr },
+      { $inc: { count: 1 } },
+      { upsert: true }
+    ),
+  ]);
   res.json({ ok: true });
 });
 
