@@ -429,22 +429,25 @@ export default function AdminUsers() {
               <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Загрузка...</div>
             ) : activityData ? (
               <>
+                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12, textAlign: 'center' }}>
+                  Отсчёт времени начался с 3 июля 2026
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
                   <div style={{ background: '#f0f9ff', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0369a1' }}>{formatHours(activityData.totalMinutes)}</div>
-                    <div style={{ fontSize: 11, color: '#0369a1' }}>Всего часов</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#0369a1' }}>{activityData.totalMinutes || 0}</div>
+                    <div style={{ fontSize: 11, color: '#0369a1' }}>Всего минут</div>
                   </div>
                   <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#16a34a' }}>{formatHours(activityData.last7DaysMin)}</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#16a34a' }}>{activityData.last7DaysMin || 0}</div>
                     <div style={{ fontSize: 11, color: '#16a34a' }}>За 7 дней</div>
                   </div>
                   <div style={{ background: '#fef3c7', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: '#d97706' }}>{formatHours(activityData.last30DaysMin)}</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: '#d97706' }}>{activityData.last30DaysMin || 0}</div>
                     <div style={{ fontSize: 11, color: '#d97706' }}>За 30 дней</div>
                   </div>
                 </div>
 
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>📊 Время по дням</div>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>📊 Минуты на сайте по дням</div>
                 {activityData.days?.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflow: 'auto' }}>
                     {activityData.days.map((d, i) => (
@@ -462,7 +465,7 @@ export default function AdminUsers() {
                             borderRadius: 4,
                           }} />
                           <span style={{ fontWeight: 700, fontSize: 14, color: '#111', minWidth: 50, textAlign: 'right' }}>
-                            {formatTime(d.minutes)}
+                            {d.minutes} мин
                           </span>
                         </div>
                       </div>
