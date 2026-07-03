@@ -60,8 +60,8 @@ const SEL = {
 function fmtLabel(str, period) {
   if (!str) return str;
   if (period === 'day') {
-    const [, m, d] = str.split('-');
-    return `${d}.${m}`;
+    const [y, m, d] = str.split('-');
+    return `${d}.${m}.${y.slice(2)}`;
   }
   if (period === 'week') {
     const [y, w] = str.split('-');
@@ -75,7 +75,7 @@ function fmtLabel(str, period) {
   return str;
 }
 
-const STOCK_START_DATE = '2025-07-11'; // первый день когда добавили учёт остатков
+const STOCK_START_DATE = '2026-04-21'; // первая запись в журнале остатков — раньше данных нет
 
 function defaultFrom() { return STOCK_START_DATE; }
 function defaultTo()   { return new Date().toISOString().slice(0, 10); }
@@ -206,9 +206,10 @@ export default function AdminSalesChart() {
         <select value={brand} onChange={e => setBrand(e.target.value)} style={SEL}>
           {BRANDS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
         </select>
-        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={SEL} />
+        <input type="date" value={dateFrom} min={STOCK_START_DATE} onChange={e => setDateFrom(e.target.value)} style={SEL} />
         <span style={{ color: '#aaa', fontSize: 12 }}>—</span>
-        <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   style={SEL} />
+        <input type="date" value={dateTo}   min={STOCK_START_DATE} onChange={e => setDateTo(e.target.value)}   style={SEL} />
+        <span style={{ fontSize: 11, color: '#bbb' }}>ℹ️ Учёт остатков ведётся с 21.04.2026 — данных раньше нет</span>
       </div>
 
       {loading && <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>}

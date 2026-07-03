@@ -36,7 +36,7 @@ function setLabel(slug) {
 
 function fmtLabel(str, period) {
   if (!str) return str;
-  if (period === 'day')   { const [,m,d] = str.split('-'); return `${d}.${m}`; }
+  if (period === 'day')   { const [y,m,d] = str.split('-'); return `${d}.${m}.${y.slice(2)}`; }
   if (period === 'week')  { const [y,w]  = str.split('-'); return `Нед.${w}'${y.slice(2)}`; }
   if (period === 'month') {
     const [y,m] = str.split('-');
@@ -45,7 +45,7 @@ function fmtLabel(str, period) {
   return str;
 }
 
-const STOCK_START = '2025-07-11';
+const STOCK_START = '2026-04-21'; // первая запись в журнале остатков — раньше данных нет
 const SEL = { padding:'6px 10px', borderRadius:7, border:'1.5px solid #e0e0e0', fontSize:12, background:'#fff', cursor:'pointer', outline:'none', color:'#333' };
 
 function CustomTooltip({ active, payload, label }) {
@@ -181,9 +181,10 @@ export default function AdminSetSalesChart() {
             }}>{opt.l}</button>
           ))}
         </div>
-        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={SEL} />
+        <input type="date" value={dateFrom} min={STOCK_START} onChange={e => setDateFrom(e.target.value)} style={SEL} />
         <span style={{ color:'#aaa', fontSize:12 }}>—</span>
-        <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   style={SEL} />
+        <input type="date" value={dateTo}   min={STOCK_START} onChange={e => setDateTo(e.target.value)}   style={SEL} />
+        <span style={{ fontSize:11, color:'#bbb' }}>ℹ️ Учёт остатков ведётся с 21.04.2026 — данных раньше нет</span>
       </div>
 
       {loading && <div style={{ color:'#aaa', fontSize:14, textAlign:'center', paddingTop:60 }}>Загрузка…</div>}
