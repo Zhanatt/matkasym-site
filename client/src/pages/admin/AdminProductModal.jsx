@@ -238,10 +238,10 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   return createPortal(
     <>
       <div onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1600 }} />
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.6)', zIndex: 1600 }} />
 
       <div style={{
-        position: 'fixed', inset: 0, zIndex: 1601,
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1601,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: isMobile ? 0 : 24, pointerEvents: 'none',
       }}>
@@ -743,9 +743,9 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       {/* Delete confirmation dialog */}
       {confirming && (
         <>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1700 }} />
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: 1700 }} />
           <div style={{
-            position: 'fixed', inset: 0, zIndex: 1701,
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1701,
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
           }}>
             <div style={{ background: '#fff', borderRadius: 16, padding: '28px 28px 24px', maxWidth: 380, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,.18)' }}>
@@ -774,7 +774,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       {/* Модалка приёма товара */}
       {showReceiveModal && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
         }} onClick={() => setShowReceiveModal(false)}>
           <div style={{
@@ -912,7 +912,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       {/* Модалка добавления остатков */}
       {showAddStockModal && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
         }} onClick={() => setShowAddStockModal(false)}>
           <div style={{
@@ -991,7 +991,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       {/* Модалка просмотра части комплекта */}
       {partPreview && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100,
           padding: 16,
         }} onClick={() => setPartPreview(null)}>

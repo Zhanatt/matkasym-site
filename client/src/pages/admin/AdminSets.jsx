@@ -668,7 +668,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   // On desktop — full screen (covers sidebar too); on mobile — full screen
   const panelStyle = {
-    position: 'fixed', inset: 0,
+    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
     background: '#f7f8fa', zIndex: 1500,
     display: 'flex', flexDirection: 'column',
   };
@@ -678,7 +678,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       {/* Mobile-only backdrop tap-to-close */}
       {isMobile && (
         <div onClick={onClose}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 1499 }} />
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.35)', zIndex: 1499 }} />
       )}
 
       <div style={panelStyle}>

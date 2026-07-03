@@ -90,7 +90,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
         {/* progress fill behind text */}
         {loading && (
           <span style={{
-            position: 'absolute', inset: 0,
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(255,255,255,0.22)',
             width: `${progress}%`,
             transition: 'width 0.25s ease',

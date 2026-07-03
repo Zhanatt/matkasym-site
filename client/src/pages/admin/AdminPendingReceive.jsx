@@ -254,13 +254,13 @@ export default function AdminPendingReceive() {
           <div
             onClick={closeModal}
             style={{
-              position: 'fixed', inset: 0,
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
               background: 'rgba(0,0,0,0.6)',
               zIndex: 1600,
             }}
           />
           <div style={{
-            position: 'fixed', inset: 0, zIndex: 1601,
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1601,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 24, pointerEvents: 'none',
           }}>

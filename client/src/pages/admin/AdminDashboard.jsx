@@ -496,7 +496,7 @@ export default function AdminDashboard() {
                 <input type="file" accept={accept} multiple={multiple} style={{ display: 'none' }} onChange={onChange} disabled={disabled} />
                 {/* progress fill */}
                 {active && (
-                  <span style={{ position: 'absolute', inset: 0, background: bg, width: `${pct}%`, transition: 'width .2s', borderRadius: 6 }} />
+                  <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: bg, width: `${pct}%`, transition: 'width .2s', borderRadius: 6 }} />
                 )}
                 <span style={{ position: 'relative', zIndex: 1 }}>
                   {active ? `${pct < 100 ? `${pct}%` : '⏳ Обрабатываю...'}` : label}
