@@ -47,6 +47,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const [addStockComment, setAddStockComment] = useState('');
   const [addingStock, setAddingStock] = useState(false);
   const [localProduct, setLocalProduct] = useState(product);
+  const [partPreview, setPartPreview] = useState(null); // for kit part image preview
 
   const needsReceive = localProduct.inTransit || localProduct.pendingReceive;
   const expectedQty = localProduct.inTransitQty || localProduct.pendingReceiveQty || 0;
@@ -686,12 +687,16 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       const available = p.stock || 0;
                       const isMissing = available < needed;
                       return (
-                        <div key={i} style={{
+                        <div key={i} onClick={() => setPartPreview(p)} style={{
                           display: 'flex', alignItems: 'center', gap: 12,
                           background: isMissing ? '#fee2e2' : '#fff',
                           borderRadius: 10, padding: '12px 14px',
-                          border: isMissing ? '1px solid #fecaca' : '1px solid #e5e7eb'
-                        }}>
+                          border: isMissing ? '1px solid #fecaca' : '1px solid #e5e7eb',
+                          cursor: 'pointer', transition: 'all 0.15s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.01)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        >
                           {p.images?.[0] && (
                             <img src={p.images[0]} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, background: '#f8f8f8' }} />
                           )}
@@ -979,6 +984,104 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 {addingStock ? '⏳...' : '✓ Добавить'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка просмотра части комплекта */}
+      {partPreview && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100,
+          padding: 16,
+        }} onClick={() => setPartPreview(null)}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 20, width: '95%', maxWidth: 500,
+            maxHeight: '90vh', overflow: 'auto',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
+          }} onClick={e => e.stopPropagation()}>
+            {/* Закрыть */}
+            <button onClick={() => setPartPreview(null)} style={{
+              position: 'absolute', top: 12, right: 12, width: 36, height: 36,
+              borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)',
+              color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+            }}>✕</button>
+
+            {/* Картинка */}
+            {partPreview.images?.[0] ? (
+              <img
+                src={partPreview.images[0]}
+                alt={partPreview.name}
+                style={{
+                  width: '100%',
+                  maxHeight: 350,
+                  objectFit: 'contain',
+                  borderRadius: 12,
+                  background: '#f8f8f8',
+                  marginBottom: 16,
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '100%', height: 200, background: '#f0f0f0', borderRadius: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#999', fontSize: 14, marginBottom: 16,
+              }}>Нет фото</div>
+            )}
+
+            {/* Название */}
+            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: '#111' }}>
+              {partPreview.fullName || partPreview.name}
+            </h3>
+
+            {/* Артикул */}
+            {partPreview.sku && (
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
+                SKU: {partPreview.sku}
+              </div>
+            )}
+
+            {/* Цена и остаток */}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+              <div style={{
+                flex: 1, padding: 12, background: '#f0f8ff', borderRadius: 10, textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Цена</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#111' }}>
+                  {partPreview.price?.toLocaleString('ru')} <span style={{ fontSize: 14, fontWeight: 500 }}>сом</span>
+                </div>
+              </div>
+              <div style={{
+                flex: 1, padding: 12,
+                background: partPreview.stock > 0 ? '#f0fff4' : '#fff0f0',
+                borderRadius: 10, textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Остаток</div>
+                <div style={{
+                  fontSize: 20, fontWeight: 800,
+                  color: partPreview.stock > 0 ? '#16a34a' : '#dc2626'
+                }}>
+                  {partPreview.stock || 0} <span style={{ fontSize: 14, fontWeight: 500 }}>шт</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Размеры */}
+            {partPreview.dimensions && (
+              <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
+                📐 Размеры: {partPreview.dimensions}
+              </div>
+            )}
+
+            {/* Кнопка закрыть */}
+            <button onClick={() => setPartPreview(null)} style={{
+              width: '100%', padding: 14, borderRadius: 10, border: 'none',
+              background: '#111', color: '#fff', fontSize: 15, fontWeight: 700,
+              cursor: 'pointer', marginTop: 8,
+            }}>
+              Закрыть
+            </button>
           </div>
         </div>
       )}
