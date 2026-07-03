@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 router.get('/', async (req, res) => {
   try {
     const { category, search, sort = 'createdAt', page = 1, limit = 20, inStock, set, setLevel, brand, color } = req.query;
-    const filter = {};
+    const filter = { isKitPart: { $ne: true } };
 
     if (category) filter.category = category;
     if (set)      filter.set = set;
