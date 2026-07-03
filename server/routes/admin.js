@@ -1298,9 +1298,11 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
           fromStock:   oldStock,
           toStock:     newStock,
           source:      'excel',
+          notInFile:   !stockMap.has(key),
           changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
         });
-        if (crossedBuffer(oldStock, newStock, p.bufferStock)) {
+        // Алерт только если товар реально есть в выгрузке (обнуление "не найден" — не продажа)
+        if (stockMap.has(key) && crossedBuffer(oldStock, newStock, p.bufferStock)) {
           bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: p.bufferStock });
         }
       }
@@ -1815,9 +1817,11 @@ router.post('/sync-stock', async (req, res) => {
         fromStock:   oldStock,
         toStock:     newStock,
         source:      'sync_1c',
+        notInFile:   !stockMap.has(key2),
         changedBy:   {},
       });
-      if (crossedBuffer(oldStock, newStock, p.bufferStock)) {
+      // Алерт только если товар реально есть в выгрузке (обнуление "не найден" — не продажа)
+      if (stockMap.has(key2) && crossedBuffer(oldStock, newStock, p.bufferStock)) {
         bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: p.bufferStock });
       }
     }
@@ -1927,7 +1931,8 @@ router.get('/sales-chart', viewer, async (req, res) => {
   try {
     const { period = 'day', dateFrom, dateTo, brand, set, groupBy = 'set' } = req.query;
 
-    const match = { delta: { $lt: 0 } };
+    // notInFile — обнуление товара, которого нет в выгрузке 1С; это не продажа
+    const match = { delta: { $lt: 0 }, notInFile: { $ne: true } };
     if (dateFrom || dateTo) {
       match.createdAt = {};
       if (dateFrom) match.createdAt.$gte = new Date(dateFrom);

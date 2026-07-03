@@ -10,6 +10,7 @@ const stockLogSchema = new Schema({
   toStock:     { type: Number, default: 0 },
   source:      { type: String, enum: ['manual', 'excel', 'sync_1c'], default: 'manual' },
   sourceUrl:   { type: String, default: '' },
+  notInFile:   { type: Boolean, default: false }, // товар отсутствовал в выгрузке 1С → обнулён (не продажа!)
   changedBy: {
     id:    { type: Schema.Types.ObjectId, ref: 'User' },
     name:  { type: String },
