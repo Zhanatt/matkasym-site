@@ -80,6 +80,7 @@ export default function AdminVideoSchedule() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [view, setView] = useState('today'); // today | plan | progress
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSet, setSelectedSet] = useState('all');
   const [showPicker, setShowPicker] = useState(null);
@@ -190,6 +191,19 @@ export default function AdminVideoSchedule() {
 
   const { frontman, stats } = data;
 
+  const todayKey = formatDate(new Date());
+  const todayItems = scheduleByDate[todayKey] || [];
+  const todayDone = todayItems.filter(i => i.isCompleted).length;
+  const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
+  const tomorrowItems = scheduleByDate[formatDate(tomorrowD)] || [];
+  const accent = frontman.color || '#3498db';
+
+  const TABS = [
+    { k: 'today',    l: '📋 Сегодня' },
+    { k: 'plan',     l: '➕ Планировать' },
+    { k: 'progress', l: '📊 Прогресс' },
+  ];
+
   return (
     <div className="video-schedule">
       <div className="schedule-header">
@@ -197,119 +211,238 @@ export default function AdminVideoSchedule() {
         <p className="schedule-subtitle">{frontman.name} — {frontman.brand}</p>
       </div>
 
-      {/* Stats - горизонтальный скролл на мобильных */}
-      <div className="schedule-stats">
-        {[
-          { label: 'Всего товаров', value: stats.total, color: '#3498db' },
-          { label: 'С видео', value: stats.withVideo, color: '#27ae60' },
-          { label: 'Запланировано', value: stats.scheduled, color: '#f39c12' },
-          { label: 'Осталось', value: stats.total - stats.withVideo, color: '#e74c3c' },
-        ].map(s => (
-          <div key={s.label} className="stat-card" style={{ '--stat-color': s.color }}>
-            <div className="stat-value">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
-          </div>
+      {/* Вкладки */}
+      <div style={{ display: 'flex', background: '#f0f0ee', borderRadius: 12, padding: 4, gap: 4, marginBottom: 18 }}>
+        {TABS.map(t => (
+          <button key={t.k} onClick={() => setView(t.k)} style={{
+            flex: 1, padding: '10px 4px', borderRadius: 9, border: 'none', cursor: 'pointer',
+            fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+            background: view === t.k ? '#fff' : 'transparent',
+            color: view === t.k ? '#111' : '#777',
+            boxShadow: view === t.k ? '0 1px 4px rgba(0,0,0,.08)' : 'none',
+            transition: 'all .15s',
+          }}>{t.l}</button>
         ))}
       </div>
 
-      {/* Week calendar */}
-      <div className="schedule-calendar">
-        <div className="calendar-nav">
-          <button onClick={() => setWeekOffset(w => w - 1)} className="nav-btn">
-            ← Пред
-          </button>
-          <span className="calendar-range">
-            {weekDates[0].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-            {' — '}
-            {weekDates[6].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
-          <button onClick={() => setWeekOffset(w => w + 1)} className="nav-btn">
-            След →
-          </button>
-        </div>
-
-        <div className="calendar-grid">
-          {weekDates.map(date => {
-            const key = formatDate(date);
-            const items = scheduleByDate[key] || [];
-            const isToday = isSameDay(date, new Date());
-
-            return (
-              <div key={key} className={`calendar-day ${isToday ? 'is-today' : ''}`}>
-                <div className="day-header">
-                  <span className="day-name">{WEEKDAYS[date.getDay()]}</span>
-                  <span className="day-num">{date.getDate()}</span>
-                </div>
-
-                <div className="day-items">
-                  {items.map(item => (
-                    <div key={item._id} className={`schedule-item ${item.isCompleted ? 'completed' : ''}`}>
-                      <label className="item-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={item.isCompleted}
-                          onChange={() => item.isCompleted ? handleUncomplete(item._id) : handleComplete(item._id)}
-                          disabled={saving}
-                        />
-                        <span className="checkmark"></span>
-                      </label>
-                      <ProductThumb product={item.product} />
-                      <span className="item-name">{item.product.name}</span>
-                      <button onClick={() => handleDelete(item._id)} className="item-delete">✕</button>
-                    </div>
-                  ))}
-                </div>
+      {/* ── СЕГОДНЯ ── */}
+      {view === 'today' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#111', textTransform: 'capitalize' }}>
+                {new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
               </div>
-            );
-          })}
-        </div>
-      </div>
+              <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Товары на съёмку сегодня</div>
+            </div>
+            {todayItems.length > 0 && (
+              <div style={{ background: todayDone === todayItems.length ? '#e8f5e9' : '#fff8e1', borderRadius: 10, padding: '8px 14px', fontSize: 14, fontWeight: 800, color: todayDone === todayItems.length ? '#2d7a3a' : '#b45309' }}>
+                {todayDone} / {todayItems.length} снято
+              </div>
+            )}
+          </div>
 
-      {/* Unscheduled products */}
-      <div className="unscheduled-section">
-        <div className="unscheduled-header">
-          <h2 className="section-title">
-            Товары без расписания <span className="count">({filteredUnscheduled.length})</span>
-          </h2>
-          <select
-            value={selectedSet}
-            onChange={e => setSelectedSet(e.target.value)}
-            className="set-select"
-          >
-            <option value="all">Все сеты</option>
-            {uniqueSets.map(s => (
-              <option key={s} value={s}>{setLabel(s)}</option>
-            ))}
-          </select>
-        </div>
-
-        {filteredUnscheduled.length === 0 ? (
-          <div className="empty-state">Все товары запланированы</div>
-        ) : (
-          <div className="products-list">
-            {filteredUnscheduled.map(product => (
-              <div key={product._id} className={`product-card ${product.hasVideo ? 'has-video' : ''}`}>
-                <ProductThumb product={product} />
-                <div className="product-info">
-                  <div className="product-name">{product.name}</div>
-                  <div className="product-set">{setLabel(product.set)}</div>
-                  {product.hasVideo && <span className="video-badge">✓ Видео</span>}
+          {todayItems.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', borderRadius: 16, border: '1px solid #eee' }}>
+              <div style={{ fontSize: 44, marginBottom: 12 }}>🎬</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 6 }}>На сегодня ничего не запланировано</div>
+              <div style={{ fontSize: 13, color: '#999', marginBottom: 20 }}>Выберите товары, которые будете рекламировать</div>
+              <button onClick={() => setView('plan')} style={{
+                padding: '12px 28px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                background: accent, color: '#fff', fontSize: 15, fontWeight: 700,
+              }}>➕ Запланировать</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {todayItems.map(item => (
+                <div key={item._id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                  background: item.isCompleted ? '#f0faf2' : '#fff', borderRadius: 14,
+                  border: item.isCompleted ? '1.5px solid #bfe6c8' : '1px solid #eee',
+                }}>
+                  <ProductThumb product={item.product} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#111', textDecoration: item.isCompleted ? 'line-through' : 'none', opacity: item.isCompleted ? 0.6 : 1 }}>
+                      {item.product.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#999' }}>{setLabel(item.product.set)}</div>
+                  </div>
+                  <button
+                    onClick={() => item.isCompleted ? handleUncomplete(item._id) : handleComplete(item._id)}
+                    disabled={saving}
+                    style={{
+                      padding: '9px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                      fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+                      background: item.isCompleted ? '#e8f5e9' : accent,
+                      color: item.isCompleted ? '#2d7a3a' : '#fff',
+                    }}>
+                    {item.isCompleted ? '✓ Снято' : 'Снял ✓'}
+                  </button>
+                  <button onClick={() => handleDelete(item._id)} style={{ background: 'none', border: 'none', color: '#ccc', fontSize: 16, cursor: 'pointer', padding: 4 }}>✕</button>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowPicker(product._id);
-                    setPickerDate(formatDate(new Date()));
-                  }}
-                  className="add-btn"
-                  style={{ '--btn-color': frontman.color || '#3498db' }}
-                >
-                  +
-                </button>
+              ))}
+              <button onClick={() => setView('plan')} style={{
+                padding: '12px', borderRadius: 12, border: `1.5px dashed ${accent}`, cursor: 'pointer',
+                background: 'transparent', color: accent, fontSize: 14, fontWeight: 700, marginTop: 4,
+              }}>➕ Добавить ещё товар</button>
+            </div>
+          )}
+
+          {/* Завтра — превью */}
+          {tomorrowItems.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+                Завтра — {tomorrowItems.length} {tomorrowItems.length === 1 ? 'товар' : 'товара(ов)'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tomorrowItems.map(item => (
+                  <div key={item._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#fafaf8', borderRadius: 10, opacity: 0.8 }}>
+                    <ProductThumb product={item.product} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#555' }}>{item.product.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ПЛАНИРОВАТЬ ── */}
+      {view === 'plan' && (
+        <div>
+          {/* Week calendar */}
+          <div className="schedule-calendar">
+            <div className="calendar-nav">
+              <button onClick={() => setWeekOffset(w => w - 1)} className="nav-btn">← Пред</button>
+              <span className="calendar-range">
+                {weekDates[0].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                {' — '}
+                {weekDates[6].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+              <button onClick={() => setWeekOffset(w => w + 1)} className="nav-btn">След →</button>
+            </div>
+
+            <div className="calendar-grid">
+              {weekDates.map(date => {
+                const key = formatDate(date);
+                const items = scheduleByDate[key] || [];
+                const isToday = isSameDay(date, new Date());
+                return (
+                  <div key={key} className={`calendar-day ${isToday ? 'is-today' : ''}`}>
+                    <div className="day-header">
+                      <span className="day-name">{WEEKDAYS[date.getDay()]}</span>
+                      <span className="day-num">{date.getDate()}</span>
+                    </div>
+                    <div className="day-items">
+                      {items.map(item => (
+                        <div key={item._id} className={`schedule-item ${item.isCompleted ? 'completed' : ''}`}>
+                          <label className="item-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={item.isCompleted}
+                              onChange={() => item.isCompleted ? handleUncomplete(item._id) : handleComplete(item._id)}
+                              disabled={saving}
+                            />
+                            <span className="checkmark"></span>
+                          </label>
+                          <ProductThumb product={item.product} />
+                          <span className="item-name">{item.product.name}</span>
+                          <button onClick={() => handleDelete(item._id)} className="item-delete">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Unscheduled products */}
+          <div className="unscheduled-section">
+            <div className="unscheduled-header">
+              <h2 className="section-title">
+                Товары без расписания <span className="count">({filteredUnscheduled.length})</span>
+              </h2>
+              <select
+                value={selectedSet}
+                onChange={e => setSelectedSet(e.target.value)}
+                className="set-select"
+              >
+                <option value="all">Все сеты</option>
+                {uniqueSets.map(s => (
+                  <option key={s} value={s}>{setLabel(s)}</option>
+                ))}
+              </select>
+            </div>
+
+            {filteredUnscheduled.length === 0 ? (
+              <div className="empty-state">Все товары запланированы</div>
+            ) : (
+              <div className="products-list">
+                {filteredUnscheduled.map(product => (
+                  <div key={product._id} className={`product-card ${product.hasVideo ? 'has-video' : ''}`}>
+                    <ProductThumb product={product} />
+                    <div className="product-info">
+                      <div className="product-name">{product.name}</div>
+                      <div className="product-set">{setLabel(product.set)}</div>
+                      {product.hasVideo && <span className="video-badge">✓ Видео</span>}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowPicker(product._id);
+                        setPickerDate(formatDate(new Date()));
+                      }}
+                      className="add-btn"
+                      style={{ '--btn-color': accent }}
+                    >
+                      +
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ПРОГРЕСС ── */}
+      {view === 'progress' && (
+        <div>
+          <div className="schedule-stats">
+            {[
+              { label: 'Всего товаров', value: stats.total, color: '#3498db' },
+              { label: 'С видео', value: stats.withVideo, color: '#27ae60' },
+              { label: 'Запланировано', value: stats.scheduled, color: '#f39c12' },
+              { label: 'Осталось', value: stats.total - stats.withVideo, color: '#e74c3c' },
+            ].map(s => (
+              <div key={s.label} className="stat-card" style={{ '--stat-color': s.color }}>
+                <div className="stat-value">{s.value}</div>
+                <div className="stat-label">{s.label}</div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+
+          {/* Общий прогресс по видео */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #eee', padding: 20, marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>Прогресс по видео</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#27ae60' }}>
+                {stats.total > 0 ? Math.round(stats.withVideo / stats.total * 100) : 0}%
+              </span>
+            </div>
+            <div style={{ height: 12, background: '#f0f0ee', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{
+                width: `${stats.total > 0 ? Math.round(stats.withVideo / stats.total * 100) : 0}%`,
+                height: '100%', background: 'linear-gradient(90deg, #27ae60, #2ecc71)', borderRadius: 6,
+                transition: 'width .4s',
+              }} />
+            </div>
+            <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
+              {stats.withVideo} из {stats.total} товаров с видео · осталось {stats.total - stats.withVideo}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Date picker modal */}
       {showPicker && (
