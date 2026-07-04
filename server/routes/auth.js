@@ -201,13 +201,16 @@ router.post('/logout', (req, res) => {
 router.post('/heartbeat', protect, async (req, res) => {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10);
+  // Несколько открытых вкладок шлют heartbeat каждая — минуту засчитываем
+  // не чаще раза в ~55 сек, иначе время задваивается
+  const countMinute = !req.user.lastSeen || (now - new Date(req.user.lastSeen)) >= 55_000;
   await Promise.all([
     User.findByIdAndUpdate(req.user._id, { lastSeen: now }),
-    LoginLog.findOneAndUpdate(
+    countMinute ? LoginLog.findOneAndUpdate(
       { userId: req.user._id, date: dateStr },
       { $inc: { minutes: 1 } },
       { upsert: true }
-    ),
+    ) : Promise.resolve(),
   ]);
   res.json({ ok: true });
 });

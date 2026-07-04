@@ -26,7 +26,7 @@ function daysSinceLastSeen(lastSeen) {
 }
 
 function formatHours(minutes) {
-  if (!minutes) return '0';
+  if (!minutes) return '0м';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m}м`;
@@ -434,11 +434,11 @@ export default function AdminUsers() {
                   Отсчёт времени начался с 3 июля 2026
                 </div>
                 <div style={{ background: '#f0f9ff', borderRadius: 12, padding: 20, textAlign: 'center', marginBottom: 24 }}>
-                  <div style={{ fontSize: 36, fontWeight: 800, color: '#0369a1' }}>{activityData.totalMinutes || 0}</div>
-                  <div style={{ fontSize: 13, color: '#0369a1' }}>Всего минут на сайте</div>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: '#0369a1' }}>{formatHours(activityData.totalMinutes)}</div>
+                  <div style={{ fontSize: 13, color: '#0369a1' }}>Всего времени на сайте</div>
                 </div>
 
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>📊 Минуты на сайте по дням</div>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>⏱ Время на сайте по дням</div>
                 {activityData.days?.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflow: 'auto' }}>
                     {activityData.days.map((d, i) => (
@@ -455,8 +455,8 @@ export default function AdminUsers() {
                             background: d.minutes >= 60 ? '#22c55e' : d.minutes >= 15 ? '#fbbf24' : '#ef4444',
                             borderRadius: 4,
                           }} />
-                          <span style={{ fontWeight: 700, fontSize: 14, color: '#111', minWidth: 50, textAlign: 'right' }}>
-                            {d.minutes} мин
+                          <span style={{ fontWeight: 700, fontSize: 14, color: '#111', minWidth: 64, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {formatTime(d.minutes)}
                           </span>
                         </div>
                       </div>
