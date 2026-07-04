@@ -53,13 +53,30 @@ function getWeekDates(offset = 0) {
   return week;
 }
 
+// Локальная дата (не UTC!) — иначе для UTC+6 полночь уезжает на прошлый день
 function formatDate(d) {
-  return d.toISOString().split('T')[0];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function isSameDay(d1, d2) {
   return formatDate(new Date(d1)) === formatDate(new Date(d2));
 }
+
+// Сетка месяца: массив ячеек (Date | null), недели начинаются с Пн
+function getMonthGrid(offset = 0) {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const year = first.getFullYear(), month = first.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startDow = (first.getDay() + 6) % 7; // Пн = 0
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+  while (cells.length % 7 !== 0) cells.push(null);
+  return { first, cells };
+}
+
+const WEEKDAYS_MON = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 const DRIVE_URL = 'https://drive.google.com/thumbnail?id=';
 
@@ -81,10 +98,11 @@ export default function AdminVideoSchedule() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [view, setView] = useState('today'); // today | plan | progress
+  const [calView, setCalView] = useState('month'); // month | week
+  const [monthOffset, setMonthOffset] = useState(0);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSet, setSelectedSet] = useState('all');
-  const [showPicker, setShowPicker] = useState(null);
-  const [pickerDate, setPickerDate] = useState('');
+  const [selectedDay, setSelectedDay] = useState(null); // 'YYYY-MM-DD' → модалка дня
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -138,7 +156,6 @@ export default function AdminVideoSchedule() {
       load();
     } finally {
       setSaving(false);
-      setShowPicker(null);
     }
   };
 
@@ -247,7 +264,7 @@ export default function AdminVideoSchedule() {
               <div style={{ fontSize: 44, marginBottom: 12 }}>🎬</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 6 }}>На сегодня ничего не запланировано</div>
               <div style={{ fontSize: 13, color: '#999', marginBottom: 20 }}>Выберите товары, которые будете рекламировать</div>
-              <button onClick={() => setView('plan')} style={{
+              <button onClick={() => { setView('plan'); setSelectedDay(todayKey); }} style={{
                 padding: '12px 28px', borderRadius: 12, border: 'none', cursor: 'pointer',
                 background: accent, color: '#fff', fontSize: 15, fontWeight: 700,
               }}>➕ Запланировать</button>
@@ -281,7 +298,7 @@ export default function AdminVideoSchedule() {
                   <button onClick={() => handleDelete(item._id)} style={{ background: 'none', border: 'none', color: '#ccc', fontSize: 16, cursor: 'pointer', padding: 4 }}>✕</button>
                 </div>
               ))}
-              <button onClick={() => setView('plan')} style={{
+              <button onClick={() => setSelectedDay(todayKey)} style={{
                 padding: '12px', borderRadius: 12, border: `1.5px dashed ${accent}`, cursor: 'pointer',
                 background: 'transparent', color: accent, fontSize: 14, fontWeight: 700, marginTop: 4,
               }}>➕ Добавить ещё товар</button>
@@ -308,102 +325,91 @@ export default function AdminVideoSchedule() {
       )}
 
       {/* ── ПЛАНИРОВАТЬ ── */}
-      {view === 'plan' && (
-        <div>
-          {/* Week calendar */}
-          <div className="schedule-calendar">
-            <div className="calendar-nav">
-              <button onClick={() => setWeekOffset(w => w - 1)} className="nav-btn">← Пред</button>
-              <span className="calendar-range">
-                {weekDates[0].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                {' — '}
-                {weekDates[6].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
+      {view === 'plan' && (() => {
+        const { first, cells } = getMonthGrid(monthOffset);
+        const displayDates = calView === 'month' ? cells : weekDates;
+        const navLabel = calView === 'month'
+          ? first.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+          : `${weekDates[0].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} — ${weekDates[6].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`;
+        const navPrev = () => calView === 'month' ? setMonthOffset(o => o - 1) : setWeekOffset(o => o - 1);
+        const navNext = () => calView === 'month' ? setMonthOffset(o => o + 1) : setWeekOffset(o => o + 1);
+
+        const renderDayBtn = (date, idx) => {
+          if (!date) return <div key={`e${idx}`} />;
+          const key = formatDate(date);
+          const items = scheduleByDate[key] || [];
+          const has = items.length > 0;
+          const allDone = has && items.every(i => i.isCompleted);
+          const isToday = isSameDay(date, new Date());
+          return (
+            <button key={key} onClick={() => setSelectedDay(key)} style={{
+              aspectRatio: '1', width: '100%', borderRadius: '50%', cursor: 'pointer',
+              border: isToday ? `2px solid ${accent}` : '2px solid transparent',
+              background: has ? (allDone ? '#d9f2df' : accent) : 'transparent',
+              color: has ? (allDone ? '#1e7e34' : '#fff') : '#333',
+              fontSize: 14, fontWeight: isToday || has ? 800 : 500,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1.1, padding: 0, transition: 'all .15s',
+            }}>
+              {date.getDate()}
+              {has && <span style={{ fontSize: 8.5, fontWeight: 700, opacity: 0.85 }}>{allDone ? '✓' : items.length}</span>}
+            </button>
+          );
+        };
+
+        return (
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #eee', padding: '16px 14px' }}>
+            {/* Переключатель Месяц / Неделя */}
+            <div style={{ display: 'flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3, marginBottom: 14, maxWidth: 220 }}>
+              {[{ k: 'month', l: 'Месяц' }, { k: 'week', l: 'Неделя' }].map(t => (
+                <button key={t.k} onClick={() => setCalView(t.k)} style={{
+                  flex: 1, padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 700,
+                  background: calView === t.k ? '#fff' : 'transparent',
+                  color: calView === t.k ? '#111' : '#888',
+                  boxShadow: calView === t.k ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+                }}>{t.l}</button>
+              ))}
+            </div>
+
+            {/* Навигация */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <button onClick={navPrev} style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid #e5e5e5', background: '#fff', fontSize: 16, cursor: 'pointer', color: '#555' }}>‹</button>
+              <span style={{ fontSize: 15, fontWeight: 800, color: '#111', textTransform: 'capitalize' }}>{navLabel}</span>
+              <button onClick={navNext} style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid #e5e5e5', background: '#fff', fontSize: 16, cursor: 'pointer', color: '#555' }}>›</button>
+            </div>
+
+            {/* Шапка дней недели */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 6 }}>
+              {WEEKDAYS_MON.map(d => (
+                <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#bbb', textTransform: 'uppercase' }}>{d}</div>
+              ))}
+            </div>
+
+            {/* Сетка дней */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+              {displayDates.map((date, i) => renderDayBtn(date, i))}
+            </div>
+
+            {/* Легенда */}
+            <div style={{ display: 'flex', gap: 14, marginTop: 14, flexWrap: 'wrap', fontSize: 11.5, color: '#888' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: accent, display: 'inline-block' }} /> запланировано
               </span>
-              <button onClick={() => setWeekOffset(w => w + 1)} className="nav-btn">След →</button>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#d9f2df', display: 'inline-block' }} /> всё снято
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', border: `2px solid ${accent}`, display: 'inline-block', boxSizing: 'border-box' }} /> сегодня
+              </span>
             </div>
 
-            <div className="calendar-grid">
-              {weekDates.map(date => {
-                const key = formatDate(date);
-                const items = scheduleByDate[key] || [];
-                const isToday = isSameDay(date, new Date());
-                return (
-                  <div key={key} className={`calendar-day ${isToday ? 'is-today' : ''}`}>
-                    <div className="day-header">
-                      <span className="day-name">{WEEKDAYS[date.getDay()]}</span>
-                      <span className="day-num">{date.getDate()}</span>
-                    </div>
-                    <div className="day-items">
-                      {items.map(item => (
-                        <div key={item._id} className={`schedule-item ${item.isCompleted ? 'completed' : ''}`}>
-                          <label className="item-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={item.isCompleted}
-                              onChange={() => item.isCompleted ? handleUncomplete(item._id) : handleComplete(item._id)}
-                              disabled={saving}
-                            />
-                            <span className="checkmark"></span>
-                          </label>
-                          <ProductThumb product={item.product} />
-                          <span className="item-name">{item.product.name}</span>
-                          <button onClick={() => handleDelete(item._id)} className="item-delete">✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ marginTop: 12, fontSize: 12.5, color: '#999', textAlign: 'center' }}>
+              Нажмите на день, чтобы добавить или убрать товары
             </div>
           </div>
-
-          {/* Unscheduled products */}
-          <div className="unscheduled-section">
-            <div className="unscheduled-header">
-              <h2 className="section-title">
-                Товары без расписания <span className="count">({filteredUnscheduled.length})</span>
-              </h2>
-              <select
-                value={selectedSet}
-                onChange={e => setSelectedSet(e.target.value)}
-                className="set-select"
-              >
-                <option value="all">Все сеты</option>
-                {uniqueSets.map(s => (
-                  <option key={s} value={s}>{setLabel(s)}</option>
-                ))}
-              </select>
-            </div>
-
-            {filteredUnscheduled.length === 0 ? (
-              <div className="empty-state">Все товары запланированы</div>
-            ) : (
-              <div className="products-list">
-                {filteredUnscheduled.map(product => (
-                  <div key={product._id} className={`product-card ${product.hasVideo ? 'has-video' : ''}`}>
-                    <ProductThumb product={product} />
-                    <div className="product-info">
-                      <div className="product-name">{product.name}</div>
-                      <div className="product-set">{setLabel(product.set)}</div>
-                      {product.hasVideo && <span className="video-badge">✓ Видео</span>}
-                    </div>
-                    <button
-                      onClick={() => {
-                        setShowPicker(product._id);
-                        setPickerDate(formatDate(new Date()));
-                      }}
-                      className="add-btn"
-                      style={{ '--btn-color': accent }}
-                    >
-                      +
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── ПРОГРЕСС ── */}
       {view === 'progress' && (
@@ -444,32 +450,119 @@ export default function AdminVideoSchedule() {
         </div>
       )}
 
-      {/* Date picker modal */}
-      {showPicker && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowPicker(null)}>
-          <div className="modal-content">
-            <h3 className="modal-title">Выберите дату съёмки</h3>
-            <p className="modal-product">{filteredUnscheduled.find(p => p._id === showPicker)?.name}</p>
-            <input
-              type="date"
-              value={pickerDate}
-              onChange={e => setPickerDate(e.target.value)}
-              className="date-input"
-            />
-            <div className="modal-actions">
-              <button onClick={() => setShowPicker(null)} className="btn-cancel">Отмена</button>
-              <button
-                onClick={() => handleSchedule(showPicker, pickerDate)}
-                disabled={saving || !pickerDate}
-                className="btn-confirm"
-                style={{ '--btn-color': frontman.color || '#3498db' }}
-              >
-                {saving ? '...' : 'Запланировать'}
-              </button>
+      {/* Модалка дня: запланированное + выбор товаров */}
+      {selectedDay && (() => {
+        const dayItems = scheduleByDate[selectedDay] || [];
+        const dayDate = new Date(selectedDay + 'T00:00:00');
+        return (
+          <div
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,.5)', zIndex: 9999,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14,
+            }}
+            onClick={() => setSelectedDay(null)}
+          >
+            <div
+              style={{
+                background: '#fff', borderRadius: 20, width: '100%', maxWidth: 520,
+                maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Шапка */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px 12px', borderBottom: '1px solid #f0f0f0' }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111', textTransform: 'capitalize' }}>
+                    {dayDate.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+                    {dayItems.length > 0 ? `Запланировано: ${dayItems.length}` : 'Пока ничего не запланировано'}
+                  </div>
+                </div>
+                <button onClick={() => setSelectedDay(null)} style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: '#f3f3f1', fontSize: 15, cursor: 'pointer', color: '#555' }}>✕</button>
+              </div>
+
+              <div style={{ overflow: 'auto', padding: '14px 18px 18px' }}>
+                {/* Запланированные — можно убрать */}
+                {dayItems.length > 0 && (
+                  <div style={{ marginBottom: 18 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {dayItems.map(item => (
+                        <div key={item._id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                          background: item.isCompleted ? '#f0faf2' : '#f8f8f6', borderRadius: 12,
+                        }}>
+                          <ProductThumb product={item.product} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', textDecoration: item.isCompleted ? 'line-through' : 'none', opacity: item.isCompleted ? 0.6 : 1 }}>
+                              {item.product.name}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: '#999' }}>{setLabel(item.product.set)}{item.isCompleted ? ' · ✓ снято' : ''}</div>
+                          </div>
+                          <button
+                            onClick={() => handleDelete(item._id)}
+                            disabled={saving}
+                            style={{ padding: '7px 12px', borderRadius: 9, border: 'none', background: '#fde8e8', color: '#c0392b', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >Убрать</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Добавить товары */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>
+                    Добавить товар <span style={{ color: '#aaa', fontWeight: 600 }}>({filteredUnscheduled.length})</span>
+                  </div>
+                  <select
+                    value={selectedSet}
+                    onChange={e => setSelectedSet(e.target.value)}
+                    style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid #e5e5e5', fontSize: 12.5, fontWeight: 600, background: '#fff', maxWidth: 160 }}
+                  >
+                    <option value="all">Все сеты</option>
+                    {uniqueSets.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
+                  </select>
+                </div>
+
+                {filteredUnscheduled.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 20, color: '#999', fontSize: 13, background: '#fafaf8', borderRadius: 12 }}>
+                    Все товары уже запланированы 🎉
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {filteredUnscheduled.map(product => (
+                      <div key={product._id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                        background: product.hasVideo ? '#f4fbf6' : '#fff', borderRadius: 12,
+                        border: '1px solid #f0f0ee',
+                      }}>
+                        <ProductThumb product={product} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</div>
+                          <div style={{ fontSize: 11.5, color: '#999' }}>
+                            {setLabel(product.set)}{product.hasVideo ? ' · ✓ видео есть' : ''}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleSchedule(product._id, selectedDay)}
+                          disabled={saving}
+                          style={{
+                            width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer',
+                            background: accent, color: '#fff', fontSize: 18, fontWeight: 700, flexShrink: 0,
+                            opacity: saving ? 0.5 : 1,
+                          }}
+                        >+</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
