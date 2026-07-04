@@ -105,12 +105,12 @@ export default function AdminVideoSchedule() {
   const [selectedDay, setSelectedDay] = useState(null); // 'YYYY-MM-DD' → модалка дня
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
-    setLoading(true);
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
     adminGetVideoScheduleMy()
       .then(res => setData(res.data))
       .catch(err => console.error(err))
-      .finally(() => setLoading(false));
+      .finally(() => { if (!silent) setLoading(false); });
   };
 
   useEffect(() => { load(); }, []);
@@ -149,45 +149,49 @@ export default function AdminVideoSchedule() {
     return sets.sort();
   }, [data?.products]);
 
+  // Все действия обновляют состояние мгновенно, сервер — в фоне.
+  // При ошибке тихо перезагружаем данные (без полноэкранного спиннера).
+
   const handleSchedule = async (productId, date) => {
     setSaving(true);
     try {
-      await adminCreateVideoSchedule({ productId, plannedDate: date });
-      load();
+      const res = await adminCreateVideoSchedule({ productId, plannedDate: date });
+      setData(prev => ({
+        ...prev,
+        schedules: [...prev.schedules.filter(s => s._id !== res.data._id), res.data],
+        stats: { ...prev.stats, scheduled: (prev.stats.scheduled || 0) + 1 },
+      }));
+    } catch (e) {
+      alert(e.response?.data?.error || 'Не удалось запланировать');
+      load(true);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleComplete = async (scheduleId) => {
-    setSaving(true);
-    try {
-      await adminCompleteVideoSchedule(scheduleId);
-      load();
-    } finally {
-      setSaving(false);
-    }
+  const handleComplete = (scheduleId) => {
+    setData(prev => ({
+      ...prev,
+      schedules: prev.schedules.map(s => s._id === scheduleId ? { ...s, isCompleted: true } : s),
+    }));
+    adminCompleteVideoSchedule(scheduleId).catch(() => load(true));
   };
 
-  const handleUncomplete = async (scheduleId) => {
-    setSaving(true);
-    try {
-      await adminUncompleteVideoSchedule(scheduleId);
-      load();
-    } finally {
-      setSaving(false);
-    }
+  const handleUncomplete = (scheduleId) => {
+    setData(prev => ({
+      ...prev,
+      schedules: prev.schedules.map(s => s._id === scheduleId ? { ...s, isCompleted: false } : s),
+    }));
+    adminUncompleteVideoSchedule(scheduleId).catch(() => load(true));
   };
 
-  const handleDelete = async (scheduleId) => {
-    if (!window.confirm('Удалить из расписания?')) return;
-    setSaving(true);
-    try {
-      await adminDeleteVideoSchedule(scheduleId);
-      load();
-    } finally {
-      setSaving(false);
-    }
+  const handleDelete = (scheduleId) => {
+    setData(prev => ({
+      ...prev,
+      schedules: prev.schedules.filter(s => s._id !== scheduleId),
+      stats: { ...prev.stats, scheduled: Math.max(0, (prev.stats.scheduled || 0) - 1) },
+    }));
+    adminDeleteVideoSchedule(scheduleId).catch(() => load(true));
   };
 
   if (loading) {
