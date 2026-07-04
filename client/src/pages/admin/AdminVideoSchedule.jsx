@@ -152,21 +152,25 @@ export default function AdminVideoSchedule() {
   // Все действия обновляют состояние мгновенно, сервер — в фоне.
   // При ошибке тихо перезагружаем данные (без полноэкранного спиннера).
 
-  const handleSchedule = async (productId, date) => {
-    setSaving(true);
-    try {
-      const res = await adminCreateVideoSchedule({ productId, plannedDate: date });
-      setData(prev => ({
+  const handleSchedule = (productId, date) => {
+    // Мгновенно добавляем временную запись, сервер подтверждает в фоне
+    const product = data.products.find(p => p._id === productId);
+    if (!product) return;
+    const tempId = `tmp_${productId}`;
+    setData(prev => ({
+      ...prev,
+      schedules: [...prev.schedules, { _id: tempId, product, plannedDate: date, isCompleted: false }],
+      stats: { ...prev.stats, scheduled: (prev.stats.scheduled || 0) + 1 },
+    }));
+    adminCreateVideoSchedule({ productId, plannedDate: date })
+      .then(res => setData(prev => ({
         ...prev,
-        schedules: [...prev.schedules.filter(s => s._id !== res.data._id), res.data],
-        stats: { ...prev.stats, scheduled: (prev.stats.scheduled || 0) + 1 },
-      }));
-    } catch (e) {
-      alert(e.response?.data?.error || 'Не удалось запланировать');
-      load(true);
-    } finally {
-      setSaving(false);
-    }
+        schedules: prev.schedules.map(s => s._id === tempId ? res.data : s),
+      })))
+      .catch(e => {
+        alert(e.response?.data?.error || 'Не удалось запланировать');
+        load(true);
+      });
   };
 
   const handleComplete = (scheduleId) => {
@@ -418,39 +422,45 @@ export default function AdminVideoSchedule() {
       {/* ── ПРОГРЕСС ── */}
       {view === 'progress' && (
         <div>
-          <div className="schedule-stats">
-            {[
-              { label: 'Всего товаров', value: stats.total, color: '#3498db' },
-              { label: 'С видео', value: stats.withVideo, color: '#27ae60' },
-              { label: 'Запланировано', value: stats.scheduled, color: '#f39c12' },
-              { label: 'Осталось', value: stats.total - stats.withVideo, color: '#e74c3c' },
-            ].map(s => (
-              <div key={s.label} className="stat-card" style={{ '--stat-color': s.color }}>
-                <div className="stat-value">{s.value}</div>
-                <div className="stat-label">{s.label}</div>
-              </div>
-            ))}
-          </div>
+          {(() => {
+            const myDone = data.schedules.filter(s => s.isCompleted).length;
+            const pct = stats.total > 0 ? Math.round(myDone / stats.total * 100) : 0;
+            return (
+              <>
+                <div className="schedule-stats">
+                  {[
+                    { label: 'Всего товаров', value: stats.total, color: '#3498db' },
+                    { label: 'Снято видео', value: myDone, color: '#27ae60' },
+                    { label: 'Запланировано', value: data.schedules.length - myDone, color: '#f39c12' },
+                    { label: 'Осталось', value: stats.total - myDone, color: '#e74c3c' },
+                  ].map(s => (
+                    <div key={s.label} className="stat-card" style={{ '--stat-color': s.color }}>
+                      <div className="stat-value">{s.value}</div>
+                      <div className="stat-label">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
 
-          {/* Общий прогресс по видео */}
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #eee', padding: 20, marginTop: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>Прогресс по видео</span>
-              <span style={{ fontSize: 18, fontWeight: 800, color: '#27ae60' }}>
-                {stats.total > 0 ? Math.round(stats.withVideo / stats.total * 100) : 0}%
-              </span>
-            </div>
-            <div style={{ height: 12, background: '#f0f0ee', borderRadius: 6, overflow: 'hidden' }}>
-              <div style={{
-                width: `${stats.total > 0 ? Math.round(stats.withVideo / stats.total * 100) : 0}%`,
-                height: '100%', background: 'linear-gradient(90deg, #27ae60, #2ecc71)', borderRadius: 6,
-                transition: 'width .4s',
-              }} />
-            </div>
-            <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
-              {stats.withVideo} из {stats.total} товаров с видео · осталось {stats.total - stats.withVideo}
-            </div>
-          </div>
+                {/* Личный прогресс фронтмена */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #eee', padding: 20, marginTop: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>Мой прогресс по видео</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: '#27ae60' }}>{pct}%</span>
+                  </div>
+                  <div style={{ height: 12, background: '#f0f0ee', borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${pct}%`,
+                      height: '100%', background: 'linear-gradient(90deg, #27ae60, #2ecc71)', borderRadius: 6,
+                      transition: 'width .4s',
+                    }} />
+                  </div>
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
+                    Снято {myDone} из {stats.total} товаров · осталось {stats.total - myDone}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -539,23 +549,19 @@ export default function AdminVideoSchedule() {
                     {filteredUnscheduled.map(product => (
                       <div key={product._id} style={{
                         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
-                        background: product.hasVideo ? '#f4fbf6' : '#fff', borderRadius: 12,
+                        background: '#fff', borderRadius: 12,
                         border: '1px solid #f0f0ee',
                       }}>
                         <ProductThumb product={product} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</div>
-                          <div style={{ fontSize: 11.5, color: '#999' }}>
-                            {setLabel(product.set)}{product.hasVideo ? ' · ✓ видео есть' : ''}
-                          </div>
+                          <div style={{ fontSize: 11.5, color: '#999' }}>{setLabel(product.set)}</div>
                         </div>
                         <button
                           onClick={() => handleSchedule(product._id, selectedDay)}
-                          disabled={saving}
                           style={{
                             width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer',
                             background: accent, color: '#fff', fontSize: 18, fontWeight: 700, flexShrink: 0,
-                            opacity: saving ? 0.5 : 1,
                           }}
                         >+</button>
                       </div>
