@@ -55,9 +55,9 @@ export default function AdminVideoReport() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 32 }}>
         {[
           { label: 'Всего товаров', value: totals.total, color: '#3498db' },
-          { label: 'С видео', value: totals.withVideo, color: '#27ae60' },
-          { label: 'Запланировано', value: totals.scheduled, color: '#f39c12' },
-          { label: 'Снято (план)', value: totals.completed, color: '#9b59b6' },
+          { label: 'Снято', value: totals.completed, color: '#27ae60' },
+          { label: 'В плане', value: totals.scheduled - totals.completed, color: '#f39c12' },
+          { label: 'Осталось', value: totals.total - totals.completed, color: '#e74c3c' },
         ].map(s => (
           <div key={s.label} style={{
             background: '#fff',

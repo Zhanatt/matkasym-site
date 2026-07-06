@@ -150,15 +150,10 @@ export default function AdminVideoReportDetail() {
     [data?.schedules]
   );
 
-  // Снято вне плана: есть видео, но нет записи в расписании
-  const shotOutsidePlan = useMemo(
-    () => (data?.products || []).filter(p => p.hasVideo && !scheduledIds.has(p._id)),
-    [data?.products, scheduledIds]
-  );
-
-  // Не снято и не запланировано — по сетам
+  // Не снято и не запланировано — всё, чего нет в расписании этого фронтмена.
+  // Глобальный hasVideo товара не учитываем: его мог проставить другой фронтмен с тем же сетом.
   const notShotBySets = useMemo(() => {
-    const rest = (data?.products || []).filter(p => !p.hasVideo && !scheduledIds.has(p._id));
+    const rest = (data?.products || []).filter(p => !scheduledIds.has(p._id));
     const groups = {};
     rest.forEach(p => {
       if (!groups[p.set]) groups[p.set] = [];
@@ -182,7 +177,7 @@ export default function AdminVideoReportDetail() {
   const brandMeta = BRAND_META[frontman.brand];
   const initials = frontman.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-  const totalShot = stats.withVideo;
+  const totalShot = stats.completed;
   const pendingPlanned = stats.scheduled - stats.completed;
   const notShotCount = notShotBySets.reduce((n, [, items]) => n + items.length, 0);
   const progress = stats.total > 0 ? Math.round((totalShot / stats.total) * 100) : 0;
@@ -346,37 +341,23 @@ export default function AdminVideoReportDetail() {
           <span style={{ fontSize: 12, fontWeight: 700, color: '#2d7a3a', background: '#e8f5e9', borderRadius: 8, padding: '2px 8px' }}>{totalShot}</span>
         </div>
 
-        {shotDays.length === 0 && shotOutsidePlan.length === 0 ? (
+        {shotDays.length === 0 ? (
           <div style={{ background: '#fff', borderRadius: 12, padding: 20, fontSize: 13, color: '#999', textAlign: 'center' }}>
             Пока ничего не снято
           </div>
         ) : (
-          <>
-            {shotDays.map(day => (
-              <div key={day} style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: '#888', textTransform: 'capitalize', marginBottom: 8 }}>
-                  {dayTitle(day)} · {shotByDay[day].length} шт.
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {shotByDay[day].map(s => (
-                    <ProductRow key={s._id} product={s.product} badge="✓ снято" badgeColor="#2d7a3a" badgeBg="#e8f5e9" />
-                  ))}
-                </div>
+          shotDays.map(day => (
+            <div key={day} style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: '#888', textTransform: 'capitalize', marginBottom: 8 }}>
+                {dayTitle(day)} · {shotByDay[day].length} шт.
               </div>
-            ))}
-            {shotOutsidePlan.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: '#888', marginBottom: 8 }}>
-                  Вне плана (дата неизвестна) · {shotOutsidePlan.length} шт.
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {shotOutsidePlan.map(p => (
-                    <ProductRow key={p._id} product={p} badge="✓ снято" badgeColor="#2d7a3a" badgeBg="#e8f5e9" />
-                  ))}
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {shotByDay[day].map(s => (
+                  <ProductRow key={s._id} product={s.product} badge="✓ снято" badgeColor="#2d7a3a" badgeBg="#e8f5e9" />
+                ))}
               </div>
-            )}
-          </>
+            </div>
+          ))
         )}
       </div>
 

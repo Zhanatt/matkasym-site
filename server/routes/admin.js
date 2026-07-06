@@ -3205,6 +3205,12 @@ router.delete('/video-schedule/:id', protect, async (req, res) => {
       return res.status(403).json({ error: 'Это не ваша запись' });
     }
 
+    // Если удаляем выполненную съёмку — снимаем флаг с товара,
+    // иначе hasVideo останется висеть без записи в расписании
+    if (schedule.isCompleted) {
+      await Product.findByIdAndUpdate(schedule.product, { hasVideo: false });
+    }
+
     await VideoSchedule.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -3222,20 +3228,15 @@ router.get('/video-schedule/report', protect, viewer, async (req, res) => {
         productStatus: { $in: ['for_sale', 'test_sale'] },
       });
 
-      const withVideo = await Product.countDocuments({
-        brand: fm.brand,
-        set: { $in: fm.sets },
-        productStatus: { $in: ['for_sale', 'test_sale'] },
-        hasVideo: true,
-      });
-
       const scheduled = await VideoSchedule.countDocuments({ frontman: fm._id });
       const completed = await VideoSchedule.countDocuments({ frontman: fm._id, isCompleted: true });
 
+      // «Снято» — только собственные выполненные съёмки фронтмена.
+      // hasVideo на товаре глобальный и может быть проставлен другим фронтменом с тем же сетом.
       return {
         frontman: { _id: fm._id, name: fm.name, color: fm.color, brand: fm.brand },
         user: fm.userId,
-        stats: { total: products, withVideo, scheduled, completed, remaining: products - withVideo },
+        stats: { total: products, withVideo: completed, scheduled, completed, remaining: products - completed },
       };
     }));
 
@@ -3262,11 +3263,13 @@ router.get('/video-schedule/report/:frontmanId', protect, viewer, async (req, re
       .sort({ plannedDate: 1 })
       .lean();
 
+    // «Снято» — только собственные выполненные съёмки, а не глобальный hasVideo товара
+    const completed = schedules.filter(s => s.isCompleted).length;
     const stats = {
       total: products.length,
-      withVideo: products.filter(p => p.hasVideo).length,
+      withVideo: completed,
       scheduled: schedules.length,
-      completed: schedules.filter(s => s.isCompleted).length,
+      completed,
     };
 
     res.json({ frontman: fm, user: fm.userId, products, schedules, stats });
