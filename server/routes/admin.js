@@ -3243,4 +3243,34 @@ router.get('/video-schedule/report', protect, viewer, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/admin/video-schedule/report/:frontmanId — детальный отчёт по одному фронтмену
+router.get('/video-schedule/report/:frontmanId', protect, viewer, async (req, res) => {
+  try {
+    const fm = await Frontman.findById(req.params.frontmanId)
+      .populate('userId', 'name email')
+      .lean();
+    if (!fm) return res.status(404).json({ error: 'Фронтмен не найден' });
+
+    const products = await Product.find({
+      brand: fm.brand,
+      set: { $in: fm.sets },
+      productStatus: { $in: ['for_sale', 'test_sale'] },
+    }).select('name fullName sku set images driveImages hasVideo').lean();
+
+    const schedules = await VideoSchedule.find({ frontman: fm._id })
+      .populate('product', 'name fullName sku set images driveImages hasVideo')
+      .sort({ plannedDate: 1 })
+      .lean();
+
+    const stats = {
+      total: products.length,
+      withVideo: products.filter(p => p.hasVideo).length,
+      scheduled: schedules.length,
+      completed: schedules.filter(s => s.isCompleted).length,
+    };
+
+    res.json({ frontman: fm, user: fm.userId, products, schedules, stats });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;

@@ -179,5 +179,6 @@ export const adminCompleteVideoSchedule  = (id)           => api.patch(`/admin/v
 export const adminUncompleteVideoSchedule= (id)           => api.patch(`/admin/video-schedule/${id}/uncomplete`);
 export const adminDeleteVideoSchedule    = (id)           => api.delete(`/admin/video-schedule/${id}`);
 export const adminGetVideoScheduleReport = ()             => api.get('/admin/video-schedule/report');
+export const adminGetVideoScheduleFrontmanReport = (id)   => api.get(`/admin/video-schedule/report/${id}`);
 
 export default api;

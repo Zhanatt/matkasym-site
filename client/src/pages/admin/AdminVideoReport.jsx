@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminGetVideoScheduleReport } from '../../api';
 
 const BRAND_META = {
@@ -8,6 +9,7 @@ const BRAND_META = {
 };
 
 export default function AdminVideoReport() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState([]);
 
@@ -90,6 +92,7 @@ export default function AdminVideoReport() {
                 return (
                   <div
                     key={frontman._id}
+                    onClick={() => navigate(`/admin/video-report/${frontman._id}`)}
                     style={{
                       background: '#fff',
                       borderRadius: 12,
@@ -97,7 +100,11 @@ export default function AdminVideoReport() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 16,
+                      cursor: 'pointer',
+                      transition: 'box-shadow .15s, transform .15s',
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
                   >
                     <div style={{
                       width: 44,
@@ -171,6 +178,8 @@ export default function AdminVideoReport() {
                     }}>
                       {progress}%
                     </div>
+
+                    <div style={{ color: '#ccc', fontSize: 18, fontWeight: 700 }}>›</div>
                   </div>
                 );
               })}

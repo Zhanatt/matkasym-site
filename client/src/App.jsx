@@ -29,6 +29,7 @@ import AdminReceiveAlerts from './pages/admin/AdminReceiveAlerts';
 import AdminPendingReceive from './pages/admin/AdminPendingReceive';
 import AdminVideoSchedule from './pages/admin/AdminVideoSchedule';
 import AdminVideoReport from './pages/admin/AdminVideoReport';
+import AdminVideoReportDetail from './pages/admin/AdminVideoReportDetail';
 import Home        from './pages/Home';
 import Catalog     from './pages/Catalog';
 import ProductPage from './pages/ProductPage';
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="pending-receive" element={<AdminPendingReceive />} />
           <Route path="video-schedule" element={<AdminVideoSchedule />} />
           <Route path="video-report" element={<AdminVideoReport />} />
+          <Route path="video-report/:frontmanId" element={<AdminVideoReportDetail />} />
         </Route>
       </Routes>
     );
