@@ -102,6 +102,7 @@ export default function AdminVideoSchedule() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSet, setSelectedSet] = useState('all');
+  const [search, setSearch] = useState('');
   const [selectedDay, setSelectedDay] = useState(null); // 'YYYY-MM-DD' → модалка дня
   const [saving, setSaving] = useState(false);
 
@@ -114,6 +115,7 @@ export default function AdminVideoSchedule() {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { setSearch(''); }, [selectedDay]); // новый день — чистый поиск
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
@@ -139,9 +141,17 @@ export default function AdminVideoSchedule() {
   }, [data?.products, scheduledProductIds]);
 
   const filteredUnscheduled = useMemo(() => {
-    if (selectedSet === 'all') return unscheduledProducts;
-    return unscheduledProducts.filter(p => p.set === selectedSet);
-  }, [unscheduledProducts, selectedSet]);
+    let list = selectedSet === 'all' ? unscheduledProducts : unscheduledProducts.filter(p => p.set === selectedSet);
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(p =>
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.fullName || '').toLowerCase().includes(q) ||
+        (p.sku || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [unscheduledProducts, selectedSet, search]);
 
   const uniqueSets = useMemo(() => {
     if (!data?.products) return [];
@@ -555,9 +565,31 @@ export default function AdminVideoSchedule() {
                   </select>
                 </div>
 
+                {/* Поиск */}
+                <div style={{ position: 'relative', marginBottom: 10 }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#bbb', pointerEvents: 'none' }}>🔍</span>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Поиск товара..."
+                    style={{
+                      width: '100%', boxSizing: 'border-box', padding: '9px 34px 9px 34px',
+                      borderRadius: 10, border: '1.5px solid #e5e5e5', fontSize: 13.5,
+                      background: '#fff', outline: 'none',
+                    }}
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 22, height: 22, borderRadius: '50%', border: 'none', background: '#f0f0ee', color: '#888', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}
+                    >✕</button>
+                  )}
+                </div>
+
                 {filteredUnscheduled.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: 20, color: '#999', fontSize: 13, background: '#fafaf8', borderRadius: 12 }}>
-                    Все товары уже запланированы 🎉
+                    {search.trim() ? 'Ничего не найдено' : 'Все товары уже запланированы 🎉'}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
