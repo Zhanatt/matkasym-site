@@ -175,7 +175,7 @@ export const adminDeleteReview        = (id)             => api.delete(`/admin/r
 // Video Schedule (планирование съёмок)
 export const adminGetVideoScheduleMy     = ()             => api.get('/admin/video-schedule/my');
 export const adminCreateVideoSchedule    = (data)         => api.post('/admin/video-schedule', data);
-export const adminCompleteVideoSchedule  = (id)           => api.patch(`/admin/video-schedule/${id}/complete`);
+export const adminCompleteVideoSchedule  = (id, data)     => api.patch(`/admin/video-schedule/${id}/complete`, data);
 export const adminUncompleteVideoSchedule= (id)           => api.patch(`/admin/video-schedule/${id}/uncomplete`);
 export const adminDeleteVideoSchedule    = (id)           => api.delete(`/admin/video-schedule/${id}`);
 export const adminGetVideoScheduleReport = ()             => api.get('/admin/video-schedule/report');

@@ -3158,7 +3158,12 @@ router.patch('/video-schedule/:id/complete', protect, async (req, res) => {
     }
 
     schedule.isCompleted = true;
-    schedule.completedAt = new Date();
+    // Отметка прошлой съёмки: клиент может передать дату, когда реально снимали.
+    // Будущие/битые даты игнорируем — ставим текущий момент.
+    const requested = req.body?.completedAt ? new Date(req.body.completedAt) : null;
+    schedule.completedAt = requested && !isNaN(requested) && requested <= new Date()
+      ? requested
+      : new Date();
     await schedule.save();
 
     await Product.findByIdAndUpdate(schedule.product, { hasVideo: true });

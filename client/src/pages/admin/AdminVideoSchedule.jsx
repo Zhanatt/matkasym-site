@@ -173,12 +173,17 @@ export default function AdminVideoSchedule() {
       });
   };
 
-  const handleComplete = (scheduleId) => {
+  const handleComplete = (scheduleId, dayKey = null) => {
+    // Отметка из модалки прошлого дня — фиксируем съёмку той датой, а не сегодняшней
+    const isPastDay = dayKey && dayKey < formatDate(new Date());
+    const completedAt = isPastDay
+      ? new Date(dayKey + 'T12:00:00').toISOString()
+      : new Date().toISOString();
     setData(prev => ({
       ...prev,
-      schedules: prev.schedules.map(s => s._id === scheduleId ? { ...s, isCompleted: true } : s),
+      schedules: prev.schedules.map(s => s._id === scheduleId ? { ...s, isCompleted: true, completedAt } : s),
     }));
-    adminCompleteVideoSchedule(scheduleId).catch(() => load(true));
+    adminCompleteVideoSchedule(scheduleId, isPastDay ? { completedAt } : {}).catch(() => load(true));
   };
 
   const handleUncomplete = (scheduleId) => {
@@ -512,8 +517,18 @@ export default function AdminVideoSchedule() {
                             <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', textDecoration: item.isCompleted ? 'line-through' : 'none', opacity: item.isCompleted ? 0.6 : 1 }}>
                               {item.product.name}
                             </div>
-                            <div style={{ fontSize: 11.5, color: '#999' }}>{setLabel(item.product.set)}{item.isCompleted ? ' · ✓ снято' : ''}</div>
+                            <div style={{ fontSize: 11.5, color: '#999' }}>{setLabel(item.product.set)}</div>
                           </div>
+                          <button
+                            onClick={() => item.isCompleted ? handleUncomplete(item._id) : handleComplete(item._id, selectedDay)}
+                            disabled={saving || String(item._id).startsWith('tmp_')}
+                            style={{
+                              padding: '7px 12px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                              fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap',
+                              background: item.isCompleted ? '#e8f5e9' : accent,
+                              color: item.isCompleted ? '#2d7a3a' : '#fff',
+                            }}
+                          >{item.isCompleted ? '✓ Снято' : 'Снял ✓'}</button>
                           <button
                             onClick={() => handleDelete(item._id)}
                             disabled={saving}
