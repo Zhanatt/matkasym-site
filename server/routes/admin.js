@@ -14,6 +14,8 @@ const Supplier     = require('../models/Supplier');
 const PhotoLog     = require('../models/PhotoLog');
 const ReceiveAlert = require('../models/ReceiveAlert');
 const Feedback     = require('../models/Feedback');
+const TechRequest  = require('../models/TechRequest');
+const { COMPANY_REQUIRED } = require('../models/TechRequest');
 const VideoSchedule = require('../models/VideoSchedule');
 const LoginLog     = require('../models/LoginLog');
 const cloudinary   = require('../lib/cloudinary');
@@ -3130,6 +3132,169 @@ router.patch('/feedback/:id', editor, async (req, res) => {
 router.delete('/feedback/:id', admin, async (req, res) => {
   try {
     await Feedback.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TECH REQUESTS — заявки на техлист от навигаторов
+// ══════════════════════════════════════════════════════════════════════════════
+
+const TR_POPULATE = [
+  { path: 'createdBy',  select: 'name email role' },
+  { path: 'assignedTo', select: 'name email' },
+];
+
+// GET /api/admin/tech-requests — список заявок
+router.get('/tech-requests', async (req, res) => {
+  try {
+    const { status, priority, createdBy, limit = 100, skip = 0 } = req.query;
+    const filter = {};
+    if (status)    filter.status = status;
+    if (priority)  filter.priority = priority;
+    if (createdBy) filter.createdBy = createdBy;
+
+    const [requests, total, newCount] = await Promise.all([
+      TechRequest.find(filter)
+        .populate(TR_POPULATE)
+        .sort({ createdAt: -1 })
+        .skip(Number(skip))
+        .limit(Number(limit)),
+      TechRequest.countDocuments(filter),
+      TechRequest.countDocuments({ status: 'new' }),
+    ]);
+
+    res.json({ requests, total, newCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/tech-requests/count — бейдж в меню
+router.get('/tech-requests/count', async (req, res) => {
+  try {
+    const [newCount, inProgressCount] = await Promise.all([
+      TechRequest.countDocuments({ status: 'new' }),
+      TechRequest.countDocuments({ status: 'in_progress' }),
+    ]);
+    res.json({ newCount, inProgressCount, total: newCount + inProgressCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/tech-requests/:id — одна заявка
+router.get('/tech-requests/:id', async (req, res) => {
+  try {
+    const request = await TechRequest.findById(req.params.id)
+      .populate(TR_POPULATE)
+      .populate('comments.author', 'name email')
+      .populate('result.doneBy', 'name email');
+
+    if (!request) return res.status(404).json({ error: 'Заявка не найдена' });
+    res.json(request);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/tech-requests — создать заявку (навигатор)
+router.post('/tech-requests', async (req, res) => {
+  try {
+    const { client, item, symbols, spec, priority, deadline } = req.body;
+
+    if (!client?.name?.trim())      return res.status(400).json({ error: 'Укажите имя клиента' });
+    if (!client?.legalStatus)       return res.status(400).json({ error: 'Укажите юридический статус клиента' });
+    if (!item?.dimensions?.trim())  return res.status(400).json({ error: 'Укажите размеры изделия' });
+    if (!item?.color?.trim())       return res.status(400).json({ error: 'Укажите цвет изделия' });
+    if (!spec?.description?.trim()) return res.status(400).json({ error: 'Заполните техническое задание' });
+
+    if (COMPANY_REQUIRED.includes(client.legalStatus) && !client.companyName?.trim()) {
+      return res.status(400).json({ error: 'Для юридического лица обязательно название компании' });
+    }
+
+    const last = await TechRequest.findOne().sort({ number: -1 }).select('number');
+
+    const request = await TechRequest.create({
+      number: (last?.number || 0) + 1,
+      createdBy: req.user._id,
+      client: {
+        name:        client.name.trim(),
+        legalStatus: client.legalStatus,
+        companyName: client.companyName?.trim() || '',
+        phone:       client.phone?.trim() || '',
+      },
+      item: {
+        name:       item.name?.trim() || '',
+        dimensions: item.dimensions.trim(),
+        color:      item.color.trim(),
+        quantity:   Number(item.quantity) || 1,
+      },
+      symbols: {
+        has:         !!symbols?.has,
+        types:       symbols?.types || [],
+        description: symbols?.description || '',
+        media:       symbols?.media || [],
+      },
+      spec: {
+        description: spec.description.trim(),
+        media:       spec.media || [],
+      },
+      priority: priority || 'medium',
+      deadline: deadline || null,
+      statusHistory: [{ from: null, to: 'new', changedBy: req.user._id }],
+    });
+
+    const populated = await TechRequest.findById(request._id).populate(TR_POPULATE);
+    res.status(201).json(populated);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/tech-requests/:id — статус, ответственный, срок, результат, комментарий
+router.patch('/tech-requests/:id', editor, async (req, res) => {
+  try {
+    const request = await TechRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Заявка не найдена' });
+
+    const { status, assignedTo, deadline, priority, result, comment, rejectReason } = req.body;
+    const oldStatus = request.status;
+
+    if (assignedTo !== undefined) request.assignedTo = assignedTo || null;
+    if (deadline   !== undefined) request.deadline   = deadline || null;
+    if (priority)                 request.priority   = priority;
+    if (rejectReason !== undefined) request.rejectReason = rejectReason;
+
+    if (result) {
+      request.result = {
+        description: result.description || '',
+        media:       result.media || [],
+        doneAt:      new Date(),
+        doneBy:      req.user._id,
+      };
+    }
+
+    if (comment) {
+      request.comments.push({ author: req.user._id, authorName: req.user.name, text: comment });
+    }
+
+    if (status && status !== oldStatus) {
+      // Нельзя закрыть заявку без результата (готового техлиста)
+      if (status === 'done' && !(request.result?.description || result?.description)) {
+        return res.status(400).json({ error: 'Нельзя закрыть заявку без результата — опишите готовый техлист' });
+      }
+      request.status = status;
+      request.statusHistory.push({ from: oldStatus, to: status, changedBy: req.user._id });
+      if (status === 'in_progress' && !request.startedAt) request.startedAt = new Date();
+    }
+
+    await request.save();
+
+    const populated = await TechRequest.findById(request._id)
+      .populate(TR_POPULATE)
+      .populate('comments.author', 'name email');
+
+    res.json(populated);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/tech-requests/:id — удалить заявку
+router.delete('/tech-requests/:id', admin, async (req, res) => {
+  try {
+    await TechRequest.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

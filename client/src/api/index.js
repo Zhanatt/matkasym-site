@@ -83,6 +83,14 @@ export const adminGetFeedback       = (id)          => api.get(`/admin/feedback/
 export const adminCreateFeedback    = (data)        => api.post('/admin/feedback', data);
 export const adminUpdateFeedback    = (id, data)    => api.patch(`/admin/feedback/${id}`, data);
 export const adminDeleteFeedback    = (id)          => api.delete(`/admin/feedback/${id}`);
+
+// Tech Requests — заявки на техлист от навигаторов
+export const adminGetTechRequests     = (params)   => api.get('/admin/tech-requests', { params });
+export const adminGetTechRequestCount = ()         => api.get('/admin/tech-requests/count');
+export const adminGetTechRequest      = (id)       => api.get(`/admin/tech-requests/${id}`);
+export const adminCreateTechRequest   = (data)     => api.post('/admin/tech-requests', data);
+export const adminUpdateTechRequest   = (id, data) => api.patch(`/admin/tech-requests/${id}`, data);
+export const adminDeleteTechRequest   = (id)       => api.delete(`/admin/tech-requests/${id}`);
 export const adminGetProductImprovements = (id)     => api.get(`/admin/products/${id}/improvements`);
 export const adminUploadPrices  = (file, type, onProgress)  => {
   const fd = new FormData();

@@ -20,6 +20,9 @@ import AdminBufferStock   from './pages/admin/AdminBufferStock';
 import AdminFeedback      from './pages/admin/AdminFeedback';
 import AdminFeedbackForm  from './pages/admin/AdminFeedbackForm';
 import AdminFeedbackDetail from './pages/admin/AdminFeedbackDetail';
+import AdminTechRequests     from './pages/admin/AdminTechRequests';
+import AdminTechRequestForm  from './pages/admin/AdminTechRequestForm';
+import AdminTechRequestDetail from './pages/admin/AdminTechRequestDetail';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import AdminNews         from './pages/admin/AdminNews';
 import AdminNewsCreate   from './pages/admin/AdminNewsCreate';
@@ -66,6 +69,9 @@ export default function App() {
           <Route path="feedback"     element={<AdminFeedback />} />
           <Route path="feedback/new" element={<AdminFeedbackForm />} />
           <Route path="feedback/:id" element={<AdminFeedbackDetail />} />
+          <Route path="tech-requests"     element={<AdminTechRequests />} />
+          <Route path="tech-requests/new" element={<AdminTechRequestForm />} />
+          <Route path="tech-requests/:id" element={<AdminTechRequestDetail />} />
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="history" element={<AdminHistory />} />
