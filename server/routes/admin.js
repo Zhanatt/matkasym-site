@@ -1866,13 +1866,10 @@ router.post('/upload-photos', editor, upload.array('files', 100), async (req, re
 // ── Buffer Stock ─────────────────────────────────────────────────────────────
 // GET /api/admin/buffer-stock?zone=ikea|home|shaar
 // Товары, у которых остаток упал ниже буферного запаса.
-// owner/editor видят все зоны и могут фильтровать; остальные — только свою.
+// Видят все, у кого есть доступ: зоны разделяют только адресатов алертов, не обзор.
 router.get('/buffer-stock', canViewBufferStock, async (req, res) => {
   try {
-    const isAdmin  = ['owner', 'editor'].includes(req.user.role);
-    const ownZone  = req.user.bufferZone || '';
-    const reqZone  = ZONES[req.query.zone] ? req.query.zone : '';
-    const zone     = isAdmin ? reqZone : ownZone;
+    const zone = ZONES[req.query.zone] ? req.query.zone : '';
 
     const belowBuffer = { bufferStock: { $gt: 0 }, $expr: { $lt: ['$stock', '$bufferStock'] } };
     const filter      = zone ? { ...belowBuffer, ...zoneFilter(zone) } : belowBuffer;
@@ -1885,20 +1882,19 @@ router.get('/buffer-stock', canViewBufferStock, async (req, res) => {
     products.forEach(p => { p.deficit = (p.bufferStock || 0) - (p.stock || 0); p.zone = zoneOf(p); });
     products.sort((a, b) => b.deficit - a.deficit);
 
-    // Счётчики по зонам нужны только админам — у остальных одна вкладка
-    let counts = {};
-    if (isAdmin) {
-      const entries = await Promise.all(Object.keys(ZONES).map(async z =>
+    const [totalCount, ...entries] = await Promise.all([
+      Product.countDocuments(belowBuffer),
+      ...Object.keys(ZONES).map(async z =>
         [z, await Product.countDocuments({ ...belowBuffer, ...zoneFilter(z) })]
-      ));
-      counts = Object.fromEntries(entries);
-    }
+      ),
+    ]);
 
     res.json({
       products,
       zone,
-      isAdmin,
-      counts,
+      totalCount,
+      ownZone: req.user.bufferZone || '',
+      counts: Object.fromEntries(entries),
       zones: Object.entries(ZONES).map(([key, z]) => ({ key, label: z.label })),
     });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
