@@ -19,7 +19,9 @@ const userSchema = new mongoose.Schema({
   lastSeen: { type: Date, default: null },
   telegramChatId: { type: String, default: '' },
   canViewUsers: { type: Boolean, default: false },
-  canSetBufferStock: { type: Boolean, default: false }, // может менять буферный запас + получает алерты
+  canSetBufferStock: { type: Boolean, default: false }, // может менять буферный запас
+  // Зона ответственности за буферный запас: получает алерты и видит страницу только по своим товарам
+  bufferZone: { type: String, enum: ['', 'ikea', 'home', 'shaar'], default: '' },
 
 }, { timestamps: true });
 

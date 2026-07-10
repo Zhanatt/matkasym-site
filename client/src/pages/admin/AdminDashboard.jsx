@@ -526,7 +526,8 @@ export default function AdminDashboard() {
         }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: syncResult.ok ? '#2d7a3a' : '#c0392b' }}>
             {syncResult.ok
-              ? (syncResult.msg || `✅ Остатки обновлены — совпало: ${syncResult.matched}, обнулено: ${syncResult.zeroed}, всего: ${syncResult.total}`)
+              ? (syncResult.msg || `✅ Остатки обновлены — совпало: ${syncResult.matched}, обнулено: ${syncResult.zeroed}, всего: ${syncResult.total}` +
+                  (syncResult.hasBufferCols ? `, буфер обновлён у ${syncResult.buffersUpdated}` : ', буфер в файле не найден'))
               : `❌ ${syncResult.error}`}
           </span>
           <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5 }}>×</button>

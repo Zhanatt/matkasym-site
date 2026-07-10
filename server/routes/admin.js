@@ -18,7 +18,8 @@ const VideoSchedule = require('../models/VideoSchedule');
 const LoginLog     = require('../models/LoginLog');
 const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts } = require('../lib/telegram');
-const { protect, admin, editor, viewer, warehouse, canReceiveStock } = require('../middleware/auth');
+const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
+const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock } = require('../middleware/auth');
 
 // Остаток пересёк буферный запас сверху вниз → нужен алерт
 const crossedBuffer = (oldStock, newStock, bufferStock) =>
@@ -58,6 +59,81 @@ const FIELD_LABELS = {
   pauseNote: 'Причина паузы',
   specs: 'Характеристики',
 };
+
+// ── SYNC STOCK FROM 1C (PowerShell на wins1 отправляет сюда данные) ──────────
+// Объявлен ДО router.use(protect, ...): у скрипта нет JWT, он авторизуется по x-api-key.
+const SYNC_KEY = process.env.SYNC_API_KEY || 'matkasym-sync-2026';
+
+function normName(s = '') {
+  return s.toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
+}
+function toInt(v) {
+  if (v === undefined || v === null || v === '') return 0;
+  const n = Number(v);
+  return isNaN(n) ? 0 : Math.max(0, Math.floor(n));
+}
+
+// POST /api/admin/sync-stock
+// Body: { apiKey?, stocks: [{name, osnovnoy, kommercheskiy}] }
+// Header: x-api-key: <SYNC_KEY>
+router.post('/sync-stock', async (req, res) => {
+  const key = req.headers['x-api-key'] || req.body.apiKey;
+  if (key !== SYNC_KEY) return res.status(401).json({ error: 'Неверный API ключ' });
+
+  const { stocks } = req.body;
+  if (!Array.isArray(stocks) || stocks.length === 0) {
+    return res.status(400).json({ error: 'stocks должен быть непустым массивом' });
+  }
+
+  // Build map: norm(name) → stock
+  const stockMap = new Map();
+  for (const item of stocks) {
+    const name = String(item.name || '').trim();
+    if (!name) continue;
+    const osnNum  = toInt(item.osnovnoy);
+    const kommRaw = Number(item.kommercheskiy);
+    const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
+    stockMap.set(normName(name), osnNum + kommNum);
+  }
+
+  const products = await Product.find({});
+  let matched = 0, zeroed = 0;
+  const stockLogDocs = [];
+  const bufferAlerts = [];
+
+  for (const p of products) {
+    const key2     = normName(p.fullName || p.name || '');
+    const newStock = stockMap.has(key2) ? stockMap.get(key2) : 0;
+    const inStock  = newStock > 0;
+    const oldStock = p.stock || 0;
+    await Product.updateOne({ _id: p._id }, {
+      $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' }
+    });
+    if (stockMap.has(key2)) matched++; else zeroed++;
+    if (newStock !== oldStock) {
+      stockLogDocs.push({
+        productId:   p._id,
+        productName: p.fullName || p.name || '',
+        sku:         p.sku || '',
+        delta:       newStock - oldStock,
+        fromStock:   oldStock,
+        toStock:     newStock,
+        source:      'sync_1c',
+        notInFile:   !stockMap.has(key2),
+        changedBy:   {},
+      });
+      // Алерт только если товар реально есть в выгрузке (обнуление "не найден" — не продажа)
+      if (stockMap.has(key2) && crossedBuffer(oldStock, newStock, p.bufferStock)) {
+        bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: p.bufferStock, zone: zoneOf(p) });
+      }
+    }
+  }
+  if (stockLogDocs.length) await StockLog.insertMany(stockLogDocs, { ordered: false });
+  if (bufferAlerts.length) sendBufferStockAlerts(bufferAlerts).catch(e => console.error('[BufferAlert]', e.message));
+
+  console.log(`[sync-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
+  res.json({ success: true, matched, zeroed, total: matched + zeroed, date: new Date().toISOString() });
+});
 
 // All admin routes require valid JWT + at least warehouse role
 router.use(protect, warehouse);
@@ -259,7 +335,7 @@ router.patch('/products/:id', editor, async (req, res) => {
           changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
         });
         if (crossedBuffer(fromStock, toStock, p.bufferStock)) {
-          sendBufferStockAlerts([{ name: p.fullName || p.name, sku: p.sku, stock: toStock, bufferStock: p.bufferStock }])
+          sendBufferStockAlerts([{ name: p.fullName || p.name, sku: p.sku, stock: toStock, bufferStock: p.bufferStock, zone: zoneOf(p) }])
             .catch(e => console.error('[BufferAlert]', e.message));
         }
       }
@@ -1220,14 +1296,47 @@ router.post('/upload-image', editor, upload.single('image'), async (req, res) =>
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-function normName(s = '') {
-  return s.toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
+// Разбирает двухуровневую шапку выгрузки 1С:
+//   строка N   — склады:     "Товар" | "1 Основной склад" | "Коммерческий склад" | "Итого"
+//   строка N+1 — показатели: "Остаток" | "Минимальный остаток" | "Сумма" | …
+// Показатель относится к ближайшему складу слева. Склады кроме основного и
+// коммерческого (Итого, Виртуальный, Вен агент) игнорируются.
+// В старых выгрузках колонок минимума нет — тогда minOsn/minKomm остаются null.
+function detectStockColumns(rows) {
+  const fallback = { colOsn: 4, colKomm: 19, minOsn: null, minKomm: null, dataStart: 7 };
+
+  let headRow = -1;
+  for (let ri = 0; ri <= 12; ri++) {
+    if (String((rows[ri] || [])[0] || '').trim().toLowerCase() === 'товар') { headRow = ri; break; }
+  }
+  if (headRow < 0) return fallback;
+
+  const groups = [];
+  (rows[headRow] || []).forEach((cell, c) => {
+    const t = String(cell || '').trim().toLowerCase();
+    if (!t || c === 0) return;
+    groups.push({ col: c, key: t.includes('основной') ? 'Osn' : t.includes('коммерческий') ? 'Komm' : null });
+  });
+  if (!groups.some(g => g.key)) return fallback;
+
+  const out = { colOsn: null, colKomm: null, minOsn: null, minKomm: null, dataStart: headRow + 2 };
+  (rows[headRow + 1] || []).forEach((cell, c) => {
+    const t = String(cell || '').trim().toLowerCase();
+    if (!t.includes('остаток')) return;
+    const g = groups.filter(x => x.col <= c).pop();
+    if (!g || !g.key) return;
+    const field = (t.includes('минимальн') ? 'min' : 'col') + g.key;
+    if (out[field] === null) out[field] = c;
+  });
+  if (out.colOsn === null && out.colKomm === null) return fallback;
+  if (out.colOsn === null)  out.colOsn  = fallback.colOsn;
+  if (out.colKomm === null) out.colKomm = fallback.colKomm;
+  return out;
 }
-function toInt(v) {
-  if (v === undefined || v === null || v === '') return 0;
-  const n = Number(v);
-  return isNaN(n) ? 0 : Math.max(0, Math.floor(n));
-}
+
+// Буферный запас товара: 1С ведёт минимум по каждому складу отдельно —
+// берём больший, меньший игнорируем. 0 означает "в 1С не задан".
+const bufferFromMins = (a, b) => Math.max(toInt(a), toInt(b));
 
 // POST /api/admin/upload-stock  (multipart: field "file")
 router.post('/upload-stock', editor, upload.single('file'), async (req, res) => {
@@ -1238,22 +1347,8 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-    // Auto-detect: scan rows 5-10 for warehouse headers, then find sub-header row
-    let colOsn = 4, colKomm = 19, dataStart = 7;
-    for (let ri = 5; ri <= 10; ri++) {
-      const hr = rows[ri] || [];
-      for (let c = 0; c < hr.length; c++) {
-        const cell = String(hr[c] || '').toLowerCase();
-        if (cell.includes('основной'))     colOsn  = c;
-        if (cell.includes('коммерческий')) colKomm = c;
-      }
-    }
-    for (let ri = 6; ri <= 12; ri++) {
-      if (String((rows[ri] || [])[colOsn] || '').toLowerCase().includes('остаток')) {
-        dataStart = ri + 1;
-        break;
-      }
-    }
+    const { colOsn, colKomm, minOsn, minKomm, dataStart } = detectStockColumns(rows);
+    const hasBufferCols = minOsn !== null || minKomm !== null;
 
     const stockMap = new Map();
     for (let i = dataStart; i < rows.length; i++) {
@@ -1264,20 +1359,22 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       const osnNum  = toInt(row[colOsn]);
       const kommRaw = Number(row[colKomm]);
       const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
-      stockMap.set(normName(name), osnNum + kommNum);
+      const buffer  = hasBufferCols ? bufferFromMins(minOsn === null ? 0 : row[minOsn], minKomm === null ? 0 : row[minKomm]) : 0;
+      stockMap.set(normName(name), { stock: osnNum + kommNum, buffer });
     }
 
-    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock bufferStock');
-    let matched = 0, zeroed = 0;
+    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock bufferStock brand supplier.company');
+    let matched = 0, zeroed = 0, buffersUpdated = 0;
     const notFoundRows = [];
     const stockLogDocs = [];
     const bufferAlerts = [];
     const ops = products.map(p => {
       const key      = normName(p.fullName || p.name || '');
-      const newStock = stockMap.has(key) ? stockMap.get(key) : 0;
+      const row      = stockMap.get(key);
+      const newStock = row ? row.stock : 0;
       const inStock  = newStock > 0;
       const oldStock = p.stock || 0;
-      if (stockMap.has(key)) {
+      if (row) {
         matched++;
       } else {
         zeroed++;
@@ -1289,6 +1386,13 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
           'Цена опт.':   p.priceWholesale || 0,
         });
       }
+
+      // Буфер из 1С перезаписывает ручной, но только если задан.
+      // У товаров IKEA в 1С минимума нет — там буфер ведут вручную, его не затираем.
+      const oldBuffer = p.bufferStock || 0;
+      const newBuffer = (row && row.buffer > 0) ? row.buffer : oldBuffer;
+      if (newBuffer !== oldBuffer) buffersUpdated++;
+
       if (newStock !== oldStock) {
         stockLogDocs.push({
           productId:   p._id,
@@ -1298,15 +1402,15 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
           fromStock:   oldStock,
           toStock:     newStock,
           source:      'excel',
-          notInFile:   !stockMap.has(key),
+          notInFile:   !row,
           changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
         });
         // Алерт только если товар реально есть в выгрузке (обнуление "не найден" — не продажа)
-        if (stockMap.has(key) && crossedBuffer(oldStock, newStock, p.bufferStock)) {
-          bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: p.bufferStock });
+        if (row && crossedBuffer(oldStock, newStock, newBuffer)) {
+          bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: newBuffer, zone: zoneOf(p) });
         }
       }
-      return { updateOne: { filter: { _id: p._id }, update: { $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' } } } };
+      return { updateOne: { filter: { _id: p._id }, update: { $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock', bufferStock: newBuffer } } } };
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
     if (bufferAlerts.length) sendBufferStockAlerts(bufferAlerts).catch(e => console.error('[BufferAlert]', e.message));
@@ -1330,8 +1434,8 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       excelBase64 = xlsx.write(wb2, { type: 'base64', bookType: 'xlsx' });
     }
 
-    console.log(`[upload-stock] ${new Date().toISOString()} colOsn=${colOsn} colKomm=${colKomm} dataStart=${dataStart} matched=${matched} zeroed=${zeroed}`);
-    res.json({ success: true, matched, zeroed, total: matched + zeroed, excelBase64 });
+    console.log(`[upload-stock] ${new Date().toISOString()} colOsn=${colOsn} colKomm=${colKomm} minOsn=${minOsn} minKomm=${minKomm} dataStart=${dataStart} matched=${matched} zeroed=${zeroed} buffers=${buffersUpdated}`);
+    res.json({ success: true, matched, zeroed, total: matched + zeroed, buffersUpdated, hasBufferCols, excelBase64 });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }
@@ -1759,78 +1863,45 @@ router.post('/upload-photos', editor, upload.array('files', 100), async (req, re
   }
 });
 
-// ── SYNC STOCK FROM 1C (PowerShell на wins1 отправляет сюда данные) ──────────
-const SYNC_KEY = process.env.SYNC_API_KEY || 'matkasym-sync-2026';
+// ── Buffer Stock ─────────────────────────────────────────────────────────────
+// GET /api/admin/buffer-stock?zone=ikea|home|shaar
+// Товары, у которых остаток упал ниже буферного запаса.
+// owner/editor видят все зоны и могут фильтровать; остальные — только свою.
+router.get('/buffer-stock', canViewBufferStock, async (req, res) => {
+  try {
+    const isAdmin  = ['owner', 'editor'].includes(req.user.role);
+    const ownZone  = req.user.bufferZone || '';
+    const reqZone  = ZONES[req.query.zone] ? req.query.zone : '';
+    const zone     = isAdmin ? reqZone : ownZone;
 
-function normName(s = '') {
-  return s.toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
-}
-function toInt(v) {
-  if (v === undefined || v === null || v === '') return 0;
-  const n = Number(v);
-  return isNaN(n) ? 0 : Math.max(0, Math.floor(n));
-}
+    const belowBuffer = { bufferStock: { $gt: 0 }, $expr: { $lt: ['$stock', '$bufferStock'] } };
+    const filter      = zone ? { ...belowBuffer, ...zoneFilter(zone) } : belowBuffer;
 
-// POST /api/admin/sync-stock
-// Body: { apiKey?, stocks: [{name, osnovnoy, kommercheskiy}] }
-// Header: x-api-key: <SYNC_KEY>
-router.post('/sync-stock', async (req, res) => {
-  const key = req.headers['x-api-key'] || req.body.apiKey;
-  if (key !== SYNC_KEY) return res.status(401).json({ error: 'Неверный API ключ' });
+    const products = await Product.find(filter)
+      .select('_id fullName name sku brand set category images driveImages stock bufferStock price priceWholesale priceDealer supplier.company')
+      .lean();
 
-  const { stocks } = req.body;
-  if (!Array.isArray(stocks) || stocks.length === 0) {
-    return res.status(400).json({ error: 'stocks должен быть непустым массивом' });
-  }
+    // Сначала самый большой дефицит
+    products.forEach(p => { p.deficit = (p.bufferStock || 0) - (p.stock || 0); p.zone = zoneOf(p); });
+    products.sort((a, b) => b.deficit - a.deficit);
 
-  // Build map: norm(name) → stock
-  const stockMap = new Map();
-  for (const item of stocks) {
-    const name = String(item.name || '').trim();
-    if (!name) continue;
-    const osnNum  = toInt(item.osnovnoy);
-    const kommRaw = Number(item.kommercheskiy);
-    const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
-    stockMap.set(normName(name), osnNum + kommNum);
-  }
-
-  const products = await Product.find({});
-  let matched = 0, zeroed = 0;
-  const stockLogDocs = [];
-  const bufferAlerts = [];
-
-  for (const p of products) {
-    const key2     = normName(p.fullName || p.name || '');
-    const newStock = stockMap.has(key2) ? stockMap.get(key2) : 0;
-    const inStock  = newStock > 0;
-    const oldStock = p.stock || 0;
-    await Product.updateOne({ _id: p._id }, {
-      $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock' }
-    });
-    if (stockMap.has(key2)) matched++; else zeroed++;
-    if (newStock !== oldStock) {
-      stockLogDocs.push({
-        productId:   p._id,
-        productName: p.fullName || p.name || '',
-        sku:         p.sku || '',
-        delta:       newStock - oldStock,
-        fromStock:   oldStock,
-        toStock:     newStock,
-        source:      'sync_1c',
-        notInFile:   !stockMap.has(key2),
-        changedBy:   {},
-      });
-      // Алерт только если товар реально есть в выгрузке (обнуление "не найден" — не продажа)
-      if (stockMap.has(key2) && crossedBuffer(oldStock, newStock, p.bufferStock)) {
-        bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: p.bufferStock });
-      }
+    // Счётчики по зонам нужны только админам — у остальных одна вкладка
+    let counts = {};
+    if (isAdmin) {
+      const entries = await Promise.all(Object.keys(ZONES).map(async z =>
+        [z, await Product.countDocuments({ ...belowBuffer, ...zoneFilter(z) })]
+      ));
+      counts = Object.fromEntries(entries);
     }
-  }
-  if (stockLogDocs.length) await StockLog.insertMany(stockLogDocs, { ordered: false });
-  if (bufferAlerts.length) sendBufferStockAlerts(bufferAlerts).catch(e => console.error('[BufferAlert]', e.message));
 
-  console.log(`[sync-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
-  res.json({ success: true, matched, zeroed, total: matched + zeroed, date: new Date().toISOString() });
+    res.json({
+      products,
+      zone,
+      isAdmin,
+      counts,
+      zones: Object.entries(ZONES).map(([key, z]) => ({ key, label: z.label })),
+    });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Stock Log ────────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ const NAV_ALL = [
   { to: '/admin',          label: 'Дашборд',             icon: '◻', end: true, roles: ['owner','editor','viewer','navigator','warehouse'] },
   { to: '/admin/sets',     label: 'Каталог по сетам',    icon: '🗂', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/pending-receive', label: 'Поступления', icon: '📦', roles: ['owner','editor','warehouse'], badge: 'pending_receive' },
+  { to: '/admin/buffer-stock', label: 'Буферный запас', icon: '📉', roles: ['owner','editor'] },
   { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/video-schedule', label: 'Планирование съёмок', icon: '🎬', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/video-report', label: 'Отчёт по видео', icon: '📹', roles: ['owner','editor'] },
@@ -138,6 +139,7 @@ export default function AdminLayout() {
         <nav className="admin-nav">
           {NAV_ALL.filter(n => {
             if (n.to === '/admin/users' && user.canViewUsers) return true;
+            if (n.to === '/admin/buffer-stock' && user.bufferZone) return true;
             return n.roles.includes(user.role);
           }).map(n => {
             const badgeCount = n.badge === 'pending' ? pendingCount : n.badge === 'news' ? newsUnread : n.badge === 'alerts' ? alertsCount : n.badge === 'pending_receive' ? pendingReceiveCount : n.badge === 'feedback' ? feedbackCount : 0;

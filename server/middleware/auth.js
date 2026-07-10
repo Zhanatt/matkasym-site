@@ -57,3 +57,9 @@ exports.canReceiveStock = (req, res, next) => {
   if (!['owner', 'editor', 'warehouse'].includes(req.user?.role)) return res.status(403).json({ message: 'Нет прав для приёма товара' });
   next();
 };
+
+// buffer stock page: owner/editor видят все зоны, остальные — только свою
+exports.canViewBufferStock = (req, res, next) => {
+  if (['owner', 'editor'].includes(req.user?.role) || req.user?.bufferZone) return next();
+  res.status(403).json({ message: 'Нет доступа к буферному запасу' });
+};
