@@ -248,7 +248,9 @@ export default function AdminVideoSchedule() {
     <div className="video-schedule">
       <div className="schedule-header">
         <h1 className="schedule-title">Планирование съёмок</h1>
-        <p className="schedule-subtitle">{frontman.name} — {frontman.brand}</p>
+        <p className="schedule-subtitle">
+          {frontman.name} — {[...new Set((data.frontmen || [frontman]).map(f => f.brand))].join(' · ')}
+        </p>
       </div>
 
       {/* Вкладки */}

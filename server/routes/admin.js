@@ -3315,19 +3315,29 @@ router.get('/products/:id/improvements', async (req, res) => {
 // VIDEO SCHEDULE (фронтмен — планирование съёмок)
 // =====================
 
+// Все фронтмен-профили пользователя. Обычно один, но Кенжебек заведён в двух
+// брендах (HOME + SHAAR), поэтому планирование должно объединять их сеты.
+async function getUserFrontmen(userId) {
+  return Frontman.find({ userId });
+}
+// Товары всех сетов пользователя: у каждого профиля свой бренд, поэтому $or по паре бренд+сеты.
+const frontmenProductFilter = frontmen => ({
+  $or: frontmen.map(f => ({ brand: f.brand, set: { $in: f.sets } })),
+});
+
 // GET /api/admin/video-schedule/my — получить данные текущего фронтмена
 router.get('/video-schedule/my', protect, async (req, res) => {
   try {
-    const frontman = await Frontman.findOne({ userId: req.user._id });
-    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmen = await getUserFrontmen(req.user._id);
+    if (!frontmen.length) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmanIds = frontmen.map(f => f._id);
 
     const products = await Product.find({
-      brand: frontman.brand,
-      set: { $in: frontman.sets },
+      ...frontmenProductFilter(frontmen),
       productStatus: { $in: ['for_sale', 'test_sale'] },
-    }).select('name fullName sku set images driveImages hasVideo').lean();
+    }).select('name fullName sku set brand images driveImages hasVideo').lean();
 
-    const schedules = await VideoSchedule.find({ frontman: frontman._id })
+    const schedules = await VideoSchedule.find({ frontman: { $in: frontmanIds } })
       .populate('product', 'name fullName sku set images driveImages hasVideo')
       .lean();
 
@@ -3338,21 +3348,25 @@ router.get('/video-schedule/my', protect, async (req, res) => {
       completed: schedules.filter(s => s.isCompleted).length,
     };
 
-    res.json({ frontman, products, schedules, stats });
+    // Для шапки берём первый профиль, но отдаём и полный список брендов.
+    res.json({ frontman: frontmen[0], frontmen, products, schedules, stats });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/admin/video-schedule — запланировать съёмку
 router.post('/video-schedule', protect, async (req, res) => {
   try {
-    const frontman = await Frontman.findOne({ userId: req.user._id });
-    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmen = await getUserFrontmen(req.user._id);
+    if (!frontmen.length) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
 
     const { productId, plannedDate } = req.body;
 
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ error: 'Товар не найден' });
-    if (!frontman.sets.includes(product.set)) {
+    // Привязываем запись к профилю того бренда, которому принадлежит товар,
+    // чтобы отчёты по HOME и SHAAR оставались раздельными.
+    const frontman = frontmen.find(f => f.brand === product.brand && f.sets.includes(product.set));
+    if (!frontman) {
       return res.status(403).json({ error: 'Этот товар не в вашем сете' });
     }
 
@@ -3380,12 +3394,13 @@ router.post('/video-schedule', protect, async (req, res) => {
 // PATCH /api/admin/video-schedule/:id/complete — отметить съёмку выполненной
 router.patch('/video-schedule/:id/complete', protect, async (req, res) => {
   try {
-    const frontman = await Frontman.findOne({ userId: req.user._id });
-    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmen = await getUserFrontmen(req.user._id);
+    if (!frontmen.length) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmanIds = frontmen.map(f => f._id.toString());
 
     const schedule = await VideoSchedule.findById(req.params.id);
     if (!schedule) return res.status(404).json({ error: 'Запись не найдена' });
-    if (schedule.frontman.toString() !== frontman._id.toString()) {
+    if (!frontmanIds.includes(schedule.frontman.toString())) {
       return res.status(403).json({ error: 'Это не ваша запись' });
     }
 
@@ -3409,12 +3424,13 @@ router.patch('/video-schedule/:id/complete', protect, async (req, res) => {
 // PATCH /api/admin/video-schedule/:id/uncomplete — снять отметку о съёмке
 router.patch('/video-schedule/:id/uncomplete', protect, async (req, res) => {
   try {
-    const frontman = await Frontman.findOne({ userId: req.user._id });
-    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmen = await getUserFrontmen(req.user._id);
+    if (!frontmen.length) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmanIds = frontmen.map(f => f._id.toString());
 
     const schedule = await VideoSchedule.findById(req.params.id);
     if (!schedule) return res.status(404).json({ error: 'Запись не найдена' });
-    if (schedule.frontman.toString() !== frontman._id.toString()) {
+    if (!frontmanIds.includes(schedule.frontman.toString())) {
       return res.status(403).json({ error: 'Это не ваша запись' });
     }
 
@@ -3433,12 +3449,13 @@ router.patch('/video-schedule/:id/uncomplete', protect, async (req, res) => {
 // DELETE /api/admin/video-schedule/:id — удалить запись из расписания
 router.delete('/video-schedule/:id', protect, async (req, res) => {
   try {
-    const frontman = await Frontman.findOne({ userId: req.user._id });
-    if (!frontman) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmen = await getUserFrontmen(req.user._id);
+    if (!frontmen.length) return res.status(403).json({ error: 'Вы не являетесь фронтменом' });
+    const frontmanIds = frontmen.map(f => f._id.toString());
 
     const schedule = await VideoSchedule.findById(req.params.id);
     if (!schedule) return res.status(404).json({ error: 'Запись не найдена' });
-    if (schedule.frontman.toString() !== frontman._id.toString()) {
+    if (!frontmanIds.includes(schedule.frontman.toString())) {
       return res.status(403).json({ error: 'Это не ваша запись' });
     }
 
