@@ -569,7 +569,7 @@ function getPriceLabel(mode) {
   return PRICE_MODES.find(m => m.key === mode)?.label || '';
 }
 
-function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride }) {
+function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride, fetchParams }) {
   const accent      = accentOverride || BRAND_META[brandKey]?.accent || '#555';
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
   const [priceMode, setPriceMode]         = useState(defaultMode);
@@ -595,10 +595,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   useEffect(() => {
     setLoading(true);
-    adminGetProducts({ set: setSlug, limit: 1000, page: 1 })
+    adminGetProducts(fetchParams || { set: setSlug, limit: 1000, page: 1 })
       .then(r => { setProducts(r.data.products || []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [brandKey, setSlug]);
+  }, [brandKey, setSlug, fetchParams && JSON.stringify(fetchParams)]);
 
   const models = useMemo(() => {
     const grouped = {};
@@ -1386,6 +1386,63 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   );
 }
 
+// ── TestSection ───────────────────────────────────────────────────────────────
+
+function TestSection() {
+  const [open, setOpen]   = useState(false);
+  const [count, setCount] = useState(0);
+  const isMobile = useIsMobile();
+  const accent   = '#00838f';
+  const pad      = isMobile ? '20px 16px' : '32px 36px';
+
+  useEffect(() => {
+    adminGetProducts({ productStatus: 'test_sale', brand: 'matkasym-home', limit: 1 })
+      .then(r => setCount(r.data.total || 0))
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, padding: pad, boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <div style={{ fontSize: isMobile ? 30 : 40, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>
+            🧪 ТЕСТ HOME
+          </div>
+          {count > 0 && (
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#888' }}>{count} тов.</div>
+          )}
+        </div>
+        <div style={{ height: 3, width: 50, background: accent, borderRadius: 2, margin: '8px 0 6px' }} />
+        <div style={{ fontSize: 12, color: '#6b8997' }}>без сета · тестовые товары</div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <div onClick={() => setOpen(true)}
+          style={{ padding: '10px 12px', background: '#e0f7fa', borderRadius: 8, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #b2ebf2' }}>
+          <span style={{ width: 20, textAlign: 'right', fontWeight: 700, fontSize: 12, color: accent, flexShrink: 0 }}>1</span>
+          <span style={{ color: '#ccc', fontSize: 13 }}>|</span>
+          <span style={{ fontSize: 13, color: '#00695c', fontWeight: 600,
+            textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: '#4dd0e1' }}>
+            ТЕСТ HOME (без сета)
+          </span>
+        </div>
+      </div>
+
+      {open && (
+        <SetCatalogPanel
+          brandKey="matkasym-home"
+          setSlug="__test__"
+          fetchParams={{ productStatus: 'test_sale', brand: 'matkasym-home', limit: 1000, page: 1 }}
+          accentOverride={accent}
+          titleOverride="ТЕСТ HOME (без сета)"
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── ProchiyeSection ───────────────────────────────────────────────────────────
 
 function ProchiyeSection() {
@@ -1502,6 +1559,7 @@ export default function AdminSets() {
         ? <div style={{ color: '#aaa', fontSize: 14 }}>Загрузка…</div>
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <TestSection />
             {Object.entries(BRAND_META).map(([key, meta]) => {
               const baseSets = sets[key] || [];
               return (
