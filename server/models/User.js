@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
   telegramChatId: { type: String, default: '' },
   canViewUsers: { type: Boolean, default: false },
   canSetBufferStock: { type: Boolean, default: false }, // может менять буферный запас
+  canOrderProducts: { type: Boolean, default: false }, // видит инбокс заявок фронтменов на заказ товаров (Джипар)
   // Зона ответственности за буферный запас: получает алерты и видит страницу только по своим товарам
   bufferZone: { type: String, enum: ['', 'ikea', 'home', 'shaar'], default: '' },
 

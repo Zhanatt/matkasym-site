@@ -91,6 +91,14 @@ export const adminGetTechRequest      = (id)       => api.get(`/admin/tech-reque
 export const adminCreateTechRequest   = (data)     => api.post('/admin/tech-requests', data);
 export const adminUpdateTechRequest   = (id, data) => api.patch(`/admin/tech-requests/${id}`, data);
 export const adminDeleteTechRequest   = (id)       => api.delete(`/admin/tech-requests/${id}`);
+
+// Product requests (фронтмен → заказ товара, инбокс Джипар)
+export const adminCreateProductRequest = (data)     => api.post('/admin/product-requests', data);
+export const adminGetMyProductRequests = ()         => api.get('/admin/product-requests/mine');
+export const adminGetProductRequests   = (params)   => api.get('/admin/product-requests', { params });
+export const adminGetProductRequestCount= ()        => api.get('/admin/product-requests/count');
+export const adminUpdateProductRequest = (id, data) => api.patch(`/admin/product-requests/${id}`, data);
+export const adminDeleteProductRequest = (id)       => api.delete(`/admin/product-requests/${id}`);
 export const adminGetProductImprovements = (id)     => api.get(`/admin/products/${id}/improvements`);
 export const adminUploadPrices  = (file, type, onProgress)  => {
   const fd = new FormData();

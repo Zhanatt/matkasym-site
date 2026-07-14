@@ -18,8 +18,9 @@ const TechRequest  = require('../models/TechRequest');
 const { COMPANY_REQUIRED } = require('../models/TechRequest');
 const VideoSchedule = require('../models/VideoSchedule');
 const LoginLog     = require('../models/LoginLog');
+const ProductRequest = require('../models/ProductRequest');
 const cloudinary   = require('../lib/cloudinary');
-const { sendBufferStockAlerts } = require('../lib/telegram');
+const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock } = require('../middleware/auth');
 
@@ -3295,6 +3296,132 @@ router.patch('/tech-requests/:id', editor, async (req, res) => {
 router.delete('/tech-requests/:id', admin, async (req, res) => {
   try {
     await TechRequest.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// =====================
+// PRODUCT REQUESTS (фронтмен → заказ товара, инбокс Джипар)
+// =====================
+
+// Доступ к инбоксу заказов: владелец или пользователь с флагом canOrderProducts (Джипар)
+const canOrders = (req, res, next) => {
+  if (req.user?.role === 'owner' || req.user?.canOrderProducts) return next();
+  return res.status(403).json({ message: 'Нет доступа к заказам товаров' });
+};
+
+const PR_TYPE_LABEL = { test: 'Тестовый продукт', real: 'Заказ товара' };
+
+// POST /api/admin/product-requests — создать заявку (любой фронтмен: protect+warehouse)
+router.post('/product-requests', async (req, res) => {
+  try {
+    const { type, photo, name, dimensions, color, note } = req.body;
+
+    if (!['test', 'real'].includes(type)) return res.status(400).json({ error: 'Выберите тип заявки' });
+    if (!name?.trim())                    return res.status(400).json({ error: 'Укажите название товара' });
+
+    const last = await ProductRequest.findOne().sort({ number: -1 }).select('number');
+
+    const request = await ProductRequest.create({
+      number:        (last?.number || 0) + 1,
+      createdBy:     req.user._id,
+      createdByName: req.user.name || '',
+      type,
+      photo:      photo || '',
+      name:       name.trim(),
+      dimensions: (dimensions || '').trim(),
+      color:      (color || '').trim(),
+      note:       (note || '').trim(),
+      status:     'active',
+    });
+
+    // Уведомить Джипар в Telegram (если привязан бот)
+    try {
+      const recipients = await User.find({ $or: [{ canOrderProducts: true }] })
+        .select('telegramChatId').lean();
+      const caption = `🛒 Новая заявка №${request.number} · ${PR_TYPE_LABEL[type]}\n` +
+        `Товар: ${request.name}\n` +
+        (request.dimensions ? `Размеры: ${request.dimensions}\n` : '') +
+        (request.color ? `Цвет: ${request.color}\n` : '') +
+        (request.note ? `Примечание: ${request.note}\n` : '') +
+        `От: ${request.createdByName || 'фронтмен'}`;
+      for (const u of recipients) {
+        if (!u.telegramChatId) continue;
+        if (request.photo) await sendTelegramPhoto(u.telegramChatId, request.photo, caption);
+        else               await sendTelegramMessage(u.telegramChatId, caption);
+      }
+    } catch (e) { console.error('[product-requests] telegram notify failed:', e.message); }
+
+    res.status(201).json(request);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// GET /api/admin/product-requests/mine — свои заявки (для страницы фронтмена)
+router.get('/product-requests/mine', async (req, res) => {
+  try {
+    const requests = await ProductRequest.find({ createdBy: req.user._id })
+      .sort({ createdAt: -1 }).limit(50);
+    res.json({ requests });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/product-requests/count — бейдж в меню (активные)
+router.get('/product-requests/count', canOrders, async (req, res) => {
+  try {
+    const activeCount = await ProductRequest.countDocuments({ status: 'active' });
+    res.json({ activeCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/product-requests — инбокс Джипар
+router.get('/product-requests', canOrders, async (req, res) => {
+  try {
+    const { status, type } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (type)   filter.type   = type;
+
+    const [requests, activeCount] = await Promise.all([
+      ProductRequest.find(filter)
+        .populate('createdBy', 'name email')
+        .populate('doneBy', 'name')
+        .sort({ createdAt: -1 })
+        .limit(500),
+      ProductRequest.countDocuments({ status: 'active' }),
+    ]);
+    res.json({ requests, activeCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/product-requests/:id — отметить выполненной / вернуть в активные
+router.patch('/product-requests/:id', canOrders, async (req, res) => {
+  try {
+    const request = await ProductRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Заявка не найдена' });
+
+    const { status } = req.body;
+    if (status === 'done') {
+      request.status     = 'done';
+      request.doneBy     = req.user._id;
+      request.doneByName = req.user.name || '';
+      request.doneAt     = new Date();
+    } else if (status === 'active') {
+      request.status     = 'active';
+      request.doneBy     = null;
+      request.doneByName = '';
+      request.doneAt     = null;
+    }
+    await request.save();
+    const populated = await ProductRequest.findById(request._id)
+      .populate('createdBy', 'name email').populate('doneBy', 'name');
+    res.json(populated);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/product-requests/:id — удалить (владелец или Джипар)
+router.delete('/product-requests/:id', canOrders, async (req, res) => {
+  try {
+    await ProductRequest.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
