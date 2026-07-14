@@ -76,14 +76,6 @@ export const adminCompleteTender  = (id)         => api.patch(`/admin/tenders/${
 export const adminCatalogPdf    = (data)        => api.post('/admin/pdf/catalog', data, { responseType: 'blob' });
 export const adminTZPdf         = (id, type)    => api.get(`/admin/pdf/tz/${id}/${type}`, { responseType: 'blob' });
 
-// Feedback — обратная связь от фронтменов
-export const adminGetFeedbacks      = (params)      => api.get('/admin/feedback', { params });
-export const adminGetFeedbackCount  = ()            => api.get('/admin/feedback/count');
-export const adminGetFeedback       = (id)          => api.get(`/admin/feedback/${id}`);
-export const adminCreateFeedback    = (data)        => api.post('/admin/feedback', data);
-export const adminUpdateFeedback    = (id, data)    => api.patch(`/admin/feedback/${id}`, data);
-export const adminDeleteFeedback    = (id)          => api.delete(`/admin/feedback/${id}`);
-
 // Tech Requests — заявки на техлист от навигаторов
 export const adminGetTechRequests     = (params)   => api.get('/admin/tech-requests', { params });
 export const adminGetTechRequestCount = ()         => api.get('/admin/tech-requests/count');

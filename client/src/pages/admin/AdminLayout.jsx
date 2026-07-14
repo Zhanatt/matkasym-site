@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FrontmenProvider } from '../../context/FrontmenContext';
-import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram, adminGetReceiveAlertsCount, adminGetPendingReceiveCount, adminGetFeedbackCount, adminGetTechRequestCount, adminGetProductRequestCount } from '../../api';
+import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram, adminGetReceiveAlertsCount, adminGetPendingReceiveCount, adminGetTechRequestCount, adminGetProductRequestCount } from '../../api';
 import './Admin.css';
 
 const NAV_ALL = [
@@ -18,7 +18,6 @@ const NAV_ALL = [
   { to: '/admin/review',   label: 'Аудит товаров',       icon: '✅', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/review/results', label: 'Результаты аудита', icon: '📊', roles: ['owner','editor'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },
-  { to: '/admin/feedback',     label: 'Обратная связь',     icon: '💬', roles: ['owner','editor','viewer','navigator'], badge: 'feedback' },
   { to: '/admin/tech-requests', label: 'Заявки на техлист', icon: '📋', roles: ['owner','editor','viewer','navigator'], badge: 'tech_requests' },
   { to: '/admin/product-requests', label: 'Заявка на товар', icon: '🛒', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/product-orders', label: 'Заказы товаров', icon: '📥', roles: ['owner'], badge: 'product_orders' },
@@ -35,7 +34,6 @@ export default function AdminLayout() {
   const [newsUnread,   setNewsUnread]   = useState(0);
   const [alertsCount,  setAlertsCount]  = useState(0);
   const [pendingReceiveCount, setPendingReceiveCount] = useState(0);
-  const [feedbackCount, setFeedbackCount] = useState(0);
   const [techRequestCount, setTechRequestCount] = useState(0);
   const [productOrdersCount, setProductOrdersCount] = useState(0);
   const [tgLink,       setTgLink]       = useState('');
@@ -57,7 +55,6 @@ export default function AdminLayout() {
       adminGetNewsUnread().then(r => setNewsUnread(r.data.count || 0)).catch(() => {});
       adminGetReceiveAlertsCount().then(r => setAlertsCount(r.data.count || 0)).catch(() => {});
       adminGetPendingReceiveCount().then(r => setPendingReceiveCount(r.data.count || 0)).catch(() => {});
-      adminGetFeedbackCount().then(r => setFeedbackCount(r.data.newCount || 0)).catch(() => {});
       adminGetTechRequestCount().then(r => setTechRequestCount(r.data.newCount || 0)).catch(() => {});
       if (user.role === 'owner' || user.canOrderProducts) {
         adminGetProductRequestCount().then(r => setProductOrdersCount(r.data.activeCount || 0)).catch(() => {});
@@ -152,7 +149,7 @@ export default function AdminLayout() {
             if (n.to === '/admin/product-orders' && user.canOrderProducts) return true;
             return n.roles.includes(user.role);
           }).map(n => {
-            const badgeCount = n.badge === 'pending' ? pendingCount : n.badge === 'news' ? newsUnread : n.badge === 'alerts' ? alertsCount : n.badge === 'pending_receive' ? pendingReceiveCount : n.badge === 'feedback' ? feedbackCount : n.badge === 'tech_requests' ? techRequestCount : n.badge === 'product_orders' ? productOrdersCount : 0;
+            const badgeCount = n.badge === 'pending' ? pendingCount : n.badge === 'news' ? newsUnread : n.badge === 'alerts' ? alertsCount : n.badge === 'pending_receive' ? pendingReceiveCount : n.badge === 'tech_requests' ? techRequestCount : n.badge === 'product_orders' ? productOrdersCount : 0;
             return (
               <NavLink
                 key={n.to}

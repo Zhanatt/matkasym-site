@@ -17,9 +17,6 @@ import AdminFrontmen      from './pages/admin/AdminFrontmen';
 import AdminSuppliers     from './pages/admin/AdminSuppliers';
 import AdminOutOfStock    from './pages/admin/AdminOutOfStock';
 import AdminBufferStock   from './pages/admin/AdminBufferStock';
-import AdminFeedback      from './pages/admin/AdminFeedback';
-import AdminFeedbackForm  from './pages/admin/AdminFeedbackForm';
-import AdminFeedbackDetail from './pages/admin/AdminFeedbackDetail';
 import AdminTechRequests     from './pages/admin/AdminTechRequests';
 import AdminTechRequestForm  from './pages/admin/AdminTechRequestForm';
 import AdminTechRequestDetail from './pages/admin/AdminTechRequestDetail';
@@ -68,9 +65,6 @@ export default function App() {
           <Route path="suppliers" element={<AdminSuppliers />} />
           <Route path="out-of-stock" element={<AdminOutOfStock />} />
           <Route path="buffer-stock" element={<AdminBufferStock />} />
-          <Route path="feedback"     element={<AdminFeedback />} />
-          <Route path="feedback/new" element={<AdminFeedbackForm />} />
-          <Route path="feedback/:id" element={<AdminFeedbackDetail />} />
           <Route path="tech-requests"     element={<AdminTechRequests />} />
           <Route path="tech-requests/new" element={<AdminTechRequestForm />} />
           <Route path="tech-requests/:id" element={<AdminTechRequestDetail />} />
