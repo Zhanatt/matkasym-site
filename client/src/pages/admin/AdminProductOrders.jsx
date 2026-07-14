@@ -18,7 +18,7 @@ export default function AdminProductOrders() {
   const [activeCount, setActive] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy]       = useState(null);
-  const [lightbox, setLightbox] = useState('');
+  const [gallery, setGallery] = useState(null);   // { photos: [], i: 0 }
 
   const load = useCallback(() => {
     setLoading(true);
@@ -94,17 +94,24 @@ export default function AdminProductOrders() {
           {items.map(r => {
             const t = TYPE_META[r.type] || TYPE_META.real;
             const done = r.status === 'done';
+            const pics = r.photos?.length ? r.photos : (r.photo ? [r.photo] : []);
             return (
               <div key={r._id} className="po-card" style={{ display: 'flex', gap: 14, background: '#fff',
                 borderRadius: 16, padding: 14, boxShadow: '0 2px 10px rgba(0,0,0,.06)',
                 opacity: done ? 0.72 : 1 }}>
                 {/* Photo */}
-                <div className="po-photo" onClick={() => r.photo && setLightbox(r.photo)}
-                  style={{ width: 110, height: 110, flexShrink: 0, borderRadius: 12, overflow: 'hidden',
+                <div className="po-photo" onClick={() => pics.length && setGallery({ photos: pics, i: 0 })}
+                  style={{ position: 'relative', width: 110, height: 110, flexShrink: 0, borderRadius: 12, overflow: 'hidden',
                     background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: r.photo ? 'zoom-in' : 'default' }}>
-                  {r.photo ? <img src={r.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    cursor: pics.length ? 'zoom-in' : 'default' }}>
+                  {pics[0] ? <img src={pics[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                            : <span style={{ fontSize: 34 }}>{t.icon}</span>}
+                  {pics.length > 1 && (
+                    <span style={{ position: 'absolute', bottom: 5, right: 5, background: 'rgba(0,0,0,.65)',
+                      color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 12 }}>
+                      +{pics.length - 1}
+                    </span>
+                  )}
                 </div>
 
                 {/* Body */}
@@ -156,11 +163,19 @@ export default function AdminProductOrders() {
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightbox && (
-        <div onClick={() => setLightbox('')} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)',
+      {/* Lightbox / gallery */}
+      {gallery && (
+        <div onClick={() => setGallery(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.88)',
           zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <img src={lightbox} alt="" style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8 }} />
+          <img src={gallery.photos[gallery.i]} alt=""
+            onClick={e => { e.stopPropagation(); if (gallery.photos.length > 1) setGallery(g => ({ ...g, i: (g.i + 1) % g.photos.length })); }}
+            style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8, cursor: gallery.photos.length > 1 ? 'pointer' : 'default' }} />
+          {gallery.photos.length > 1 && (
+            <div style={{ position: 'absolute', bottom: 22, left: 0, right: 0, textAlign: 'center',
+              color: '#fff', fontSize: 13 }}>
+              {gallery.i + 1} / {gallery.photos.length} · нажмите на фото → следующее
+            </div>
+          )}
         </div>
       )}
     </div>

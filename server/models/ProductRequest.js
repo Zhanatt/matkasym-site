@@ -12,7 +12,8 @@ const productRequestSchema = new mongoose.Schema({
 
   type:  { type: String, enum: ['test', 'real'], required: true },
 
-  photo: { type: String, default: '' },   // Cloudinary secure_url
+  photo:  { type: String, default: '' },   // первое фото (для совместимости/превью)
+  photos: [{ type: String }],              // все фото (Cloudinary secure_url)
 
   name:       { type: String, required: true, trim: true },
   dimensions: { type: String, default: '', trim: true },

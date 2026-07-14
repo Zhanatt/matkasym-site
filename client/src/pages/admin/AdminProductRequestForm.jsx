@@ -30,10 +30,12 @@ function StatusChip({ status }) {
 export default function AdminProductRequestForm() {
   const [open, setOpen]         = useState(false);
   const [type, setType]         = useState('');
-  const [photo, setPhoto]       = useState('');
+  const [photos, setPhotos]     = useState([]);
   const [uploading, setUpload]  = useState(false);
   const [name, setName]         = useState('');
-  const [dimensions, setDim]    = useState('');
+  const [height, setHeight]     = useState('');
+  const [width, setWidth]       = useState('');
+  const [depth, setDepth]       = useState('');
   const [color, setColor]       = useState('');
   const [note, setNote]         = useState('');
   const [saving, setSaving]     = useState(false);
@@ -46,32 +48,38 @@ export default function AdminProductRequestForm() {
   useEffect(() => { loadMine(); }, []);
 
   const reset = () => {
-    setType(''); setPhoto(''); setName(''); setDim(''); setColor(''); setNote(''); setError('');
+    setType(''); setPhotos([]); setName('');
+    setHeight(''); setWidth(''); setDepth(''); setColor(''); setNote(''); setError('');
   };
 
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
     setUpload(true); setError('');
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('upload_preset', PRESET);
-      fd.append('folder', 'matkasym/product-requests');
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, { method: 'POST', body: fd });
-      const data = await res.json();
-      if (data.secure_url) setPhoto(data.secure_url);
-      else setError(data.error?.message || 'Не удалось загрузить фото');
-    } catch { setError('Ошибка загрузки фото'); }
+    for (const file of files) {
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', PRESET);
+        fd.append('folder', 'matkasym/product-requests');
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.secure_url) setPhotos(prev => [...prev, data.secure_url]);
+        else setError(data.error?.message || 'Не удалось загрузить фото');
+      } catch { setError('Ошибка загрузки фото'); }
+    }
     setUpload(false);
+    e.target.value = ''; // разрешить повторный выбор тех же файлов
   };
 
   const submit = async () => {
     if (!type)         return setError('Выберите тип заявки');
     if (!name.trim())  return setError('Укажите название товара');
+    const dims = [height, width, depth].map(s => String(s).trim()).filter(Boolean);
+    const dimensions = dims.length ? dims.join('×') + ' см' : '';
     setSaving(true); setError('');
     try {
-      await adminCreateProductRequest({ type, photo, name, dimensions, color, note });
+      await adminCreateProductRequest({ type, photos, photo: photos[0] || '', name, dimensions, color, note });
       setToast('Заявка отправлена ✓');
       setTimeout(() => setToast(''), 3000);
       reset(); setOpen(false);
@@ -137,29 +145,30 @@ export default function AdminProductRequestForm() {
             })}
           </div>
 
-          {/* Photo */}
-          <div style={label}>Фото товара</div>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} style={{ display: 'none' }} />
-          {photo ? (
-            <div style={{ position: 'relative', marginBottom: 18, borderRadius: 12, overflow: 'hidden', border: '1px solid #eceff3' }}>
-              <img src={photo} alt="" style={{ width: '100%', maxHeight: 260, objectFit: 'contain', background: '#f8f9fb', display: 'block' }} />
-              <button onClick={() => setPhoto('')}
-                style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,.6)', color: '#fff',
-                  border: 'none', borderRadius: 20, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>✕</button>
-            </div>
-          ) : (
-            <div onClick={() => fileRef.current?.click()}
-              style={{ marginBottom: 18, border: '2px dashed #d3dae3', borderRadius: 12, padding: '26px 12px',
-                textAlign: 'center', cursor: 'pointer', background: '#fafbfc', color: '#7b8794' }}>
+          {/* Photos */}
+          <div style={label}>Фото товара {photos.length > 0 && <span style={{ color: '#94a3b8', fontWeight: 400 }}>({photos.length})</span>}</div>
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleUpload} style={{ display: 'none' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))', gap: 8, marginBottom: 18 }}>
+            {photos.map((url, i) => (
+              <div key={url + i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '1px solid #eceff3' }}>
+                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                  style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,.6)', color: '#fff',
+                    border: 'none', borderRadius: 16, width: 24, height: 24, cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>✕</button>
+              </div>
+            ))}
+            <div onClick={() => !uploading && fileRef.current?.click()}
+              style={{ aspectRatio: '1', border: '2px dashed #d3dae3', borderRadius: 10, display: 'flex',
+                flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                background: '#fafbfc', color: '#7b8794', textAlign: 'center', padding: 6 }}>
               {uploading ? (
-                <span style={{ color: '#1976d2', fontWeight: 600 }}>Загрузка…</span>
+                <span style={{ color: '#1976d2', fontWeight: 600, fontSize: 12 }}>Загрузка…</span>
               ) : (
-                <><div style={{ fontSize: 30 }}>📷</div>
-                  <div style={{ fontSize: 14, marginTop: 6, fontWeight: 600 }}>Добавить фото</div>
-                  <div style={{ fontSize: 11, marginTop: 2 }}>Снять камерой или выбрать из галереи</div></>
+                <><div style={{ fontSize: 24 }}>📷</div>
+                  <div style={{ fontSize: 11, marginTop: 2, fontWeight: 600 }}>Добавить</div></>
               )}
             </div>
-          )}
+          </div>
 
           {/* Name */}
           <div style={{ marginBottom: 14 }}>
@@ -167,16 +176,22 @@ export default function AdminProductRequestForm() {
             <input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Складной табурет" style={input} />
           </div>
 
-          {/* Dimensions + Color */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-            <div style={{ flex: 1 }}>
-              <div style={label}>Размеры (В×Ш×Г)</div>
-              <input value={dimensions} onChange={e => setDim(e.target.value)} placeholder="40×30×30 см" style={input} />
+          {/* Dimensions */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={label}>Размеры, см (В×Ш×Г)</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input inputMode="decimal" value={height} onChange={e => setHeight(e.target.value)} placeholder="В" style={{ ...input, textAlign: 'center', padding: '12px 6px' }} />
+              <span style={{ color: '#c0c8d0', fontWeight: 700, flexShrink: 0 }}>×</span>
+              <input inputMode="decimal" value={width} onChange={e => setWidth(e.target.value)} placeholder="Ш" style={{ ...input, textAlign: 'center', padding: '12px 6px' }} />
+              <span style={{ color: '#c0c8d0', fontWeight: 700, flexShrink: 0 }}>×</span>
+              <input inputMode="decimal" value={depth} onChange={e => setDepth(e.target.value)} placeholder="Г" style={{ ...input, textAlign: 'center', padding: '12px 6px' }} />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={label}>Цвет</div>
-              <input value={color} onChange={e => setColor(e.target.value)} placeholder="Синий" style={input} />
-            </div>
+          </div>
+
+          {/* Color */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={label}>Цвет</div>
+            <input value={color} onChange={e => setColor(e.target.value)} placeholder="Синий" style={input} />
           </div>
 
           {/* Note */}
@@ -216,7 +231,7 @@ export default function AdminProductRequestForm() {
                 borderRadius: 12, padding: 10, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
                 <div style={{ width: 52, height: 52, borderRadius: 10, background: '#f1f5f9', flexShrink: 0,
                   overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {r.photo ? <img src={r.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {(r.photos?.[0] || r.photo) ? <img src={r.photos?.[0] || r.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                            : <span style={{ fontSize: 22 }}>{r.type === 'test' ? '🧪' : '🛒'}</span>}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>

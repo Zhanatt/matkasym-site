@@ -3315,10 +3315,12 @@ const PR_TYPE_LABEL = { test: 'Тестовый продукт', real: 'Зака
 // POST /api/admin/product-requests — создать заявку (любой фронтмен: protect+warehouse)
 router.post('/product-requests', async (req, res) => {
   try {
-    const { type, photo, name, dimensions, color, note } = req.body;
+    const { type, photo, photos, name, dimensions, color, note } = req.body;
 
     if (!['test', 'real'].includes(type)) return res.status(400).json({ error: 'Выберите тип заявки' });
     if (!name?.trim())                    return res.status(400).json({ error: 'Укажите название товара' });
+
+    const photoList = Array.isArray(photos) ? photos.filter(Boolean) : (photo ? [photo] : []);
 
     const last = await ProductRequest.findOne().sort({ number: -1 }).select('number');
 
@@ -3327,7 +3329,8 @@ router.post('/product-requests', async (req, res) => {
       createdBy:     req.user._id,
       createdByName: req.user.name || '',
       type,
-      photo:      photo || '',
+      photo:      photoList[0] || '',
+      photos:     photoList,
       name:       name.trim(),
       dimensions: (dimensions || '').trim(),
       color:      (color || '').trim(),
