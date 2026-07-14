@@ -170,8 +170,8 @@ export default function AdminProductRequestForm() {
           {/* Dimensions + Color */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
             <div style={{ flex: 1 }}>
-              <div style={label}>Размеры</div>
-              <input value={dimensions} onChange={e => setDim(e.target.value)} placeholder="30×30×40 см" style={input} />
+              <div style={label}>Размеры (В×Ш×Г)</div>
+              <input value={dimensions} onChange={e => setDim(e.target.value)} placeholder="40×30×30 см" style={input} />
             </div>
             <div style={{ flex: 1 }}>
               <div style={label}>Цвет</div>
