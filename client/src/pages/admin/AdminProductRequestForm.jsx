@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { adminCreateProductRequest, adminGetMyProductRequests } from '../../api';
 
 const CLOUD = 'dnbg21ef8';
-const PRESET = 'matkasym_unsigned';
+const PRESET = 'Matkasym';
 
 const TYPES = [
   { key: 'test', icon: '🧪', title: 'Тестовый продукт', desc: 'Пробная закупка на тест', accent: '#00838f', bg: '#e0f7fa' },
@@ -57,10 +57,11 @@ export default function AdminProductRequestForm() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('upload_preset', PRESET);
+      fd.append('folder', 'matkasym/product-requests');
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, { method: 'POST', body: fd });
       const data = await res.json();
       if (data.secure_url) setPhoto(data.secure_url);
-      else setError('Не удалось загрузить фото');
+      else setError(data.error?.message || 'Не удалось загрузить фото');
     } catch { setError('Ошибка загрузки фото'); }
     setUpload(false);
   };
