@@ -78,6 +78,56 @@ async function sendTelegramPhoto(chatId, photoUrl, caption) {
   }
 }
 
+// Публикация поста в Telegram-канал (chat_id = process.env.TELEGRAM_CHANNEL_ID).
+// Бот должен быть админом канала. Возвращает { ok, error } — ошибка пробрасывается в UI.
+// Картинку по возможности заливаем байтами (multipart), а не URL-ом: так надёжнее,
+// потому что Telegram сам не всегда может скачать Google Drive / приватные ссылки.
+async function publishToChannel({ photoUrl, caption }) {
+  const channelId = process.env.TELEGRAM_CHANNEL_ID;
+  if (!TELEGRAM_BOT_TOKEN) return { ok: false, error: 'TELEGRAM_BOT_TOKEN не настроен на сервере' };
+  if (!channelId)          return { ok: false, error: 'TELEGRAM_CHANNEL_ID не настроен на сервере' };
+
+  const api = (method) => `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`;
+  const text = String(caption || '');
+
+  if (photoUrl) {
+    // 1) пробуем скачать картинку и отправить её байтами
+    try {
+      const imgResp = await fetch(photoUrl);
+      if (imgResp.ok) {
+        const buf = Buffer.from(await imgResp.arrayBuffer());
+        const form = new FormData();
+        form.append('chat_id', String(channelId));
+        form.append('caption', text.slice(0, 1024));
+        form.append('parse_mode', 'HTML');
+        form.append('photo', new Blob([buf], { type: imgResp.headers.get('content-type') || 'image/jpeg' }), 'photo.jpg');
+        const r = await fetch(api('sendPhoto'), { method: 'POST', body: form });
+        const d = await r.json();
+        if (d.ok) return { ok: true, data: d };
+        console.error('[Telegram] channel sendPhoto (bytes) failed:', d.description);
+        // не выходим — пробуем отправить по URL ниже
+      }
+    } catch (e) {
+      console.error('[Telegram] channel image fetch failed:', e.message);
+    }
+    // 2) fallback: отдаём Telegram сам URL
+    const r = await fetch(api('sendPhoto'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: channelId, photo: photoUrl, caption: text.slice(0, 1024), parse_mode: 'HTML' }),
+    });
+    const d = await r.json();
+    return d.ok ? { ok: true, data: d } : { ok: false, error: d.description };
+  }
+
+  // без фото — обычное сообщение
+  const r = await fetch(api('sendMessage'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: channelId, text: text.slice(0, 4096), parse_mode: 'HTML', disable_web_page_preview: false }),
+  });
+  const d = await r.json();
+  return d.ok ? { ok: true, data: d } : { ok: false, error: d.description };
+}
+
 async function sendNewsNotificationTelegram({ type, title, message, product }, recipients) {
   const typeLabel = NEWS_TYPE_LABELS[type] || '📢 Новость';
   const productName = product?.fullName || product?.name || '';
@@ -175,4 +225,4 @@ async function sendBufferStockAlerts(alerts) {
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts };
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChannel };

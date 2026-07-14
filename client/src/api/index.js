@@ -133,6 +133,10 @@ export const adminGetProductLog = (params) => api.get('/admin/product-log', { pa
 export const adminUploadImage = (formData) =>
   api.post('/admin/upload-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 
+// Telegram channel publishing
+export const adminGetTelegramChannel = ()         => api.get('/admin/telegram/channel');
+export const adminPublishTelegram    = (data)      => api.post('/admin/telegram/publish', data);
+
 // News feed
 export const adminGetNews          = (params)     => api.get('/admin/news', { params });
 export const adminGetNewsUnread    = ()            => api.get('/admin/news/unread-count');

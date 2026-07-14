@@ -15,6 +15,7 @@ const NAV_ALL = [
   { to: '/admin/video-report', label: 'Отчёт по видео', icon: '📹', roles: ['owner','editor'] },
   { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','navigator','warehouse'] },
   { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer','navigator','warehouse'], badge: 'news' },
+  { to: '/admin/telegram-post', label: 'Пост в Telegram', icon: '📣', roles: ['owner','editor'] },
   { to: '/admin/review',   label: 'Аудит товаров',       icon: '✅', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/review/results', label: 'Результаты аудита', icon: '📊', roles: ['owner','editor'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },

@@ -20,7 +20,7 @@ const VideoSchedule = require('../models/VideoSchedule');
 const LoginLog     = require('../models/LoginLog');
 const ProductRequest = require('../models/ProductRequest');
 const cloudinary   = require('../lib/cloudinary');
-const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
+const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto, publishToChannel } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock } = require('../middleware/auth');
 
@@ -1283,6 +1283,27 @@ const multer = require('multer');
 const xlsx   = require('xlsx');
 const sharp  = require('sharp');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }); // 50 MB per batch
+
+// GET /api/admin/telegram/channel — настроен ли канал (для предупреждения в UI)
+router.get('/telegram/channel', editor, (req, res) => {
+  res.json({ configured: !!process.env.TELEGRAM_CHANNEL_ID });
+});
+
+// POST /api/admin/telegram/publish — опубликовать пост о товаре в TG-канал
+// body: { caption (HTML), imageUrl }
+router.post('/telegram/publish', editor, async (req, res) => {
+  try {
+    const { caption, imageUrl } = req.body || {};
+    if (!caption || !String(caption).trim()) {
+      return res.status(400).json({ message: 'Пустой текст поста' });
+    }
+    const result = await publishToChannel({ photoUrl: imageUrl || null, caption: String(caption).trim() });
+    if (!result.ok) return res.status(502).json({ message: `Telegram: ${result.error}` });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
 // POST /api/admin/upload-image — загрузить одно изображение (для новостей и т.п.)
 router.post('/upload-image', editor, upload.single('image'), async (req, res) => {

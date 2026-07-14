@@ -25,6 +25,7 @@ import AdminProductOrders    from './pages/admin/AdminProductOrders';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import AdminNews         from './pages/admin/AdminNews';
 import AdminNewsCreate   from './pages/admin/AdminNewsCreate';
+import AdminTelegramPost from './pages/admin/AdminTelegramPost';
 import AdminProductReview from './pages/admin/AdminProductReview';
 import AdminReviewResults from './pages/admin/AdminReviewResults';
 import AdminReviewVotes   from './pages/admin/AdminReviewVotes';
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="sales-chart/:setSlug" element={<AdminSetSalesChart />} />
           <Route path="news" element={<AdminNews />} />
           <Route path="news/create" element={<AdminNewsCreate />} />
+          <Route path="telegram-post" element={<AdminTelegramPost />} />
           <Route path="review" element={<AdminProductReview />} />
           <Route path="review/results" element={<AdminReviewResults />} />
           <Route path="review/votes" element={<AdminReviewVotes />} />
