@@ -20,9 +20,11 @@ function useIsMobile() {
 export default function AdminPendingReceive() {
   const { user } = useAuth();
   const isWarehouse = user?.role === 'warehouse';
+  const canSeeReceiving = ['owner', 'editor', 'warehouse'].includes(user?.role);
   const isMobile = useIsMobile();
 
-  const [tab, setTab] = useState('pending'); // 'orders' | 'inTransit' | 'pending' | 'received'
+  // Фронтмены (viewer/navigator) видят только вкладку заявок на заказ
+  const [tab, setTab] = useState(canSeeReceiving ? 'pending' : 'orders'); // 'orders' | 'inTransit' | 'pending' | 'received'
   const [orderCount, setOrderCount] = useState(0);
   const [inTransitProducts, setInTransitProducts] = useState([]);
   const [pendingProducts, setPendingProducts] = useState([]);
@@ -38,6 +40,14 @@ export default function AdminPendingReceive() {
   const load = async () => {
     setLoading(true);
     try {
+      // Счётчик активных заявок на заказ для бейджа вкладки
+      adminGetProductRequestCount()
+        .then(r => setOrderCount(r.data.activeCount || 0))
+        .catch(() => {});
+
+      // Складские данные нужны только тем, кто видит вкладки приёмки
+      if (!canSeeReceiving) return;
+
       // Товары в пути и ожидающие приёмки
       const res = await adminGetProducts({ pendingReceive: true, limit: 500 });
       const all = res.data.products || [];
@@ -56,11 +66,6 @@ export default function AdminPendingReceive() {
         p.sku?.startsWith('MKS-SF-') || p.sku?.startsWith('MKS-W')
       );
       setReceivedProducts(recent.slice(0, 30));
-
-      // Счётчик активных заявок на заказ для бейджа вкладки
-      adminGetProductRequestCount()
-        .then(r => setOrderCount(r.data.activeCount || 0))
-        .catch(() => {});
     } catch (e) {
       console.error(e);
     } finally {
@@ -72,9 +77,11 @@ export default function AdminPendingReceive() {
 
   const tabs = [
     { key: 'orders', label: '📥 Заявки на заказ', count: orderCount, color: '#DC1E24' },
-    { key: 'inTransit', label: '🚚 В пути', count: inTransitProducts.length, color: '#3b82f6' },
-    { key: 'pending', label: '📋 Ожидают приёмки', count: pendingProducts.length, color: '#f59e0b' },
-    { key: 'received', label: '✓ В продаже', count: receivedProducts.length, color: '#22c55e' },
+    ...(canSeeReceiving ? [
+      { key: 'inTransit', label: '🚚 В пути', count: inTransitProducts.length, color: '#3b82f6' },
+      { key: 'pending', label: '📋 Ожидают приёмки', count: pendingProducts.length, color: '#f59e0b' },
+      { key: 'received', label: '✓ В продаже', count: receivedProducts.length, color: '#22c55e' },
+    ] : []),
   ];
 
   const products = tab === 'inTransit' ? inTransitProducts
