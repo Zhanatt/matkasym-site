@@ -21,7 +21,6 @@ import AdminTechRequests     from './pages/admin/AdminTechRequests';
 import AdminTechRequestForm  from './pages/admin/AdminTechRequestForm';
 import AdminTechRequestDetail from './pages/admin/AdminTechRequestDetail';
 import AdminProductRequestForm from './pages/admin/AdminProductRequestForm';
-import AdminProductOrders    from './pages/admin/AdminProductOrders';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import AdminNews         from './pages/admin/AdminNews';
 import AdminNewsCreate   from './pages/admin/AdminNewsCreate';
@@ -70,7 +69,6 @@ export default function App() {
           <Route path="tech-requests/new" element={<AdminTechRequestForm />} />
           <Route path="tech-requests/:id" element={<AdminTechRequestDetail />} />
           <Route path="product-requests"  element={<AdminProductRequestForm />} />
-          <Route path="product-orders"    element={<AdminProductOrders />} />
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="history" element={<AdminHistory />} />
