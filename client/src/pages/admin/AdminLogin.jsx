@@ -21,7 +21,7 @@ export default function AdminLogin() {
     e.preventDefault();
     setLoading(true); setError('');
     try {
-      const res = await apiLogin({ email: form.email, password: form.password });
+      const res = await apiLogin({ email: form.email.trim().toLowerCase(), password: form.password });
       const role = res.data.user.role;
       if (role === 'banned')
         return setError('Ваш доступ к Продакт матрице запрещён.');
@@ -40,7 +40,7 @@ export default function AdminLogin() {
     e.preventDefault();
     setLoading(true); setError(''); setSuccess('');
     try {
-      const res = await apiForgot({ email: form.email });
+      const res = await apiForgot({ email: form.email.trim().toLowerCase() });
       setSuccess(res.data.message);
     } catch (err) {
       setError(err.response?.data?.message || 'Ошибка отправки');
@@ -53,7 +53,7 @@ export default function AdminLogin() {
     e.preventDefault();
     setLoading(true); setError(''); setSuccess('');
     try {
-      await apiRegister({ name: form.name, email: form.email, password: form.password });
+      await apiRegister({ name: form.name, email: form.email.trim().toLowerCase(), password: form.password });
       setSuccess('Запрос отправлен! Ожидайте письма с подтверждением от администратора.');
       setTab('login');
     } catch (err) {
@@ -100,6 +100,9 @@ export default function AdminLogin() {
                 onChange={e => set('email', e.target.value)}
                 placeholder="your@email.com"
                 autoFocus
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div className="admin-login-field">
@@ -154,6 +157,9 @@ export default function AdminLogin() {
                 onChange={e => set('email', e.target.value)}
                 placeholder="your@email.com"
                 autoFocus
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             {error   && <p className="admin-login-error">{error}</p>}

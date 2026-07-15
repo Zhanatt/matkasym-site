@@ -26,10 +26,11 @@ router.post('/register', async (req, res) => {
     if (!name || !email || !password)
       return res.status(400).json({ message: 'Заполните все поля' });
 
-    const exists = await User.findOne({ email });
+    const normEmail = String(email).toLowerCase().trim();
+    const exists = await User.findOne({ email: normEmail });
     if (exists) return res.status(400).json({ message: 'Email уже используется' });
 
-    const user = await User.create({ name, email, password, phone, isPending: true });
+    const user = await User.create({ name, email: normEmail, password, phone, isPending: true });
 
     // Notify admin for approval
     try {
@@ -51,7 +52,9 @@ router.post('/login', async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ message: 'Введите email и пароль' });
 
-    const user = await User.findOne({ email });
+    // Email в базе хранится в нижнем регистре (schema lowercase+trim).
+    // Поиск тоже нормализуем, иначе заглавная буква/пробел с телефона ломают вход.
+    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (!user || !(await user.comparePassword(password)))
       return res.status(401).json({ message: 'Неверный email или пароль' });
 
@@ -125,7 +128,7 @@ router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Введите email' });
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
     // Always return success so as not to reveal if email exists
     if (!user) return res.json({ message: 'Если такой email зарегистрирован, письмо отправлено.' });
 
