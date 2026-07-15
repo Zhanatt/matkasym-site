@@ -3576,16 +3576,16 @@ router.get('/product-requests/mine', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/admin/product-requests/count — бейдж в меню (активные)
-router.get('/product-requests/count', canOrders, async (req, res) => {
+// GET /api/admin/product-requests/count — бейдж (активные). Доступно всем в админке
+router.get('/product-requests/count', async (req, res) => {
   try {
     const activeCount = await ProductRequest.countDocuments({ status: 'active' });
     res.json({ activeCount });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/admin/product-requests — инбокс Джипар
-router.get('/product-requests', canOrders, async (req, res) => {
+// GET /api/admin/product-requests — общий список заявок (виден всем в админке)
+router.get('/product-requests', async (req, res) => {
   try {
     const { status, type } = req.query;
     const filter = {};
