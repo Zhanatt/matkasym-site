@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminGetProducts, adminReceiveProduct } from '../../api';
+import { adminGetProducts, adminReceiveProduct, adminGetProductRequestCount } from '../../api';
 import AdminProductModal from './AdminProductModal';
+import PendingOrderRequests from './PendingOrderRequests';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -21,7 +22,8 @@ export default function AdminPendingReceive() {
   const isWarehouse = user?.role === 'warehouse';
   const isMobile = useIsMobile();
 
-  const [tab, setTab] = useState('pending'); // 'inTransit' | 'pending' | 'received'
+  const [tab, setTab] = useState('pending'); // 'orders' | 'inTransit' | 'pending' | 'received'
+  const [orderCount, setOrderCount] = useState(0);
   const [inTransitProducts, setInTransitProducts] = useState([]);
   const [pendingProducts, setPendingProducts] = useState([]);
   const [receivedProducts, setReceivedProducts] = useState([]);
@@ -54,6 +56,11 @@ export default function AdminPendingReceive() {
         p.sku?.startsWith('MKS-SF-') || p.sku?.startsWith('MKS-W')
       );
       setReceivedProducts(recent.slice(0, 30));
+
+      // Счётчик активных заявок на заказ для бейджа вкладки
+      adminGetProductRequestCount()
+        .then(r => setOrderCount(r.data.activeCount || 0))
+        .catch(() => {});
     } catch (e) {
       console.error(e);
     } finally {
@@ -64,6 +71,7 @@ export default function AdminPendingReceive() {
   useEffect(() => { load(); }, []);
 
   const tabs = [
+    { key: 'orders', label: '📥 Заявки на заказ', count: orderCount, color: '#DC1E24' },
     { key: 'inTransit', label: '🚚 В пути', count: inTransitProducts.length, color: '#3b82f6' },
     { key: 'pending', label: '📋 Ожидают приёмки', count: pendingProducts.length, color: '#f59e0b' },
     { key: 'received', label: '✓ В продаже', count: receivedProducts.length, color: '#22c55e' },
@@ -139,6 +147,11 @@ export default function AdminPendingReceive() {
         ))}
       </div>
 
+      {/* Заявки на заказ (отдельная вкладка) */}
+      {tab === 'orders' ? (
+        <PendingOrderRequests onCountChange={setOrderCount} />
+      ) : (
+       <>
       {/* Status explanation */}
       <div style={{
         background: tab === 'inTransit' ? '#eff6ff' : tab === 'pending' ? '#fef3c7' : '#dcfce7',
@@ -246,6 +259,8 @@ export default function AdminPendingReceive() {
             );
           })}
         </div>
+      )}
+       </>
       )}
 
       {/* Receive Modal */}
