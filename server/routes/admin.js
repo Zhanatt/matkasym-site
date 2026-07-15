@@ -2298,6 +2298,120 @@ router.get('/agent-sales/docs', viewer, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// POST /api/admin/upload-sales  (multipart: field "file"; body: dateFrom, dateTo)
+// Ручная загрузка Excel-выгрузки «Сводная продаж по агентам (по номенклатуре)» из 1С.
+// Отчёт иерархический: строка-агент (итог, без цены) → строки-товары (кол-во, цена, сумма).
+// У свода нет дат, поэтому все строки помечаем выбранным периодом; загрузка заменяет период целиком.
+function parseSalesNum(v) {
+  if (typeof v === 'number') return v;
+  if (v === undefined || v === null) return 0;
+  const s = String(v).replace(/ /g, '').replace(/\s/g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+router.post('/upload-sales', editor, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+  const { dateFrom, dateTo } = req.body;
+  if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите период (с и по)' });
+
+  try {
+    const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    // 1. Найти строку-заголовок таблицы (где есть «Количество» и «Сумма»)
+    let headerIdx = -1, qtyCol = -1, priceCol = -1, sumCol = -1;
+    for (let i = 0; i < Math.min(rows.length, 40); i++) {
+      const r = rows[i].map(c => String(c).toLowerCase().trim());
+      const qi = r.findIndex(c => c.startsWith('колич') || c === 'кол-во');
+      const si = r.findIndex(c => c.includes('сумма'));
+      if (qi >= 0 && si >= 0) {
+        headerIdx = i; qtyCol = qi; sumCol = si;
+        priceCol = r.findIndex(c => c.includes('цена'));
+        break;
+      }
+    }
+    if (headerIdx < 0) {
+      return res.status(400).json({ error: 'Не похоже на «Сводную продаж по агентам»: не найдены колонки «Количество»/«Сумма»' });
+    }
+
+    // 2. Колонка с названием — самая «текстовая» из колонок левее qtyCol
+    const textCount = {};
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      for (let c = 0; c < qtyCol; c++) {
+        if (String(rows[i][c] || '').trim().length > 2) textCount[c] = (textCount[c] || 0) + 1;
+      }
+    }
+    const nameCol = Object.keys(textCount).sort((a, b) => textCount[b] - textCount[a])[0];
+    const nameIdx = nameCol !== undefined ? Number(nameCol) : 0;
+
+    // 3. Разобрать иерархию: строка без цены = агент, строка с ценой = товар
+    let currentAgent = '';
+    const parsed = [];
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const row  = rows[i];
+      const name = String(row[nameIdx] || '').trim();
+      const qty  = parseSalesNum(row[qtyCol]);
+      const sum  = parseSalesNum(row[sumCol]);
+      const priceRaw = priceCol >= 0 ? String(row[priceCol] || '').trim() : '';
+      const hasPrice = priceRaw !== '' && parseSalesNum(priceRaw) !== 0;
+      const low = String(name).toLowerCase();
+      // Пропускаем служебные строки-заголовки и итог
+      if (['итого', 'номенклатура', 'торг агент', 'торговый агент', 'параметры'].includes(low)) continue;
+
+      if (!hasPrice) {
+        // строка-агент (групповой итог). Пустое имя → «без агента»
+        currentAgent = name;
+      } else {
+        if (!name) continue;
+        parsed.push({ agent: currentAgent, productName: name, quantity: qty, price: parseSalesNum(priceRaw), sum });
+      }
+    }
+
+    if (parsed.length === 0) {
+      return res.status(400).json({ error: 'Не найдено ни одной строки товара. Проверьте, что это отчёт «Сводная продаж по агентам (по номенклатуре)».' });
+    }
+
+    // 4. Сопоставить с товарами сайта → brand/set/productId
+    const products = await Product.find({}).select('_id name fullName sku brand set').lean();
+    const prodByName = new Map();
+    for (const p of products) {
+      prodByName.set(normName(p.fullName || p.name || ''), p);
+      if (p.name) prodByName.set(normName(p.name), p);
+    }
+
+    const docDate = new Date(dateTo + 'T12:00:00+06:00'); // у свода нет дат → метим концом периода
+    const docs = parsed.map(s => {
+      const m = prodByName.get(normName(s.productName));
+      return {
+        docNumber: '', docDate,
+        agent: s.agent, counterparty: '', warehouse: '',
+        productName: s.productName,
+        productId: m?._id || null,
+        sku: m?.sku || '',
+        brand: m?.brand || '',
+        set: m?.set || '',
+        quantity: s.quantity,
+        price: s.price,
+        sum: s.sum,
+        source: '1c-excel',
+      };
+    });
+
+    // 5. Заменить период целиком
+    const from = new Date(dateFrom + 'T00:00:00+06:00');
+    const to   = new Date(dateTo   + 'T23:59:59+06:00');
+    const del  = await SalesRecord.deleteMany({ docDate: { $gte: from, $lte: to } });
+    await SalesRecord.insertMany(docs, { ordered: false });
+
+    const matched = docs.filter(d => d.productId).length;
+    console.log(`[upload-sales] ${new Date().toISOString()} rows=${docs.length} matched=${matched} deleted=${del.deletedCount} [${dateFrom}..${dateTo}]`);
+    res.json({ success: true, inserted: docs.length, matched, unmatched: docs.length - matched, deleted: del.deletedCount, agents: [...new Set(docs.map(d => d.agent))].length });
+  } catch (e) {
+    res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
+  }
+});
+
 // ── Tenders ──────────────────────────────────────────────────────────────────
 // GET /api/admin/tenders?status=&brand=&search=&completed=true
 router.get('/tenders', editor, async (req, res) => {

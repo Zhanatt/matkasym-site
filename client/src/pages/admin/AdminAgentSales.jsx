@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { adminGetAgentSales, adminGetAgentSalesDocs } from '../../api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { adminGetAgentSales, adminGetAgentSalesDocs, adminUploadSales } from '../../api';
 
 const SET_NAMES = {
   'achyk-asman': 'Achyk Asman', 'den-sooluk': 'Den Sooluk', 'zhashyl-ömür': 'Zhashyl Omur',
@@ -47,6 +47,9 @@ export default function AdminAgentSales() {
   const [data, setData]         = useState(null);
   const [expanded, setExpanded] = useState({});   // agent → true (показать товары)
   const [docsByAgent, setDocsByAgent] = useState({}); // agent → { loading, docs }
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState(null); // { ok, text }
+  const fileRef = useRef(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -73,6 +76,23 @@ export default function AdminAgentSales() {
       .catch(() => setDocsByAgent(p => ({ ...p, [agent]: { loading: false, docs: [] } })));
   };
 
+  const handleUpload = e => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // позволить повторно выбрать тот же файл
+    if (!file) return;
+    if (!dateFrom || !dateTo) { setUploadMsg({ ok: false, text: 'Сначала выбери период (даты сверху)' }); return; }
+    setUploading(true);
+    setUploadMsg(null);
+    adminUploadSales(file, dateFrom, dateTo)
+      .then(res => {
+        const d = res.data;
+        setUploadMsg({ ok: true, text: `Загружено строк: ${d.inserted}, агентов: ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.` });
+        load();
+      })
+      .catch(err => setUploadMsg({ ok: false, text: err.response?.data?.error || 'Ошибка загрузки' }))
+      .finally(() => setUploading(false));
+  };
+
   const inputStyle = {
     padding: '8px 10px', borderRadius: 10, border: '1.5px solid #e5e5e5',
     fontSize: 14, background: '#fff', outline: 'none',
@@ -80,14 +100,40 @@ export default function AdminAgentSales() {
 
   return (
     <div style={{ maxWidth: 1000 }}>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#111', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          🧾 Продажи по агентам
-        </h1>
-        <p style={{ fontSize: 14, color: '#888', marginTop: 4 }}>
-          Точные данные из 1С (документы «Реализация ТМЗ и услуг») — не по остаткам
-        </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#111', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            🧾 Продажи по агентам
+          </h1>
+          <p style={{ fontSize: 14, color: '#888', marginTop: 4 }}>
+            Точные данные из 1С (отчёт «Сводная продаж по агентам») — не по остаткам
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={handleUpload} style={{ display: 'none' }} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            style={{
+              padding: '10px 18px', borderRadius: 10, border: 'none', cursor: uploading ? 'default' : 'pointer',
+              background: '#111', color: '#fff', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap',
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >{uploading ? 'Загрузка…' : '⬆️ Загрузить таблицу из 1С'}</button>
+          <span style={{ fontSize: 11, color: '#bbb', maxWidth: 220, textAlign: 'right' }}>
+            Отчёт «Сводная продаж по агентам (по номенклатуре)» за период, что выбран выше
+          </span>
+        </div>
       </div>
+
+      {uploadMsg && (
+        <div style={{
+          marginBottom: 16, padding: '10px 14px', borderRadius: 10, fontSize: 13.5,
+          background: uploadMsg.ok ? '#e8f5e9' : '#fff5f5',
+          color: uploadMsg.ok ? '#2d7a3a' : '#c0392b',
+          border: `1px solid ${uploadMsg.ok ? '#bfe6c8' : '#f5c6c6'}`,
+        }}>{uploadMsg.ok ? '✅ ' : '⚠️ '}{uploadMsg.text}</div>
+      )}
 
       {/* Фильтры */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
