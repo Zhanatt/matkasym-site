@@ -4,6 +4,7 @@ import {
   adminGetProductRequests,
   adminGetMyProductRequests,
   adminCreateProductRequest,
+  adminDeleteProductRequest,
   adminGetProducts,
 } from '../../api';
 
@@ -60,6 +61,8 @@ export default function PendingOrderRequests({ onCountChange }) {
   const [items, setItems]   = useState([]);
   const [loading, setLoad]  = useState(true);
   const [gallery, setGallery] = useState(null); // { photos, i }
+  const [detail, setDetail] = useState(null);   // заявка для попапа "подробнее"
+  const [deleting, setDeleting] = useState(null); // id удаляемой заявки
 
   // create form state
   const [open, setOpen]         = useState(false);
@@ -108,6 +111,20 @@ export default function PendingOrderRequests({ onCountChange }) {
   }, [onCountChange]);
 
   useEffect(() => { load(); }, [load]);
+
+  const removeRequest = async (id) => {
+    if (!window.confirm('Заявка будет снята. Удалить её?')) return;
+    setDeleting(id);
+    try {
+      await adminDeleteProductRequest(id);
+      setDetail(null);
+      load();
+    } catch (e) {
+      alert(e?.response?.data?.error || 'Не удалось удалить заявку');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   // Один раз загружаем весь каталог, когда выбран тип "catalog"
   useEffect(() => {
@@ -262,13 +279,24 @@ export default function PendingOrderRequests({ onCountChange }) {
             const t = TYPE_META[r.type] || TYPE_META.real;
             const pics = r.photos?.length ? r.photos : (r.photo ? [r.photo] : []);
             return (
-              <div key={r._id} className="por-card" style={{ display: 'flex', gap: 14, background: '#fff',
-                border: '1.5px solid #fde68a', borderRadius: 12, padding: 14 }}>
-                <div className="por-photo" onClick={() => pics.length && setGallery({ photos: pics, i: 0 })}
+              <div key={r._id} className="por-card" onClick={() => setDetail(r)}
+                style={{ position: 'relative', display: 'flex', gap: 14, background: '#fff',
+                  border: '1.5px solid #fde68a', borderRadius: 12, padding: 14, cursor: 'pointer',
+                  transition: 'box-shadow .15s, border-color .15s' }}
+                onMouseOver={e => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; e.currentTarget.style.borderColor = '#f59e0b'; }}
+                onMouseOut={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#fde68a'; }}>
+                {/* Крестик удаления */}
+                <button onClick={(e) => { e.stopPropagation(); removeRequest(r._id); }} disabled={deleting === r._id}
+                  title="Снять заявку"
+                  style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 8,
+                    border: 'none', background: '#fdecea', color: '#c0392b', fontSize: 15, lineHeight: 1,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                  {deleting === r._id ? '…' : '✕'}
+                </button>
+                <div className="por-photo"
                   style={{ position: 'relative', width: 92, height: 92, flexShrink: 0, borderRadius: 10, overflow: 'hidden',
-                    background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: pics.length ? 'zoom-in' : 'default' }}>
-                  {pics[0] ? <img src={pics[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {pics[0] ? <img src={pics[0]} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                            : <span style={{ fontSize: 30 }}>{t.icon}</span>}
                   {pics.length > 1 && (
                     <span style={{ position: 'absolute', bottom: 5, right: 5, background: 'rgba(0,0,0,.65)',
@@ -277,7 +305,7 @@ export default function PendingOrderRequests({ onCountChange }) {
                     </span>
                   )}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, paddingRight: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: t.color, background: t.bg,
                       padding: '2px 8px', borderRadius: 20 }}>{t.icon} {t.label}</span>
@@ -291,9 +319,10 @@ export default function PendingOrderRequests({ onCountChange }) {
                     {r.dimensions && <span style={{ marginRight: 12 }}>📐 {r.dimensions}</span>}
                     {r.color && <span>🎨 {r.color}</span>}
                   </div>
-                  {r.note && <div style={{ fontSize: 13, color: '#5b6572', marginTop: 4 }}>💬 {r.note}</div>}
+                  {r.note && <div style={{ fontSize: 13, color: '#5b6572', marginTop: 4, overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>💬 {r.note}</div>}
                   <div style={{ fontSize: 11.5, color: '#9aa5b1', marginTop: 8 }}>
-                    {r.createdBy?.name || r.createdByName || 'фронтмен'} · {fmtDate(r.createdAt)}
+                    👤 {r.createdBy?.name || r.createdByName || 'фронтмен'} · 🕐 {fmtDate(r.createdAt)}
                   </div>
                 </div>
               </div>
@@ -510,6 +539,83 @@ export default function PendingOrderRequests({ onCountChange }) {
                   {saving ? 'Отправка…' : 'Отправить заявку'}
                 </button>
               </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* Попап "подробнее" */}
+      {detail && createPortal(
+        <>
+          <div onClick={() => setDetail(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1600 }} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1601, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', padding: 20, pointerEvents: 'none' }}>
+            <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 540,
+              maxHeight: '92vh', overflow: 'auto', padding: 22, pointerEvents: 'auto',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              {(() => {
+                const t = TYPE_META[detail.type] || TYPE_META.real;
+                const pics = detail.photos?.length ? detail.photos : (detail.photo ? [detail.photo] : []);
+                return (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: t.color, background: t.bg,
+                          padding: '3px 10px', borderRadius: 20 }}>{t.icon} {t.label}</span>
+                        <span style={{ fontSize: 12, color: '#b0b8c1' }}>№{detail.number}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#b45309' }}>⏳ Ждёт обработки</span>
+                      </div>
+                      <button onClick={() => setDetail(null)} style={{ width: 34, height: 34, borderRadius: 10,
+                        background: '#f5f5f5', border: 'none', fontSize: 17, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                    </div>
+
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#111', marginBottom: 14 }}>{detail.name}</div>
+
+                    {/* Фото-галерея */}
+                    {pics.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8, marginBottom: 16 }}>
+                        {pics.map((url, i) => (
+                          <img key={url + i} src={url} alt="" onClick={() => setGallery({ photos: pics, i })}
+                            style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 10,
+                              border: '1px solid #eceff3', cursor: 'zoom-in' }} />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Характеристики */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                      {[
+                        detail.quantity ? ['📦 Количество', `${detail.quantity} шт`] : null,
+                        detail.sku ? ['🏷 Артикул', detail.sku] : null,
+                        detail.dimensions ? ['📐 Размеры', detail.dimensions] : null,
+                        detail.color ? ['🎨 Цвет', detail.color] : null,
+                      ].filter(Boolean).map(([k, v]) => (
+                        <div key={k} style={{ display: 'flex', gap: 10, fontSize: 14 }}>
+                          <span style={{ color: '#94a3b8', minWidth: 130 }}>{k}</span>
+                          <span style={{ color: '#111', fontWeight: 600 }}>{v}</span>
+                        </div>
+                      ))}
+                      {detail.note && (
+                        <div style={{ fontSize: 14, color: '#374151', background: '#f8fafc', borderRadius: 10, padding: 12 }}>
+                          💬 {detail.note}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: 12.5, color: '#9aa5b1', marginBottom: 18, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+                      👤 Автор: <b style={{ color: '#5b6572' }}>{detail.createdBy?.name || detail.createdByName || 'фронтмен'}</b>
+                      <br />🕐 Создана: {fmtDate(detail.createdAt)}
+                    </div>
+
+                    <button onClick={() => removeRequest(detail._id)} disabled={deleting === detail._id}
+                      style={{ width: '100%', padding: '14px', fontSize: 15, fontWeight: 700, color: '#c0392b',
+                        background: '#fdecea', border: 'none', borderRadius: 12, cursor: 'pointer' }}>
+                      🗑 Снять заявку
+                    </button>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </>,

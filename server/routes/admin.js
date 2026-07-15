@@ -3611,10 +3611,15 @@ router.patch('/product-requests/:id', canOrders, async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// DELETE /api/admin/product-requests/:id — удалить (владелец или Джипар)
-router.delete('/product-requests/:id', canOrders, async (req, res) => {
+// DELETE /api/admin/product-requests/:id — снять заявку (владелец, Джипар или её автор)
+router.delete('/product-requests/:id', async (req, res) => {
   try {
-    await ProductRequest.findByIdAndDelete(req.params.id);
+    const request = await ProductRequest.findById(req.params.id);
+    if (!request) return res.json({ ok: true });
+    const isOwner   = req.user.role === 'owner' || req.user.canOrderProducts;
+    const isCreator = String(request.createdBy) === String(req.user._id);
+    if (!isOwner && !isCreator) return res.status(403).json({ error: 'Нет доступа' });
+    await request.deleteOne();
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
