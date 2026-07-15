@@ -636,6 +636,24 @@ router.patch('/users/:id', admin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// PATCH /admin/users/:id/password — владелец задаёт пользователю новый пароль.
+// Аккаунт и вся статистика сохраняются, почта не нужна.
+router.patch('/users/:id/password', admin, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6)
+      return res.status(400).json({ error: 'Пароль должен быть минимум 6 символов' });
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ error: 'Не найден' });
+    // pre('save') хук в модели сам захеширует пароль
+    target.password = password;
+    target.resetPasswordToken   = undefined;
+    target.resetPasswordExpires = undefined;
+    await target.save();
+    res.json({ ok: true });
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
 router.delete('/users/:id', admin, async (req, res) => {
   try {
     if (req.params.id === req.user._id.toString())

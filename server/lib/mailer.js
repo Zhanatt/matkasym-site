@@ -82,8 +82,11 @@ async function sendRejected({ toEmail, toName }) {
 
 // Письмо пользователю — сброс пароля
 async function sendPasswordReset({ toEmail, toName, resetLink }) {
-  if (!resend) return;
-  await resend.emails.send({
+  if (!resend) {
+    // Раньше молча return — пользователь видел «письмо отправлено», а его не было.
+    throw new Error('RESEND_API_KEY не задан в переменных окружения — отправка почты не настроена');
+  }
+  const { data, error } = await resend.emails.send({
     from: `Продакт матрица <${FROM_EMAIL}>`,
     to: toEmail,
     subject: '🔑 Восстановление пароля — Продакт матрица',
@@ -104,6 +107,12 @@ async function sendPasswordReset({ toEmail, toName, resetLink }) {
       </div>
     `,
   });
+  // Resend НЕ бросает исключение при ошибке API — он возвращает { error }.
+  // Без этой проверки ошибка (напр. «домен не подтверждён») терялась и письмо не уходило.
+  if (error) {
+    throw new Error(`Resend отклонил письмо: ${error.message || JSON.stringify(error)}`);
+  }
+  return data;
 }
 
 const NEWS_TYPE_LABELS = {

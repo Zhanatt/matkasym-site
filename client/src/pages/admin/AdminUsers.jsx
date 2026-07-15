@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { adminGetUsers, adminDeleteUser, adminUpdateUser, adminGetUserActivity } from '../../api/index';
+import { adminGetUsers, adminDeleteUser, adminUpdateUser, adminGetUserActivity, adminSetUserPassword } from '../../api/index';
 
 const ONLINE_MS = 3 * 60 * 1000;
 
@@ -83,6 +83,12 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [activityData, setActivityData] = useState(null);
   const [activityLoading, setActivityLoading] = useState(false);
+  // Смена пароля пользователя владельцем
+  const [pwdUser, setPwdUser] = useState(null);
+  const [pwdValue, setPwdValue] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
+  const [pwdError, setPwdError] = useState('');
+  const [pwdDone, setPwdDone] = useState(false);
 
   useEffect(() => {
     adminGetUsers()
@@ -149,6 +155,30 @@ export default function AdminUsers() {
       setUsers(prev => prev.map(x => x._id === u._id ? res.data : x));
     } finally {
       setSaving(null);
+    }
+  };
+
+  const openPwdModal = (u) => {
+    setPwdUser(u);
+    setPwdValue('');
+    setPwdError('');
+    setPwdDone(false);
+  };
+
+  const handleSetPassword = async () => {
+    if (pwdValue.length < 6) {
+      setPwdError('Минимум 6 символов');
+      return;
+    }
+    setPwdSaving(true);
+    setPwdError('');
+    try {
+      await adminSetUserPassword(pwdUser._id, pwdValue);
+      setPwdDone(true);
+    } catch (e) {
+      setPwdError(e.response?.data?.error || 'Не удалось сменить пароль');
+    } finally {
+      setPwdSaving(false);
     }
   };
 
@@ -286,6 +316,17 @@ export default function AdminUsers() {
             }}>
               {ROLE_LABELS[u.role] || u.role}
             </div>
+          )}
+
+          {!isSelf && isOwner && !u.isPending && (
+            <button
+              className="btn btn-sm"
+              style={{ background: '#eef2ff', color: '#4338ca', border: 'none', fontSize: 13, padding: '8px 14px' }}
+              onClick={() => openPwdModal(u)}
+              title="Задать пользователю новый пароль"
+            >
+              🔑 Пароль
+            </button>
           )}
 
           {!isSelf && isOwner && (
@@ -470,6 +511,69 @@ export default function AdminUsers() {
               </>
             ) : (
               <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Нет данных</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Смена пароля пользователю */}
+      {pwdUser && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+          padding: 16,
+        }} onClick={() => setPwdUser(null)}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 32,
+            maxWidth: 400, width: '100%', textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(0,0,0,.2)',
+          }} onClick={e => e.stopPropagation()}>
+            {pwdDone ? (
+              <>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                <h3 style={{ margin: '0 0 8px', fontSize: 18 }}>Пароль изменён</h3>
+                <p style={{ color: 'var(--slate)', fontSize: 14, margin: '0 0 24px' }}>
+                  Передайте <strong>{pwdUser.name}</strong> новый пароль:<br />
+                  <code style={{ display: 'inline-block', marginTop: 8, padding: '6px 12px', background: '#f3f4f6', borderRadius: 8, fontSize: 15, fontWeight: 700, letterSpacing: 1 }}>{pwdValue}</code>
+                </p>
+                <button className="btn" style={{ background: '#000', color: '#fff', border: 'none', padding: '10px 28px', fontSize: 14, fontWeight: 700, borderRadius: 8, cursor: 'pointer' }} onClick={() => setPwdUser(null)}>
+                  Готово
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>🔑</div>
+                <h3 style={{ margin: '0 0 8px', fontSize: 18 }}>Новый пароль</h3>
+                <p style={{ color: 'var(--slate)', fontSize: 14, margin: '0 0 20px' }}>
+                  Для <strong>{pwdUser.name}</strong> ({pwdUser.email}).<br />
+                  Аккаунт и статистика сохранятся.
+                </p>
+                <input
+                  type="text"
+                  autoFocus
+                  value={pwdValue}
+                  onChange={e => { setPwdValue(e.target.value); setPwdError(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSetPassword(); }}
+                  placeholder="Минимум 6 символов"
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: 10,
+                    border: `1.5px solid ${pwdError ? '#e10523' : 'var(--admin-line)'}`,
+                    fontSize: 15, outline: 'none', marginBottom: pwdError ? 6 : 20,
+                  }}
+                />
+                {pwdError && <div style={{ color: '#e10523', fontSize: 13, marginBottom: 16, textAlign: 'left' }}>{pwdError}</div>}
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                  <button className="btn btn-ghost" onClick={() => setPwdUser(null)} disabled={pwdSaving}>Отмена</button>
+                  <button
+                    style={{ background: '#4338ca', color: '#fff', border: 'none', padding: '10px 24px', fontSize: 14, fontWeight: 700, borderRadius: 8, cursor: 'pointer', opacity: pwdSaving ? 0.6 : 1 }}
+                    onClick={handleSetPassword}
+                    disabled={pwdSaving}
+                  >
+                    {pwdSaving ? 'Сохранение…' : 'Сменить пароль'}
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
