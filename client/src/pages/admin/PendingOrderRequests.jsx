@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   adminGetProductRequests,
@@ -22,6 +22,28 @@ const TYPES = [
   { key: 'new',     icon: '🆕', title: 'Новый товар',       desc: 'Заполнить форму нового товара', accent: '#2563eb', bg: '#eff6ff' },
   { key: 'catalog', icon: '🛒', title: 'Заказать с каталога', desc: 'Выбрать товар из каталога',   accent: '#b45309', bg: '#fef3c7' },
 ];
+
+const BRAND_LABELS = { 'matkasym-home': 'HOME', 'matkasym-shaar': 'SHAAR', 'matkasym-kyzmat': 'KYZMAT' };
+
+const SET_NAMES = {
+  'önügüü-set': 'Onuguu Set', 'dayar-tütük': 'Dayar Tutuk', 'achyk-asman': 'Achyk Asman',
+  'den-sooluk': 'Den Sooluk', 'zhashyl-ömür': 'Zhashyl Omur', 'jenil-ashkana': 'Jenil Ashkana',
+  'konok-keldi': 'Konok Keldi', 'korkom-aiym': 'Korkom Aiym', 'kosh-keliniz': 'Kosh Keliniz',
+  'onoi-sakta': 'Onoi Sakta', 'baary-oorunda': 'Baary Oorunda', 'sanarip-tv': 'Sanarip TV',
+  'shirin-balalyk': 'Shirin Balalyk', 'taza-kiym': 'Taza Kiym', 'uydo-ishtoo': 'Uydo Ishtoo',
+  'mazza-seiyl': 'Mazza Seiyl', 'zhashyl-omur-shaar': 'Zhashyl Omur (Shaar)', '0-tashtandy': '0-Tashtandy',
+  'bekem-fasad': 'Bekem Fasad', 'bilim-kelechek': 'Bilim Kelechek', 'kooz-koopsuzduk': 'Kooz Koopsuzduk',
+  'uzak-koldon': 'Uzak Koldon', 'samples': 'Obraztsy', 'small-batch': 'Malaya Partiya',
+  'misc': 'Raznoe', 'equipment': 'Oborudovanie', 'other': 'Prochee',
+};
+const setLabel = (slug) => SET_NAMES[slug] || (slug ? slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '');
+const brandLabel = (b) => BRAND_LABELS[b] || b || '';
+const isBelowBuffer = (p) => (p.bufferStock || 0) > 0 && (p.stock || 0) < (p.bufferStock || 0);
+
+const selectStyle = {
+  flex: 1, minWidth: 0, fontSize: 14, padding: '10px 12px', border: '1.5px solid #e2e8f0',
+  borderRadius: 10, outline: 'none', background: '#fff', cursor: 'pointer',
+};
 
 const label = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 };
 const input = {
@@ -57,8 +79,10 @@ export default function PendingOrderRequests({ onCountChange }) {
 
   // catalog picker state
   const [catQuery, setCatQuery]   = useState('');
-  const [catList, setCatList]     = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [catLoading, setCatLoad]  = useState(false);
+  const [brandFilter, setBrand]   = useState('');
+  const [setFilter, setSet]       = useState('');
   const [picked, setPicked]       = useState(null); // выбранный товар из каталога
 
   const load = useCallback(() => {
@@ -84,23 +108,54 @@ export default function PendingOrderRequests({ onCountChange }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Поиск товаров каталога (с дебаунсом), только когда выбран тип "catalog" и товар ещё не выбран
+  // Один раз загружаем весь каталог, когда выбран тип "catalog"
   useEffect(() => {
-    if (!open || type !== 'catalog' || picked) return;
+    if (!open || type !== 'catalog' || allProducts.length) return;
     setCatLoad(true);
-    const t = setTimeout(() => {
-      adminGetProducts({ search: catQuery.trim(), limit: 24, sort: 'newest' })
-        .then(r => setCatList(r.data.products || []))
-        .catch(() => setCatList([]))
-        .finally(() => setCatLoad(false));
-    }, 300);
-    return () => clearTimeout(t);
-  }, [open, type, catQuery, picked]);
+    adminGetProducts({ limit: 2000, sort: 'newest' })
+      .then(r => setAllProducts(r.data.products || []))
+      .catch(() => setAllProducts([]))
+      .finally(() => setCatLoad(false));
+  }, [open, type, allProducts.length]);
+
+  // Опции брендов/сетов из загруженного каталога
+  const brandOptions = useMemo(
+    () => [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort(),
+    [allProducts]
+  );
+  const setOptions = useMemo(
+    () => [...new Set(allProducts
+      .filter(p => !brandFilter || p.brand === brandFilter)
+      .map(p => p.set).filter(Boolean))].sort((a, b) => setLabel(a).localeCompare(setLabel(b), 'ru')),
+    [allProducts, brandFilter]
+  );
+
+  // Фильтрация + сортировка: ниже буфера — наверх (по величине нехватки)
+  const catList = useMemo(() => {
+    const q = catQuery.trim().toLowerCase();
+    const filtered = allProducts.filter(p => {
+      if (brandFilter && p.brand !== brandFilter) return false;
+      if (setFilter && p.set !== setFilter) return false;
+      if (q) {
+        const hay = `${p.fullName || ''} ${p.name || ''} ${p.sku || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+    const deficit = (p) => isBelowBuffer(p) ? (p.bufferStock || 0) - (p.stock || 0) : -1;
+    return filtered.sort((a, b) => {
+      const da = deficit(a), db = deficit(b);
+      if (da >= 0 && db < 0) return -1;   // a ниже буфера, b нет
+      if (db >= 0 && da < 0) return 1;
+      if (da >= 0 && db >= 0) return db - da; // оба ниже буфера — сильнее нехватка выше
+      return (a.fullName || a.name || '').localeCompare(b.fullName || b.name || '', 'ru');
+    });
+  }, [allProducts, brandFilter, setFilter, catQuery]);
 
   const reset = () => {
     setType(''); setPhotos([]); setName('');
     setHeight(''); setWidth(''); setDepth(''); setColor(''); setNote(''); setError('');
-    setCatQuery(''); setCatList([]); setPicked(null);
+    setCatQuery(''); setBrand(''); setSet(''); setPicked(null);
   };
 
   const openForm = () => { reset(); setOpen(true); document.body.style.overflow = 'hidden'; };
@@ -339,31 +394,56 @@ export default function PendingOrderRequests({ onCountChange }) {
               {/* ── ЗАКАЗАТЬ С КАТАЛОГА: выбор товара ── */}
               {type === 'catalog' && !picked && (
                 <>
-                  <div style={label}>Найдите товар в каталоге</div>
-                  <input value={catQuery} onChange={e => setCatQuery(e.target.value)} autoFocus
-                    placeholder="Название или артикул…" style={{ ...input, marginBottom: 12 }} />
-                  <div style={{ maxHeight: 320, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                  {/* Фильтры: бренд + сет */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <select value={brandFilter} onChange={e => { setBrand(e.target.value); setSet(''); }} style={selectStyle}>
+                      <option value="">Все бренды</option>
+                      {brandOptions.map(b => <option key={b} value={b}>{brandLabel(b)}</option>)}
+                    </select>
+                    <select value={setFilter} onChange={e => setSet(e.target.value)} style={selectStyle}>
+                      <option value="">Все сеты</option>
+                      {setOptions.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
+                    </select>
+                  </div>
+
+                  <input value={catQuery} onChange={e => setCatQuery(e.target.value)}
+                    placeholder="Поиск по названию или артикулу…" style={{ ...input, marginBottom: 6 }} />
+                  <div style={{ fontSize: 11.5, color: '#94a3b8', marginBottom: 10 }}>
+                    {catLoading ? 'Загрузка каталога…' : `Найдено: ${catList.length} · товары ниже буфера — сверху`}
+                  </div>
+
+                  <div style={{ maxHeight: 340, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
                     {catLoading ? (
-                      <div style={{ color: '#aaa', textAlign: 'center', padding: 24, fontSize: 14 }}>Поиск…</div>
+                      <div style={{ color: '#aaa', textAlign: 'center', padding: 24, fontSize: 14 }}>Загрузка…</div>
                     ) : catList.length === 0 ? (
                       <div style={{ color: '#bbb', textAlign: 'center', padding: 24, fontSize: 14 }}>Ничего не найдено</div>
-                    ) : catList.map(p => (
-                      <div key={p._id} onClick={() => { setPicked(p); setError(''); }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 8, borderRadius: 10,
-                          border: '1px solid #eceff3', cursor: 'pointer', background: '#fff' }}
-                        onMouseOver={e => e.currentTarget.style.borderColor = '#DC1E24'}
-                        onMouseOut={e => e.currentTarget.style.borderColor = '#eceff3'}>
-                        <img src={p.images?.[0] || NO_PHOTO} alt="" onError={e => { e.target.src = NO_PHOTO; }}
-                          style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', background: '#f1f5f9', flexShrink: 0 }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: '#111', overflow: 'hidden',
-                            textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.fullName || p.name}</div>
-                          <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
-                            {p.sku}{typeof p.stock === 'number' ? ` · остаток: ${p.stock}` : ''}
+                    ) : catList.map(p => {
+                      const low = isBelowBuffer(p);
+                      return (
+                        <div key={p._id} onClick={() => { setPicked(p); setError(''); }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 8, borderRadius: 10,
+                            border: `1px solid ${low ? '#fecaca' : '#eceff3'}`, cursor: 'pointer',
+                            background: low ? '#fff5f5' : '#fff' }}
+                          onMouseOver={e => e.currentTarget.style.borderColor = '#DC1E24'}
+                          onMouseOut={e => e.currentTarget.style.borderColor = low ? '#fecaca' : '#eceff3'}>
+                          <img src={p.images?.[0] || NO_PHOTO} alt="" loading="lazy" onError={e => { e.target.src = NO_PHOTO; }}
+                            style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', background: '#f1f5f9', flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#111', overflow: 'hidden',
+                              textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.fullName || p.name}</div>
+                            <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span>{p.sku}{typeof p.stock === 'number' ? ` · остаток: ${p.stock}` : ''}</span>
+                              {low && (
+                                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#b91c1c', background: '#fee2e2',
+                                  padding: '1px 7px', borderRadius: 20 }}>
+                                  ⚠️ ниже буфера ({p.bufferStock})
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
