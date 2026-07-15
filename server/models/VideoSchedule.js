@@ -9,6 +9,7 @@ const VideoScheduleSchema = new Schema({
 }, { timestamps: true });
 
 VideoScheduleSchema.index({ frontman: 1, plannedDate: 1 });
-VideoScheduleSchema.index({ frontman: 1, product: 1 }, { unique: true });
+// Товар повторяемый: один товар можно снимать много раз, поэтому индекс НЕ уникальный
+VideoScheduleSchema.index({ frontman: 1, product: 1 });
 
 module.exports = model('VideoSchedule', VideoScheduleSchema);

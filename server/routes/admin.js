@@ -3523,10 +3523,18 @@ router.post('/video-schedule', protect, async (req, res) => {
       return res.status(403).json({ error: 'Этот товар не в вашем сете' });
     }
 
-    const existing = await VideoSchedule.findOne({ frontman: frontman._id, product: productId });
+    // Товар повторяемый — можно снимать несколько раз.
+    // Не допускаем лишь буквальный дубль: тот же товар, тот же день, ещё не снят.
+    const planned = new Date(plannedDate);
+    const dayStart = new Date(planned); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(planned); dayEnd.setHours(23, 59, 59, 999);
+    const existing = await VideoSchedule.findOne({
+      frontman: frontman._id,
+      product: productId,
+      isCompleted: false,
+      plannedDate: { $gte: dayStart, $lte: dayEnd },
+    });
     if (existing) {
-      existing.plannedDate = new Date(plannedDate);
-      await existing.save();
       const populated = await VideoSchedule.findById(existing._id)
         .populate('product', 'name fullName sku set images driveImages hasVideo');
       return res.json(populated);
@@ -3591,7 +3599,11 @@ router.patch('/video-schedule/:id/uncomplete', protect, async (req, res) => {
     schedule.completedAt = null;
     await schedule.save();
 
-    await Product.findByIdAndUpdate(schedule.product, { hasVideo: false });
+    // hasVideo снимаем только если у товара не осталось других снятых съёмок
+    const otherDone = await VideoSchedule.exists({
+      product: schedule.product, isCompleted: true, _id: { $ne: schedule._id },
+    });
+    await Product.findByIdAndUpdate(schedule.product, { hasVideo: !!otherDone });
 
     const populated = await VideoSchedule.findById(schedule._id)
       .populate('product', 'name fullName sku set images driveImages hasVideo');
@@ -3615,7 +3627,10 @@ router.delete('/video-schedule/:id', protect, async (req, res) => {
     // Если удаляем выполненную съёмку — снимаем флаг с товара,
     // иначе hasVideo останется висеть без записи в расписании
     if (schedule.isCompleted) {
-      await Product.findByIdAndUpdate(schedule.product, { hasVideo: false });
+      const otherDone = await VideoSchedule.exists({
+        product: schedule.product, isCompleted: true, _id: { $ne: schedule._id },
+      });
+      await Product.findByIdAndUpdate(schedule.product, { hasVideo: !!otherDone });
     }
 
     await VideoSchedule.findByIdAndDelete(req.params.id);

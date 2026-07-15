@@ -130,18 +130,35 @@ export default function AdminVideoSchedule() {
     return map;
   }, [data?.schedules]);
 
-  const scheduledProductIds = useMemo(() => {
-    if (!data?.schedules) return new Set();
-    return new Set(data.schedules.map(s => s.product._id));
+  // Сколько раз по каждому товару уже снято видео (товар повторяемый)
+  const completedCountByProduct = useMemo(() => {
+    const m = {};
+    (data?.schedules || []).forEach(s => {
+      if (s.isCompleted) m[s.product._id] = (m[s.product._id] || 0) + 1;
+    });
+    return m;
   }, [data?.schedules]);
 
-  const unscheduledProducts = useMemo(() => {
+  // Товары, уже запланированные (но ещё не снятые) на выбранный день —
+  // их не показываем в списке добавления, чтобы не задвоить один и тот же день.
+  const pendingProductIdsForDay = useMemo(() => {
+    if (!selectedDay || !data?.schedules) return new Set();
+    return new Set(
+      data.schedules
+        .filter(s => !s.isCompleted && formatDate(new Date(s.plannedDate)) === selectedDay)
+        .map(s => s.product._id)
+    );
+  }, [data?.schedules, selectedDay]);
+
+  // Все товары доступны для планирования (даже уже снятые — с счётчиком),
+  // кроме тех, что уже стоят в плане этого дня.
+  const availableProducts = useMemo(() => {
     if (!data?.products) return [];
-    return data.products.filter(p => !scheduledProductIds.has(p._id));
-  }, [data?.products, scheduledProductIds]);
+    return data.products.filter(p => !pendingProductIdsForDay.has(p._id));
+  }, [data?.products, pendingProductIdsForDay]);
 
   const filteredUnscheduled = useMemo(() => {
-    let list = selectedSet === 'all' ? unscheduledProducts : unscheduledProducts.filter(p => p.set === selectedSet);
+    let list = selectedSet === 'all' ? availableProducts : availableProducts.filter(p => p.set === selectedSet);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(p =>
@@ -151,7 +168,7 @@ export default function AdminVideoSchedule() {
       );
     }
     return list;
-  }, [unscheduledProducts, selectedSet, search]);
+  }, [availableProducts, selectedSet, search]);
 
   const uniqueSets = useMemo(() => {
     if (!data?.products) return [];
@@ -166,7 +183,7 @@ export default function AdminVideoSchedule() {
     // Мгновенно добавляем временную запись, сервер подтверждает в фоне
     const product = data.products.find(p => p._id === productId);
     if (!product) return;
-    const tempId = `tmp_${productId}`;
+    const tempId = `tmp_${productId}_${Date.now()}`;
     setData(prev => ({
       ...prev,
       schedules: [...prev.schedules, { _id: tempId, product, plannedDate: date, isCompleted: false }],
@@ -440,8 +457,11 @@ export default function AdminVideoSchedule() {
       {view === 'progress' && (
         <div>
           {(() => {
-            const myDone = data.schedules.filter(s => s.isCompleted).length;
-            const pct = stats.total > 0 ? Math.round(myDone / stats.total * 100) : 0;
+            const myDone = data.schedules.filter(s => s.isCompleted).length; // всего снято видео (с повторами)
+            const distinctDone = new Set(
+              data.schedules.filter(s => s.isCompleted).map(s => s.product._id)
+            ).size; // уникальных товаров с видео
+            const pct = stats.total > 0 ? Math.round(distinctDone / stats.total * 100) : 0;
             return (
               <>
                 <div className="schedule-stats">
@@ -449,7 +469,7 @@ export default function AdminVideoSchedule() {
                     { label: 'Всего товаров', value: stats.total, color: '#3498db' },
                     { label: 'Снято видео', value: myDone, color: '#27ae60' },
                     { label: 'Запланировано', value: data.schedules.length - myDone, color: '#f39c12' },
-                    { label: 'Осталось', value: stats.total - myDone, color: '#e74c3c' },
+                    { label: 'Осталось товаров', value: Math.max(0, stats.total - distinctDone), color: '#e74c3c' },
                   ].map(s => (
                     <div key={s.label} className="stat-card" style={{ '--stat-color': s.color }}>
                       <div className="stat-value">{s.value}</div>
@@ -472,7 +492,7 @@ export default function AdminVideoSchedule() {
                     }} />
                   </div>
                   <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
-                    Снято {myDone} из {stats.total} товаров · осталось {stats.total - myDone}
+                    Снято {myDone} видео · товаров с видео {distinctDone} из {stats.total} · осталось {Math.max(0, stats.total - distinctDone)}
                   </div>
                 </div>
               </>
@@ -595,7 +615,9 @@ export default function AdminVideoSchedule() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {filteredUnscheduled.map(product => (
+                    {filteredUnscheduled.map(product => {
+                      const doneCount = completedCountByProduct[product._id] || 0;
+                      return (
                       <div key={product._id} style={{
                         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
                         background: '#fff', borderRadius: 12,
@@ -604,7 +626,16 @@ export default function AdminVideoSchedule() {
                         <ProductThumb product={product} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</div>
-                          <div style={{ fontSize: 11.5, color: '#999' }}>{setLabel(product.set)}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                            <span style={{ fontSize: 11.5, color: '#999' }}>{setLabel(product.set)}</span>
+                            {doneCount > 0 && (
+                              <span style={{
+                                fontSize: 10.5, fontWeight: 800, color: '#2d7a3a',
+                                background: '#e8f5e9', borderRadius: 20, padding: '1px 7px',
+                                whiteSpace: 'nowrap',
+                              }}>🎬 снято {doneCount}×</span>
+                            )}
+                          </div>
                         </div>
                         <button
                           onClick={() => handleSchedule(product._id, selectedDay)}
@@ -614,7 +645,8 @@ export default function AdminVideoSchedule() {
                           }}
                         >+</button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
