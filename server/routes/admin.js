@@ -3331,15 +3331,15 @@ const canOrders = (req, res, next) => {
   return res.status(403).json({ message: 'Нет доступа к заказам товаров' });
 };
 
-const PR_TYPE_LABEL = { test: 'Тестовый продукт', real: 'Заказ товара' };
+const PR_TYPE_LABEL = { new: 'Новый товар', catalog: 'Заказ с каталога', test: 'Тестовый продукт', real: 'Заказ товара' };
 
 // POST /api/admin/product-requests — создать заявку (любой фронтмен: protect+warehouse)
 router.post('/product-requests', async (req, res) => {
   try {
-    const { type, photo, photos, name, dimensions, color, note } = req.body;
+    const { type, photo, photos, name, dimensions, color, note, product, sku } = req.body;
 
-    if (!['test', 'real'].includes(type)) return res.status(400).json({ error: 'Выберите тип заявки' });
-    if (!name?.trim())                    return res.status(400).json({ error: 'Укажите название товара' });
+    if (!['new', 'catalog'].includes(type)) return res.status(400).json({ error: 'Выберите тип заявки' });
+    if (!name?.trim())                      return res.status(400).json({ error: 'Укажите название товара' });
 
     const photoList = Array.isArray(photos) ? photos.filter(Boolean) : (photo ? [photo] : []);
 
@@ -3350,6 +3350,8 @@ router.post('/product-requests', async (req, res) => {
       createdBy:     req.user._id,
       createdByName: req.user.name || '',
       type,
+      product:    (type === 'catalog' && isValidId(product)) ? product : undefined,
+      sku:        (sku || '').trim(),
       photo:      photoList[0] || '',
       photos:     photoList,
       name:       name.trim(),

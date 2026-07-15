@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
 
-// Заявка фронтмена на заказ товара. Два типа:
-//   test — тестовый продукт (пробная закупка)
-//   real — заказать настоящий продукт (обычный заказ)
+// Заявка на заказ товара. Два типа:
+//   new     — новый товар (заполняется форма с нуля)
+//   catalog — заказать товар из существующего каталога
+//   (test/real — устаревшие типы, оставлены для старых записей)
 // Инбокс обрабатывает Джипар (User.canOrderProducts) — отмечает выполненные.
 const productRequestSchema = new mongoose.Schema({
   number:        { type: Number, index: true },
@@ -10,7 +11,11 @@ const productRequestSchema = new mongoose.Schema({
   createdBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdByName: { type: String, default: '' },
 
-  type:  { type: String, enum: ['test', 'real'], required: true },
+  type:  { type: String, enum: ['new', 'catalog', 'test', 'real'], required: true },
+
+  // Для type=catalog — ссылка на товар из каталога
+  product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+  sku:     { type: String, default: '', trim: true },
 
   photo:  { type: String, default: '' },   // первое фото (для совместимости/превью)
   photos: [{ type: String }],              // все фото (Cloudinary secure_url)

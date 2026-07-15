@@ -20,7 +20,6 @@ const NAV_ALL = [
   { to: '/admin/review/results', label: 'Результаты аудита', icon: '📊', roles: ['owner','editor'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer'], badge: 'pending' },
   { to: '/admin/tech-requests', label: 'Заявки на техлист', icon: '📋', roles: ['owner','editor','viewer','navigator'], badge: 'tech_requests' },
-  { to: '/admin/product-requests', label: 'Заявка на товар', icon: '🛒', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/history',     label: 'История',           icon: '📜', roles: ['owner','editor','warehouse'] },
   { to: '/admin/sales-chart', label: 'Продажи по сетам',  icon: '📈', roles: ['owner','editor','viewer'] },
 ];
