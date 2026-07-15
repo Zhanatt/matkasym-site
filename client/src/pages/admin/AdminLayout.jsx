@@ -22,6 +22,7 @@ const NAV_ALL = [
   { to: '/admin/tech-requests', label: 'Заявки на техлист', icon: '📋', roles: ['owner','editor','viewer','navigator'], badge: 'tech_requests' },
   { to: '/admin/history',     label: 'История',           icon: '📜', roles: ['owner','editor','warehouse'] },
   { to: '/admin/sales-chart', label: 'Продажи по сетам',  icon: '📈', roles: ['owner','editor','viewer'] },
+  { to: '/admin/agent-sales', label: 'Продажи по агентам', icon: '🧾', roles: ['owner','editor','viewer'] },
 ];
 
 export default function AdminLayout() {

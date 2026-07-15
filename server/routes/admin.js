@@ -19,6 +19,7 @@ const { COMPANY_REQUIRED } = require('../models/TechRequest');
 const VideoSchedule = require('../models/VideoSchedule');
 const LoginLog     = require('../models/LoginLog');
 const ProductRequest = require('../models/ProductRequest');
+const SalesRecord  = require('../models/SalesRecord');
 const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto, publishToChannel } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
@@ -136,6 +137,71 @@ router.post('/sync-stock', async (req, res) => {
 
   console.log(`[sync-stock] ${new Date().toISOString()} matched=${matched} zeroed=${zeroed}`);
   res.json({ success: true, matched, zeroed, total: matched + zeroed, date: new Date().toISOString() });
+});
+
+// POST /api/admin/sync-sales — приём продаж по агентам из 1С (документы «Реализация ТМЗ и услуг»)
+// Header: x-api-key: <SYNC_KEY>
+// Body: {
+//   periodFrom: 'YYYY-MM-DD', periodTo: 'YYYY-MM-DD',  // окно, которое заменяем целиком
+//   sales: [{ docNumber, docDate, agent, counterparty, warehouse, productName, sku, quantity, price, sum }]
+// }
+// Идемпотентно: удаляем все записи с docDate в [periodFrom, periodTo] и вставляем присланные заново,
+// поэтому правки/удаления/корректировки в 1С корректно переносятся при повторной синхронизации.
+router.post('/sync-sales', async (req, res) => {
+  const key = req.headers['x-api-key'] || req.body.apiKey;
+  if (key !== SYNC_KEY) return res.status(401).json({ error: 'Неверный API ключ' });
+
+  const { periodFrom, periodTo, sales } = req.body;
+  if (!Array.isArray(sales)) {
+    return res.status(400).json({ error: 'sales должен быть массивом' });
+  }
+  if (!periodFrom || !periodTo) {
+    return res.status(400).json({ error: 'periodFrom и periodTo обязательны' });
+  }
+
+  try {
+    // Карта соответствия имя-товара → товар сайта (для brand/set/productId)
+    const products = await Product.find({}).select('_id name fullName sku brand set').lean();
+    const prodByName = new Map();
+    for (const p of products) {
+      prodByName.set(normName(p.fullName || p.name || ''), p);
+      if (p.name) prodByName.set(normName(p.name), p);
+    }
+
+    const docs = sales.map(s => {
+      const name = String(s.productName || '').trim();
+      const matched = prodByName.get(normName(name));
+      const qty = Number(s.quantity) || 0;
+      const sum = Number(s.sum) || 0;
+      return {
+        docNumber:    String(s.docNumber || ''),
+        docDate:      s.docDate ? new Date(s.docDate) : new Date(),
+        agent:        String(s.agent || '').trim(),
+        counterparty: String(s.counterparty || '').trim(),
+        warehouse:    String(s.warehouse || '').trim(),
+        productName:  name,
+        productId:    matched?._id || null,
+        sku:          String(s.sku || matched?.sku || ''),
+        brand:        matched?.brand || '',
+        set:          matched?.set || '',
+        quantity:     qty,
+        price:        Number(s.price) || (qty ? sum / qty : 0),
+        sum,
+        source:       '1c',
+      };
+    });
+
+    const from = new Date(periodFrom + 'T00:00:00+06:00');
+    const to   = new Date(periodTo   + 'T23:59:59+06:00');
+    const del  = await SalesRecord.deleteMany({ docDate: { $gte: from, $lte: to } });
+    if (docs.length) await SalesRecord.insertMany(docs, { ordered: false });
+
+    console.log(`[sync-sales] ${new Date().toISOString()} deleted=${del.deletedCount} inserted=${docs.length} [${periodFrom}..${periodTo}]`);
+    res.json({ success: true, deleted: del.deletedCount, inserted: docs.length, matched: docs.filter(d => d.productId).length });
+  } catch (e) {
+    console.error('[sync-sales]', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // All admin routes require valid JWT + at least warehouse role
@@ -2096,6 +2162,103 @@ router.get('/sales-chart', viewer, async (req, res) => {
     }));
 
     res.json({ labels: labelSet, datasets, grandRevenue: Math.round(grandRevenue) });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// ── Продажи по агентам (точные данные из 1С) ─────────────────────────────────
+// GET /api/admin/agent-sales?dateFrom=&dateTo=&brand=
+// Свод: агент → товар → количество/сумма, с подытогами по агентам.
+router.get('/agent-sales', viewer, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, brand } = req.query;
+    const match = {};
+    if (dateFrom || dateTo) {
+      match.docDate = {};
+      if (dateFrom) match.docDate.$gte = new Date(dateFrom + 'T00:00:00+06:00');
+      if (dateTo)   match.docDate.$lte = new Date(dateTo + 'T23:59:59+06:00');
+    }
+    if (brand) match.brand = brand;
+
+    const rows = await SalesRecord.aggregate([
+      { $match: match },
+      { $group: {
+        _id: { agent: { $ifNull: ['$agent', ''] }, product: { $ifNull: ['$productName', ''] } },
+        qty:  { $sum: '$quantity' },
+        sum:  { $sum: '$sum' },
+      }},
+      { $sort: { '_id.agent': 1, sum: -1 } },
+    ]);
+
+    const agentMap = new Map();
+    let grandQty = 0, grandSum = 0;
+    for (const r of rows) {
+      const a = r._id.agent || '(без агента)';
+      if (!agentMap.has(a)) agentMap.set(a, { agent: a, totalQty: 0, totalSum: 0, products: [] });
+      const g = agentMap.get(a);
+      g.products.push({ productName: r._id.product || '(без названия)', qty: r.qty, sum: Math.round(r.sum) });
+      g.totalQty += r.qty;
+      g.totalSum += r.sum;
+      grandQty += r.qty;
+      grandSum += r.sum;
+    }
+    const agents = [...agentMap.values()]
+      .map(a => ({ ...a, totalSum: Math.round(a.totalSum) }))
+      .sort((a, b) => b.totalSum - a.totalSum);
+
+    // Диапазон дат имеющихся данных — чтобы UI подсказал, что вообще загружено
+    const bounds = await SalesRecord.aggregate([
+      { $group: { _id: null, min: { $min: '$docDate' }, max: { $max: '$docDate' } } },
+    ]);
+
+    res.json({
+      agents,
+      grandQty,
+      grandSum: Math.round(grandSum),
+      dataRange: bounds[0] ? { min: bounds[0].min, max: bounds[0].max } : null,
+    });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// GET /api/admin/agent-sales/docs?agent=&dateFrom=&dateTo=&brand=
+// Детализация по накладным одного агента: дата+время, покупатель, товары, сумма.
+router.get('/agent-sales/docs', viewer, async (req, res) => {
+  try {
+    const { agent, dateFrom, dateTo, brand } = req.query;
+    const match = {};
+    if (agent === '(без агента)') match.agent = { $in: ['', null] };
+    else if (agent) match.agent = agent;
+    if (dateFrom || dateTo) {
+      match.docDate = {};
+      if (dateFrom) match.docDate.$gte = new Date(dateFrom + 'T00:00:00+06:00');
+      if (dateTo)   match.docDate.$lte = new Date(dateTo + 'T23:59:59+06:00');
+    }
+    if (brand) match.brand = brand;
+
+    const records = await SalesRecord.find(match)
+      .select('docNumber docDate counterparty productName quantity price sum')
+      .sort({ docDate: -1 })
+      .lean();
+
+    // Группируем строки по накладной (docNumber+docDate)
+    const docMap = new Map();
+    for (const r of records) {
+      const key = `${r.docNumber}|${new Date(r.docDate).getTime()}`;
+      if (!docMap.has(key)) {
+        docMap.set(key, {
+          docNumber: r.docNumber,
+          docDate: r.docDate,
+          counterparty: r.counterparty,
+          totalSum: 0,
+          lines: [],
+        });
+      }
+      const d = docMap.get(key);
+      d.lines.push({ productName: r.productName, qty: r.quantity, price: Math.round(r.price), sum: Math.round(r.sum) });
+      d.totalSum += r.sum;
+    }
+    const docs = [...docMap.values()].map(d => ({ ...d, totalSum: Math.round(d.totalSum) }));
+
+    res.json({ docs });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 

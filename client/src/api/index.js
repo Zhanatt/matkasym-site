@@ -66,6 +66,8 @@ export const adminGetPriceLog   = (params) => api.get('/admin/price-log',  { par
 export const adminGetPhotoLog   = (params) => api.get('/admin/photo-log',  { params });
 export const adminGetSalesChart      = (params) => api.get('/admin/sales-chart', { params });
 export const adminGetSalesChartSet   = (set, params) => api.get('/admin/sales-chart', { params: { ...params, set, groupBy: 'product' } });
+export const adminGetAgentSales      = (params) => api.get('/admin/agent-sales', { params });
+export const adminGetAgentSalesDocs  = (params) => api.get('/admin/agent-sales/docs', { params });
 export const adminGetFrontmen    = (brand)      => api.get('/admin/frontmen', { params: brand ? { brand } : {} });
 export const adminCreateFrontman = (data)       => api.post('/admin/frontmen', data);
 export const adminUpdateFrontman = (id, data)   => api.patch(`/admin/frontmen/${id}`, data);

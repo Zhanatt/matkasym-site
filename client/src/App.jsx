@@ -11,6 +11,7 @@ import AdminUsers         from './pages/admin/AdminUsers';
 import AdminHistory       from './pages/admin/AdminHistory';
 import AdminSalesChart    from './pages/admin/AdminSalesChart';
 import AdminSetSalesChart from './pages/admin/AdminSetSalesChart';
+import AdminAgentSales    from './pages/admin/AdminAgentSales';
 import AdminProductView   from './pages/admin/AdminProductView';
 import AdminSets          from './pages/admin/AdminSets';
 import AdminFrontmen      from './pages/admin/AdminFrontmen';
@@ -72,6 +73,7 @@ export default function App() {
           <Route path="history" element={<AdminHistory />} />
           <Route path="sales-chart"           element={<AdminSalesChart />} />
           <Route path="sales-chart/:setSlug" element={<AdminSetSalesChart />} />
+          <Route path="agent-sales"           element={<AdminAgentSales />} />
           <Route path="news" element={<AdminNews />} />
           <Route path="news/create" element={<AdminNewsCreate />} />
           <Route path="telegram-post" element={<AdminTelegramPost />} />
