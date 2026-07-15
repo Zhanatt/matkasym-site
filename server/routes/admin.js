@@ -2205,6 +2205,23 @@ router.get('/agent-sales', viewer, async (req, res) => {
       .map(a => ({ ...a, totalSum: Math.round(a.totalSum) }))
       .sort((a, b) => b.totalSum - a.totalSum);
 
+    // Разбивка по сетам (точное кол-во проданных позиций по сетам, в формате «Продажи по сетам»)
+    const setRows = await SalesRecord.aggregate([
+      { $match: match },
+      { $group: {
+        _id: { set: { $ifNull: ['$set', ''] }, brand: { $ifNull: ['$brand', ''] } },
+        qty: { $sum: '$quantity' },
+        sum: { $sum: '$sum' },
+      }},
+      { $sort: { qty: -1 } },
+    ]);
+    const sets = setRows.map(r => ({
+      set:   r._id.set || '',        // slug сета ('' = не сопоставлено с товаром сайта)
+      brand: r._id.brand || '',
+      qty:   r.qty,
+      sum:   Math.round(r.sum),
+    }));
+
     // Диапазон дат имеющихся данных — чтобы UI подсказал, что вообще загружено
     const bounds = await SalesRecord.aggregate([
       { $group: { _id: null, min: { $min: '$docDate' }, max: { $max: '$docDate' } } },
@@ -2212,6 +2229,7 @@ router.get('/agent-sales', viewer, async (req, res) => {
 
     res.json({
       agents,
+      sets,
       grandQty,
       grandSum: Math.round(grandSum),
       dataRange: bounds[0] ? { min: bounds[0].min, max: bounds[0].max } : null,

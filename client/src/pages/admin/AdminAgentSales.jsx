@@ -1,6 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminGetAgentSales, adminGetAgentSalesDocs } from '../../api';
 
+const SET_NAMES = {
+  'achyk-asman': 'Achyk Asman', 'den-sooluk': 'Den Sooluk', 'zhashyl-ömür': 'Zhashyl Omur',
+  'jenil-ashkana': 'Jenil Ashkana', 'konok-keldi': 'Konok Keldi', 'korkom-aiym': 'Korkom Aiym',
+  'kosh-keliniz': 'Kosh Keliniz', 'onoi-sakta': 'Onoi Sakta', 'baary-oorunda': 'Baary Oorunda',
+  'sanarip-tv': 'Sanarip TV', 'shirin-balalyk': 'Shirin Balalyk', 'taza-kiym': 'Taza Kiym',
+  'uydo-ishtoo': 'Uydo Ishtoo', 'mazza-seiyl': 'Mazza Seiyl', '0-tashtandy': '0-Tashtandy',
+  'bekem-fasad': 'Bekem Fasad', 'bilim-kelechek': 'Bilim Kelechek', 'kooz-koopsuzduk': 'Kooz Koopsuzduk',
+  'uzak-koldon': 'Uzak Koldon', 'önügüü-set': 'Onuguu Set', 'dayar-tütük': 'Dayar Tutuk',
+};
+const setLabel = slug => !slug ? '(без сета)' : (SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+
+const LINE_COLORS = [
+  '#DC1E24','#3463A3','#2ECC71','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E',
+  '#E91E63','#00BCD4','#8BC34A','#FF5722','#607D8B','#795548','#673AB7',
+];
+
 const money = n => (n || 0).toLocaleString('ru-RU');
 const fmtDateTime = d => new Date(d).toLocaleString('ru-RU', {
   day: '2-digit', month: '2-digit', year: 'numeric',
@@ -26,6 +42,7 @@ export default function AdminAgentSales() {
   const [dateFrom, setDateFrom] = useState(ymd(monthStart));
   const [dateTo, setDateTo]     = useState(ymd(now));
   const [brand, setBrand]       = useState('');
+  const [view, setView]         = useState('sets'); // sets | agents
   const [loading, setLoading]   = useState(true);
   const [data, setData]         = useState(null);
   const [expanded, setExpanded] = useState({});   // agent → true (показать товары)
@@ -100,9 +117,24 @@ export default function AdminAgentSales() {
         </div>
       )}
 
+      {/* Переключатель По сетам / По агентам */}
+      {data && (data.sets?.length > 0 || data.agents.length > 0) && (
+        <div style={{ display: 'inline-flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
+          {[{ k: 'sets', l: '📦 По сетам' }, { k: 'agents', l: '👤 По агентам' }].map(t => (
+            <button key={t.k} onClick={() => setView(t.k)} style={{
+              padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 700,
+              background: view === t.k ? '#fff' : 'transparent',
+              color: view === t.k ? '#111' : '#888',
+              boxShadow: view === t.k ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+            }}>{t.l}</button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Загрузка...</div>
-      ) : !data || data.agents.length === 0 ? (
+      ) : !data || (data.agents.length === 0 && (data.sets?.length || 0) === 0) ? (
         <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', borderRadius: 16, border: '1px solid #eee' }}>
           <div style={{ fontSize: 44, marginBottom: 12 }}>📭</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 6 }}>Нет данных за этот период</div>
@@ -112,7 +144,7 @@ export default function AdminAgentSales() {
               : <>Продажи из 1С ещё не синхронизированы. Данные появятся, когда заработает выгрузка из 1С на сайт (эндпоинт <code>/api/admin/sync-sales</code>).</>}
           </div>
         </div>
-      ) : (
+      ) : view === 'agents' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {data.agents.map(a => {
             const isOpen = expanded[a.agent];
@@ -206,6 +238,42 @@ export default function AdminAgentSales() {
               </div>
             );
           })}
+        </div>
+      ) : (
+        /* ── По сетам ── точное кол-во проданных позиций по сетам */
+        <div style={{ border: '1px solid #eee', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 90px 110px 120px', padding: '9px 16px', background: '#f7f8fa', borderBottom: '1px solid #eee', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <span>#</span><span>Сет</span>
+            <span style={{ textAlign: 'right' }}>% от итога</span>
+            <span style={{ textAlign: 'right' }}>Продано, шт</span>
+            <span style={{ textAlign: 'right' }}>Сумма</span>
+          </div>
+          {data.sets.map((s, i) => {
+            const pct = data.grandQty > 0 ? Math.round(s.qty / data.grandQty * 100) : 0;
+            const color = LINE_COLORS[i % LINE_COLORS.length];
+            return (
+              <div key={(s.set || 'none') + i} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 90px 110px 120px', padding: '10px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                  <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{setLabel(s.set)}</span>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: 11, color: '#aaa' }}>{pct}%</span>
+                  <div style={{ height: 3, background: '#f0f0f0', borderRadius: 2, marginTop: 3 }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
+                  </div>
+                </div>
+                <span style={{ textAlign: 'right', fontWeight: 700, color: s.qty < 0 ? '#c0392b' : '#1e7e34' }}>{money(s.qty)} шт</span>
+                <span style={{ textAlign: 'right', fontWeight: 600, color: '#111' }}>{money(s.sum)}</span>
+              </div>
+            );
+          })}
+          <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 90px 110px 120px', padding: '11px 16px', background: '#f7f8fa', fontSize: 13 }}>
+            <span /><span style={{ fontWeight: 700, color: '#111' }}>Итого</span><span />
+            <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(data.grandQty)} шт</span>
+            <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{money(data.grandSum)}</span>
+          </div>
         </div>
       )}
     </div>

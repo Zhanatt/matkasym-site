@@ -282,7 +282,7 @@ export default function AdminSalesChart() {
                       const pct = grandTotal > 0 ? Math.round(item.total / grandTotal * 100) : 0;
                       return (
                         <div key={item.set}
-                          onClick={() => navigate(`/admin/sales-chart/${item.set}`)}
+                          onClick={() => navigate(`/admin/sales-chart/${item.set}?from=${dateFrom}&to=${dateTo}&period=${period}`)}
                           style={{ display: 'grid', gridTemplateColumns: '24px 1fr 80px 100px', padding: '9px 14px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center', cursor: 'pointer' }}
                           onMouseEnter={e => e.currentTarget.style.background = '#f0f7ff'}
                           onMouseLeave={e => e.currentTarget.style.background = ''}>

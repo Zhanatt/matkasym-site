@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Label,
@@ -74,10 +74,12 @@ function CustomTooltip({ active, payload, label }) {
 export default function AdminSetSalesChart() {
   const { setSlug } = useParams();
   const navigate    = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [period,   setPeriod]   = useState('day');
-  const [dateFrom, setDateFrom] = useState(STOCK_START);
-  const [dateTo,   setDateTo]   = useState(() => new Date().toISOString().slice(0,10));
+  // Даты/период приходят из «Продажи по сетам» через URL — не сбрасываем выбор пользователя
+  const [period,   setPeriod]   = useState(() => searchParams.get('period') || 'day');
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') || STOCK_START);
+  const [dateTo,   setDateTo]   = useState(() => searchParams.get('to') || new Date().toISOString().slice(0,10));
   const [data,     setData]     = useState(null);
   const [loading,  setLoading]  = useState(false);
   const [modalProduct, setModalProduct] = useState(null);
