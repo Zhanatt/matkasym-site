@@ -87,6 +87,7 @@ export default function PendingOrderRequests({ onCountChange }) {
   const [catLoading, setCatLoad]  = useState(false);
   const [brandFilter, setBrand]   = useState('');
   const [setFilter, setSet]       = useState('');
+  const [ikeaFilter, setIkea]     = useState(''); // '' | 'ikea' | 'noikea'
   const [picked, setPicked]       = useState(null); // выбранный товар из каталога
 
   const load = useCallback(() => {
@@ -154,6 +155,8 @@ export default function PendingOrderRequests({ onCountChange }) {
     const filtered = allProducts.filter(p => {
       if (brandFilter && p.brand !== brandFilter) return false;
       if (setFilter && p.set !== setFilter) return false;
+      if (ikeaFilter === 'ikea'   && p.supplier?.company !== 'IKEA') return false;
+      if (ikeaFilter === 'noikea' && p.supplier?.company === 'IKEA') return false;
       if (q) {
         const hay = `${p.fullName || ''} ${p.name || ''} ${p.sku || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -168,12 +171,12 @@ export default function PendingOrderRequests({ onCountChange }) {
       if (da >= 0 && db >= 0) return db - da; // оба ниже буфера — сильнее нехватка выше
       return (a.fullName || a.name || '').localeCompare(b.fullName || b.name || '', 'ru');
     });
-  }, [allProducts, brandFilter, setFilter, catQuery]);
+  }, [allProducts, brandFilter, setFilter, ikeaFilter, catQuery]);
 
   const reset = () => {
     setType(''); setPhotos([]); setName(''); setQuantity('');
     setHeight(''); setWidth(''); setDepth(''); setColor(''); setNote(''); setError('');
-    setCatQuery(''); setBrand(''); setSet(''); setPicked(null);
+    setCatQuery(''); setBrand(''); setSet(''); setIkea(''); setPicked(null);
   };
 
   const openForm = () => { reset(); setOpen(true); document.body.style.overflow = 'hidden'; };
@@ -434,7 +437,7 @@ export default function PendingOrderRequests({ onCountChange }) {
               {type === 'catalog' && !picked && (
                 <>
                   {/* Фильтры: бренд + сет */}
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                     <select value={brandFilter} onChange={e => { setBrand(e.target.value); setSet(''); }} style={selectStyle}>
                       <option value="">Все бренды</option>
                       {brandOptions.map(b => <option key={b} value={b}>{brandLabel(b)}</option>)}
@@ -443,6 +446,17 @@ export default function PendingOrderRequests({ onCountChange }) {
                       <option value="">Все сеты</option>
                       {setOptions.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
                     </select>
+                  </div>
+
+                  {/* Фильтр IKEA / без IKEA */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    {[['', 'Все товары'], ['ikea', '🛒 Только IKEA'], ['noikea', 'Без IKEA']].map(([v, l]) => (
+                      <div key={v} onClick={() => setIkea(v)} style={{
+                        flex: 1, textAlign: 'center', padding: '8px 10px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                        cursor: 'pointer', border: '1.5px solid ' + (ikeaFilter === v ? '#0058A3' : '#e2e8f0'),
+                        background: ikeaFilter === v ? '#eaf3fb' : '#fff', color: ikeaFilter === v ? '#0058A3' : '#475569',
+                      }}>{l}</div>
+                    ))}
                   </div>
 
                   <input value={catQuery} onChange={e => setCatQuery(e.target.value)}
