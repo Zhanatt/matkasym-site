@@ -3336,12 +3336,14 @@ const PR_TYPE_LABEL = { new: 'Новый товар', catalog: 'Заказ с к
 // POST /api/admin/product-requests — создать заявку (любой фронтмен: protect+warehouse)
 router.post('/product-requests', async (req, res) => {
   try {
-    const { type, photo, photos, name, dimensions, color, note, product, sku } = req.body;
+    const { type, photo, photos, name, quantity, dimensions, color, note, product, sku } = req.body;
 
     if (!['new', 'catalog'].includes(type)) return res.status(400).json({ error: 'Выберите тип заявки' });
     if (!name?.trim())                      return res.status(400).json({ error: 'Укажите название товара' });
 
     const photoList = Array.isArray(photos) ? photos.filter(Boolean) : (photo ? [photo] : []);
+    const qty = Number(quantity);
+    const qtyVal = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : null;
 
     const last = await ProductRequest.findOne().sort({ number: -1 }).select('number');
 
@@ -3355,6 +3357,7 @@ router.post('/product-requests', async (req, res) => {
       photo:      photoList[0] || '',
       photos:     photoList,
       name:       name.trim(),
+      quantity:   qtyVal,
       dimensions: (dimensions || '').trim(),
       color:      (color || '').trim(),
       note:       (note || '').trim(),
@@ -3367,6 +3370,7 @@ router.post('/product-requests', async (req, res) => {
         .select('telegramChatId').lean();
       const caption = `🛒 Новая заявка №${request.number} · ${PR_TYPE_LABEL[type]}\n` +
         `Товар: ${request.name}\n` +
+        (request.quantity ? `Количество: ${request.quantity} шт\n` : '') +
         (request.dimensions ? `Размеры: ${request.dimensions}\n` : '') +
         (request.color ? `Цвет: ${request.color}\n` : '') +
         (request.note ? `Примечание: ${request.note}\n` : '') +

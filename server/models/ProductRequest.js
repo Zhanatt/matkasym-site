@@ -21,6 +21,7 @@ const productRequestSchema = new mongoose.Schema({
   photos: [{ type: String }],              // все фото (Cloudinary secure_url)
 
   name:       { type: String, required: true, trim: true },
+  quantity:   { type: Number, default: null },  // желаемое количество (шт), необязательно
   dimensions: { type: String, default: '', trim: true },
   color:      { type: String, default: '', trim: true },
   note:       { type: String, default: '', trim: true },

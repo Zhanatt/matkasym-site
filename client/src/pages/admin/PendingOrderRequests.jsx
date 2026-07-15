@@ -67,6 +67,7 @@ export default function PendingOrderRequests({ onCountChange }) {
   const [photos, setPhotos]     = useState([]);
   const [uploading, setUpload]  = useState(false);
   const [name, setName]         = useState('');
+  const [quantity, setQuantity] = useState('');
   const [height, setHeight]     = useState('');
   const [width, setWidth]       = useState('');
   const [depth, setDepth]       = useState('');
@@ -153,7 +154,7 @@ export default function PendingOrderRequests({ onCountChange }) {
   }, [allProducts, brandFilter, setFilter, catQuery]);
 
   const reset = () => {
-    setType(''); setPhotos([]); setName('');
+    setType(''); setPhotos([]); setName(''); setQuantity('');
     setHeight(''); setWidth(''); setDepth(''); setColor(''); setNote(''); setError('');
     setCatQuery(''); setBrand(''); setSet(''); setPicked(null);
   };
@@ -196,13 +197,14 @@ export default function PendingOrderRequests({ onCountChange }) {
         color: picked.color || '',
         photo: img,
         photos: img ? [img] : [],
+        quantity: quantity || undefined,
         note,
       };
     } else {
       if (!name.trim()) return setError('Укажите название товара');
       const dims = [height, width, depth].map(s => String(s).trim()).filter(Boolean);
       const dimensions = dims.length ? dims.join('×') + ' см' : '';
-      payload = { type: 'new', photos, photo: photos[0] || '', name, dimensions, color, note };
+      payload = { type: 'new', photos, photo: photos[0] || '', name, quantity: quantity || undefined, dimensions, color, note };
     }
 
     setSaving(true); setError('');
@@ -285,6 +287,7 @@ export default function PendingOrderRequests({ onCountChange }) {
                   </div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: '#111', margin: '6px 0 4px' }}>{r.name}</div>
                   <div style={{ fontSize: 13, color: '#5b6572', lineHeight: 1.5 }}>
+                    {r.quantity ? <span style={{ marginRight: 12, fontWeight: 700, color: '#b45309' }}>📦 {r.quantity} шт</span> : null}
                     {r.dimensions && <span style={{ marginRight: 12 }}>📐 {r.dimensions}</span>}
                     {r.color && <span>🎨 {r.color}</span>}
                   </div>
@@ -364,6 +367,13 @@ export default function PendingOrderRequests({ onCountChange }) {
                   <div style={{ marginBottom: 14 }}>
                     <div style={label}>Название товара <span style={{ color: '#DC1E24' }}>*</span></div>
                     <input value={name} onChange={e => setName(e.target.value)} placeholder="Например: Складной табурет" style={input} />
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={label}>Количество, шт</div>
+                    <input inputMode="numeric" value={quantity}
+                      onChange={e => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
+                      placeholder="Например: 10" style={input} />
                   </div>
 
                   <div style={{ marginBottom: 14 }}>
@@ -469,10 +479,17 @@ export default function PendingOrderRequests({ onCountChange }) {
                     </button>
                   </div>
 
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={label}>Количество, шт</div>
+                    <input inputMode="numeric" value={quantity}
+                      onChange={e => setQuantity(e.target.value.replace(/[^\d]/g, ''))}
+                      placeholder="Например: 10" style={input} />
+                  </div>
+
                   <div style={{ marginBottom: 18 }}>
-                    <div style={label}>Количество / комментарий</div>
+                    <div style={label}>Комментарий</div>
                     <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
-                      placeholder="Сколько заказать, срок, пожелания…"
+                      placeholder="Срок, пожелания… (необязательно)"
                       style={{ ...input, resize: 'vertical' }} />
                   </div>
                 </>
