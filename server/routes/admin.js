@@ -2224,22 +2224,31 @@ router.get('/agent-sales', viewer, async (req, res) => {
       .map(a => ({ ...a, totalSum: Math.round(a.totalSum) }))
       .sort((a, b) => b.totalSum - a.totalSum);
 
-    // Разбивка по сетам (точное кол-во проданных позиций по сетам, в формате «Продажи по сетам»)
-    const setRows = await SalesRecord.aggregate([
+    // Разбивка по сетам: сет → товары (кол-во/сумма). Плюс позиции (число товаров) в сете.
+    const setProdRows = await SalesRecord.aggregate([
       { $match: match },
       { $group: {
-        _id: { set: { $ifNull: ['$set', ''] }, brand: { $ifNull: ['$brand', ''] } },
+        _id: { set: { $ifNull: ['$set', ''] }, brand: { $ifNull: ['$brand', ''] }, product: { $ifNull: ['$productName', ''] } },
         qty: { $sum: '$quantity' },
         sum: { $sum: '$sum' },
       }},
-      { $sort: { qty: -1 } },
     ]);
-    const sets = setRows.map(r => ({
-      set:   r._id.set || '',        // slug сета ('' = не сопоставлено с товаром сайта)
-      brand: r._id.brand || '',
-      qty:   r.qty,
-      sum:   Math.round(r.sum),
-    }));
+    const setMap = new Map();
+    for (const r of setProdRows) {
+      const key = `${r._id.set || ''}|${r._id.brand || ''}`;
+      if (!setMap.has(key)) setMap.set(key, { set: r._id.set || '', brand: r._id.brand || '', qty: 0, sum: 0, products: [] });
+      const s = setMap.get(key);
+      s.products.push({ productName: r._id.product || '(без названия)', qty: r.qty, sum: Math.round(r.sum) });
+      s.qty += r.qty;
+      s.sum += r.sum;
+    }
+    const sets = [...setMap.values()]
+      .map(s => ({
+        set: s.set, brand: s.brand, qty: s.qty, sum: Math.round(s.sum),
+        positions: s.products.length,
+        products: s.products.sort((a, b) => b.sum - a.sum),
+      }))
+      .sort((a, b) => b.qty - a.qty);
 
     // Кол-во позиций — сколько разных товаров продано за период
     const positions = new Set(rows.map(r => r._id.product).filter(Boolean)).size;
