@@ -2188,11 +2188,17 @@ router.get('/sales-chart', viewer, async (req, res) => {
 // Фильтр по бренду сверху показывает продажи/возвраты только агентов этого бренда.
 const AGENT_BRAND_TOKENS = {
   'matkasym-home':   ['Бадыров', 'Саламат', 'Шерик', 'Сагындык', 'Акбермет'],
-  'matkasym-shaar':  ['Арген', 'Нургазы', 'Абай'],
+  'matkasym-shaar':  ['Арген', 'Нургазы', 'Абай', 'Субконто'],
   'matkasym-kyzmat': [],
 };
+// Бренды, которым отдаём продажи без агента (пустой агент)
+const BRAND_INCLUDES_NO_AGENT = { 'matkasym-shaar': true };
 function agentBrandOf(name) {
   const n = String(name || '');
+  if (n === '' || n === '(без агента)') {
+    for (const [b, on] of Object.entries(BRAND_INCLUDES_NO_AGENT)) if (on) return b;
+    return '';
+  }
   for (const [b, tokens] of Object.entries(AGENT_BRAND_TOKENS)) {
     if (tokens.some(t => n.includes(t))) return b;
   }
@@ -2214,7 +2220,11 @@ router.get('/agent-sales', viewer, async (req, res) => {
     // Бренд = фильтр по агентам этого бренда (а не по бренду товара)
     if (brand) {
       const tokens = AGENT_BRAND_TOKENS[brand] || [];
-      match.agent = tokens.length ? { $regex: tokens.join('|') } : '___no_agents___';
+      const or = [];
+      if (tokens.length) or.push({ agent: { $regex: tokens.join('|') } });
+      if (BRAND_INCLUDES_NO_AGENT[brand]) or.push({ agent: { $in: ['', null] } });
+      if (or.length) match.$or = or;
+      else match.agent = '___no_agents___';
     }
 
     const rows = await SalesRecord.aggregate([
