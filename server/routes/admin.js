@@ -2241,6 +2241,9 @@ router.get('/agent-sales', viewer, async (req, res) => {
       sum:   Math.round(r.sum),
     }));
 
+    // Кол-во позиций — сколько разных товаров продано за период
+    const positions = new Set(rows.map(r => r._id.product).filter(Boolean)).size;
+
     // Диапазон дат имеющихся данных — чтобы UI подсказал, что вообще загружено
     const bounds = await SalesRecord.aggregate([
       { $group: { _id: null, min: { $min: '$docDate' }, max: { $max: '$docDate' } } },
@@ -2251,6 +2254,7 @@ router.get('/agent-sales', viewer, async (req, res) => {
       sets,
       grandQty,
       grandSum: Math.round(grandSum),
+      positions,
       dataRange: bounds[0] ? { min: bounds[0].min, max: bounds[0].max } : null,
     });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }

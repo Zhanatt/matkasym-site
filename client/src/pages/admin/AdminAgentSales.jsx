@@ -211,6 +211,10 @@ export default function AdminAgentSales() {
             <div style={{ fontSize: 24, fontWeight: 800, color: '#3498db' }}>{money(data.grandQty)}</div>
           </div>
           <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
+            <div style={{ fontSize: 13, color: '#888' }}>Позиций</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#e67e22' }}>{money(data.positions)}</div>
+          </div>
+          <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
             <div style={{ fontSize: 13, color: '#888' }}>Агентов</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: '#111' }}>{data.agents.length}</div>
           </div>
