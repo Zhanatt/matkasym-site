@@ -9,11 +9,6 @@ api.interceptors.request.use(cfg => {
   return cfg;
 });
 
-// Products
-export const getProducts = (params) => api.get('/products', { params });
-export const getProduct  = (id)     => api.get(`/products/${id}`);
-export const getCategories = ()     => api.get('/products/categories');
-
 // Auth
 export const register       = (data) => api.post('/auth/register', data);
 export const login          = (data) => api.post('/auth/login', data);

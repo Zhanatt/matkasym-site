@@ -15,7 +15,6 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Routes
-app.use('/api/products', require('./routes/products'));
 app.use('/api/brands',   require('./routes/brands'));
 app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/auth',     require('./routes/auth'));
