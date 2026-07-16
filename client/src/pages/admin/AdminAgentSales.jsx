@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminGetAgentSales, adminUploadSales } from '../../api';
+import AgentSalesChart from './AgentSalesChart';
 
 const SET_NAMES = {
   'achyk-asman': 'Achyk Asman', 'den-sooluk': 'Den Sooluk', 'zhashyl-ömür': 'Zhashyl Omur',
@@ -215,6 +216,15 @@ export default function AdminAgentSales() {
           {BRANDS.map(b => <option key={b.v} value={b.v}>{b.l}</option>)}
         </select>
       </div>
+
+      {/* График динамики — раскрывается по кнопке */}
+      <AgentSalesChart
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        brand={brand}
+        dataRange={data?.dataRange}
+        onPeriodChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
+      />
 
       {/* Итоги: Продажи · Возвраты · Агенты */}
       {data && (

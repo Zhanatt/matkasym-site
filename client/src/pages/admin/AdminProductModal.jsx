@@ -499,6 +499,32 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 </span>
               </div>
 
+              {/* Остатки по базам 1С. Q-top отделён: это Казахстан, свой склад и учёт,
+                  поэтому в общий остаток (Кыргызстан) он не входит. */}
+              {!(localProduct.isKit && localProduct.kitType === 'independent') && localProduct.stockByBase && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {[
+                    { key: 'makein',   label: 'Make-in',  hint: 'Кыргызстан' },
+                    { key: 'matkasym', label: 'Matkasym', hint: 'Кыргызстан' },
+                    { key: 'qtop',     label: 'Q-top',    hint: 'Казахстан', kz: true },
+                  ].map(b => {
+                    const qty = localProduct.stockByBase?.[b.key] || 0;
+                    const known = localProduct.inBase?.[b.key];
+                    if (!qty && !known) return null;   // базе этот товар неизвестен — не мусорим
+                    return (
+                      <span key={b.key} title={`${b.label} — ${b.hint}`} style={{
+                        fontSize: 11.5, padding: '4px 10px', borderRadius: 8,
+                        background: b.kz ? '#fff7ed' : '#f5f7fa',
+                        border: `1px solid ${b.kz ? '#fed7aa' : '#e8ecf1'}`,
+                        color: '#555', whiteSpace: 'nowrap',
+                      }}>
+                        {b.kz && '🇰🇿 '}{b.label}: <b style={{ color: qty > 0 ? '#111' : '#bbb' }}>{qty}</b>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Буферный запас — видят все, менять могут owner и canSetBufferStock */}
               {!(localProduct.isKit && localProduct.kitType === 'independent') && (
                 <div style={{

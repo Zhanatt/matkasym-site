@@ -53,7 +53,21 @@ const productSchema = new mongoose.Schema({
   // Status
   isNew:         { type: Boolean, default: false },
   inStock:       { type: Boolean, default: true },
-  stock:         { type: Number, default: 50 },
+  stock:         { type: Number, default: 50 },  // остаток в Кыргызстане: makein + matkasym (Казахстан сюда не входит)
+  // Остатки по базам 1С. Один товар лежит сразу в нескольких базах, у каждой свой склад,
+  // поэтому загрузка одной базы трогает только её ключ.
+  stockByBase: {
+    makein:   { type: Number, default: 0 },
+    matkasym: { type: Number, default: 0 },
+    qtop:     { type: Number, default: 0 },  // Казахстан — отдельный каталог, в stock не суммируется
+  },
+  // Заведён ли товар в номенклатуре базы (был в последней выгрузке).
+  // Нужно, чтобы отличить «есть в базе, но остаток 0» от «этой базе товар неизвестен».
+  inBase: {
+    makein:   { type: Boolean, default: false },
+    matkasym: { type: Boolean, default: false },
+    qtop:     { type: Boolean, default: false },
+  },
   bufferStock:   { type: Number, default: 0 },  // минимальный (буферный) запас на складе
   stockStatus:      { type: String, enum: ['in_stock', 'out_of_stock', 'expected'], default: 'in_stock' },
   inTransit:        { type: Boolean, default: false },  // товар в пути, ещё не на складе

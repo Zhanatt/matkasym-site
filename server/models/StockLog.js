@@ -9,6 +9,7 @@ const stockLogSchema = new Schema({
   fromStock:   { type: Number, default: 0 },
   toStock:     { type: Number, default: 0 },
   source:      { type: String, enum: ['manual', 'excel', 'sync_1c'], default: 'manual' },
+  base:        { type: String, default: '' },  // база 1С выгрузки: makein | matkasym | qtop
   sourceUrl:   { type: String, default: '' },
   notInFile:   { type: Boolean, default: false }, // товар отсутствовал в выгрузке 1С → обнулён (не продажа!)
   changedBy: {

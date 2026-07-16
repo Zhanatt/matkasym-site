@@ -24,6 +24,7 @@ const SalesDoc     = require('../models/SalesDoc');
 const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto, publishToChannel } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
+const { BASES, BASE_KEYS, isBaseKey, parseStockRows, STOCK_SUM_BASES, basesOfCountry } = require('../lib/stockBases');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock } = require('../middleware/auth');
 
 // Остаток пересёк буферный запас сверху вниз → нужен алерт
@@ -76,6 +77,17 @@ function toInt(v) {
   if (v === undefined || v === null || v === '') return 0;
   const n = Number(v);
   return isNaN(n) ? 0 : Math.max(0, Math.floor(n));
+}
+
+// Каталог страны: KZ — только товары, заведённые в казахстанской базе (Q-top).
+// Для KG фильтра нет: там кроме 1С есть привозные товары и IKEA, их отсекать нельзя.
+function countryFilter(country) {
+  if (!country || country === 'KG') return {};
+  const keys = basesOfCountry(country);
+  if (!keys.length) return {};
+  return keys.length === 1
+    ? { [`inBase.${keys[0]}`]: true }
+    : { $and: [{ $or: keys.map(k => ({ [`inBase.${k}`]: true })) }] };
 }
 
 // POST /api/admin/sync-stock
@@ -235,8 +247,8 @@ router.get('/stats', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending } = req.query;
-    const filter = {};
+    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country } = req.query;
+    const filter = { ...countryFilter(country) };
 
     // Если запрашиваем товары для приёмки
     if (pendingReceive === 'true') {
@@ -275,8 +287,8 @@ router.get('/products', async (req, res) => {
 
 router.get('/products/facets', async (req, res) => {
   try {
-    const { brand, set, category, search } = req.query;
-    const base = {};
+    const { brand, set, category, search, country } = req.query;
+    const base = { ...countryFilter(country) };
     if (brand)    base.brand    = brand;
     if (set)      base.set      = set;
     if (category) base.category = category;
@@ -290,7 +302,7 @@ router.get('/products/facets', async (req, res) => {
     const [sets, categories, productCount] = await Promise.all([
       Product.distinct('set', filterForSets),
       Product.distinct('category', filterForCats),
-      brand ? Product.countDocuments({ brand, productStatus: { $nin: ['kit_part'] } }) : null,
+      brand ? Product.countDocuments({ ...countryFilter(country), brand, productStatus: { $nin: ['kit_part'] } }) : null,
     ]);
     res.json({ sets: sets.filter(Boolean).sort(), categories: categories.filter(Boolean).sort(), productCount });
   } catch (e) {
@@ -1447,59 +1459,83 @@ function detectStockColumns(rows) {
 // берём больший, меньший игнорируем. 0 означает "в 1С не задан".
 const bufferFromMins = (a, b) => Math.max(toInt(a), toInt(b));
 
-// POST /api/admin/upload-stock  (multipart: field "file")
+// POST /api/admin/upload-stock?base=makein|matkasym|qtop  (multipart: field "file")
+// Один товар лежит в нескольких базах 1С, поэтому загрузка правит только свой ключ
+// stockByBase[base], а stock пересчитывается как сумма по базам. Базы друг друга не обнуляют.
 router.post('/upload-stock', editor, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+
+  const baseKey = String(req.query.base || 'makein');
+  if (!isBaseKey(baseKey)) return res.status(400).json({ error: `Неизвестная база 1С: ${baseKey}` });
 
   try {
     const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-    const { colOsn, colKomm, minOsn, minKomm, dataStart } = detectStockColumns(rows);
-    const hasBufferCols = minOsn !== null || minKomm !== null;
+    // Make-in разбираем прежним парсером — формат его выгрузки не менялся
+    let stockMap, warehouses = [];
+    if (BASES[baseKey].legacyParser) {
+      const { colOsn, colKomm, minOsn, minKomm, dataStart } = detectStockColumns(rows);
+      const hasBufferCols = minOsn !== null || minKomm !== null;
+      stockMap = new Map();
+      for (let i = dataStart; i < rows.length; i++) {
+        const row  = rows[i];
+        const name = String(row[0] || '').trim();
+        if (!name) continue;
 
-    const stockMap = new Map();
-    for (let i = dataStart; i < rows.length; i++) {
-      const row  = rows[i];
-      const name = String(row[0] || '').trim();
-      if (!name) continue;
-
-      const osnNum  = toInt(row[colOsn]);
-      const kommRaw = Number(row[colKomm]);
-      const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
-      const buffer  = hasBufferCols ? bufferFromMins(minOsn === null ? 0 : row[minOsn], minKomm === null ? 0 : row[minKomm]) : 0;
-      stockMap.set(normName(name), { stock: osnNum + kommNum, buffer });
+        const osnNum  = toInt(row[colOsn]);
+        const kommRaw = Number(row[colKomm]);
+        const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
+        const buffer  = hasBufferCols ? bufferFromMins(minOsn === null ? 0 : row[minOsn], minKomm === null ? 0 : row[minKomm]) : 0;
+        stockMap.set(normName(name), { stock: osnNum + kommNum, buffer });
+      }
+    } else {
+      ({ stockMap, warehouses } = parseStockRows(rows, baseKey, normName));
     }
 
-    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock bufferStock brand supplier.company');
+    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock stockByBase inBase bufferStock brand supplier.company');
     let matched = 0, zeroed = 0, buffersUpdated = 0;
     const notFoundRows = [];
     const stockLogDocs = [];
     const bufferAlerts = [];
     const ops = products.map(p => {
-      const key      = normName(p.fullName || p.name || '');
-      const row      = stockMap.get(key);
-      const newStock = row ? row.stock : 0;
+      const key = normName(p.fullName || p.name || '');
+      const row = stockMap.get(key);
+
+      // Правим только остаток этой базы, остальные оставляем как есть
+      const byBase = { makein: 0, matkasym: 0, qtop: 0, ...(p.stockByBase ? p.stockByBase.toObject() : {}) };
+      const oldBaseStock = byBase[baseKey] || 0;
+      byBase[baseKey] = row ? row.stock : 0;
+
+      // stock — наличие в Кыргызстане (makein + matkasym). Q-top это Казахстан:
+      // отдельная страна и отдельный учёт, складывать их в одно число нельзя.
+      const newStock = STOCK_SUM_BASES.reduce((n, k) => n + (byBase[k] || 0), 0);
       const inStock  = newStock > 0;
       const oldStock = p.stock || 0;
+
       if (row) {
         matched++;
       } else {
-        zeroed++;
-        notFoundRows.push({
-          'Название':    p.fullName || p.name || '',
-          'Артикул':     p.sku || '',
-          'Категория':   p.category || '',
-          'Цена розн.':  p.price || 0,
-          'Цена опт.':   p.priceWholesale || 0,
-        });
+        // «Пропал из выгрузки» — только если в этой базе остаток был.
+        // Для Make-in сохраняем прежнее поведение: список всего, чего нет в файле.
+        if (baseKey === 'makein' || oldBaseStock > 0) {
+          zeroed++;
+          notFoundRows.push({
+            'Название':    p.fullName || p.name || '',
+            'Артикул':     p.sku || '',
+            'Категория':   p.category || '',
+            'Цена розн.':  p.price || 0,
+            'Цена опт.':   p.priceWholesale || 0,
+          });
+        }
       }
 
       // Буфер из 1С перезаписывает ручной, но только если задан.
       // У товаров IKEA в 1С минимума нет — там буфер ведут вручную, его не затираем.
+      // Буфер берём только из Make-in: у Matkasym свои минимумы по цехам, они бы затирали общий.
       const oldBuffer = p.bufferStock || 0;
-      const newBuffer = (row && row.buffer > 0) ? row.buffer : oldBuffer;
+      const newBuffer = (baseKey === 'makein' && row && row.buffer > 0) ? row.buffer : oldBuffer;
       if (newBuffer !== oldBuffer) buffersUpdated++;
 
       if (newStock !== oldStock) {
@@ -1511,6 +1547,7 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
           fromStock:   oldStock,
           toStock:     newStock,
           source:      'excel',
+          base:        baseKey,
           notInFile:   !row,
           changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
         });
@@ -1519,7 +1556,12 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
           bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: newBuffer, zone: zoneOf(p) });
         }
       }
-      return { updateOne: { filter: { _id: p._id }, update: { $set: { stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock', bufferStock: newBuffer } } } };
+      return { updateOne: { filter: { _id: p._id }, update: { $set: {
+        stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock',
+        bufferStock: newBuffer,
+        [`stockByBase.${baseKey}`]: byBase[baseKey],
+        [`inBase.${baseKey}`]:      !!row,
+      } } } };
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
     if (bufferAlerts.length) sendBufferStockAlerts(bufferAlerts).catch(e => console.error('[BufferAlert]', e.message));
@@ -1543,8 +1585,11 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       excelBase64 = xlsx.write(wb2, { type: 'base64', bookType: 'xlsx' });
     }
 
-    console.log(`[upload-stock] ${new Date().toISOString()} colOsn=${colOsn} colKomm=${colKomm} minOsn=${minOsn} minKomm=${minKomm} dataStart=${dataStart} matched=${matched} zeroed=${zeroed} buffers=${buffersUpdated}`);
-    res.json({ success: true, matched, zeroed, total: matched + zeroed, buffersUpdated, hasBufferCols, excelBase64 });
+    console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} zeroed=${zeroed} buffers=${buffersUpdated} warehouses=${warehouses.join(' + ') || 'legacy'}`);
+    res.json({
+      success: true, base: baseKey, baseLabel: BASES[baseKey].label, warehouses,
+      matched, zeroed, total: matched + zeroed, buffersUpdated, excelBase64,
+    });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }
@@ -2205,27 +2250,32 @@ function agentBrandOf(name) {
   return '';
 }
 
+// Кусок $match для фильтра по бренду: бренд = агенты этого бренда, а не бренд товара
+function agentBrandMatch(brand) {
+  if (!brand) return {};
+  const tokens = AGENT_BRAND_TOKENS[brand] || [];
+  const or = [];
+  if (tokens.length) or.push({ agent: { $regex: tokens.join('|') } });
+  if (BRAND_INCLUDES_NO_AGENT[brand]) or.push({ agent: { $in: ['', null] } });
+  return or.length ? { $or: or } : { agent: '___no_agents___' };
+}
+
+// Кусок $match по периоду (docDate), границы — по бишкекскому времени
+function docDateMatch(dateFrom, dateTo) {
+  if (!dateFrom && !dateTo) return {};
+  const docDate = {};
+  if (dateFrom) docDate.$gte = new Date(dateFrom + 'T00:00:00+06:00');
+  if (dateTo)   docDate.$lte = new Date(dateTo   + 'T23:59:59+06:00');
+  return { docDate };
+}
+
 // ── Продажи по агентам (точные данные из 1С) ─────────────────────────────────
 // GET /api/admin/agent-sales?dateFrom=&dateTo=&brand=
 // Свод: агент → товар → количество/сумма, с подытогами по агентам.
 router.get('/agent-sales', viewer, async (req, res) => {
   try {
     const { dateFrom, dateTo, brand } = req.query;
-    const match = {};
-    if (dateFrom || dateTo) {
-      match.docDate = {};
-      if (dateFrom) match.docDate.$gte = new Date(dateFrom + 'T00:00:00+06:00');
-      if (dateTo)   match.docDate.$lte = new Date(dateTo + 'T23:59:59+06:00');
-    }
-    // Бренд = фильтр по агентам этого бренда (а не по бренду товара)
-    if (brand) {
-      const tokens = AGENT_BRAND_TOKENS[brand] || [];
-      const or = [];
-      if (tokens.length) or.push({ agent: { $regex: tokens.join('|') } });
-      if (BRAND_INCLUDES_NO_AGENT[brand]) or.push({ agent: { $in: ['', null] } });
-      if (or.length) match.$or = or;
-      else match.agent = '___no_agents___';
-    }
+    const match = { ...docDateMatch(dateFrom, dateTo), ...agentBrandMatch(brand) };
 
     const rows = await SalesRecord.aggregate([
       { $match: match },
@@ -2327,6 +2377,47 @@ router.get('/agent-sales/docs', viewer, async (req, res) => {
     }));
 
     res.json({ docs, hasTimes: records.length > 0 });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+// GET /api/admin/agent-sales/timeseries?dateFrom=&dateTo=&brand=&groupBy=day|week|month
+// Динамика продаж по датам накладных — для графика на странице «Продажи по агентам».
+// Точки только за те даты, где есть записи: пропуск = «за этот день не загружали», а не «ноль продаж».
+router.get('/agent-sales/timeseries', viewer, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, brand, groupBy = 'day' } = req.query;
+    const match = { ...docDateMatch(dateFrom, dateTo), ...agentBrandMatch(brand) };
+
+    const fmtMap = { day: '%Y-%m-%d', week: '%Y-%V', month: '%Y-%m' };
+    const fmt    = fmtMap[groupBy] || fmtMap.day;
+
+    // Возвраты приходят из 1С отрицательными строками: sum/qty уже нетто, retSum/retQty — их часть
+    const rows = await SalesRecord.aggregate([
+      { $match: match },
+      { $group: {
+        _id:    { $dateToString: { format: fmt, date: '$docDate', timezone: '+06:00' } },
+        sum:    { $sum: '$sum' },
+        qty:    { $sum: '$quantity' },
+        retSum: { $sum: { $cond: [{ $lt: ['$sum', 0] },      { $abs: '$sum' },      0] } },
+        retQty: { $sum: { $cond: [{ $lt: ['$quantity', 0] }, { $abs: '$quantity' }, 0] } },
+      }},
+      { $sort: { _id: 1 } },
+    ]);
+
+    const points = rows.map(r => ({
+      period: r._id,
+      sum:    Math.round(r.sum),
+      qty:    r.qty,
+      retSum: Math.round(r.retSum),
+      retQty: r.retQty,
+    }));
+
+    res.json({
+      points,
+      groupBy,
+      totalSum: points.reduce((n, p) => n + p.sum, 0),
+      totalQty: points.reduce((n, p) => n + p.qty, 0),
+    });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 

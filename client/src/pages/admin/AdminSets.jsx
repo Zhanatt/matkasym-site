@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -14,39 +14,59 @@ import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
 
+// ── страна учёта ───────────────────────────────────────────────────────────────
+
+// Make-in и Matkasym — Кыргызстан, Q-top — Казахстан (свой склад, свой учёт).
+const COUNTRIES = [
+  { key: 'KG', label: 'Кыргызстан', flag: '🇰🇬' },
+  { key: 'KZ', label: 'Казахстан',  flag: '🇰🇿' },
+];
+const CountryCtx = createContext('KG');
+const useCountry = () => useContext(CountryCtx);
+
 // ── helpers ────────────────────────────────────────────────────────────────────
 
-function getStockInfo(product) {
+// Остаток страны: KG — общий stock (Make-in + Matkasym), KZ — склад Q-top в Казахстане.
+// Остатки стран не складываются: у Казахстана свой склад и свой учёт.
+const stockOf = (p, country) => country === 'KZ' ? (p.stockByBase?.qtop || 0) : (p.stock || 0);
+
+function getStockInfo(product, country = 'KG') {
+  const stock = stockOf(product, country);
   // Для независимых комплектов (SKÅDIS, BOAXEL) показываем "Комплект"
   if (product.isKit && product.kitType === 'independent') {
     return { label: 'Комплект', hasStock: true, color: '#7c3aed', bg: '#f5f3ff' };
   }
   // Для зависимых комплектов с stock=0 показываем "Не хватает деталей"
-  if (product.isKit && product.stock === 0) {
+  if (product.isKit && stock === 0) {
     return { label: 'Не хватает деталей', hasStock: false, color: '#9ca3af', bg: '#f3f4f6', isKitMissing: true };
   }
-  if (product.stock > 0) {
-    return { label: `${product.stock} шт.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+  if (stock > 0) {
+    return { label: `${stock} шт.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
   }
-  if (product.inTransit && product.inTransitQty > 0) {
-    return { label: `Ожидается ${product.inTransitQty}`, hasStock: true, color: '#1d4ed8', bg: '#dbeafe' };
-  }
-  if (product.inTransit) {
-    return { label: 'В пути', hasStock: true, color: '#1d4ed8', bg: '#dbeafe' };
-  }
-  if (product.isOnOrder) {
-    return { label: 'Под заказ', hasStock: true, color: '#b45309', bg: '#fef3c7' };
-  }
-  if (product.inStock) {
-    return { label: 'Есть', hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+  // Флаги «в пути» / «под заказ» ведутся по Кыргызстану — в казахстанском каталоге
+  // остаток решает всё сам, иначе товар без остатка выглядел бы доступным.
+  if (country !== 'KZ') {
+    if (product.inTransit && product.inTransitQty > 0) {
+      return { label: `Ожидается ${product.inTransitQty}`, hasStock: true, color: '#1d4ed8', bg: '#dbeafe' };
+    }
+    if (product.inTransit) {
+      return { label: 'В пути', hasStock: true, color: '#1d4ed8', bg: '#dbeafe' };
+    }
+    if (product.isOnOrder) {
+      return { label: 'Под заказ', hasStock: true, color: '#b45309', bg: '#fef3c7' };
+    }
+    if (product.inStock) {
+      return { label: 'Есть', hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+    }
   }
   return { label: 'Нет', hasStock: false, color: '#c00', bg: '#fce8e8' };
 }
 
 // Доступность товара для группировки "В наличии / Нет в наличии".
 // Независимый комплект (SKÅDIS, BOAXEL) всегда доступен ("Комплект"), как и в getStockInfo.
-function isProductAvailable(p) {
+function isProductAvailable(p, country = 'KG') {
   if (p.isKit && p.kitType === 'independent') return true;
+  if (country === 'KZ') return stockOf(p, country) > 0;
   return p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
 }
 
@@ -595,6 +615,7 @@ function AddProductButton({ brandKey, setSlug, full = false }) {
 
 function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride, fetchParams }) {
   const { user }    = useAuth();
+  const country     = useCountry();
   const canEdit     = ['owner', 'editor'].includes(user?.role);
   const accent      = accentOverride || BRAND_META[brandKey]?.accent || '#555';
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
@@ -621,10 +642,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   useEffect(() => {
     setLoading(true);
-    adminGetProducts(fetchParams || { set: setSlug, limit: 1000, page: 1 })
+    adminGetProducts({ ...(fetchParams || { set: setSlug, limit: 1000, page: 1 }), country })
       .then(r => { setProducts(r.data.products || []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [brandKey, setSlug, fetchParams && JSON.stringify(fetchParams)]);
+  }, [brandKey, setSlug, country, fetchParams && JSON.stringify(fetchParams)]);
 
   const models = useMemo(() => {
     const grouped = {};
@@ -642,10 +663,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     const shown = products.filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part');
     let inUnits = 0, outUnits = 0;
     shown.forEach(p => {
-      if (isProductAvailable(p)) inUnits += (p.stock || 0);
-      else outUnits += (p.stock || 0);
+      if (isProductAvailable(p, country)) inUnits += stockOf(p, country);
+      else outUnits += stockOf(p, country);
     });
-    const inMod  = models.filter(([, v]) => v.some(isProductAvailable)).length;
+    const inMod  = models.filter(([, v]) => v.some(x => isProductAvailable(x, country))).length;
     const outMod = models.length - inMod;
     return { inMod, outMod, inUnits, outUnits };
   }, [products, models]);
@@ -667,7 +688,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     const groupsMap = {};
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const hasStock = isProductAvailable(p);
+      const hasStock = isProductAvailable(p, country);
       const cat = p.category || 'Прочее';
       const targetGroup = hasStock ? cat : 'Нет в наличии';
       if (!groupsMap[targetGroup]) groupsMap[targetGroup] = [];
@@ -702,7 +723,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     const outOfStock = [];
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const isAvailable = isProductAvailable(p);
+      const isAvailable = isProductAvailable(p, country);
       if (isAvailable) {
         inStock.push([name, variants]);
       } else {
@@ -1085,7 +1106,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                         {items.map(([name, variants], itemIdx) => {
                           const primary = variants[0];
                           const price = getPrice(primary, priceMode);
-                          const stockInfo = getStockInfo(primary);
+                          const stockInfo = getStockInfo(primary, country);
                           const hasStock = stockInfo.hasStock;
                           const stockLabel = stockInfo.label;
                           return (
@@ -1127,7 +1148,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               {visible.map(([name, variants]) => {
                 const primary  = variants[0];
                 const price    = getPrice(primary, priceMode);
-                const stockInfo = getStockInfo(primary);
+                const stockInfo = getStockInfo(primary, country);
                 const stockLabel = stockInfo.label;
                 return (
                   <div key={name} onClick={() => setDetailProduct(primary)}
@@ -1187,7 +1208,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     {items.map(([name, variants]) => {
                       const primary    = variants[0];
                       const price      = getPrice(primary, priceMode);
-                      const stockInfo  = getStockInfo(primary);
+                      const stockInfo  = getStockInfo(primary, country);
                       const stockLabel = stockInfo.label;
                       const showBadge  = STATUS_BADGE[primary.productStatus];
                       const hasColorOnly = primary.color && !primary.images?.[0];
@@ -1267,7 +1288,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               {visible.map(([name, variants]) => {
                 const primary    = variants[0];
                 const price      = getPrice(primary, priceMode);
-                const stockInfo  = getStockInfo(primary);
+                const stockInfo  = getStockInfo(primary, country);
                 const stockLabel = stockInfo.label;
                 const showBadge  = STATUS_BADGE[primary.productStatus];
                 const hasColorOnly = primary.color && !primary.images?.[0];
@@ -1512,6 +1533,9 @@ export default function AdminSets() {
   const [loading, setLoad]  = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   const { frontmen } = useFrontmen();
+  const [country, setCountry] = useState(() => localStorage.getItem('adminSetsCountry') || 'KG');
+
+  useEffect(() => { localStorage.setItem('adminSetsCountry', country); }, [country]);
 
   // Читаем brand и set из URL
   const urlBrand = searchParams.get('brand');
@@ -1528,10 +1552,11 @@ export default function AdminSets() {
   const [brandCounts, setBrandCounts] = useState({});
 
   useEffect(() => {
+    setLoad(true);
     // Load sets for all brands from API
     Promise.all(
       Object.keys(BRAND_META).map(k =>
-        adminGetFacets({ brand: k }).then(r => [k, { sets: r.data.sets.filter(s => !EXCLUDE.has(s)), count: r.data.productCount || 0 }])
+        adminGetFacets({ brand: k, country }).then(r => [k, { sets: r.data.sets.filter(s => !EXCLUDE.has(s)), count: r.data.productCount || 0 }])
       )
     ).then(res => {
       const setsObj = {};
@@ -1544,38 +1569,76 @@ export default function AdminSets() {
       setBrandCounts(countsObj);
       setLoad(false);
     });
-  }, []);
+  }, [country]);
+
+  const isKZ = country === 'KZ';
 
   return (
+    <CountryCtx.Provider value={country}>
     <div style={{ maxWidth: 860, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: '#111' }}>Линейки сетов</div>
-        <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>Каталог товаров по брендам и сетам</div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#111' }}>Линейки сетов</div>
+          <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>
+            {isKZ
+              ? 'Склад Q-top — остатки и учёт в Казахстане'
+              : 'Каталог товаров по брендам и сетам'}
+          </div>
+        </div>
+        {/* Страна учёта: у Казахстана свой склад (Q-top), с Кыргызстаном не смешивается */}
+        <div style={{ display: 'inline-flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3 }}>
+          {COUNTRIES.map(c => (
+            <button
+              key={c.key}
+              onClick={() => setCountry(c.key)}
+              style={{
+                padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+                background: country === c.key ? '#fff' : 'transparent',
+                color:      country === c.key ? '#111' : '#888',
+                boxShadow:  country === c.key ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+              }}
+            >{c.flag} {c.label}</button>
+          ))}
+        </div>
       </div>
       {loading
         ? <div style={{ color: '#aaa', fontSize: 14 }}>Загрузка…</div>
         : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {Object.entries(BRAND_META).map(([key, meta]) => {
-              const baseSets = sets[key] || [];
-              return (
-                <BrandSection
-                  key={key}
-                  brandKey={key}
-                  sets={baseSets}
-                  accent={meta.accent}
-                  subItems={SET_SUB_ITEMS}
-                  autoOpenSet={urlBrand === key ? urlSet : null}
-                  onOpenCatalog={handleOpenCatalog}
-                  onCloseCatalog={handleCloseCatalog}
-                  frontmen={frontmen}
-                  productCount={brandCounts[key] || 0}
-                />
-              );
-            })}
+            {Object.entries(BRAND_META)
+              // В казахстанском каталоге показываем только бренды, у которых есть товары Q-top
+              .filter(([key]) => !isKZ || (brandCounts[key] || 0) > 0)
+              .map(([key, meta]) => {
+                const baseSets = sets[key] || [];
+                return (
+                  <BrandSection
+                    key={key}
+                    brandKey={key}
+                    sets={baseSets}
+                    accent={meta.accent}
+                    subItems={SET_SUB_ITEMS}
+                    autoOpenSet={urlBrand === key ? urlSet : null}
+                    onOpenCatalog={handleOpenCatalog}
+                    onCloseCatalog={handleCloseCatalog}
+                    frontmen={frontmen}
+                    productCount={brandCounts[key] || 0}
+                  />
+                );
+              })}
+            {isKZ && Object.keys(BRAND_META).every(k => (brandCounts[k] || 0) === 0) && (
+              <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', border: '1px solid #eee', borderRadius: 16 }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>🇰🇿</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#111', marginBottom: 6 }}>Товары Q-top ещё не загружены</div>
+                <div style={{ fontSize: 13, color: '#999', maxWidth: 420, margin: '0 auto' }}>
+                  Загрузите остатки базы Q-top на дашборде — товары казахстанского склада появятся здесь.
+                </div>
+              </div>
+            )}
           </div>
         )
       }
     </div>
+    </CountryCtx.Provider>
   );
 }

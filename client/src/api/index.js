@@ -64,6 +64,7 @@ export const adminGetSalesChart      = (params) => api.get('/admin/sales-chart',
 export const adminGetSalesChartSet   = (set, params) => api.get('/admin/sales-chart', { params: { ...params, set, groupBy: 'product' } });
 export const adminGetAgentSales      = (params) => api.get('/admin/agent-sales', { params });
 export const adminGetAgentSalesDocs  = (params) => api.get('/admin/agent-sales/docs', { params });
+export const adminGetAgentSalesTimeseries = (params) => api.get('/admin/agent-sales/timeseries', { params });
 export const adminUploadSales        = (file, dateFrom, dateTo, timesFile) => {
   const fd = new FormData();
   fd.append('file', file);
@@ -105,10 +106,10 @@ export const adminUploadPrices  = (file, type, onProgress)  => {
     onUploadProgress: e => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
   });
 };
-export const adminUploadStock   = (file, onProgress)        => {
+export const adminUploadStock   = (file, base, onProgress)  => {
   const fd = new FormData();
   fd.append('file', file);
-  return api.post('/admin/upload-stock', fd, {
+  return api.post(`/admin/upload-stock?base=${base || 'makein'}`, fd, {
     onUploadProgress: e => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
   });
 };

@@ -8,6 +8,13 @@ import { useAuth } from '../../context/AuthContext';
 // PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
+// Базы 1С, из которых грузятся остатки (ключи — как в server/lib/stockBases.js)
+const STOCK_BASES = [
+  { key: 'makein',   label: 'Make-in'  },
+  { key: 'matkasym', label: 'Matkasym' },
+  { key: 'qtop',     label: 'Q-top'    },
+];
+
 function StatCard({ label, value, sub, red, green, to, icon }) {
   const navigate = useNavigate();
   const style = {
@@ -85,6 +92,7 @@ export default function AdminDashboard() {
   const [showAllLiquidation, setShowAllLiquidation] = useState(false);
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
+  const [stockBase,     setStockBase]     = useState('makein');
   const [priceLoading,  setPriceLoading]  = useState(null);
   const [photoLoading,       setPhotoLoading]       = useState(false);
   const [nomenclatureLoading, setNomenclatureLoading] = useState(false);
@@ -132,7 +140,7 @@ export default function AdminDashboard() {
     setProgress('stock', 0);
     setSyncResult(null);
     try {
-      const r = await adminUploadStock(file, pct => setProgress('stock', pct));
+      const r = await adminUploadStock(file, stockBase, pct => setProgress('stock', pct));
       setSyncResult({ ok: true, ...r.data });
       adminStats().then(r => setStats(r.data)).catch(() => {});
       if (r.data.excelBase64) {
@@ -481,8 +489,24 @@ export default function AdminDashboard() {
               + Добавить товар
             </Link>
           )}
+          {/* Выбор базы 1С для остатков — базы независимы, каждая правит только свой остаток */}
+          {canEdit && (
+            <select
+              value={stockBase}
+              onChange={e => setStockBase(e.target.value)}
+              disabled={syncLoading}
+              title="Из какой базы 1С выгружены остатки"
+              style={{
+                padding: '9px 12px', borderRadius: 8, border: '1.5px solid #2d7a3a',
+                color: '#2d7a3a', fontWeight: 700, fontSize: 14, background: '#fff',
+                cursor: syncLoading ? 'wait' : 'pointer', outline: 'none',
+              }}
+            >
+              {STOCK_BASES.map(b => <option key={b.key} value={b.key}>База: {b.label}</option>)}
+            </select>
+          )}
           {canEdit && [
-            { key: 'stock',     label: '📥 Остатки из 1С',   color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading,             onChange: handleStockUpload,                         accept: '.xlsx' },
+            { key: 'stock',     label: `📥 Остатки ${STOCK_BASES.find(b => b.key === stockBase)?.label}`, color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading, onChange: handleStockUpload, accept: '.xlsx' },
             { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail'),        accept: '.xlsx' },
             { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale'),     accept: '.xlsx' },
             { key: 'dealer',    label: '💰 Дилерские цены',  color: '#0d9488', bg: '#e6fffa', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'dealer'),        accept: '.xlsx' },
@@ -526,8 +550,15 @@ export default function AdminDashboard() {
         }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: syncResult.ok ? '#2d7a3a' : '#c0392b' }}>
             {syncResult.ok
-              ? (syncResult.msg || `✅ Остатки обновлены — совпало: ${syncResult.matched}, обнулено: ${syncResult.zeroed}, всего: ${syncResult.total}` +
-                  (syncResult.hasBufferCols ? `, буфер обновлён у ${syncResult.buffersUpdated}` : ', буфер в файле не найден'))
+              ? (syncResult.msg || <>
+                  ✅ Остатки базы <b>{syncResult.baseLabel}</b> обновлены — совпало: {syncResult.matched}, обнулено: {syncResult.zeroed}
+                  {syncResult.buffersUpdated > 0 && `, буфер обновлён у ${syncResult.buffersUpdated}`}
+                  {syncResult.warehouses?.length > 0 && (
+                    <div style={{ fontSize: 12, fontWeight: 500, opacity: .75, marginTop: 4 }}>
+                      Склады: {syncResult.warehouses.join(' + ')}
+                    </div>
+                  )}
+                </>)
               : `❌ ${syncResult.error}`}
           </span>
           <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5 }}>×</button>

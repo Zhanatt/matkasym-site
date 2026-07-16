@@ -73,6 +73,29 @@ mongoose
     console.log('✅ MongoDB подключён');
 
 
+    // Migration: остаток, накопленный до разделения баз 1С, — это остаток Make-in.
+    // Обязана пройти до первой загрузки остатков: stock считается как сумма stockByBase,
+    // и без неё сумма нулей обнулила бы весь сайт.
+    // Условие «все базы по нулям, а stock > 0» делает её идемпотентной: товар,
+    // у которого остаток уже разложен по базам, второй раз не тронется.
+    try {
+      const Product = require('./models/Product');
+      const r = await Product.updateMany(
+        {
+          stock: { $gt: 0 },
+          $or: [{ stockByBase: { $exists: false } }, {
+            'stockByBase.makein': { $in: [0, null] },
+            'stockByBase.matkasym': { $in: [0, null] },
+            'stockByBase.qtop': { $in: [0, null] },
+          }],
+        },
+        [{ $set: { 'stockByBase.makein': '$stock' } }],
+      );
+      if (r.modifiedCount) console.log(`✅ Migration: stockByBase.makein проставлен у ${r.modifiedCount} товаров`);
+    } catch (e) {
+      console.error('⚠️ Migration stockByBase failed:', e.message);
+    }
+
     // Migration: drop old ProductReview unique index (product+frontman) to allow audit-based index
     try {
       const ProductReview = require('./models/ProductReview');
