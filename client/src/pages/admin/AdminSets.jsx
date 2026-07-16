@@ -637,6 +637,30 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return Object.entries(grouped);
   }, [products]);
 
+  // Счётчик: в наличии / нет в наличии — позиции (модели) и количество (штук на складе)
+  const stockSummary = useMemo(() => {
+    const shown = products.filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part');
+    let inUnits = 0, outUnits = 0;
+    shown.forEach(p => {
+      if (isProductAvailable(p)) inUnits += (p.stock || 0);
+      else outUnits += (p.stock || 0);
+    });
+    const inMod  = models.filter(([, v]) => v.some(isProductAvailable)).length;
+    const outMod = models.length - inMod;
+    return { inMod, outMod, inUnits, outUnits };
+  }, [products, models]);
+
+  const renderStockStats = (fontSize) => (
+    <div style={{ fontSize, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span style={{ color: '#1e7e34', fontWeight: 600, whiteSpace: 'nowrap' }}>
+        ● В наличии: {stockSummary.inMod} поз · {stockSummary.inUnits} шт
+      </span>
+      <span style={{ color: '#c0392b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+        ● Нет в наличии: {stockSummary.outMod} поз · {stockSummary.outUnits} шт
+      </span>
+    </div>
+  );
+
   // Универсальная группировка по категориям для ВСЕХ сетов
   const categoryGroups = useMemo(() => {
     if (models.length === 0) return null;
@@ -760,8 +784,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
             {/* Stats inline - hide on mobile */}
             {!loading && !isMobile && (
-              <div style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>
-                {products.length} тов. · {models.length} мод.
+              <div style={{ flexShrink: 0 }}>
+                {renderStockStats(11)}
               </div>
             )}
 
@@ -817,11 +841,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               justifyContent: 'space-between',
               gap: 12,
             }}>
-              {!loading && (
-                <div style={{ fontSize: 11, color: '#888' }}>
-                  {products.length} тов. · {models.length} мод.
-                </div>
-              )}
+              {!loading && renderStockStats(11)}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} />
                 {canEdit && <AddProductButton brandKey={brandKey} setSlug={setSlug} />}
