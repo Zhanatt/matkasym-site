@@ -29,7 +29,14 @@ const BRANDS = [
   { v: '', l: 'Все бренды' },
   { v: 'matkasym-home', l: 'HOME' },
   { v: 'matkasym-shaar', l: 'SHAAR' },
+  { v: 'matkasym-kyzmat', l: 'KYMAT' },
 ];
+const BRAND_LABEL = { 'matkasym-home': 'HOME', 'matkasym-shaar': 'SHAAR', 'matkasym-kyzmat': 'KYMAT' };
+const BRAND_BADGE = {
+  'matkasym-home':   { bg: '#fdecec', color: '#c0392b' },
+  'matkasym-shaar':  { bg: '#e8f0fb', color: '#2c5aa0' },
+  'matkasym-kyzmat': { bg: '#eafaf1', color: '#1e7e34' },
+};
 
 export default function AdminAgentSales() {
   const now = new Date();
@@ -308,6 +315,9 @@ export default function AdminAgentSales() {
                     <span style={{ fontSize: 15, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {a.agent}
                     </span>
+                    {a.brand && BRAND_BADGE[a.brand] && (
+                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, borderRadius: 20, padding: '2px 8px', letterSpacing: 0.4, ...BRAND_BADGE[a.brand] }}>{BRAND_LABEL[a.brand]}</span>
+                    )}
                     {agentReturns > 0 && (
                       <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap' }}>↩ {agentReturns} возвр.</span>
                     )}

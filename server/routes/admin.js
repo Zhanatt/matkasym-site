@@ -2184,6 +2184,21 @@ router.get('/sales-chart', viewer, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// Привязка торговых агентов к брендам (по уникальному слову в ФИО).
+// Фильтр по бренду сверху показывает продажи/возвраты только агентов этого бренда.
+const AGENT_BRAND_TOKENS = {
+  'matkasym-home':   ['Бадыров', 'Саламат', 'Шерик', 'Сагындык', 'Акбермет'],
+  'matkasym-shaar':  ['Арген', 'Нургазы', 'Абай'],
+  'matkasym-kyzmat': [],
+};
+function agentBrandOf(name) {
+  const n = String(name || '');
+  for (const [b, tokens] of Object.entries(AGENT_BRAND_TOKENS)) {
+    if (tokens.some(t => n.includes(t))) return b;
+  }
+  return '';
+}
+
 // ── Продажи по агентам (точные данные из 1С) ─────────────────────────────────
 // GET /api/admin/agent-sales?dateFrom=&dateTo=&brand=
 // Свод: агент → товар → количество/сумма, с подытогами по агентам.
@@ -2196,7 +2211,11 @@ router.get('/agent-sales', viewer, async (req, res) => {
       if (dateFrom) match.docDate.$gte = new Date(dateFrom + 'T00:00:00+06:00');
       if (dateTo)   match.docDate.$lte = new Date(dateTo + 'T23:59:59+06:00');
     }
-    if (brand) match.brand = brand;
+    // Бренд = фильтр по агентам этого бренда (а не по бренду товара)
+    if (brand) {
+      const tokens = AGENT_BRAND_TOKENS[brand] || [];
+      match.agent = tokens.length ? { $regex: tokens.join('|') } : '___no_agents___';
+    }
 
     const rows = await SalesRecord.aggregate([
       { $match: match },
@@ -2221,7 +2240,7 @@ router.get('/agent-sales', viewer, async (req, res) => {
       grandSum += r.sum;
     }
     const agents = [...agentMap.values()]
-      .map(a => ({ ...a, totalSum: Math.round(a.totalSum) }))
+      .map(a => ({ ...a, totalSum: Math.round(a.totalSum), brand: agentBrandOf(a.agent) }))
       .sort((a, b) => b.totalSum - a.totalSum);
 
     // Разбивка по сетам: сет → товары (кол-во/сумма). Плюс позиции (число товаров) в сете.
