@@ -52,6 +52,8 @@ export default function AdminAgentSales() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [agentsSel, setAgentsSel] = useState(null); // File — «по агентам»
   const [timesSel, setTimesSel]   = useState(null); // File — «со временем» (журнал)
+  const [uploadMode, setUploadMode] = useState('day'); // 'day' | 'period'
+  const [uploadDay, setUploadDay]   = useState(ymd(now));
 
   const load = useCallback(() => {
     setLoading(true);
@@ -80,10 +82,12 @@ export default function AdminAgentSales() {
 
   const handleSubmitUpload = () => {
     if (!agentsSel) { setUploadMsg({ ok: false, text: 'Выбери файл «Отчёт по агентам»' }); return; }
-    if (!dateFrom || !dateTo) { setUploadMsg({ ok: false, text: 'Сначала выбери период (даты сверху)' }); return; }
+    const effFrom = uploadMode === 'day' ? uploadDay : dateFrom;
+    const effTo   = uploadMode === 'day' ? uploadDay : dateTo;
+    if (!effFrom || !effTo) { setUploadMsg({ ok: false, text: uploadMode === 'day' ? 'Выбери день' : 'Выбери период (даты сверху)' }); return; }
     setUploading(true);
     setUploadMsg(null);
-    adminUploadSales(agentsSel, dateFrom, dateTo, timesSel)
+    adminUploadSales(agentsSel, effFrom, effTo, timesSel)
       .then(res => {
         const d = res.data;
         setUploadMsg({
@@ -92,6 +96,8 @@ export default function AdminAgentSales() {
           link: d.sourceUrl || '',
         });
         setUploadOpen(false); setAgentsSel(null); setTimesSel(null);
+        // Показать то, что только что загрузили
+        if (uploadMode === 'day') { setDateFrom(uploadDay); setDateTo(uploadDay); }
         load();
       })
       .catch(err => setUploadMsg({ ok: false, text: err.response?.data?.error || 'Ошибка загрузки' }))
@@ -137,10 +143,33 @@ export default function AdminAgentSales() {
           onClick={() => !uploading && setUploadOpen(false)}
         >
           <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 460, padding: 22 }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#111', marginBottom: 4 }}>Загрузка из 1С</div>
-            <div style={{ fontSize: 13, color: '#888', marginBottom: 18 }}>
-              Период: <b>{dateFrom}</b> — <b>{dateTo}</b> (меняется вверху страницы)
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#111', marginBottom: 12 }}>Загрузка из 1С</div>
+
+            {/* Режим: за один день / за период */}
+            <div style={{ display: 'flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3, marginBottom: 12 }}>
+              {[{ k: 'day', l: '📅 За один день' }, { k: 'period', l: '📆 За период' }].map(m => (
+                <button key={m.k} onClick={() => setUploadMode(m.k)} style={{
+                  flex: 1, padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  background: uploadMode === m.k ? '#fff' : 'transparent',
+                  color: uploadMode === m.k ? '#111' : '#888',
+                  boxShadow: uploadMode === m.k ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+                }}>{m.l}</button>
+              ))}
             </div>
+
+            {uploadMode === 'day' ? (
+              <div style={{ marginBottom: 16, padding: '12px 14px', background: '#f7f8fa', borderRadius: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 6 }}>Дата</div>
+                <input type="date" value={uploadDay} onChange={e => setUploadDay(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+                <div style={{ fontSize: 11.5, color: '#999', marginTop: 6 }}>
+                  В 1С сформируй «Сводную» ровно за этот день (в отчёте период <b>{uploadDay}–{uploadDay}</b>) и загрузи. Данные лягут на эту дату.
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: '#888', marginBottom: 16, padding: '12px 14px', background: '#f7f8fa', borderRadius: 10 }}>
+                Период: <b>{dateFrom}</b> — <b>{dateTo}</b> (меняется вверху страницы). Все продажи лягут на дату <b>{dateTo}</b> одним блоком — фильтр по дням внутри не сработает.
+              </div>
+            )}
 
             {/* Файл 1 — по агентам */}
             <div style={{ marginBottom: 16 }}>
