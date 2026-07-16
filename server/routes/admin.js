@@ -2345,7 +2345,21 @@ router.post('/upload-sales', editor, upload.single('file'), async (req, res) => 
     const nameCol = Object.keys(textCount).sort((a, b) => textCount[b] - textCount[a])[0];
     const nameIdx = nameCol !== undefined ? Number(nameCol) : 0;
 
-    // 3. Разобрать иерархию: строка без цены = агент, строка с ценой = товар
+    // 3. Уровни группировки Excel. 1С в grouped-отчёте проставляет outline-level строкам:
+    //    агент — верхний (минимальный) уровень, товары вложены глубже. Если уровни есть —
+    //    берём агента по минимальному уровню (надёжно при любой промежуточной группировке);
+    //    если уровней нет — fallback по «пустой цене».
+    const rowMeta = ws['!rows'] || [];
+    const levelOf = i => (rowMeta[i] && typeof rowMeta[i].level === 'number') ? rowMeta[i].level : null;
+    const dataLevels = [];
+    for (let i = headerIdx + 1; i < rows.length; i++) {
+      const L = levelOf(i);
+      if (L !== null) dataLevels.push(L);
+    }
+    const useLevels = new Set(dataLevels).size > 1;
+    const minLevel = useLevels ? Math.min(...dataLevels) : null;
+
+    // 4. Разобрать иерархию: агент → товары
     let currentAgent = '';
     const parsed = [];
     for (let i = headerIdx + 1; i < rows.length; i++) {
@@ -2359,12 +2373,14 @@ router.post('/upload-sales', editor, upload.single('file'), async (req, res) => 
       // Пропускаем служебные строки-заголовки и итог
       if (['итого', 'номенклатура', 'торг агент', 'торговый агент', 'параметры'].includes(low)) continue;
 
-      if (!hasPrice) {
-        // строка-агент (групповой итог). Пустое имя → «без агента»
-        currentAgent = name;
+      if (useLevels) {
+        const L = levelOf(i);
+        if (L === minLevel && !hasPrice) { currentAgent = name; continue; } // верхний уровень = агент
+        if (hasPrice && name) parsed.push({ agent: currentAgent, productName: name, quantity: qty, price: parseSalesNum(priceRaw), sum });
+        // промежуточные группы (без цены, не минимальный уровень) — пропускаем
       } else {
-        if (!name) continue;
-        parsed.push({ agent: currentAgent, productName: name, quantity: qty, price: parseSalesNum(priceRaw), sum });
+        if (!hasPrice) { currentAgent = name; }        // строка-агент (пустое имя → «без агента»)
+        else if (name) parsed.push({ agent: currentAgent, productName: name, quantity: qty, price: parseSalesNum(priceRaw), sum });
       }
     }
 
@@ -2404,9 +2420,14 @@ router.post('/upload-sales', editor, upload.single('file'), async (req, res) => 
     const del  = await SalesRecord.deleteMany({ docDate: { $gte: from, $lte: to } });
     await SalesRecord.insertMany(docs, { ordered: false });
 
+    // Сохраняем исходный файл (для диагностики разбора)
+    let sourceUrl = '';
+    try { sourceUrl = await uploadRawBuffer(req.file.buffer, 'matkasym/sales-uploads', `sales_${Date.now()}`); } catch (_) {}
+
     const matched = docs.filter(d => d.productId).length;
-    console.log(`[upload-sales] ${new Date().toISOString()} rows=${docs.length} matched=${matched} deleted=${del.deletedCount} [${dateFrom}..${dateTo}]`);
-    res.json({ success: true, inserted: docs.length, matched, unmatched: docs.length - matched, deleted: del.deletedCount, agents: [...new Set(docs.map(d => d.agent))].length });
+    const agentsCount = [...new Set(docs.map(d => d.agent))].length;
+    console.log(`[upload-sales] ${new Date().toISOString()} rows=${docs.length} agents=${agentsCount} matched=${matched} useLevels=${useLevels} deleted=${del.deletedCount} [${dateFrom}..${dateTo}] src=${sourceUrl}`);
+    res.json({ success: true, inserted: docs.length, matched, unmatched: docs.length - matched, deleted: del.deletedCount, agents: agentsCount, useLevels, sourceUrl });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }

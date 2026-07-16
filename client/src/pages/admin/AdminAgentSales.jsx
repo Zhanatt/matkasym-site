@@ -86,7 +86,11 @@ export default function AdminAgentSales() {
     adminUploadSales(file, dateFrom, dateTo)
       .then(res => {
         const d = res.data;
-        setUploadMsg({ ok: true, text: `Загружено строк: ${d.inserted}, агентов: ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.` });
+        setUploadMsg({
+          ok: true,
+          text: `Загружено строк: ${d.inserted}, агентов: ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.`,
+          link: d.sourceUrl || '',
+        });
         load();
       })
       .catch(err => setUploadMsg({ ok: false, text: err.response?.data?.error || 'Ошибка загрузки' }))
@@ -132,7 +136,14 @@ export default function AdminAgentSales() {
           background: uploadMsg.ok ? '#e8f5e9' : '#fff5f5',
           color: uploadMsg.ok ? '#2d7a3a' : '#c0392b',
           border: `1px solid ${uploadMsg.ok ? '#bfe6c8' : '#f5c6c6'}`,
-        }}>{uploadMsg.ok ? '✅ ' : '⚠️ '}{uploadMsg.text}</div>
+        }}>
+          {uploadMsg.ok ? '✅ ' : '⚠️ '}{uploadMsg.text}
+          {uploadMsg.link && (
+            <div style={{ marginTop: 6, fontSize: 11.5, color: '#888', wordBreak: 'break-all' }}>
+              Файл: {uploadMsg.link}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Фильтры */}
