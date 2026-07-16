@@ -20,6 +20,7 @@ const VideoSchedule = require('../models/VideoSchedule');
 const LoginLog     = require('../models/LoginLog');
 const ProductRequest = require('../models/ProductRequest');
 const SalesRecord  = require('../models/SalesRecord');
+const SalesDoc     = require('../models/SalesDoc');
 const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto, publishToChannel } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
@@ -2256,10 +2257,11 @@ router.get('/agent-sales', viewer, async (req, res) => {
 });
 
 // GET /api/admin/agent-sales/docs?agent=&dateFrom=&dateTo=&brand=
-// Детализация по накладным одного агента: дата+время, покупатель, товары, сумма.
+// Детализация по накладным одного агента: дата+время, покупатель, сумма.
+// Источник — журнал «Реализации ТМЗ и услуг» (SalesDoc), у него реальные дата/время.
 router.get('/agent-sales/docs', viewer, async (req, res) => {
   try {
-    const { agent, dateFrom, dateTo, brand } = req.query;
+    const { agent, dateFrom, dateTo } = req.query;
     const match = {};
     if (agent === '(без агента)') match.agent = { $in: ['', null] };
     else if (agent) match.agent = agent;
@@ -2268,33 +2270,21 @@ router.get('/agent-sales/docs', viewer, async (req, res) => {
       if (dateFrom) match.docDate.$gte = new Date(dateFrom + 'T00:00:00+06:00');
       if (dateTo)   match.docDate.$lte = new Date(dateTo + 'T23:59:59+06:00');
     }
-    if (brand) match.brand = brand;
 
-    const records = await SalesRecord.find(match)
-      .select('docNumber docDate counterparty productName quantity price sum')
+    const records = await SalesDoc.find(match)
+      .select('docNumber docDate counterparty sum')
       .sort({ docDate: -1 })
       .lean();
 
-    // Группируем строки по накладной (docNumber+docDate)
-    const docMap = new Map();
-    for (const r of records) {
-      const key = `${r.docNumber}|${new Date(r.docDate).getTime()}`;
-      if (!docMap.has(key)) {
-        docMap.set(key, {
-          docNumber: r.docNumber,
-          docDate: r.docDate,
-          counterparty: r.counterparty,
-          totalSum: 0,
-          lines: [],
-        });
-      }
-      const d = docMap.get(key);
-      d.lines.push({ productName: r.productName, qty: r.quantity, price: Math.round(r.price), sum: Math.round(r.sum) });
-      d.totalSum += r.sum;
-    }
-    const docs = [...docMap.values()].map(d => ({ ...d, totalSum: Math.round(d.totalSum) }));
+    const docs = records.map(r => ({
+      docNumber: r.docNumber,
+      docDate: r.docDate,
+      counterparty: r.counterparty,
+      totalSum: Math.round(r.sum),
+      lines: [],
+    }));
 
-    res.json({ docs });
+    res.json({ docs, hasTimes: records.length > 0 });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
@@ -2309,13 +2299,67 @@ function parseSalesNum(v) {
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
-router.post('/upload-sales', editor, upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+// Дата из журнала: Date-объект, Excel-serial или строка «дд.мм.гггг чч:мм:сс»
+function parseJournalDate(v) {
+  if (v instanceof Date && !isNaN(v)) return v;
+  if (typeof v === 'number' && v > 0) return new Date(Math.round((v - 25569) * 86400 * 1000));
+  const s = String(v).trim();
+  const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\D+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const [, dd, mm, yyyy, hh = '00', mi = '00', ss = '00'] = m;
+    const d = new Date(`${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}T${String(hh).padStart(2, '0')}:${mi}:${ss}+06:00`);
+    return isNaN(d) ? null : d;
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+// Разбор журнала «Реализации ТМЗ и услуг» (плоская таблица: одна строка = накладная)
+function parseSalesJournal(buffer) {
+  const wb = xlsx.read(buffer, { type: 'buffer', cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  let hi = -1, dateCol = -1, agentCol = -1, cpCol = -1, sumCol = -1, numCol = -1, whCol = -1;
+  for (let i = 0; i < Math.min(rows.length, 30); i++) {
+    const r = rows[i].map(c => String(c).toLowerCase().trim());
+    const di = r.findIndex(c => c === 'дата' || c.startsWith('дата'));
+    const si = r.findIndex(c => c.includes('сумма'));
+    if (di >= 0 && si >= 0) {
+      hi = i; dateCol = di; sumCol = si;
+      // «агент», но не «контрагент» (в «контрагент» тоже есть подстрока «агент»)
+      agentCol = r.findIndex(c => c.includes('агент') && !c.includes('контрагент'));
+      cpCol = r.findIndex(c => c.includes('контрагент'));
+      numCol = r.findIndex(c => c.includes('номер'));
+      whCol = r.findIndex(c => c.includes('склад'));
+      break;
+    }
+  }
+  if (hi < 0) return [];
+  const out = [];
+  for (let i = hi + 1; i < rows.length; i++) {
+    const row = rows[i];
+    const d = parseJournalDate(row[dateCol]);
+    if (!d) continue;
+    out.push({
+      docNumber:    numCol   >= 0 ? String(row[numCol] || '').trim() : '',
+      docDate:      d,
+      agent:        agentCol >= 0 ? String(row[agentCol] || '').trim() : '',
+      counterparty: cpCol    >= 0 ? String(row[cpCol] || '').trim() : '',
+      warehouse:    whCol    >= 0 ? String(row[whCol] || '').trim() : '',
+      sum:          parseSalesNum(row[sumCol]),
+      source: '1c-journal',
+    });
+  }
+  return out;
+}
+router.post('/upload-sales', editor, upload.fields([{ name: 'file', maxCount: 1 }, { name: 'timesFile', maxCount: 1 }]), async (req, res) => {
+  const agentsFile = req.files?.file?.[0];
+  const timesFile  = req.files?.timesFile?.[0];
+  if (!agentsFile) return res.status(400).json({ error: 'Файл «по агентам» не загружен' });
   const { dateFrom, dateTo } = req.body;
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите период (с и по)' });
 
   try {
-    const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const wb   = xlsx.read(agentsFile.buffer, { type: 'buffer' });
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
@@ -2412,14 +2456,25 @@ router.post('/upload-sales', editor, upload.single('file'), async (req, res) => 
     const del  = await SalesRecord.deleteMany({ docDate: { $gte: from, $lte: to } });
     await SalesRecord.insertMany(docs, { ordered: false });
 
+    // 6. Второй файл — журнал «Реализации ТМЗ и услуг» с датой/временем накладных (опционально)
+    let docsInserted = 0;
+    if (timesFile) {
+      const docRecords = parseSalesJournal(timesFile.buffer);
+      const delDocs = await SalesDoc.deleteMany({ docDate: { $gte: from, $lte: to } });
+      if (docRecords.length) await SalesDoc.insertMany(docRecords, { ordered: false });
+      docsInserted = docRecords.length;
+      try { await uploadRawBuffer(timesFile.buffer, 'matkasym/sales-uploads', `sales_times_${Date.now()}`); } catch (_) {}
+      console.log(`[upload-sales] журнал: накладных=${docsInserted}, удалено=${delDocs.deletedCount}`);
+    }
+
     // Сохраняем исходный файл (для диагностики разбора)
     let sourceUrl = '';
-    try { sourceUrl = await uploadRawBuffer(req.file.buffer, 'matkasym/sales-uploads', `sales_${Date.now()}`); } catch (_) {}
+    try { sourceUrl = await uploadRawBuffer(agentsFile.buffer, 'matkasym/sales-uploads', `sales_${Date.now()}`); } catch (_) {}
 
     const matched = docs.filter(d => d.productId).length;
     const agentsCount = [...new Set(docs.map(d => d.agent))].length;
     console.log(`[upload-sales] ${new Date().toISOString()} rows=${docs.length} agents=${agentsCount} matched=${matched} deleted=${del.deletedCount} [${dateFrom}..${dateTo}] src=${sourceUrl}`);
-    res.json({ success: true, inserted: docs.length, matched, unmatched: docs.length - matched, deleted: del.deletedCount, agents: agentsCount, sourceUrl });
+    res.json({ success: true, inserted: docs.length, matched, unmatched: docs.length - matched, deleted: del.deletedCount, agents: agentsCount, docsInserted, sourceUrl });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }

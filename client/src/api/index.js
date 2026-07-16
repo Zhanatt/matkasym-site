@@ -64,11 +64,12 @@ export const adminGetSalesChart      = (params) => api.get('/admin/sales-chart',
 export const adminGetSalesChartSet   = (set, params) => api.get('/admin/sales-chart', { params: { ...params, set, groupBy: 'product' } });
 export const adminGetAgentSales      = (params) => api.get('/admin/agent-sales', { params });
 export const adminGetAgentSalesDocs  = (params) => api.get('/admin/agent-sales/docs', { params });
-export const adminUploadSales        = (file, dateFrom, dateTo) => {
+export const adminUploadSales        = (file, dateFrom, dateTo, timesFile) => {
   const fd = new FormData();
   fd.append('file', file);
   fd.append('dateFrom', dateFrom);
   fd.append('dateTo', dateTo);
+  if (timesFile) fd.append('timesFile', timesFile);
   return api.post('/admin/upload-sales', fd);
 };
 export const adminGetFrontmen    = (brand)      => api.get('/admin/frontmen', { params: brand ? { brand } : {} });

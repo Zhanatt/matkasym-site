@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminGetAgentSales, adminGetAgentSalesDocs, adminUploadSales } from '../../api';
 
 const SET_NAMES = {
@@ -49,7 +49,9 @@ export default function AdminAgentSales() {
   const [docsByAgent, setDocsByAgent] = useState({}); // agent → { loading, docs }
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState(null); // { ok, text }
-  const fileRef = useRef(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [agentsSel, setAgentsSel] = useState(null); // File — «по агентам»
+  const [timesSel, setTimesSel]   = useState(null); // File — «со временем» (журнал)
 
   const load = useCallback(() => {
     setLoading(true);
@@ -76,21 +78,20 @@ export default function AdminAgentSales() {
       .catch(() => setDocsByAgent(p => ({ ...p, [agent]: { loading: false, docs: [] } })));
   };
 
-  const handleUpload = e => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // позволить повторно выбрать тот же файл
-    if (!file) return;
+  const handleSubmitUpload = () => {
+    if (!agentsSel) { setUploadMsg({ ok: false, text: 'Выбери файл «Отчёт по агентам»' }); return; }
     if (!dateFrom || !dateTo) { setUploadMsg({ ok: false, text: 'Сначала выбери период (даты сверху)' }); return; }
     setUploading(true);
     setUploadMsg(null);
-    adminUploadSales(file, dateFrom, dateTo)
+    adminUploadSales(agentsSel, dateFrom, dateTo, timesSel)
       .then(res => {
         const d = res.data;
         setUploadMsg({
           ok: true,
-          text: `Загружено строк: ${d.inserted}, агентов: ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.`,
+          text: `Загружено строк: ${d.inserted}, агентов: ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.${d.docsInserted ? ` Накладных со временем: ${d.docsInserted}.` : ''}`,
           link: d.sourceUrl || '',
         });
+        setUploadOpen(false); setAgentsSel(null); setTimesSel(null);
         load();
       })
       .catch(err => setUploadMsg({ ok: false, text: err.response?.data?.error || 'Ошибка загрузки' }))
@@ -114,21 +115,63 @@ export default function AdminAgentSales() {
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={handleUpload} style={{ display: 'none' }} />
           <button
-            onClick={() => fileRef.current?.click()}
+            onClick={() => { setUploadOpen(true); setUploadMsg(null); }}
             disabled={uploading}
             style={{
               padding: '10px 18px', borderRadius: 10, border: 'none', cursor: uploading ? 'default' : 'pointer',
               background: '#111', color: '#fff', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap',
               opacity: uploading ? 0.6 : 1,
             }}
-          >{uploading ? 'Загрузка…' : '⬆️ Загрузить таблицу из 1С'}</button>
+          >⬆️ Загрузить таблицы из 1С</button>
           <span style={{ fontSize: 11, color: '#bbb', maxWidth: 220, textAlign: 'right' }}>
-            Отчёт «Сводная продаж по агентам (по номенклатуре)» за период, что выбран выше
+            За период, что выбран выше
           </span>
         </div>
       </div>
+
+      {/* Модалка загрузки двух файлов */}
+      {uploadOpen && (
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}
+          onClick={() => !uploading && setUploadOpen(false)}
+        >
+          <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 460, padding: 22 }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#111', marginBottom: 4 }}>Загрузка из 1С</div>
+            <div style={{ fontSize: 13, color: '#888', marginBottom: 18 }}>
+              Период: <b>{dateFrom}</b> — <b>{dateTo}</b> (меняется вверху страницы)
+            </div>
+
+            {/* Файл 1 — по агентам */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', marginBottom: 4 }}>
+                1. Отчёт по агентам <span style={{ color: '#c0392b' }}>*</span>
+              </div>
+              <div style={{ fontSize: 11.5, color: '#999', marginBottom: 6 }}>«Сводная продаж по агентам (по номенклатуре)» — товары, количество, сумма</div>
+              <input type="file" accept=".xls,.xlsx" onChange={e => setAgentsSel(e.target.files?.[0] || null)} />
+              {agentsSel && <div style={{ fontSize: 12, color: '#2d7a3a', marginTop: 4 }}>✓ {agentsSel.name}</div>}
+            </div>
+
+            {/* Файл 2 — со временем */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', marginBottom: 4 }}>
+                2. Отчёт со временем <span style={{ color: '#aaa', fontWeight: 600 }}>(необязательно)</span>
+              </div>
+              <div style={{ fontSize: 11.5, color: '#999', marginBottom: 6 }}>Журнал «Реализации ТМЗ и услуг» (Действия → Вывести список) — накладные с датой и временем</div>
+              <input type="file" accept=".xls,.xlsx" onChange={e => setTimesSel(e.target.files?.[0] || null)} />
+              {timesSel && <div style={{ fontSize: 12, color: '#2d7a3a', marginTop: 4 }}>✓ {timesSel.name}</div>}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setUploadOpen(false)} disabled={uploading}
+                style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #e5e5e5', background: '#fff', color: '#555', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Отмена</button>
+              <button onClick={handleSubmitUpload} disabled={uploading || !agentsSel}
+                style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: '#111', color: '#fff', fontSize: 14, fontWeight: 700, cursor: uploading || !agentsSel ? 'default' : 'pointer', opacity: uploading || !agentsSel ? 0.5 : 1 }}>
+                {uploading ? 'Загрузка…' : 'Загрузить'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {uploadMsg && (
         <div style={{
