@@ -125,7 +125,7 @@ const SET_SUB_ITEMS = {
 
 const SALES_CHANNELS = [
   { key: 'matkasym_home', label: 'MATKASYM_HOME', short: 'HOME', color: '#DC1E24' },
-  { key: 'matkasym_kz',   label: 'MATKASYM_KZ',   short: 'KZ',   color: '#267846' },
+  { key: 'matkasym_kz',   label: 'Маткасым кейзет', short: 'KZ',   color: '#267846' },
 ];
 
 const SHAAR_CHANNELS = [
@@ -173,6 +173,7 @@ function slugify(name) {
 }
 
 function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog, frontmen, productCount = 0 }) {
+  const country = useCountry();
   const [editing, setEditing]     = useState(false);
   const [catalogSlug, setCatalog] = useState(() => autoOpenSet || null);
   const isMobile                  = useIsMobile();
@@ -217,9 +218,15 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   // Sets come from DB (customSets), sorted by order field
   const allSets = useMemo(() => {
     if (customSets.length === 0) return []; // Show nothing while loading
-    const sorted = [...customSets].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-    return sorted.map(s => s.key);
-  }, [customSets]);
+    const sorted = [...customSets].sort((a, b) => (a.order ?? 999) - (b.order ?? 999)).map(s => s.key);
+    // В казахстанском каталоге скрываем сеты, которых на складе Q-top нет:
+    // список приходит из фасетов, посчитанных с фильтром по стране.
+    if (country === 'KZ') {
+      const available = new Set(sets);
+      return sorted.filter(k => available.has(k));
+    }
+    return sorted;
+  }, [customSets, country, sets]);
 
   // During drag, use localOrder for visual feedback
   const displaySets = localOrder.length > 0 ? localOrder : allSets;
