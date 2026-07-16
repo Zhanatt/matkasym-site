@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminGetAgentSales, adminGetAgentSalesDocs, adminUploadSales } from '../../api';
+import { adminGetAgentSales, adminUploadSales } from '../../api';
 
 const SET_NAMES = {
   'achyk-asman': 'Achyk Asman', 'den-sooluk': 'Den Sooluk', 'zhashyl-ömür': 'Zhashyl Omur',
@@ -18,10 +18,6 @@ const LINE_COLORS = [
 ];
 
 const money = n => (n || 0).toLocaleString('ru-RU');
-const fmtDateTime = d => new Date(d).toLocaleString('ru-RU', {
-  day: '2-digit', month: '2-digit', year: 'numeric',
-  hour: '2-digit', minute: '2-digit', second: '2-digit',
-});
 const fmtDate = d => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 // Локальная дата YYYY-MM-DD (без UTC-сдвига)
@@ -46,12 +42,10 @@ export default function AdminAgentSales() {
   const [loading, setLoading]   = useState(true);
   const [data, setData]         = useState(null);
   const [expanded, setExpanded] = useState({});   // agent → true (показать товары)
-  const [docsByAgent, setDocsByAgent] = useState({}); // agent → { loading, docs }
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState(null); // { ok, text }
   const [uploadOpen, setUploadOpen] = useState(false);
   const [agentsSel, setAgentsSel] = useState(null); // File — «по агентам»
-  const [timesSel, setTimesSel]   = useState(null); // File — «со временем» (журнал)
   const [uploadMode, setUploadMode] = useState('day'); // 'day' | 'period'
   const [uploadDay, setUploadDay]   = useState(ymd(now));
 
@@ -65,20 +59,9 @@ export default function AdminAgentSales() {
 
   useEffect(() => { load(); }, [load]);
   // Смена фильтров сбрасывает раскрытые детали
-  useEffect(() => { setExpanded({}); setDocsByAgent({}); }, [dateFrom, dateTo, brand]);
+  useEffect(() => { setExpanded({}); }, [dateFrom, dateTo, brand]);
 
   const toggleProducts = agent => setExpanded(p => ({ ...p, [agent]: !p[agent] }));
-
-  const loadDocs = agent => {
-    if (docsByAgent[agent]) { // повторный клик — скрыть
-      setDocsByAgent(p => { const n = { ...p }; delete n[agent]; return n; });
-      return;
-    }
-    setDocsByAgent(p => ({ ...p, [agent]: { loading: true, docs: [] } }));
-    adminGetAgentSalesDocs({ agent, dateFrom, dateTo, brand })
-      .then(res => setDocsByAgent(p => ({ ...p, [agent]: { loading: false, docs: res.data.docs } })))
-      .catch(() => setDocsByAgent(p => ({ ...p, [agent]: { loading: false, docs: [] } })));
-  };
 
   const handleSubmitUpload = () => {
     if (!agentsSel) { setUploadMsg({ ok: false, text: 'Выбери файл «Отчёт по агентам»' }); return; }
@@ -87,15 +70,15 @@ export default function AdminAgentSales() {
     if (!effFrom || !effTo) { setUploadMsg({ ok: false, text: uploadMode === 'day' ? 'Выбери день' : 'Выбери период (даты сверху)' }); return; }
     setUploading(true);
     setUploadMsg(null);
-    adminUploadSales(agentsSel, effFrom, effTo, timesSel)
+    adminUploadSales(agentsSel, effFrom, effTo)
       .then(res => {
         const d = res.data;
         setUploadMsg({
           ok: true,
-          text: `Загружено строк: ${d.inserted}, агентов: ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.${d.docsInserted ? ` Накладных со временем: ${d.docsInserted}.` : ''}`,
+          text: `Загружено строк: ${d.inserted}, агентов: ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.`,
           link: d.sourceUrl || '',
         });
-        setUploadOpen(false); setAgentsSel(null); setTimesSel(null);
+        setUploadOpen(false); setAgentsSel(null);
         // Показать то, что только что загрузили
         if (uploadMode === 'day') { setDateFrom(uploadDay); setDateTo(uploadDay); }
         load();
@@ -171,24 +154,12 @@ export default function AdminAgentSales() {
               </div>
             )}
 
-            {/* Файл 1 — по агентам */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', marginBottom: 4 }}>
-                1. Отчёт по агентам <span style={{ color: '#c0392b' }}>*</span>
-              </div>
+            {/* Файл — по агентам */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', marginBottom: 4 }}>Файл отчёта</div>
               <div style={{ fontSize: 11.5, color: '#999', marginBottom: 6 }}>«Сводная продаж по агентам (по номенклатуре)» — товары, количество, сумма</div>
               <input type="file" accept=".xls,.xlsx" onChange={e => setAgentsSel(e.target.files?.[0] || null)} />
               {agentsSel && <div style={{ fontSize: 12, color: '#2d7a3a', marginTop: 4 }}>✓ {agentsSel.name}</div>}
-            </div>
-
-            {/* Файл 2 — со временем */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111', marginBottom: 4 }}>
-                2. Отчёт со временем <span style={{ color: '#aaa', fontWeight: 600 }}>(необязательно)</span>
-              </div>
-              <div style={{ fontSize: 11.5, color: '#999', marginBottom: 6 }}>Журнал «Реализации ТМЗ и услуг» (Действия → Вывести список) — накладные с датой и временем</div>
-              <input type="file" accept=".xls,.xlsx" onChange={e => setTimesSel(e.target.files?.[0] || null)} />
-              {timesSel && <div style={{ fontSize: 12, color: '#2d7a3a', marginTop: 4 }}>✓ {timesSel.name}</div>}
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -283,7 +254,6 @@ export default function AdminAgentSales() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {data.agents.map(a => {
             const isOpen = expanded[a.agent];
-            const docState = docsByAgent[a.agent];
             return (
               <div key={a.agent} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden' }}>
                 {/* Шапка агента */}
@@ -324,50 +294,6 @@ export default function AdminAgentSales() {
                         ))}
                       </tbody>
                     </table>
-
-                    <button onClick={() => loadDocs(a.agent)} style={{
-                      marginTop: 10, padding: '8px 14px', borderRadius: 9, cursor: 'pointer',
-                      border: '1.5px solid #e5e5e5', background: docState ? '#f0f0ee' : '#fff',
-                      fontSize: 13, fontWeight: 700, color: '#555',
-                    }}>
-                      {docState ? '▲ Скрыть накладные' : '📄 Накладные (дата и время)'}
-                    </button>
-
-                    {/* Накладные — детализация с датой/временем */}
-                    {docState && (
-                      <div style={{ marginTop: 10 }}>
-                        {docState.loading ? (
-                          <div style={{ color: '#999', fontSize: 13, padding: 8 }}>Загрузка накладных...</div>
-                        ) : docState.docs.length === 0 ? (
-                          <div style={{ color: '#999', fontSize: 13, padding: 8 }}>Накладных нет</div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {docState.docs.map((d, i) => (
-                              <div key={i} style={{ background: '#fafaf8', borderRadius: 10, padding: '10px 12px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                                  <div style={{ fontSize: 12.5, color: '#111', fontWeight: 700 }}>
-                                    №{d.docNumber || '—'} · <span style={{ color: '#e67e22' }}>{fmtDateTime(d.docDate)}</span>
-                                  </div>
-                                  <div style={{ fontSize: 13, fontWeight: 800, color: '#27ae60' }}>{money(d.totalSum)} сом</div>
-                                </div>
-                                {d.counterparty && <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>Покупатель: {d.counterparty}</div>}
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-                                  <tbody>
-                                    {d.lines.map((l, j) => (
-                                      <tr key={j} style={{ borderTop: '1px solid #eee' }}>
-                                        <td style={{ padding: '4px 4px', color: '#444' }}>{l.productName}</td>
-                                        <td style={{ padding: '4px 4px', textAlign: 'right', width: 60, color: '#666' }}>{money(l.qty)} шт</td>
-                                        <td style={{ padding: '4px 4px', textAlign: 'right', width: 90, fontWeight: 600, color: '#111' }}>{money(l.sum)}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
