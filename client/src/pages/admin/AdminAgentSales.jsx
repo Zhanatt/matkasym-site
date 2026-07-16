@@ -93,6 +93,13 @@ export default function AdminAgentSales() {
     fontSize: 14, background: '#fff', outline: 'none',
   };
 
+  // Возвраты — товарные строки с минусом (кол-во/сумма < 0). Считаем по всем сетам.
+  const isReturn = p => p.qty < 0 || p.sum < 0;
+  const returns = { count: 0, sum: 0 };
+  (data?.sets || []).forEach(s => s.products.forEach(p => {
+    if (isReturn(p)) { returns.count++; returns.sum += p.sum; }
+  }));
+
   return (
     <div style={{ maxWidth: 1000 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
@@ -216,6 +223,11 @@ export default function AdminAgentSales() {
             <div style={{ fontSize: 24, fontWeight: 800, color: '#e67e22' }}>{money(data.positions)}</div>
           </div>
           <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
+            <div style={{ fontSize: 13, color: '#888' }}>Возвраты</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#c0392b' }}>{money(returns.count)}</div>
+            {returns.count > 0 && <div style={{ fontSize: 12, color: '#c0392b', marginTop: 2 }}>на {money(returns.sum)} сом</div>}
+          </div>
+          <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
             <div style={{ fontSize: 13, color: '#888' }}>Агентов</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: '#111' }}>{data.agents.length}</div>
           </div>
@@ -259,6 +271,7 @@ export default function AdminAgentSales() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {data.agents.map(a => {
             const isOpen = expanded[a.agent];
+            const agentReturns = a.products.filter(isReturn).length;
             return (
               <div key={a.agent} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden' }}>
                 {/* Шапка агента */}
@@ -271,6 +284,9 @@ export default function AdminAgentSales() {
                     <span style={{ fontSize: 15, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {a.agent}
                     </span>
+                    {agentReturns > 0 && (
+                      <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap' }}>↩ {agentReturns} возвр.</span>
+                    )}
                   </button>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 800, color: '#27ae60' }}>{money(a.totalSum)} <span style={{ fontSize: 12, color: '#bbb' }}>сом</span></div>
@@ -292,7 +308,10 @@ export default function AdminAgentSales() {
                       <tbody>
                         {a.products.map((p, i) => (
                           <tr key={i} style={{ borderTop: '1px solid #f7f7f7' }}>
-                            <td style={{ padding: '6px 4px', color: '#333' }}>{p.productName}</td>
+                            <td style={{ padding: '6px 4px', color: '#333' }}>
+                              {p.productName}
+                              {isReturn(p) && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px' }}>возврат</span>}
+                            </td>
                             <td style={{ padding: '6px 4px', textAlign: 'right', color: p.qty < 0 ? '#c0392b' : '#333', fontWeight: 600 }}>{money(p.qty)}</td>
                             <td style={{ padding: '6px 4px', textAlign: 'right', color: p.sum < 0 ? '#c0392b' : '#111', fontWeight: 600 }}>{money(p.sum)}</td>
                           </tr>
@@ -323,6 +342,7 @@ export default function AdminAgentSales() {
             const color = LINE_COLORS[i % LINE_COLORS.length];
             const key = (s.set || 'none') + '|' + s.brand + '|' + i;
             const isOpen = expandedSet[key];
+            const setReturns = s.products.filter(isReturn).length;
             return (
               <div key={key}>
                 <div
@@ -336,6 +356,9 @@ export default function AdminAgentSales() {
                     <span style={{ fontSize: 11, color: '#bbb', width: 10, flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
                     <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
                     <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{setLabel(s.set)}</span>
+                    {setReturns > 0 && (
+                      <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap' }}>↩ {setReturns} возвр.</span>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span style={{ fontSize: 11, color: '#aaa' }}>{pct}%</span>
@@ -361,7 +384,10 @@ export default function AdminAgentSales() {
                       <tbody>
                         {s.products.map((p, j) => (
                           <tr key={j} style={{ borderTop: '1px solid #eee' }}>
-                            <td style={{ padding: '5px 4px', color: '#333' }}>{p.productName}</td>
+                            <td style={{ padding: '5px 4px', color: '#333' }}>
+                              {p.productName}
+                              {isReturn(p) && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px' }}>возврат</span>}
+                            </td>
                             <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600, color: p.qty < 0 ? '#c0392b' : '#333' }}>{money(p.qty)}</td>
                             <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600, color: p.sum < 0 ? '#c0392b' : '#111' }}>{money(p.sum)}</td>
                           </tr>
