@@ -16,7 +16,7 @@ const SALES_CHANNELS = {
   default: [
     { key: 'matkasym_home', label: 'matkasym_home', desc: 'Розница KG' },
     { key: 'make_in',       label: 'make_in',       desc: 'Оптовики' },
-    { key: 'matkasym_kz',   label: 'Маткасым кейзет', desc: 'Казахстан' },
+    { key: 'matkasym_kz',   label: 'Matkasym KZ',   desc: 'Казахстан' },
   ],
   'matkasym-shaar': [
     { key: 'matkasym_shaar',  label: 'matkasym_shaar',  desc: 'B2G (госзакупки)' },
@@ -61,7 +61,7 @@ const CHANNEL_LABELS = {
   'matkasym_home': '🏠 Home',
   'matkasym_shaar': '🏙 Shaar',
   'make_in': '🛠 Make In',
-  'matkasym_kz': '🇰🇿 Маткасым кейзет',
+  'matkasym_kz': '🇰🇿 Matkasym KZ',
   'matkasym_horeca': '🍽 HoReCa',
   'matkasym_kyzmat': '🔧 Kyzmat',
 };

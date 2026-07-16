@@ -125,7 +125,7 @@ const SET_SUB_ITEMS = {
 
 const SALES_CHANNELS = [
   { key: 'matkasym_home', label: 'MATKASYM_HOME', short: 'HOME', color: '#DC1E24' },
-  { key: 'matkasym_kz',   label: 'Маткасым кейзет', short: 'KZ',   color: '#267846' },
+  { key: 'matkasym_kz',   label: 'Matkasym KZ',   short: 'KZ',   color: '#267846' },
 ];
 
 const SHAAR_CHANNELS = [
@@ -135,6 +135,17 @@ const SHAAR_CHANNELS = [
 const KYZMAT_CHANNELS = [
   { key: 'matkasym_kyzmat', label: 'MATKASYM_KYZMAT', short: 'KYZMAT', color: '#267846' },
 ];
+
+// Казахстанский канал — единственный, что показываем в каталоге KZ:
+// киргизские каналы к складу Q-top отношения не имеют.
+const KZ_CHANNELS = SALES_CHANNELS.filter(c => c.key === 'matkasym_kz');
+
+function channelsFor(brandKey, country) {
+  if (country === 'KZ') return KZ_CHANNELS;
+  if (brandKey === 'matkasym-shaar')  return SHAAR_CHANNELS;
+  if (brandKey === 'matkasym-kyzmat') return KYZMAT_CHANNELS;
+  return SALES_CHANNELS;
+}
 
 // Порядок категорий для конкретных сетов (чем меньше число, тем выше в списке)
 const SET_CATEGORY_ORDER = {
@@ -385,7 +396,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
       {/* Channel headers */}
       {!isMobile && (
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, paddingLeft: 200 }}>
-          {(brandKey === 'matkasym-shaar' ? SHAAR_CHANNELS : brandKey === 'matkasym-kyzmat' ? KYZMAT_CHANNELS : SALES_CHANNELS).map(ch => (
+          {channelsFor(brandKey, country).map(ch => (
             <div key={ch.key} style={{
               flex: 1,
               textAlign: 'center',
@@ -488,7 +499,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
               {/* Sales channels columns */}
               {!isMobile && !editing && (
                 <div style={{ display: 'flex', flex: 1, marginLeft: 8 }}>
-                  {(brandKey === 'matkasym-shaar' ? SHAAR_CHANNELS : brandKey === 'matkasym-kyzmat' ? KYZMAT_CHANNELS : SALES_CHANNELS).map(ch => {
+                  {channelsFor(brandKey, country).map(ch => {
                     const channelFrontmen = getFrontmenForSet(slug, ch.key);
                     return (
                       <div key={ch.key} style={{
