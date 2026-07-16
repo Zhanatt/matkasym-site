@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useFrontmen } from '../../context/FrontmenContext';
 import AdminProductModal from './AdminProductModal';
@@ -576,7 +576,26 @@ function getPriceLabel(mode) {
   return PRICE_MODES.find(m => m.key === mode)?.label || '';
 }
 
+function AddProductButton({ brandKey, setSlug, full = false }) {
+  return (
+    <Link
+      to={`/admin/products/new?brand=${encodeURIComponent(brandKey)}&set=${encodeURIComponent(setSlug)}`}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '5px 14px', borderRadius: 6,
+        background: '#d32f2f', color: '#fff', textDecoration: 'none',
+        fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
+        minWidth: full ? 0 : 90, flexShrink: 0,
+      }}
+    >
+      + Товар
+    </Link>
+  );
+}
+
 function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride, fetchParams }) {
+  const { user }    = useAuth();
+  const canEdit     = ['owner', 'editor'].includes(user?.role);
   const accent      = accentOverride || BRAND_META[brandKey]?.accent || '#555';
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
   const [priceMode, setPriceMode]         = useState(defaultMode);
@@ -781,6 +800,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             {!isMobile && (
               <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} />
             )}
+
+            {/* Add product to this set — desktop */}
+            {!isMobile && canEdit && (
+              <AddProductButton brandKey={brandKey} setSlug={setSlug} />
+            )}
           </div>
 
           {/* Row 2 on mobile: Stats + PDF button */}
@@ -798,7 +822,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   {products.length} тов. · {models.length} мод.
                 </div>
               )}
-              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} />
+                {canEdit && <AddProductButton brandKey={brandKey} setSlug={setSlug} />}
+              </div>
             </div>
           )}
 

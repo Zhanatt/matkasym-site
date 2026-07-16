@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   adminGetProduct, adminCreateProduct, adminUpdateProduct,
@@ -218,7 +218,19 @@ export default function AdminProductForm() {
   const isNew = !id || id === 'new';
 
   const dupData = isNew ? location.state?.duplicate : null;
-  const [form, setForm]     = useState(dupData ? { ...EMPTY, ...dupData } : EMPTY);
+  // Prefill brand/set when opened from a set catalog (?brand=…&set=…)
+  const presetData = useMemo(() => {
+    if (!isNew || dupData) return null;
+    const q = new URLSearchParams(location.search);
+    const brand = q.get('brand');
+    const set   = q.get('set');
+    if (!brand && !set) return null;
+    return { ...(brand ? { brand } : {}), ...(set ? { set } : {}) };
+  }, [isNew, dupData, location.search]);
+
+  const [form, setForm]     = useState(
+    dupData ? { ...EMPTY, ...dupData } : presetData ? { ...EMPTY, ...presetData } : EMPTY
+  );
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
