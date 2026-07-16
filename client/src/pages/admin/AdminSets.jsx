@@ -610,7 +610,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const models = useMemo(() => {
     const grouped = {};
     products
-      .filter(p => p.productStatus !== 'kit_part') // скрываем детали комплектов
+      .filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part') // скрываем детали комплектов
       .forEach(p => {
         if (!grouped[p.name]) grouped[p.name] = [];
         grouped[p.name].push(p);
