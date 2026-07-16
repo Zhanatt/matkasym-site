@@ -197,9 +197,15 @@ export default function AdminAgentSales() {
           <div style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 6 }}>Нет данных за этот период</div>
           <div style={{ fontSize: 13, color: '#999', maxWidth: 460, margin: '0 auto' }}>
             {data?.dataRange
-              ? <>Загруженные продажи: с {fmtDate(data.dataRange.min)} по {fmtDate(data.dataRange.max)}. Измени период выше.</>
+              ? <>Загруженные продажи: с {fmtDate(data.dataRange.min)} по {fmtDate(data.dataRange.max)}, а выбран другой период выше.</>
               : <>Продажи из 1С ещё не синхронизированы. Данные появятся, когда заработает выгрузка из 1С на сайт (эндпоинт <code>/api/admin/sync-sales</code>).</>}
           </div>
+          {data?.dataRange && (
+            <button
+              onClick={() => { setDateFrom(ymd(new Date(data.dataRange.min))); setDateTo(ymd(new Date(data.dataRange.max))); }}
+              style={{ marginTop: 16, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: '#111', color: '#fff', fontSize: 14, fontWeight: 700 }}
+            >📅 Показать за загруженный период</button>
+          )}
         </div>
       ) : view === 'agents' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
