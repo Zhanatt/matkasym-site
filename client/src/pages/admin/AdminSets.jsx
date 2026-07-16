@@ -43,6 +43,13 @@ function getStockInfo(product) {
   return { label: 'Нет', hasStock: false, color: '#c00', bg: '#fce8e8' };
 }
 
+// Доступность товара для группировки "В наличии / Нет в наличии".
+// Независимый комплект (SKÅDIS, BOAXEL) всегда доступен ("Комплект"), как и в getStockInfo.
+function isProductAvailable(p) {
+  if (p.isKit && p.kitType === 'independent') return true;
+  return p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+}
+
 // ── constants ──────────────────────────────────────────────────────────────────
 
 const SET_NAMES = {
@@ -617,7 +624,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     const groupsMap = {};
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const hasStock = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+      const hasStock = isProductAvailable(p);
       const cat = p.category || 'Прочее';
       const targetGroup = hasStock ? cat : 'Нет в наличии';
       if (!groupsMap[targetGroup]) groupsMap[targetGroup] = [];
@@ -652,7 +659,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     const outOfStock = [];
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const isAvailable = p.stock > 0 || p.inStock || p.isOnOrder || p.inTransit;
+      const isAvailable = isProductAvailable(p);
       if (isAvailable) {
         inStock.push([name, variants]);
       } else {
