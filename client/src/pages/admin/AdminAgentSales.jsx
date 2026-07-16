@@ -93,11 +93,13 @@ export default function AdminAgentSales() {
     fontSize: 14, background: '#fff', outline: 'none',
   };
 
-  // Возвраты — товарные строки с минусом (кол-во/сумма < 0). Считаем по всем сетам.
+  // Разделяем продажи и возвраты: строка-возврат = кол-во/сумма < 0.
   const isReturn = p => p.qty < 0 || p.sum < 0;
-  const returns = { count: 0, sum: 0 };
+  const sales   = { sum: 0, qty: 0, pos: 0 };
+  const returns = { sum: 0, qty: 0, pos: 0 };
   (data?.sets || []).forEach(s => s.products.forEach(p => {
-    if (isReturn(p)) { returns.count++; returns.sum += p.sum; }
+    if (isReturn(p)) { returns.sum += p.sum; returns.qty += p.qty; returns.pos++; }
+    else             { sales.sum   += p.sum; sales.qty   += p.qty; sales.pos++; }
   }));
 
   return (
@@ -207,29 +209,51 @@ export default function AdminAgentSales() {
         </select>
       </div>
 
-      {/* Итоги */}
+      {/* Итоги: Продажи · Возвраты · Агенты */}
       {data && (
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-          <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
-            <div style={{ fontSize: 13, color: '#888' }}>Сумма продаж</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#27ae60' }}>{money(data.grandSum)} <span style={{ fontSize: 14, color: '#aaa' }}>сом</span></div>
+          {/* Продажи */}
+          <div style={{ flex: '1 1 250px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#27ae60', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>💰 Продажи</div>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#aaa' }}>Сумма</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#27ae60' }}>{money(sales.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>сом</span></div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#aaa' }}>Штук</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#3498db' }}>{money(sales.qty)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#aaa' }}>Позиций</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#e67e22' }}>{money(sales.pos)}</div>
+              </div>
+            </div>
           </div>
-          <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
-            <div style={{ fontSize: 13, color: '#888' }}>Продано штук</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#3498db' }}>{money(data.grandQty)}</div>
+
+          {/* Возвраты */}
+          <div style={{ flex: '1 1 250px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#c0392b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>↩ Возвраты</div>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#c9a' }}>Сумма</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(Math.abs(returns.sum))} <span style={{ fontSize: 12, color: '#d9a' }}>сом</span></div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#c9a' }}>Штук</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(Math.abs(returns.qty))}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#c9a' }}>Позиций</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(returns.pos)}</div>
+              </div>
+            </div>
           </div>
-          <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
-            <div style={{ fontSize: 13, color: '#888' }}>Позиций</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#e67e22' }}>{money(data.positions)}</div>
-          </div>
-          <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
-            <div style={{ fontSize: 13, color: '#888' }}>Возвраты</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#c0392b' }}>{money(returns.count)}</div>
-            {returns.count > 0 && <div style={{ fontSize: 12, color: '#c0392b', marginTop: 2 }}>на {money(returns.sum)} сом</div>}
-          </div>
-          <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '14px 18px' }}>
-            <div style={{ fontSize: 13, color: '#888' }}>Агентов</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#111' }}>{data.agents.length}</div>
+
+          {/* Агенты */}
+          <div style={{ flex: '1 1 120px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>👤 Агенты</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#111' }}>{data.agents.length}</div>
           </div>
         </div>
       )}
