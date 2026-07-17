@@ -4,9 +4,11 @@ import {
   adminGetProductRequests,
   adminGetMyProductRequests,
   adminCreateProductRequest,
+  adminUpdateProductRequest,
   adminDeleteProductRequest,
   adminGetProducts,
 } from '../../api';
+import { useAuth } from '../../context/AuthContext';
 
 const CLOUD = 'dnbg21ef8';
 const PRESET = 'Matkasym';
@@ -17,6 +19,21 @@ const TYPE_META = {
   catalog: { label: 'С каталога', icon: '🛒', color: '#b45309', bg: '#fef3c7' },
   test:    { label: 'Тест',       icon: '🧪', color: '#00838f', bg: '#e0f7fa' },
   real:    { label: 'Заказ',      icon: '🛒', color: '#b45309', bg: '#fef3c7' },
+};
+
+// Колонки доски. Хранятся в тех же status: active = «В обработке», done = «Завершён»
+const COLUMNS = [
+  { key: 'active', label: 'В обработке', dot: '#f59e0b', bg: '#fffbeb', line: '#fde68a' },
+  { key: 'done',   label: 'Завершён',    dot: '#22c55e', bg: '#f0fdf4', line: '#bbf7d0' },
+];
+
+const money = n => (Number(n) || 0).toLocaleString('ru-RU');
+const fmtDay = d => d ? new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
+// YYYY-MM-DD для <input type="date"> без UTC-сдвига
+const ymd = d => {
+  if (!d) return '';
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 };
 
 const TYPES = [
@@ -62,6 +79,11 @@ export default function PendingOrderRequests({ onCountChange }) {
   const [loading, setLoad]  = useState(true);
   const [gallery, setGallery] = useState(null); // { photos, i }
   const [detail, setDetail] = useState(null);   // заявка для попапа "подробнее"
+  const { user } = useAuth();
+  // Цену закупки и дату поставки ставит закупщик (и владелец)
+  const isPurchaser = user?.role === 'owner' || user?.role === 'purchaser' || user?.canOrderProducts;
+  const [edit, setEdit]     = useState(null);   // заявка в режиме правки
+  const [savingEdit, setSavingEdit] = useState(false);
   const [deleting, setDeleting] = useState(null); // id удаляемой заявки
 
   // create form state
@@ -92,19 +114,19 @@ export default function PendingOrderRequests({ onCountChange }) {
 
   const load = useCallback(() => {
     setLoad(true);
-    // Владелец / Джипар видят все активные заявки; остальные — свои
-    adminGetProductRequests({ status: 'active' })
+    // Владелец / закупщик видят все заявки (обе колонки доски); остальные — свои
+    adminGetProductRequests({})
       .then(r => {
         const list = r.data.requests || [];
         setItems(list);
-        onCountChange?.(r.data.activeCount ?? list.length);
+        onCountChange?.(r.data.activeCount ?? list.filter(x => x.status !== 'done').length);
       })
       .catch(() =>
         adminGetMyProductRequests()
           .then(r => {
-            const list = (r.data.requests || []).filter(x => x.status !== 'done');
+            const list = r.data.requests || [];
             setItems(list);
-            onCountChange?.(list.length);
+            onCountChange?.(list.filter(x => x.status !== 'done').length);
           })
           .catch(() => { setItems([]); onCountChange?.(0); })
       )
@@ -112,6 +134,60 @@ export default function PendingOrderRequests({ onCountChange }) {
   }, [onCountChange]);
 
   useEffect(() => { load(); }, [load]);
+
+  const openEdit = (r) => {
+    setEdit({
+      _id:      r._id,
+      number:   r.number,
+      name:     r.name || '',
+      quantity: r.quantity ?? '',
+      sku:      r.sku || '',
+      dimensions: r.dimensions || '',
+      color:    r.color || '',
+      note:     r.note || '',
+      photos:   r.photos?.length ? [...r.photos] : (r.photo ? [r.photo] : []),
+      status:   r.status || 'active',
+      purchasePrice: r.purchasePrice ?? '',
+      deliveryDate:  ymd(r.deliveryDate),
+      purchaseNote:  r.purchaseNote || '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!edit.name.trim()) { alert('Название не может быть пустым'); return; }
+    setSavingEdit(true);
+    try {
+      const body = {
+        name: edit.name, sku: edit.sku, dimensions: edit.dimensions,
+        color: edit.color, note: edit.note, photos: edit.photos,
+        quantity: edit.quantity === '' ? null : Number(edit.quantity),
+        status: edit.status,
+      };
+      // Поля закупщика шлём только если он — иначе сервер вернёт 403
+      if (isPurchaser) {
+        body.purchasePrice = edit.purchasePrice === '' ? null : Number(edit.purchasePrice);
+        body.deliveryDate  = edit.deliveryDate || null;
+        body.purchaseNote  = edit.purchaseNote;
+      }
+      await adminUpdateProductRequest(edit._id, body);
+      setEdit(null);
+      setDetail(null);
+      load();
+    } catch (e) {
+      alert(e?.response?.data?.error || 'Не удалось сохранить заявку');
+    } finally { setSavingEdit(false); }
+  };
+
+  // Перенос между колонками доски
+  const moveTo = async (r, status) => {
+    try {
+      await adminUpdateProductRequest(r._id, { status });
+      setDetail(null);
+      load();
+    } catch (e) {
+      alert(e?.response?.data?.error || 'Не удалось перенести заявку');
+    }
+  };
 
   const removeRequest = async (id) => {
     if (!window.confirm('Заявка будет снята. Удалить её?')) return;
@@ -268,34 +344,55 @@ export default function PendingOrderRequests({ onCountChange }) {
         <span style={{ fontSize: 22, lineHeight: 1 }}>＋</span> Новая заявка на заказ
       </button>
 
-      {/* Список заявок */}
+      {/* Доска: «В обработке» → «Завершён» */}
       {loading ? (
         <div style={{ color: '#aaa', textAlign: 'center', padding: 40 }}>Загрузка…</div>
       ) : items.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 50, background: '#f9f9f9', borderRadius: 16, color: '#888' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📥</div>
-          <div style={{ fontSize: 15 }}>Нет активных заявок на заказ</div>
+          <div style={{ fontSize: 15 }}>Нет заявок на заказ</div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {items.map(r => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>
+        {COLUMNS.map(col => {
+          const colItems = items.filter(r => (r.status === 'done') === (col.key === 'done'));
+          return (
+          <div key={col.key} style={{ background: col.bg, border: `1px solid ${col.line}`, borderRadius: 14, padding: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '0 2px' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.dot }} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#111', textTransform: 'uppercase', letterSpacing: .4 }}>{col.label}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: col.dot, borderRadius: 20, padding: '1px 8px' }}>{colItems.length}</span>
+            </div>
+            {colItems.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '22px 10px', color: '#b0b8c1', fontSize: 12.5 }}>Пусто</div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {colItems.map(r => {
             const t = TYPE_META[r.type] || TYPE_META.real;
             const pics = r.photos?.length ? r.photos : (r.photo ? [r.photo] : []);
+            const isDone = r.status === 'done';
             return (
               <div key={r._id} className="por-card" onClick={() => setDetail(r)}
                 style={{ position: 'relative', display: 'flex', gap: 14, background: '#fff',
-                  border: '1.5px solid #fde68a', borderRadius: 12, padding: 14, cursor: 'pointer',
+                  border: `1.5px solid ${isDone ? '#bbf7d0' : '#fde68a'}`, borderRadius: 12, padding: 14, cursor: 'pointer',
                   transition: 'box-shadow .15s, border-color .15s' }}
-                onMouseOver={e => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; e.currentTarget.style.borderColor = '#f59e0b'; }}
-                onMouseOut={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#fde68a'; }}>
-                {/* Крестик удаления */}
-                <button onClick={(e) => { e.stopPropagation(); removeRequest(r._id); }} disabled={deleting === r._id}
-                  title="Снять заявку"
-                  style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 8,
-                    border: 'none', background: '#fdecea', color: '#c0392b', fontSize: 15, lineHeight: 1,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-                  {deleting === r._id ? '…' : '✕'}
-                </button>
+                onMouseOver={e => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; e.currentTarget.style.borderColor = isDone ? '#22c55e' : '#f59e0b'; }}
+                onMouseOut={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = isDone ? '#bbf7d0' : '#fde68a'; }}>
+                {/* Правка и снятие заявки */}
+                <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6, zIndex: 1 }}>
+                  <button onClick={(e) => { e.stopPropagation(); openEdit(r); }}
+                    title="Редактировать заявку"
+                    style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: '#eef2ff',
+                      color: '#3b5bdb', fontSize: 13, lineHeight: 1, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
+                  <button onClick={(e) => { e.stopPropagation(); removeRequest(r._id); }} disabled={deleting === r._id}
+                    title="Снять заявку"
+                    style={{ width: 28, height: 28, borderRadius: 8,
+                      border: 'none', background: '#fdecea', color: '#c0392b', fontSize: 15, lineHeight: 1,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {deleting === r._id ? '…' : '✕'}
+                  </button>
+                </div>
                 <div className="por-photo"
                   style={{ position: 'relative', width: 92, height: 92, flexShrink: 0, borderRadius: 10, overflow: 'hidden',
                     background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -314,7 +411,9 @@ export default function PendingOrderRequests({ onCountChange }) {
                       padding: '2px 8px', borderRadius: 20 }}>{t.icon} {t.label}</span>
                     <span style={{ fontSize: 11, color: '#b0b8c1' }}>№{r.number}</span>
                     {r.sku && <span style={{ fontSize: 11, color: '#94a3b8' }}>· {r.sku}</span>}
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#b45309' }}>⏳ Ждёт обработки</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: isDone ? '#15803d' : '#b45309' }}>
+                      {isDone ? '✅ Завершён' : '⏳ В обработке'}
+                    </span>
                   </div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: '#111', margin: '6px 0 4px' }}>{r.name}</div>
                   <div style={{ fontSize: 13, color: '#5b6572', lineHeight: 1.5 }}>
@@ -324,15 +423,159 @@ export default function PendingOrderRequests({ onCountChange }) {
                   </div>
                   {r.note && <div style={{ fontSize: 13, color: '#5b6572', marginTop: 4, overflow: 'hidden',
                     textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>💬 {r.note}</div>}
+
+                  {/* Что заполнил закупщик: по какой цене нам продают и когда привезут */}
+                  {isDone && (r.purchasePrice || r.deliveryDate) && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      {r.purchasePrice > 0 && (
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#15803d', background: '#f0fdf4',
+                          border: '1px solid #bbf7d0', borderRadius: 8, padding: '3px 9px' }}>
+                          💵 {money(r.purchasePrice)} сом/шт
+                          {r.quantity ? <span style={{ fontWeight: 600, color: '#4b8b5e' }}> · итого {money(r.purchasePrice * r.quantity)}</span> : null}
+                        </span>
+                      )}
+                      {r.deliveryDate && (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff',
+                          border: '1px solid #bfdbfe', borderRadius: 8, padding: '3px 9px' }}>
+                          🚚 к {fmtDay(r.deliveryDate)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div style={{ fontSize: 11.5, color: '#9aa5b1', marginTop: 8 }}>
                     👤 {r.createdBy?.name || r.createdByName || 'фронтмен'} · 🕐 {fmtDate(r.createdAt)}
+                    {isDone && r.doneByName && <> · ✅ {r.doneByName}</>}
                   </div>
                 </div>
               </div>
             );
           })}
+            </div>
+          </div>
+          );
+        })}
         </div>
       )}
+
+      {/* Правка заявки: содержимое — всем, кто видит доску; цена и срок — только закупщику */}
+      {edit && createPortal(
+        <>
+          <div onClick={() => !savingEdit && setEdit(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1700 }} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1701, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, pointerEvents: 'none' }}>
+            <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 560, maxHeight: '92vh',
+              overflow: 'auto', padding: 22, pointerEvents: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>Заявка №{edit.number}</div>
+                <span style={{ flex: 1 }} />
+                <button onClick={() => setEdit(null)} disabled={savingEdit}
+                  style={{ width: 32, height: 32, borderRadius: 9, border: 'none', background: '#f1f5f9', color: '#64748b', fontSize: 16, cursor: 'pointer' }}>✕</button>
+              </div>
+
+              {/* Фото */}
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#444', marginBottom: 6 }}>Фото</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                {edit.photos.map((p, i) => (
+                  <div key={i} style={{ position: 'relative', width: 74, height: 74, borderRadius: 10, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                    <img src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <button onClick={() => setEdit(s => ({ ...s, photos: s.photos.filter((_, j) => j !== i) }))}
+                      title="Убрать фото"
+                      style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 6, border: 'none',
+                        background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+                  </div>
+                ))}
+                <label style={{ width: 74, height: 74, borderRadius: 10, border: '1.5px dashed #cbd5e1', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', fontSize: 22 }}>
+                  ＋
+                  <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                    onChange={async e => {
+                      const files = [...(e.target.files || [])];
+                      e.target.value = '';
+                      for (const f of files) {
+                        const fd = new FormData();
+                        fd.append('file', f); fd.append('upload_preset', PRESET);
+                        try {
+                          const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`, { method: 'POST', body: fd });
+                          const j = await res.json();
+                          if (j.secure_url) setEdit(s => ({ ...s, photos: [...s.photos, j.secure_url] }));
+                        } catch (_) { alert('Не удалось загрузить фото'); }
+                      }
+                    }} />
+                </label>
+              </div>
+
+              {[
+                ['Название', 'name', 'text'],
+                ['Количество, шт', 'quantity', 'number'],
+                ['Артикул', 'sku', 'text'],
+                ['Размеры', 'dimensions', 'text'],
+                ['Цвет', 'color', 'text'],
+                ['Комментарий', 'note', 'text'],
+              ].map(([label, key, type]) => (
+                <div key={key} style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#444', marginBottom: 4 }}>{label}</div>
+                  <input type={type} value={edit[key]} min={type === 'number' ? 1 : undefined}
+                    onChange={e => setEdit(s => ({ ...s, [key]: e.target.value }))}
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9,
+                      border: '1.5px solid #e5e7eb', fontSize: 14, outline: 'none' }} />
+                </div>
+              ))}
+
+              {/* Колонка доски */}
+              <div style={{ marginTop: 14, marginBottom: 12 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#444', marginBottom: 6 }}>Колонка</div>
+                <div style={{ display: 'inline-flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3 }}>
+                  {COLUMNS.map(c => (
+                    <button key={c.key} onClick={() => setEdit(s => ({ ...s, status: c.key }))}
+                      style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
+                        background: edit.status === c.key ? '#fff' : 'transparent',
+                        color: edit.status === c.key ? '#111' : '#888',
+                        boxShadow: edit.status === c.key ? '0 1px 3px rgba(0,0,0,.08)' : 'none' }}>{c.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Блок закупщика */}
+              <div style={{ background: isPurchaser ? '#f0fdf4' : '#f8f8f8', border: `1px solid ${isPurchaser ? '#bbf7d0' : '#eee'}`,
+                borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: isPurchaser ? '#15803d' : '#999', textTransform: 'uppercase', letterSpacing: .4, marginBottom: 8 }}>
+                  🛒 Закупка
+                </div>
+                {!isPurchaser ? (
+                  <div style={{ fontSize: 12.5, color: '#888' }}>Цену и дату поставки заполняет закупщик.</div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 150px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#444', marginBottom: 4 }}>Цена, по которой нам продают (сом/шт)</div>
+                      <input type="number" min="0" value={edit.purchasePrice}
+                        onChange={e => setEdit(s => ({ ...s, purchasePrice: e.target.value }))}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1.5px solid #bbf7d0', fontSize: 14, outline: 'none' }} />
+                    </div>
+                    <div style={{ flex: '1 1 150px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#444', marginBottom: 4 }}>Дата поставки</div>
+                      <input type="date" value={edit.deliveryDate}
+                        onChange={e => setEdit(s => ({ ...s, deliveryDate: e.target.value }))}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1.5px solid #bbf7d0', fontSize: 14, outline: 'none' }} />
+                    </div>
+                    {edit.purchasePrice > 0 && edit.quantity > 0 && (
+                      <div style={{ flexBasis: '100%', fontSize: 12.5, color: '#15803d', fontWeight: 700 }}>
+                        Итого: {money(Number(edit.purchasePrice) * Number(edit.quantity))} сом за {edit.quantity} шт
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button onClick={() => setEdit(null)} disabled={savingEdit}
+                  style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #e5e7eb', background: '#fff', color: '#555', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Отмена</button>
+                <button onClick={saveEdit} disabled={savingEdit}
+                  style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: '#111', color: '#fff', fontSize: 14, fontWeight: 700, cursor: savingEdit ? 'wait' : 'pointer', opacity: savingEdit ? .6 : 1 }}>
+                  {savingEdit ? 'Сохраняю…' : 'Сохранить'}</button>
+              </div>
+            </div>
+          </div>
+        </>, document.body)}
 
       {/* Модалка создания заявки */}
       {open && createPortal(
@@ -620,6 +863,43 @@ export default function PendingOrderRequests({ onCountChange }) {
                     <div style={{ fontSize: 12.5, color: '#9aa5b1', marginBottom: 18, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
                       👤 Автор: <b style={{ color: '#5b6572' }}>{detail.createdBy?.name || detail.createdByName || 'фронтмен'}</b>
                       <br />🕐 Создана: {fmtDate(detail.createdAt)}
+                    </div>
+
+                    {/* Что заполнил закупщик */}
+                    {detail.status === 'done' && (detail.purchasePrice || detail.deliveryDate) && (
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: '#15803d', textTransform: 'uppercase', letterSpacing: .4, marginBottom: 6 }}>🛒 Закупка</div>
+                        {detail.purchasePrice > 0 && (
+                          <div style={{ fontSize: 14, color: '#111' }}>
+                            Нам продают по <b>{money(detail.purchasePrice)} сом/шт</b>
+                            {detail.quantity ? <> · итого <b>{money(detail.purchasePrice * detail.quantity)} сом</b></> : null}
+                          </div>
+                        )}
+                        {detail.deliveryDate && (
+                          <div style={{ fontSize: 13.5, color: '#1d4ed8', marginTop: 4 }}>🚚 Поставка к {fmtDay(detail.deliveryDate)}</div>
+                        )}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                      <button onClick={() => { openEdit(detail); }}
+                        style={{ flex: 1, minWidth: 130, padding: '13px', fontSize: 14.5, fontWeight: 700, color: '#3b5bdb',
+                          background: '#eef2ff', border: 'none', borderRadius: 12, cursor: 'pointer' }}>
+                        ✏️ Редактировать
+                      </button>
+                      {detail.status === 'done' ? (
+                        <button onClick={() => moveTo(detail, 'active')}
+                          style={{ flex: 1, minWidth: 130, padding: '13px', fontSize: 14.5, fontWeight: 700, color: '#b45309',
+                            background: '#fef3c7', border: 'none', borderRadius: 12, cursor: 'pointer' }}>
+                          ↩ В обработку
+                        </button>
+                      ) : (
+                        <button onClick={() => moveTo(detail, 'done')}
+                          style={{ flex: 1, minWidth: 130, padding: '13px', fontSize: 14.5, fontWeight: 700, color: '#fff',
+                            background: '#22c55e', border: 'none', borderRadius: 12, cursor: 'pointer' }}>
+                          ✅ Завершить
+                        </button>
+                      )}
                     </div>
 
                     <button onClick={() => removeRequest(detail._id)} disabled={deleting === detail._id}

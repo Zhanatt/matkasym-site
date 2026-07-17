@@ -4003,9 +4003,12 @@ router.delete('/tech-requests/:id', admin, async (req, res) => {
 
 // Доступ к инбоксу заказов: владелец или пользователь с флагом canOrderProducts (Джипар)
 const canOrders = (req, res, next) => {
-  if (req.user?.role === 'owner' || req.user?.canOrderProducts) return next();
+  if (req.user?.role === 'owner' || req.user?.role === 'purchaser' || req.user?.canOrderProducts) return next();
   return res.status(403).json({ message: 'Нет доступа к заказам товаров' });
 };
+
+// Цену закупки и дату поставки ставит закупщик (и владелец)
+const isPurchaser = user => user?.role === 'owner' || user?.role === 'purchaser' || user?.canOrderProducts;
 
 const PR_TYPE_LABEL = { new: 'Новый товар', catalog: 'Заказ с каталога', test: 'Тестовый продукт', real: 'Заказ товара' };
 
@@ -4099,13 +4102,42 @@ router.get('/product-requests', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PATCH /api/admin/product-requests/:id — отметить выполненной / вернуть в активные
+// PATCH /api/admin/product-requests/:id — правка заявки, перенос между колонками доски,
+// цена закупки и дата поставки.
+// Колонки: active = «В обработке», done = «Завершён».
 router.patch('/product-requests/:id', canOrders, async (req, res) => {
   try {
     const request = await ProductRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: 'Заявка не найдена' });
 
-    const { status } = req.body;
+    const { status, purchasePrice, deliveryDate, purchaseNote } = req.body;
+
+    // Содержимое заявки: название, количество, фото, характеристики
+    for (const f of ['name', 'sku', 'dimensions', 'color', 'note']) {
+      if (req.body[f] !== undefined) request[f] = String(req.body[f]).trim();
+    }
+    if (req.body.quantity !== undefined) {
+      const q = Number(req.body.quantity);
+      request.quantity = isNaN(q) || q <= 0 ? null : Math.floor(q);
+    }
+    if (Array.isArray(req.body.photos)) {
+      request.photos = req.body.photos.filter(Boolean);
+      request.photo  = request.photos[0] || '';
+    }
+
+    // Цену и срок ставит только закупщик
+    if (purchasePrice !== undefined || deliveryDate !== undefined || purchaseNote !== undefined) {
+      if (!isPurchaser(req.user)) {
+        return res.status(403).json({ error: 'Цену закупки и дату поставки ставит закупщик' });
+      }
+      if (purchasePrice !== undefined) {
+        const p = Number(purchasePrice);
+        request.purchasePrice = isNaN(p) || p <= 0 ? null : p;
+      }
+      if (deliveryDate !== undefined) request.deliveryDate = deliveryDate ? new Date(deliveryDate) : null;
+      if (purchaseNote !== undefined) request.purchaseNote = String(purchaseNote).trim();
+    }
+
     if (status === 'done') {
       request.status     = 'done';
       request.doneBy     = req.user._id;

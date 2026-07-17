@@ -46,9 +46,10 @@ exports.viewer = (req, res, next) => {
   next();
 };
 
-// owner + editor + viewer + warehouse (может видеть админку и поставщиков)
+// Кто вообще пускается в админку (owner/editor/viewer/navigator/warehouse/purchaser).
+// purchaser (Закупщик) обрабатывает заявки на заказ товара — без этого он не войдёт.
 exports.warehouse = (req, res, next) => {
-  if (!['owner', 'editor', 'viewer', 'navigator', 'warehouse'].includes(req.user?.role)) return res.status(403).json({ message: 'Доступ запрещён' });
+  if (!['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser'].includes(req.user?.role)) return res.status(403).json({ message: 'Доступ запрещён' });
   next();
 };
 

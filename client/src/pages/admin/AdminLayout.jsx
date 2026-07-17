@@ -8,7 +8,7 @@ import './Admin.css';
 const NAV_ALL = [
   { to: '/admin',          label: 'Дашборд',             icon: '◻', end: true, roles: ['owner','editor','viewer','navigator','warehouse'] },
   { to: '/admin/sets',     label: 'Каталог по сетам',    icon: '🗂', roles: ['owner','editor','viewer','navigator'] },
-  { to: '/admin/pending-receive', label: 'Поступления', icon: '📦', roles: ['owner','editor','warehouse','viewer','navigator'], badge: 'pending_receive' },
+  { to: '/admin/pending-receive', label: 'Поступления', icon: '📦', roles: ['owner','editor','warehouse','viewer','navigator','purchaser'], badge: 'pending_receive' },
   { to: '/admin/buffer-stock', label: 'Буферный запас', icon: '📉', roles: ['owner','editor'] },
   { to: '/admin/frontmen', label: 'Фронтмены',           icon: '👤', roles: ['owner','editor','viewer','navigator'] },
   { to: '/admin/video-schedule', label: 'Планирование съёмок', icon: '🎬', roles: ['owner','editor','viewer','navigator'] },

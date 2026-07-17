@@ -12,7 +12,8 @@ const userSchema = new mongoose.Schema({
     apt:     { type: String, default: '' },
   },
   favorites:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-  role:       { type: String, enum: ['user','owner','editor','viewer','navigator','warehouse','banned'], default: 'user' },
+  // purchaser — Закупщик: обрабатывает заявки на заказ товара, ставит цену закупки и дату поставки
+  role:       { type: String, enum: ['user','owner','editor','viewer','navigator','warehouse','purchaser','banned'], default: 'user' },
   isPending:  { type: Boolean, default: false },
   resetPasswordToken:   { type: String },
   resetPasswordExpires: { type: Date },

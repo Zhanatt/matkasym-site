@@ -26,7 +26,13 @@ const productRequestSchema = new mongoose.Schema({
   color:      { type: String, default: '', trim: true },
   note:       { type: String, default: '', trim: true },
 
+  // Доска: active = «В обработке», done = «Завершён»
   status: { type: String, enum: ['active', 'done'], default: 'active' },
+
+  // Заполняет закупщик (роль purchaser) при переводе в «Завершён»
+  purchasePrice: { type: Number, default: null },   // цена, по которой нам продают (за шт)
+  deliveryDate:  { type: Date,   default: null },   // когда товар будет
+  purchaseNote:  { type: String, default: '', trim: true },
 
   doneBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   doneByName: { type: String, default: '' },

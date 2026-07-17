@@ -47,6 +47,7 @@ const AVATAR_COLORS = {
   viewer:    '#1a6fb5',
   navigator: '#0d9488',
   warehouse: '#b45309',
+  purchaser: '#15803d',
   banned:    '#c0392b',
   user:      '#888',
   pending:   '#c47a00',
@@ -58,6 +59,7 @@ const ROLE_LABELS = {
   viewer:    '👁️ Просмотр',
   navigator: '🧭 Навигатор',
   warehouse: '📦 Склад',
+  purchaser: '🛒 Закупщик',
   banned:    '🚫 Заблокирован',
   user:      '👤 Пользователь',
 };
@@ -306,6 +308,7 @@ export default function AdminUsers() {
               <option value="viewer">👁️ Просмотр</option>
               <option value="navigator">🧭 Навигатор</option>
               <option value="warehouse">📦 Склад</option>
+              <option value="purchaser">🛒 Закупщик</option>
               <option value="banned">🚫 Запретить</option>
             </select>
           ) : (
