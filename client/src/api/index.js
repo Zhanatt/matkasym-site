@@ -145,6 +145,15 @@ export const adminUploadImage = (formData) =>
 export const adminGetTelegramChannel = ()         => api.get('/admin/telegram/channel');
 export const adminPublishTelegram    = (data)      => api.post('/admin/telegram/publish', data);
 
+// Telegram publishing queue (отложенный автопостинг)
+export const adminGetTelegramQueue    = ()      => api.get('/admin/telegram-queue');
+export const adminSaveTelegramQueueConfig = (data) => api.post('/admin/telegram-queue/config', data);
+export const adminAddTelegramQueue    = (productIds) => api.post('/admin/telegram-queue/add', { productIds });
+export const adminAddTelegramQueueSet = (data)  => api.post('/admin/telegram-queue/add-set', data);
+export const adminDeleteTelegramQueue = (id)    => api.delete(`/admin/telegram-queue/${id}`);
+export const adminPublishTelegramQueueNow = (id) => api.post(`/admin/telegram-queue/${id}/publish-now`);
+export const adminClearTelegramQueue  = ()      => api.post('/admin/telegram-queue/clear');
+
 // News feed
 export const adminGetNews          = (params)     => api.get('/admin/news', { params });
 export const adminGetNewsUnread    = ()            => api.get('/admin/news/unread-count');

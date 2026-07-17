@@ -23,6 +23,7 @@ import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import AdminNews         from './pages/admin/AdminNews';
 import AdminNewsCreate   from './pages/admin/AdminNewsCreate';
 import AdminTelegramPost from './pages/admin/AdminTelegramPost';
+import AdminTelegramQueue from './pages/admin/AdminTelegramQueue';
 import AdminProductReview from './pages/admin/AdminProductReview';
 import AdminReviewResults from './pages/admin/AdminReviewResults';
 import AdminReviewVotes   from './pages/admin/AdminReviewVotes';
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="news" element={<AdminNews />} />
         <Route path="news/create" element={<AdminNewsCreate />} />
         <Route path="telegram-post" element={<AdminTelegramPost />} />
+        <Route path="telegram-queue" element={<AdminTelegramQueue />} />
         <Route path="review" element={<AdminProductReview />} />
         <Route path="review/results" element={<AdminReviewResults />} />
         <Route path="review/votes" element={<AdminReviewVotes />} />

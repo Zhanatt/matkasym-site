@@ -28,6 +28,17 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', time: new Date() }
 const SERVER_START = Date.now().toString();
 app.get('/api/version', (req, res) => res.json({ version: SERVER_START }));
 
+// Telegram-очередь: тик планировщика по внешнему пингу (cron-job.org / UptimeRobot).
+// Нужен, потому что на бесплатном Render сервис засыпает и внутренний таймер не идёт.
+// Защищён ключом: ?key=CRON_KEY (или CATALOG_API_KEY как запасной).
+const { tickQueue } = require('./lib/telegramQueue');
+app.get('/api/telegram-queue/tick', async (req, res) => {
+  const expected = process.env.CRON_KEY || process.env.CATALOG_API_KEY;
+  if (expected && req.query.key !== expected) return res.status(403).json({ message: 'forbidden' });
+  const result = await tickQueue();
+  res.json({ ok: true, result });
+});
+
 // Telegram bot webhook
 app.post('/api/telegram-webhook', async (req, res) => {
   try {
@@ -110,6 +121,12 @@ mongoose
         console.error('⚠️ Migration ProductReview index failed:', e.message);
       }
     }
+
+    // Внутренний тик очереди Telegram-публикаций каждую минуту (пока сервис не спит).
+    // Дублируется внешним cron-пингом /api/telegram-queue/tick для надёжности на Render free.
+    setInterval(() => {
+      tickQueue().catch(e => console.error('[TelegramQueue] interval tick failed:', e.message));
+    }, 60 * 1000);
 
     app.listen(process.env.PORT, () =>
       console.log(`🚀 Сервер запущен на http://localhost:${process.env.PORT}`)
