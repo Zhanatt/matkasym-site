@@ -46,10 +46,15 @@ exports.viewer = (req, res, next) => {
   next();
 };
 
-// Кто вообще пускается в админку (owner/editor/viewer/navigator/warehouse/purchaser).
-// purchaser (Закупщик) обрабатывает заявки на заказ товара — без этого он не войдёт.
+// Роли, которым открыт вход в Продакт матрицу.
+// Список ДОЛЖЕН совпадать с client/src/constants/roles.js → ADMIN_ROLES:
+// иначе роль заходит на сервер, но форма входа её не пускает (так было со «Складом»,
+// потом с «Закупщиком»). Добавляешь роль — правь оба места.
+const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser'];
+exports.ADMIN_ROLES = ADMIN_ROLES;
+
 exports.warehouse = (req, res, next) => {
-  if (!['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser'].includes(req.user?.role)) return res.status(403).json({ message: 'Доступ запрещён' });
+  if (!ADMIN_ROLES.includes(req.user?.role)) return res.status(403).json({ message: 'Доступ запрещён' });
   next();
 };
 

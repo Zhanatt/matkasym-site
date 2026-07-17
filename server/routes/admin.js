@@ -28,7 +28,7 @@ const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
   STOCK_SUM_BASES, basesOfCountry, PRICE_TYPES, isPriceType, currencyOf,
 } = require('../lib/stockBases');
-const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock } = require('../middleware/auth');
+const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock, ADMIN_ROLES } = require('../middleware/auth');
 
 // Остаток пересёк буферный запас сверху вниз → нужен алерт
 const crossedBuffer = (oldStock, newStock, bufferStock) =>
@@ -227,7 +227,8 @@ router.use(protect, warehouse);
 router.get('/stats', async (req, res) => {
   try {
     const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
-    const adminRoles = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'banned'];
+    // banned — бывшие сотрудники админки, их тоже считаем в общем списке пользователей
+    const adminRoles = [...ADMIN_ROLES, 'banned'];
 
     const [products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen] = await Promise.all([
       Product.countDocuments(),
@@ -1400,6 +1401,125 @@ router.post('/telegram/publish', editor, async (req, res) => {
     const result = await publishToChannel({ photoUrl: imageUrl || null, caption: String(caption).trim() });
     if (!result.ok) return res.status(502).json({ message: `Telegram: ${result.error}` });
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ===== Очередь публикаций в Telegram-канал (отложенный автопостинг) =====
+// Постит по одному посту с интервалом и окном по времени (см. lib/telegramQueue.js).
+const { TelegramQueue, TelegramQueueConfig } = require('../models/TelegramQueue');
+const { getConfig: getQueueConfig, enqueueProducts, tickQueue } = require('../lib/telegramQueue');
+
+// GET /api/admin/telegram-queue — настройки + списки постов
+router.get('/telegram-queue', editor, async (req, res) => {
+  try {
+    const config = await getQueueConfig();
+    const [pending, recent] = await Promise.all([
+      TelegramQueue.find({ status: { $in: ['pending', 'publishing'] } }).sort({ order: 1 }).lean(),
+      TelegramQueue.find({ status: { $in: ['published', 'failed'] } }).sort({ updatedAt: -1 }).limit(50).lean(),
+    ]);
+    res.json({ config, pending, recent });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /api/admin/telegram-queue/config — обновить настройки очереди
+// body: { active, intervalMinutes, windowStartHour, windowEndHour }
+router.post('/telegram-queue/config', editor, async (req, res) => {
+  try {
+    const cfg = await getQueueConfig();
+    const { active, intervalMinutes, windowStartHour, windowEndHour } = req.body || {};
+
+    if (typeof intervalMinutes === 'number' && intervalMinutes >= 1) cfg.intervalMinutes = Math.round(intervalMinutes);
+    if (typeof windowStartHour === 'number' && windowStartHour >= 0 && windowStartHour <= 23) cfg.windowStartHour = windowStartHour;
+    if (typeof windowEndHour === 'number' && windowEndHour >= 0 && windowEndHour <= 24) cfg.windowEndHour = windowEndHour;
+
+    if (typeof active === 'boolean') {
+      // При запуске очереди первый пост должен выйти на ближайшем тике.
+      if (active && !cfg.active) cfg.nextAt = new Date();
+      cfg.active = active;
+    }
+    await cfg.save();
+    res.json({ config: cfg });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /api/admin/telegram-queue/add — добавить товары в очередь
+// body: { productIds: [] }
+router.post('/telegram-queue/add', editor, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.productIds) ? req.body.productIds.filter(isValidId) : [];
+    if (!ids.length) return res.status(400).json({ message: 'Не выбраны товары' });
+    const products = await Product.find({ _id: { $in: ids } });
+    const added = await enqueueProducts(products, req.user._id);
+    res.json({ added });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /api/admin/telegram-queue/add-set — добавить все товары сета в очередь
+// body: { set: slug, brand? }
+router.post('/telegram-queue/add-set', editor, async (req, res) => {
+  try {
+    const { set, brand } = req.body || {};
+    if (!set) return res.status(400).json({ message: 'Не указан сет' });
+    const filter = { set, productStatus: { $nin: ['kit_part'] } };
+    if (brand) filter.brand = brand;
+    const products = await Product.find(filter).sort({ name: 1 });
+    if (!products.length) return res.status(400).json({ message: 'В сете нет товаров' });
+    const added = await enqueueProducts(products, req.user._id);
+    res.json({ added });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// DELETE /api/admin/telegram-queue/:id — убрать ожидающий пост из очереди
+router.delete('/telegram-queue/:id', editor, async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) return res.status(400).json({ message: 'Неверный идентификатор' });
+    const item = await TelegramQueue.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Пост не найден' });
+    if (item.status === 'publishing') return res.status(409).json({ message: 'Пост сейчас публикуется' });
+    await item.deleteOne();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /api/admin/telegram-queue/:id/publish-now — опубликовать пост немедленно
+router.post('/telegram-queue/:id/publish-now', editor, async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) return res.status(400).json({ message: 'Неверный идентификатор' });
+    const item = await TelegramQueue.findOneAndUpdate(
+      { _id: req.params.id, status: { $in: ['pending', 'failed'] } },
+      { $set: { status: 'publishing' } },
+      { new: true },
+    );
+    if (!item) return res.status(404).json({ message: 'Пост недоступен для публикации' });
+    const result = await publishToChannel({ photoUrl: item.photoUrl || null, caption: item.caption });
+    item.status = result.ok ? 'published' : 'failed';
+    item.publishedAt = result.ok ? new Date() : item.publishedAt;
+    item.error = result.ok ? '' : (result.error || 'unknown error');
+    await item.save();
+    if (!result.ok) return res.status(502).json({ message: `Telegram: ${item.error}` });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /api/admin/telegram-queue/clear — очистить все ожидающие посты
+router.post('/telegram-queue/clear', editor, async (req, res) => {
+  try {
+    const r = await TelegramQueue.deleteMany({ status: 'pending' });
+    res.json({ removed: r.deletedCount });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

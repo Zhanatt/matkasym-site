@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { login as apiLogin, register as apiRegister, forgotPassword as apiForgot } from '../../api/index';
+import { canEnterAdmin } from '../../constants/roles';
 import './AdminLogin.css';
 
 export default function AdminLogin() {
@@ -25,7 +26,7 @@ export default function AdminLogin() {
       const role = res.data.user.role;
       if (role === 'banned')
         return setError('Ваш доступ к Продакт матрице запрещён.');
-      if (!['owner','editor','viewer','navigator','warehouse'].includes(role))
+      if (!canEnterAdmin(role))
         return setError('У вас нет доступа к Продакт матрице.');
       saveLogin(res.data.token, res.data.user);
       navigate('/admin');
