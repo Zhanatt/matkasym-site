@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock } from '../../api';
+import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock, adminGetProduct } from '../../api';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -25,6 +25,7 @@ const PRODUCT_STATUS_META = {
   on_pause:       { label: 'На паузе',            color: '#6b7280', bg: '#f3f4f6', icon: '⏸' },
   discontinued:   { label: 'Снят',                color: '#888',    bg: '#f5f5f5', icon: '🚫' },
   liquidation:    { label: 'Ликвидация',          color: '#92400e', bg: '#fef3c7', icon: '🏷️' },
+  kit_part:       { label: 'Деталь комплекта',    color: '#16a34a', bg: '#f0fdf4', icon: '📦' },
 };
 
 function useIsMobile() {
@@ -37,7 +38,9 @@ function useIsMobile() {
   return mob;
 }
 
-export default function AdminProductModal({ product, onClose, onDeleted, onSaved, extraActions }) {
+// zBase — этаж модалки. Деталь комплекта открывается такой же карточкой поверх родительской,
+// поэтому слои не зашиты, а сдвигаются: вложенная встаёт выше всех окон родителя.
+export default function AdminProductModal({ product, onClose, onDeleted, onSaved, extraActions, zBase = 1600 }) {
   const { user }    = useAuth();
   const navigate    = useNavigate();
   const isMobile    = useIsMobile();
@@ -58,7 +61,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const [addStockComment, setAddStockComment] = useState('');
   const [addingStock, setAddingStock] = useState(false);
   const [localProduct, setLocalProduct] = useState(product);
-  const [partPreview, setPartPreview] = useState(null); // for kit part image preview
+  const [partPreview, setPartPreview] = useState(null); // деталь комплекта, открытая своей карточкой
+  const [loadingPart, setLoadingPart] = useState(null); // id детали, которая грузится
   const canSetBuffer = user?.role === 'owner' || user?.canSetBufferStock;
   const [bufferEdit, setBufferEdit] = useState(false);
   const [bufferVal, setBufferVal] = useState(product.bufferStock || 0);
@@ -76,6 +80,34 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     } finally {
       setSavingBuffer(false);
     }
+  };
+
+  // В kitParts деталь лежит populate-срезом (имя, цена, остаток, фото) — для карточки
+  // нужен весь товар: характеристики, доп. фото, цены по базам.
+  const openPart = async (part) => {
+    setLoadingPart(part._id);
+    try {
+      const res = await adminGetProduct(part._id);
+      setPartPreview(res.data);
+    } catch (e) {
+      alert(e.response?.data?.error || 'Не удалось открыть карточку детали');
+    } finally {
+      setLoadingPart(null);
+    }
+  };
+
+  // Деталь отредактировали — обновляем её и в составе комплекта, чтобы список
+  // не показывал старое фото и остаток до перезагрузки страницы.
+  const handlePartSaved = (updated) => {
+    setPartPreview(updated);
+    const next = {
+      ...localProduct,
+      kitParts: (localProduct.kitParts || []).map(part =>
+        part.product?._id === updated._id ? { ...part, product: { ...part.product, ...updated } } : part
+      ),
+    };
+    setLocalProduct(next);
+    onSaved && onSaved(next);
   };
 
   const needsReceive = localProduct.inTransit || localProduct.pendingReceive;
@@ -238,8 +270,10 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const statusMeta = PRODUCT_STATUS_META[product.productStatus];
   const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
 
-  // Keyboard navigation + Escape
+  // Keyboard navigation + Escape.
+  // Пока сверху открыта деталь, клавиши её — иначе Escape закрыл бы обе карточки разом.
   useEffect(() => {
+    if (partPreview) return;
     const h = e => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowLeft'  && images.length > 1) setImgIdx(i => (i - 1 + images.length) % images.length);
@@ -247,7 +281,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
-  }, [images.length, onClose]);
+  }, [images.length, onClose, partPreview]);
 
   // Lock body scroll
   useEffect(() => {
@@ -256,10 +290,14 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // Browser back → close modal
+  // Browser back → close modal.
+  // Своё состояние в историю кладёт и вложенная карточка, поэтому «назад» закрывает
+  // сначала деталь, а комплект под ней остаётся — как и при Escape.
+  const partOpenRef = useRef(null);
+  partOpenRef.current = partPreview;
   useEffect(() => {
     window.history.pushState({ adminModal: true }, '');
-    const handlePop = () => onClose();
+    const handlePop = () => { if (!partOpenRef.current) onClose(); };
     window.addEventListener('popstate', handlePop);
     return () => window.removeEventListener('popstate', handlePop);
   }, [onClose]);
@@ -267,10 +305,10 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   return createPortal(
     <>
       <div onClick={onClose}
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.6)', zIndex: 1600 }} />
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.6)', zIndex: zBase }} />
 
       <div style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1601,
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: zBase + 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: isMobile ? 0 : 24, pointerEvents: 'none',
       }}>
@@ -789,8 +827,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
               )}
 
               {/* Kit parts — состав комплекта */}
-              {product.isKit && product.kitParts?.length > 0 && (() => {
-                const missingParts = product.kitParts.filter(part => {
+              {localProduct.isKit && localProduct.kitParts?.length > 0 && (() => {
+                const missingParts = localProduct.kitParts.filter(part => {
                   const p = part.product;
                   return p && (p.stock || 0) < (part.qty || 1);
                 });
@@ -802,7 +840,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   borderRadius: 10, padding: '12px 14px'
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: hasMissing ? '#dc2626' : '#16a34a', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
-                    📦 Состав комплекта ({product.kitParts.length} деталей)
+                    📦 Состав комплекта ({localProduct.kitParts.length} деталей)
                   </div>
                   {hasMissing && (
                     <div style={{ background: '#fee2e2', borderRadius: 6, padding: '8px 10px', marginBottom: 10, fontSize: 11, color: '#dc2626', fontWeight: 600 }}>
@@ -810,14 +848,14 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     </div>
                   )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {product.kitParts.map((part, i) => {
+                    {localProduct.kitParts.map((part, i) => {
                       const p = part.product;
                       if (!p) return null;
                       const needed = part.qty || 1;
                       const available = p.stock || 0;
                       const isMissing = available < needed;
                       return (
-                        <div key={i} onClick={() => setPartPreview(p)} style={{
+                        <div key={i} onClick={() => openPart(p)} style={{
                           display: 'flex', alignItems: 'center', gap: 12,
                           background: isMissing ? '#fee2e2' : '#fff',
                           borderRadius: 10, padding: '12px 14px',
@@ -835,7 +873,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                               {p.fullName || p.name}
                             </div>
                             <div style={{ fontSize: 12, color: isMissing ? '#dc2626' : '#16a34a', fontWeight: 600, marginTop: 2 }}>
-                              {available} шт{isMissing && ` (нужно ${needed})`}
+                              {loadingPart === p._id ? 'Открываем…' : <>{available} шт{isMissing && ` (нужно ${needed})`}</>}
                             </div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -852,11 +890,11 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       );
                     })}
                   </div>
-                  {product.kitType !== 'independent' && (
+                  {localProduct.kitType !== 'independent' && (
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 12, color: hasMissing ? '#dc2626' : '#16a34a', fontWeight: 600 }}>Итого</span>
                       <span style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
-                        {product.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} сом
+                        {localProduct.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} сом
                       </span>
                     </div>
                   )}
@@ -873,9 +911,9 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       {/* Delete confirmation dialog */}
       {confirming && (
         <>
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: 1700 }} />
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: zBase + 100 }} />
           <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1701,
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: zBase + 101,
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
           }}>
             <div style={{ background: '#fff', borderRadius: 16, padding: '28px 28px 24px', maxWidth: 380, width: '100%', boxShadow: '0 8px 40px rgba(0,0,0,.18)' }}>
@@ -905,7 +943,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       {showReceiveModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: zBase + 400,
         }} onClick={() => setShowReceiveModal(false)}>
           <div style={{
             background: '#fff', borderRadius: 16, padding: 24, width: '90%', maxWidth: 400,
@@ -1043,7 +1081,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       {showAddStockModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: zBase + 400,
         }} onClick={() => setShowAddStockModal(false)}>
           <div style={{
             background: '#fff', borderRadius: 16, padding: 24, width: '90%', maxWidth: 360,
@@ -1118,102 +1156,15 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
         </div>
       )}
 
-      {/* Модалка просмотра части комплекта */}
+      {/* Деталь комплекта — такая же карточка товара: галерея, характеристики, «Редактировать» */}
       {partPreview && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100,
-          padding: 16,
-        }} onClick={() => setPartPreview(null)}>
-          <div style={{
-            background: '#fff', borderRadius: 16, padding: 20, width: '95%', maxWidth: 500,
-            maxHeight: '90vh', overflow: 'auto',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
-          }} onClick={e => e.stopPropagation()}>
-            {/* Закрыть */}
-            <button onClick={() => setPartPreview(null)} style={{
-              position: 'absolute', top: 12, right: 12, width: 36, height: 36,
-              borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.6)',
-              color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-            }}>✕</button>
-
-            {/* Картинка */}
-            {partPreview.images?.[0] ? (
-              <img
-                src={partPreview.images[0]}
-                alt={partPreview.name}
-                style={{
-                  width: '100%',
-                  maxHeight: 350,
-                  objectFit: 'contain',
-                  borderRadius: 12,
-                  background: '#f8f8f8',
-                  marginBottom: 16,
-                }}
-              />
-            ) : (
-              <div style={{
-                width: '100%', height: 200, background: '#f0f0f0', borderRadius: 12,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#999', fontSize: 14, marginBottom: 16,
-              }}>Нет фото</div>
-            )}
-
-            {/* Название */}
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: '#111' }}>
-              {partPreview.fullName || partPreview.name}
-            </h3>
-
-            {/* Артикул */}
-            {partPreview.sku && (
-              <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
-                SKU: {partPreview.sku}
-              </div>
-            )}
-
-            {/* Цена и остаток */}
-            <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-              <div style={{
-                flex: 1, padding: 12, background: '#f0f8ff', borderRadius: 10, textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Цена</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#111' }}>
-                  {partPreview.price?.toLocaleString('ru')} <span style={{ fontSize: 14, fontWeight: 500 }}>сом</span>
-                </div>
-              </div>
-              <div style={{
-                flex: 1, padding: 12,
-                background: partPreview.stock > 0 ? '#f0fff4' : '#fff0f0',
-                borderRadius: 10, textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Остаток</div>
-                <div style={{
-                  fontSize: 20, fontWeight: 800,
-                  color: partPreview.stock > 0 ? '#16a34a' : '#dc2626'
-                }}>
-                  {partPreview.stock || 0} <span style={{ fontSize: 14, fontWeight: 500 }}>шт</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Размеры */}
-            {partPreview.dimensions && (
-              <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
-                📐 Размеры: {partPreview.dimensions}
-              </div>
-            )}
-
-            {/* Кнопка закрыть */}
-            <button onClick={() => setPartPreview(null)} style={{
-              width: '100%', padding: 14, borderRadius: 10, border: 'none',
-              background: '#111', color: '#fff', fontSize: 15, fontWeight: 700,
-              cursor: 'pointer', marginTop: 8,
-            }}>
-              Закрыть
-            </button>
-          </div>
-        </div>
+        <AdminProductModal
+          product={partPreview}
+          zBase={zBase + 500}
+          onClose={() => setPartPreview(null)}
+          onSaved={handlePartSaved}
+          onDeleted={() => setPartPreview(null)}
+        />
       )}
     </>,
     document.body
