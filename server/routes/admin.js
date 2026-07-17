@@ -24,7 +24,10 @@ const SalesDoc     = require('../models/SalesDoc');
 const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto, publishToChannel } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
-const { BASES, BASE_KEYS, isBaseKey, parseStockRows, STOCK_SUM_BASES, basesOfCountry } = require('../lib/stockBases');
+const {
+  BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
+  STOCK_SUM_BASES, basesOfCountry, PRICE_TYPES, isPriceType, currencyOf,
+} = require('../lib/stockBases');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock } = require('../middleware/auth');
 
 // Остаток пересёк буферный запас сверху вниз → нужен алерт
@@ -1488,7 +1491,7 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
         const kommRaw = Number(row[colKomm]);
         const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
         const buffer  = hasBufferCols ? bufferFromMins(minOsn === null ? 0 : row[minOsn], minKomm === null ? 0 : row[minKomm]) : 0;
-        stockMap.set(normName(name), { stock: osnNum + kommNum, buffer });
+        stockMap.set(normName(name), { stock: osnNum + kommNum, buffer, name, raw: name });
       }
     } else {
       ({ stockMap, warehouses } = parseStockRows(rows, baseKey, normName));
@@ -1585,14 +1588,96 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       excelBase64 = xlsx.write(wb2, { type: 'base64', bookType: 'xlsx' });
     }
 
-    console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} zeroed=${zeroed} buffers=${buffersUpdated} warehouses=${warehouses.join(' + ') || 'legacy'}`);
+    // Товары, которые есть в выгрузке с остатком, но которых нет в каталоге.
+    // Не создаём молча: в выгрузке кроме товаров лежат строки-группы и сырьё,
+    // поэтому список идёт на подтверждение (POST /admin/confirm-stock-items).
+    const known = new Set();
+    for (const p of products) {
+      known.add(normName(p.fullName || p.name || ''));
+      if (p.name) known.add(normName(p.name));
+    }
+    // В Q-top разделы выгрузки названы ровно как сеты сайта («KOSH KELINIZ», «TAZA KIYM») —
+    // сверяем с ними, иначе такая строка выглядит как обычный товар.
+    const setSlugs = await Product.distinct('set');
+    const knownGroups = new Set(setSlugs.filter(Boolean).map(s => normName(String(s).replace(/-/g, ' '))));
+
+    const newItems = [];
+    for (const [key, row] of stockMap) {
+      if (known.has(key) || !row.stock) continue;
+      const rawName = row.name || key;
+      newItems.push({
+        name:    rawName,
+        stock:   row.stock,
+        buffer:  row.buffer || 0,
+        isGroup: looksLikeGroup(row.raw || rawName, baseKey, knownGroups),
+      });
+    }
+    newItems.sort((a, b) => b.stock - a.stock);
+
+    console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} zeroed=${zeroed} buffers=${buffersUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
     res.json({
       success: true, base: baseKey, baseLabel: BASES[baseKey].label, warehouses,
       matched, zeroed, total: matched + zeroed, buffersUpdated, excelBase64,
+      newItems,
     });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }
+});
+
+// POST /api/admin/confirm-stock-items — создать товары, найденные в выгрузке остатков
+// body: { base, items: [{ name, stock, buffer, brand?, set? }] }
+// Вызывается после upload-stock, когда пользователь отметил, что из newItems реально товар.
+router.post('/confirm-stock-items', editor, async (req, res) => {
+  const { base, items } = req.body;
+  if (!isBaseKey(base)) return res.status(400).json({ error: `Неизвестная база 1С: ${base}` });
+  if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Нет товаров для добавления' });
+
+  try {
+    // Не создаём дубли: товар мог появиться между загрузкой и подтверждением
+    const existing = await Product.find({}, 'fullName name').lean();
+    const known = new Set(existing.flatMap(p => [normName(p.fullName || ''), normName(p.name || '')]));
+
+    const isKG   = BASES[base].country === 'KG';
+    const created = [], logDocs = [], skipped = [];
+    for (const item of items) {
+      // Единицу измерения режем только там, где она есть (Matkasym): иначе
+      // «Локтевой дозатор 1,4» превратится в «Локтевой дозатор 1».
+      const rawName = String(item.name || '').trim();
+      const name    = BASES[base].trimUnit ? stripUnit(rawName) : rawName;
+      if (!name) continue;
+      if (known.has(normName(name))) { skipped.push(name); continue; }
+
+      const stock = Math.max(0, Math.floor(Number(item.stock) || 0));
+      try {
+        const p = await Product.create({
+          name, fullName: name,
+          brand:    String(item.brand || 'matkasym-home'),
+          set:      String(item.set || ''),
+          price: 0, category: 'other',
+          // Остаток кладём в ту базу, откуда пришёл. stock — только Кыргызстан.
+          stock:        isKG ? stock : 0,
+          inStock:      isKG ? stock > 0 : false,
+          stockStatus:  isKG && stock > 0 ? 'in_stock' : 'out_of_stock',
+          stockByBase:  { [base]: stock },
+          inBase:       { [base]: true },
+          bufferStock:  Math.max(0, Math.floor(Number(item.buffer) || 0)),
+          productStatus: 'for_sale',
+        });
+        created.push({ id: p._id, name: p.fullName });
+        logDocs.push({
+          action: 'added', productId: p._id, productName: p.fullName,
+          sku: '', brand: p.brand, source: 'sync_1c',
+          changedBy: req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
+        });
+        known.add(normName(name));
+      } catch (e) { skipped.push(`${name} (${e.message})`); }
+    }
+    if (logDocs.length) await ProductLog.insertMany(logDocs, { ordered: false });
+
+    console.log(`[confirm-stock-items] base=${base} added=${created.length} skipped=${skipped.length}`);
+    res.json({ added: created.length, skipped: skipped.length, created });
+  } catch (e) { res.status(500).json({ error: 'Ошибка создания товаров: ' + e.message }); }
 });
 
 // ── PREVIEW NOMENCLATURE FROM 1С (no DB writes) ──────────────────────────────
@@ -1699,31 +1784,45 @@ router.post('/confirm-nomenclature', editor, async (req, res) => {
 });
 
 // ── UPLOAD PRICE LIST ────────────────────────────────────────────────────────
-// POST /api/admin/upload-prices?type=retail|wholesale|dealer|cost
+// POST /api/admin/upload-prices?base=makein|matkasym|qtop&type=retail|wholesale|dealer|cost|export
+// У каждой базы свой прайс: пишем в pricesByBase[base][type]. Цены Make-in дополнительно
+// дублируются в price/priceWholesale/... — на них завязан остальной сайт.
 router.post('/upload-prices', editor, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
 
-  const type = req.query.type || 'retail';
-  const fieldMap = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer', cost: 'priceCost' };
-  const field = fieldMap[type];
-  if (!field) return res.status(400).json({ error: 'Неверный тип цены' });
+  const type    = req.query.type || 'retail';
+  const baseKey = String(req.query.base || 'makein');
+  if (!isBaseKey(baseKey))  return res.status(400).json({ error: `Неизвестная база 1С: ${baseKey}` });
+  if (!isPriceType(type))   return res.status(400).json({ error: 'Неверный тип цены' });
+  if (!BASES[baseKey].priceTypes.includes(type)) {
+    return res.status(400).json({ error: `У базы «${BASES[baseKey].label}» нет цены «${PRICE_TYPES[type].label}»` });
+  }
+
+  const path  = `pricesByBase.${baseKey}.${type}`;
+  // Цена Make-in — та, что видят сотрудники: дублируем в старое поле товара
+  const field = baseKey === 'makein' ? PRICE_TYPES[type].legacyField : null;
 
   try {
     const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
     const ws   = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-    // col 3 = name, col 32 = price, data from row 6
-    const priceMap = new Map();
-    for (let i = 6; i < rows.length; i++) {
-      const row   = rows[i];
-      const name  = String(row[3] || '').trim();
-      const price = Number(row[32]);
-      if (!name || isNaN(price) || price <= 0) continue;
-      priceMap.set(normName(name), Math.round(price));
+    let priceMap;
+    if (BASES[baseKey].legacyParser) {
+      // Make-in: формат его выгрузки известен — col 3 = name, col 32 = price, data from row 6
+      priceMap = new Map();
+      for (let i = 6; i < rows.length; i++) {
+        const row   = rows[i];
+        const name  = String(row[3] || '').trim();
+        const price = Number(row[32]);
+        if (!name || isNaN(price) || price <= 0) continue;
+        priceMap.set(normName(name), Math.round(price));
+      }
+    } else {
+      ({ priceMap } = parsePriceRows(rows, type, normName));
     }
 
-    const products = await Product.find({}, `_id fullName name sku ${field}`);
+    const products = await Product.find({}, `_id fullName name sku pricesByBase ${field || ''}`);
     let matched = 0, skipped = 0;
     const ops = [];
     const priceLogDocs = [];
@@ -1731,14 +1830,18 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
       const key      = normName(p.fullName || p.name || '');
       const newPrice = priceMap.get(key);
       if (newPrice === undefined) { skipped++; continue; }
-      const oldPrice = Number(p[field]) || 0;
-      ops.push({ updateOne: { filter: { _id: p._id }, update: { $set: { [field]: newPrice } } } });
+      const oldPrice = Number(p.pricesByBase?.[baseKey]?.[type]) || 0;
+      const set      = { [path]: newPrice };
+      if (field) set[field] = newPrice;
+      ops.push({ updateOne: { filter: { _id: p._id }, update: { $set: set } } });
       if (newPrice !== oldPrice) {
         priceLogDocs.push({
           productId:   p._id,
           productName: p.fullName || p.name || '',
           sku:         p.sku || '',
           priceType:   type,
+          base:        baseKey,
+          currency:    currencyOf(baseKey, type),
           fromPrice:   oldPrice,
           toPrice:     newPrice,
           source:      'excel',
@@ -1752,14 +1855,18 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
     // Upload Excel to Cloudinary and attach URL to log entries
     let sourceUrl = '';
     try {
-      sourceUrl = await uploadRawBuffer(req.file.buffer, 'matkasym/price-uploads', `price_${type}_${Date.now()}`);
+      sourceUrl = await uploadRawBuffer(req.file.buffer, 'matkasym/price-uploads', `price_${baseKey}_${type}_${Date.now()}`);
     } catch (_) {}
     if (priceLogDocs.length) {
       await PriceLog.insertMany(priceLogDocs.map(d => ({ ...d, sourceUrl })), { ordered: false });
     }
 
-    console.log(`[upload-prices] type=${type} field=${field} matched=${matched} skipped=${skipped}`);
-    res.json({ success: true, type, field, matched, skipped });
+    console.log(`[upload-prices] base=${baseKey} type=${type} rows=${priceMap.size} matched=${matched} skipped=${skipped}`);
+    res.json({
+      success: true, base: baseKey, baseLabel: BASES[baseKey].label,
+      type, typeLabel: PRICE_TYPES[type].label, currency: currencyOf(baseKey, type),
+      matched, skipped,
+    });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }

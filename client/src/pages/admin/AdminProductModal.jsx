@@ -6,6 +6,17 @@ import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddSt
 
 const NO_PHOTO = '/logos/no-photo.png';
 
+// Прайсы баз 1С (зеркалит server/lib/stockBases.js). Набор цен у баз разный.
+const PRICE_BASES = [
+  { key: 'makein',   label: 'Make-in',     priceTypes: ['retail', 'wholesale', 'dealer', 'cost'] },
+  { key: 'matkasym', label: 'Matkasym',    priceTypes: ['dealer', 'wholesale', 'cost', 'export'] },
+  { key: 'qtop',     label: 'Matkasym KZ', priceTypes: ['retail', 'wholesale', 'cost'], kz: true },
+];
+const PRICE_LABEL = { retail: 'розн.', wholesale: 'опт.', dealer: 'дилер.', cost: 'закуп.', export: 'экспорт' };
+// Экспортный прайс всегда в долларах; Matkasym KZ закупается по нему же, а продаёт в тенге
+const priceCurrency = (base, type) =>
+  type === 'export' ? '$' : base === 'qtop' ? (type === 'cost' ? '$' : '₸') : 'сом';
+
 const PRODUCT_STATUS_META = {
   for_sale:       { label: 'В продаже',           color: '#2d7a3a', bg: '#e8f5e9', icon: '🛒' },
   planned:        { label: 'В плане',             color: '#3b5bdb', bg: '#e8eeff', icon: '📋' },
@@ -498,6 +509,34 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   {localProduct.isKit && localProduct.kitType === 'independent' ? 'Комплект' : (localProduct.stock > 0 ? `${localProduct.stock} шт.` : (localProduct.inStock ? 'Есть' : 'Нет'))}
                 </span>
               </div>
+
+              {/* Прайс каждой базы отдельно. Набор цен у баз разный: у Matkasym нет
+                  розничной, зато есть экспортный прайс в долларах — по нему закупается
+                  Matkasym KZ, а сам он продаёт в Казахстане в тенге. */}
+              {localProduct.pricesByBase && (() => {
+                const rows = PRICE_BASES.map(b => {
+                  const pr = localProduct.pricesByBase?.[b.key] || {};
+                  const cells = b.priceTypes.filter(t => Number(pr[t]) > 0)
+                    .map(t => `${PRICE_LABEL[t]} ${Number(pr[t]).toLocaleString('ru-RU')} ${priceCurrency(b.key, t)}`);
+                  return cells.length ? { label: b.label, kz: b.kz, cells } : null;
+                }).filter(Boolean);
+                if (!rows.length) return null;
+                return (
+                  <div style={{ background: '#f8f8f8', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#666', textTransform: 'uppercase', letterSpacing: .4, marginBottom: 7 }}>
+                      Прайсы по базам
+                    </div>
+                    {rows.map(r => (
+                      <div key={r.label} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: r.kz ? '#b45309' : '#444', minWidth: 96 }}>
+                          {r.kz && '🇰🇿 '}{r.label}
+                        </span>
+                        <span style={{ fontSize: 12.5, color: '#333' }}>{r.cells.join(' · ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Остатки по базам 1С. Q-top отделён: это Казахстан, свой склад и учёт,
                   поэтому в общий остаток (Кыргызстан) он не входит. */}

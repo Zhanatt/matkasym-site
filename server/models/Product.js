@@ -24,11 +24,22 @@ const productSchema = new mongoose.Schema({
   },
 
   // Pricing
+  // Цены базы Make-in — их видят сотрудники, на них завязан остальной сайт.
+  // Дублируются из pricesByBase.makein при загрузке прайса Make-in.
   priceCost:         { type: Number, default: 0 },   // Себестоимость
   priceWholesale:    { type: Number, default: 0 },   // Оптовая цена
   priceDealer:       { type: Number, default: 0 },   // Дилерская цена
   price:             { type: Number, required: true, min: 0 }, // Розничная цена (на сайте)
   priceUndefined:    { type: Boolean, default: false }, // Цена ещё не определена
+
+  // Прайс каждой базы 1С отдельно. Набор цен у баз разный (см. server/lib/stockBases.js):
+  // у Matkasym нет розничной, зато есть экспортный прайс в USD — по нему у него
+  // закупается Matkasym KZ. Валюта зависит от базы и типа цены (currencyOf).
+  pricesByBase: {
+    makein:   { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
+    matkasym: { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
+    qtop:     { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
+  },
 
   // Dimensions
   dimensions: { type: String, default: '' },  // e.g. "134x55x108 см"

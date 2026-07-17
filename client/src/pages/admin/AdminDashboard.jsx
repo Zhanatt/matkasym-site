@@ -2,18 +2,30 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import * as pdfjsLib from 'pdfjs-dist';
-import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature } from '../../api/index';
+import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
 // PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-// Базы 1С, из которых грузятся остатки (ключи — как в server/lib/stockBases.js)
+// Базы 1С и их прайсы (зеркалит server/lib/stockBases.js).
+// Набор цен у баз разный: у Matkasym нет розничной — он продаёт дилерам и оптовикам,
+// а в Казахстан отгружает по экспортному прайсу в долларах.
 const STOCK_BASES = [
-  { key: 'makein',   label: 'Make-in'  },
-  { key: 'matkasym', label: 'Matkasym' },
-  { key: 'qtop',     label: 'Q-top'    },
+  { key: 'makein',   label: 'Make-in',     priceTypes: ['retail', 'wholesale', 'dealer', 'cost'] },
+  { key: 'matkasym', label: 'Matkasym',    priceTypes: ['dealer', 'wholesale', 'cost', 'export'] },
+  { key: 'qtop',     label: 'Matkasym KZ', priceTypes: ['retail', 'wholesale', 'cost'] },
 ];
+
+const PRICE_BTN = {
+  retail:    { label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff' },
+  wholesale: { label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1' },
+  dealer:    { label: '💰 Дилерские цены',  color: '#0d9488', bg: '#e6fffa' },
+  cost:      { label: '💰 Закупочные цены', color: '#7c3aed', bg: '#f3e8ff' },
+  export:    { label: '💵 Экспорт ($)',     color: '#166534', bg: '#dcfce7' },
+};
+// Экспортный прайс всегда в долларах; Matkasym KZ закупает по нему же
+const currencyOf = (base, type) => type === 'export' ? '$' : base === 'qtop' ? (type === 'cost' ? '$' : '₸') : 'сом';
 
 function StatCard({ label, value, sub, red, green, to, icon }) {
   const navigate = useNavigate();
@@ -93,6 +105,10 @@ export default function AdminDashboard() {
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
   const [stockBase,     setStockBase]     = useState('makein');
+  // Товары из выгрузки, которых нет в каталоге — ждут подтверждения
+  const [newItems,      setNewItems]      = useState(null);   // { base, items: [{name, stock, buffer, isGroup, checked}] }
+  const [newItemsBrand, setNewItemsBrand] = useState('matkasym-home');
+  const [addingItems,   setAddingItems]   = useState(false);
   const [priceLoading,  setPriceLoading]  = useState(null);
   const [photoLoading,       setPhotoLoading]       = useState(false);
   const [nomenclatureLoading, setNomenclatureLoading] = useState(false);
@@ -121,9 +137,9 @@ export default function AdminDashboard() {
     setProgress(type, 0);
     setSyncResult(null);
     try {
-      const r = await adminUploadPrices(file, type, pct => setProgress(type, pct));
-      const typeLabels = { retail: 'Розничные', wholesale: 'Оптовые', dealer: 'Дилерские' };
-      setSyncResult({ ok: true, msg: `✅ ${typeLabels[type] || type} цены обновлены — совпало: ${r.data.matched}, пропущено: ${r.data.skipped}` });
+      const r = await adminUploadPrices(file, type, stockBase, pct => setProgress(type, pct));
+      const d = r.data;
+      setSyncResult({ ok: true, msg: `✅ ${d.typeLabel} базы «${d.baseLabel}» обновлены (${currencyOf(stockBase, type)}) — совпало: ${d.matched}, пропущено: ${d.skipped}` });
     } catch (err) {
       setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка загрузки' });
     } finally {
@@ -131,6 +147,22 @@ export default function AdminDashboard() {
       setProgress(type, 0);
       e.target.value = '';
     }
+  };
+
+  const handleAddNewItems = async () => {
+    const items = newItems.items.filter(i => i.checked);
+    if (!items.length) { setNewItems(null); return; }
+    setAddingItems(true);
+    try {
+      const r = await adminConfirmStockItems(newItems.base, items.map(i => ({
+        name: i.name, stock: i.stock, buffer: i.buffer, brand: newItemsBrand,
+      })));
+      setSyncResult({ ok: true, msg: `✅ Добавлено товаров: ${r.data.added}${r.data.skipped ? `, пропущено: ${r.data.skipped}` : ''}` });
+      setNewItems(null);
+      adminStats().then(r => setStats(r.data)).catch(() => {});
+    } catch (err) {
+      setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка добавления' });
+    } finally { setAddingItems(false); }
   };
 
   const handleStockUpload = async (e) => {
@@ -143,6 +175,15 @@ export default function AdminDashboard() {
       const r = await adminUploadStock(file, stockBase, pct => setProgress('stock', pct));
       setSyncResult({ ok: true, ...r.data });
       adminStats().then(r => setStats(r.data)).catch(() => {});
+      // Товары из выгрузки, которых нет в каталоге: показываем на подтверждение.
+      // Галочка стоит только у похожих на товар — строки-группы («Итого», «01 TAZA KIYM») сняты.
+      if (r.data.newItems?.length) {
+        setNewItems({
+          base: r.data.base,
+          baseLabel: r.data.baseLabel,
+          items: r.data.newItems.map(i => ({ ...i, checked: !i.isGroup })),
+        });
+      }
       if (r.data.excelBase64) {
         const binary = atob(r.data.excelBase64);
         const bytes = new Uint8Array(binary.length);
@@ -507,9 +548,11 @@ export default function AdminDashboard() {
           )}
           {canEdit && [
             { key: 'stock',     label: `📥 Остатки ${STOCK_BASES.find(b => b.key === stockBase)?.label}`, color: '#2d7a3a', bg: '#e8f5e9', disabled: syncLoading, onChange: handleStockUpload, accept: '.xlsx' },
-            { key: 'retail',    label: '💰 Розничные цены',  color: '#3b5bdb', bg: '#e8f0ff', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'retail'),        accept: '.xlsx' },
-            { key: 'wholesale', label: '💰 Оптовые цены',    color: '#c47a00', bg: '#fff8e1', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'wholesale'),     accept: '.xlsx' },
-            { key: 'dealer',    label: '💰 Дилерские цены',  color: '#0d9488', bg: '#e6fffa', disabled: !!priceLoading,           onChange: e => handlePriceUpload(e, 'dealer'),        accept: '.xlsx' },
+            // Кнопки цен — только те, что есть у выбранной базы
+            ...(STOCK_BASES.find(b => b.key === stockBase)?.priceTypes || []).map(t => ({
+              key: t, label: PRICE_BTN[t].label, color: PRICE_BTN[t].color, bg: PRICE_BTN[t].bg,
+              disabled: !!priceLoading, onChange: e => handlePriceUpload(e, t), accept: '.xlsx',
+            })),
             { key: 'photos',    label: '🖼 Фото',             color: '#7b2d8b', bg: '#f8e8ff', disabled: photoLoading,            onChange: handlePhotoUpload,                          accept: 'image/*,.xlsx,.xls,.pdf', multiple: true },
             { key: 'nomenclature', label: '📥 Новые из 1С',  color: '#7c3aed', bg: '#f3e8ff', disabled: nomenclatureLoading,        onChange: handleNomenclatureUpload,                   accept: '.xlsx' },
           ].map(({ key, label, color, bg, disabled, onChange, accept, multiple }) => {
@@ -539,6 +582,71 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Товары из выгрузки, которых нет в каталоге — подтверждение перед созданием.
+          Не добавляем молча: в выгрузке кроме товаров есть строки-группы и сырьё. */}
+      {newItems && (
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => !addingItems && setNewItems(null)}
+        >
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 22 }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>
+              В остатках «{newItems.baseLabel}» есть товары, которых нет в каталоге
+            </div>
+            <div style={{ fontSize: 12.5, color: '#888', margin: '6px 0 14px' }}>
+              Отмечены только похожие на товар. Строки-группы («Итого», «01 TAZA KIYM», «Вешалки») распознаны и сняты —
+              проверьте, прежде чем добавлять.
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>Бренд:</span>
+              <select value={newItemsBrand} onChange={e => setNewItemsBrand(e.target.value)}
+                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontWeight: 600 }}>
+                <option value="matkasym-home">HOME</option>
+                <option value="matkasym-shaar">SHAAR</option>
+                <option value="matkasym-kyzmat">KYZMAT</option>
+              </select>
+              <span style={{ flex: 1 }} />
+              <button onClick={() => setNewItems(n => ({ ...n, items: n.items.map(i => ({ ...i, checked: true })) }))}
+                style={{ padding: '6px 12px', borderRadius: 8, border: '1.5px solid #e5e5e5', background: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Отметить все</button>
+              <button onClick={() => setNewItems(n => ({ ...n, items: n.items.map(i => ({ ...i, checked: false })) }))}
+                style={{ padding: '6px 12px', borderRadius: 8, border: '1.5px solid #e5e5e5', background: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Снять все</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
+              {newItems.items.map((it, idx) => (
+                <label key={idx} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                  borderBottom: '1px solid #f5f5f5', cursor: 'pointer',
+                  background: it.isGroup ? '#fafafa' : '#fff',
+                }}>
+                  <input type="checkbox" checked={it.checked}
+                    onChange={e => { const v = e.target.checked; setNewItems(n => ({ ...n, items: n.items.map((x, i) => i === idx ? { ...x, checked: v } : x) })); }} />
+                  <span style={{ flex: 1, fontSize: 13, color: it.isGroup ? '#999' : '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {it.name}
+                  </span>
+                  {it.isGroup && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309', background: '#fef3c7', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>похоже на группу</span>
+                  )}
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2d7a3a', minWidth: 60, textAlign: 'right' }}>{it.stock} шт</span>
+                </label>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center', marginTop: 14 }}>
+              <span style={{ fontSize: 12.5, color: '#888', marginRight: 'auto' }}>
+                Отмечено: <b style={{ color: '#111' }}>{newItems.items.filter(i => i.checked).length}</b> из {newItems.items.length}
+              </span>
+              <button onClick={() => setNewItems(null)} disabled={addingItems}
+                style={{ padding: '9px 16px', borderRadius: 9, border: '1.5px solid #e5e5e5', background: '#fff', color: '#555', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Не добавлять</button>
+              <button onClick={handleAddNewItems} disabled={addingItems || !newItems.items.some(i => i.checked)}
+                style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: '#2d7a3a', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: addingItems ? 'wait' : 'pointer', opacity: addingItems || !newItems.items.some(i => i.checked) ? .5 : 1 }}>
+                {addingItems ? 'Добавляю…' : 'Добавить в каталог'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Результат загрузки остатков */}
       {syncResult && (

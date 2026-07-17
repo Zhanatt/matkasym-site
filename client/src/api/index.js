@@ -99,13 +99,14 @@ export const adminGetProductRequestCount= ()        => api.get('/admin/product-r
 export const adminUpdateProductRequest = (id, data) => api.patch(`/admin/product-requests/${id}`, data);
 export const adminDeleteProductRequest = (id)       => api.delete(`/admin/product-requests/${id}`);
 export const adminGetProductImprovements = (id)     => api.get(`/admin/products/${id}/improvements`);
-export const adminUploadPrices  = (file, type, onProgress)  => {
+export const adminUploadPrices  = (file, type, base, onProgress)  => {
   const fd = new FormData();
   fd.append('file', file);
-  return api.post(`/admin/upload-prices?type=${type}`, fd, {
+  return api.post(`/admin/upload-prices?type=${type}&base=${base || 'makein'}`, fd, {
     onUploadProgress: e => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
   });
 };
+export const adminConfirmStockItems = (base, items) => api.post('/admin/confirm-stock-items', { base, items });
 export const adminUploadStock   = (file, base, onProgress)  => {
   const fd = new FormData();
   fd.append('file', file);
