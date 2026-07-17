@@ -136,15 +136,16 @@ const KYZMAT_CHANNELS = [
   { key: 'matkasym_kyzmat', label: 'MATKASYM_KYZMAT', short: 'KYZMAT', color: '#267846' },
 ];
 
-// Казахстанский канал — единственный, что показываем в каталоге KZ:
-// киргизские каналы к складу Q-top отношения не имеют.
+// Каналы разведены по странам: Matkasym KZ и его фронтмены работают только
+// в Казахстане, киргизские каналы — только в Кыргызстане.
 const KZ_CHANNELS = SALES_CHANNELS.filter(c => c.key === 'matkasym_kz');
+const KG_CHANNELS = SALES_CHANNELS.filter(c => c.key !== 'matkasym_kz');
 
 function channelsFor(brandKey, country) {
   if (country === 'KZ') return KZ_CHANNELS;
   if (brandKey === 'matkasym-shaar')  return SHAAR_CHANNELS;
   if (brandKey === 'matkasym-kyzmat') return KYZMAT_CHANNELS;
-  return SALES_CHANNELS;
+  return KG_CHANNELS;
 }
 
 // Порядок категорий для конкретных сетов (чем меньше число, тем выше в списке)
