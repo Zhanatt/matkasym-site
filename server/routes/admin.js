@@ -1497,12 +1497,17 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       ({ stockMap, warehouses } = parseStockRows(rows, baseKey, normName));
     }
 
-    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock stockByBase inBase bufferStock brand supplier.company');
+    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock stockByBase inBase bufferStock brand supplier.company isKit kitType kitParts');
     let matched = 0, zeroed = 0, buffersUpdated = 0;
     const notFoundRows = [];
     const stockLogDocs = [];
     const bufferAlerts = [];
-    const ops = products.map(p => {
+
+    // Комплекты собираются из деталей и собственной номенклатуры в 1С не имеют:
+    // в общем проходе каждый выглядел бы как «пропал из выгрузки» и обнулялся.
+    // Их остаток считается по деталям ниже, после записи остатков.
+    const kitProducts = products.filter(p => p.isKit);
+    const ops = products.filter(p => !p.isKit).map(p => {
       const key = normName(p.fullName || p.name || '');
       const row = stockMap.get(key);
 
@@ -1567,6 +1572,56 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
       } } } };
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
+
+    // Зависимый комплект (парта + стул) существует ровно в том количестве, на какое
+    // хватает самой дефицитной детали. Читаем детали после bulkWrite — уже с новыми остатками.
+    // Независимые (SKÅDIS, BOAXEL) не трогаем: их детали самостоятельны, остаток комплекта не имеет смысла.
+    const depKits = kitProducts.filter(k => k.kitType !== 'independent' && k.kitParts?.length);
+    let kitsUpdated = 0;
+    if (depKits.length) {
+      const partIds = depKits.flatMap(k => k.kitParts.map(part => part.product).filter(Boolean));
+      const parts   = await Product.find({ _id: { $in: partIds } }, '_id stockByBase').lean();
+      const partById = new Map(parts.map(p => [String(p._id), p]));
+
+      const kitOps = [];
+      for (const kit of depKits) {
+        const usable = kit.kitParts.filter(part => part.product && partById.has(String(part.product)));
+        if (usable.length !== kit.kitParts.length) continue;  // деталь потеряна — остаток не выдумываем
+
+        // По каждой базе отдельно: детали разных складов в один комплект не собрать,
+        // поэтому берём минимум внутри базы, а страну — как у обычного товара, суммой KG-баз.
+        const byBase = {};
+        for (const b of BASE_KEYS) {
+          byBase[b] = Math.min(...usable.map(part => {
+            const src = partById.get(String(part.product)).stockByBase || {};
+            return Math.floor((src[b] || 0) / (part.qty || 1));
+          }));
+        }
+        const newStock = STOCK_SUM_BASES.reduce((n, k) => n + (byBase[k] || 0), 0);
+        const oldStock = kit.stock || 0;
+        if (newStock === oldStock) continue;
+
+        stockLogDocs.push({
+          productId:   kit._id,
+          productName: kit.fullName || kit.name || '',
+          sku:         kit.sku || '',
+          delta:       newStock - oldStock,
+          fromStock:   oldStock,
+          toStock:     newStock,
+          source:      'excel',
+          base:        baseKey,
+          notInFile:   false,
+          changedBy:   req.user ? { id: req.user._id, name: req.user.name, email: req.user.email } : {},
+        });
+        kitOps.push({ updateOne: { filter: { _id: kit._id }, update: { $set: {
+          stock: newStock, inStock: newStock > 0, stockStatus: newStock > 0 ? 'in_stock' : 'out_of_stock',
+          ...Object.fromEntries(BASE_KEYS.map(b => [`stockByBase.${b}`, byBase[b]])),
+        } } } });
+      }
+      if (kitOps.length) await Product.bulkWrite(kitOps, { ordered: false });
+      kitsUpdated = kitOps.length;
+    }
+
     if (bufferAlerts.length) sendBufferStockAlerts(bufferAlerts).catch(e => console.error('[BufferAlert]', e.message));
 
     // Upload Excel to Cloudinary for source link, then save logs
@@ -1614,10 +1669,10 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     }
     newItems.sort((a, b) => b.stock - a.stock);
 
-    console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} zeroed=${zeroed} buffers=${buffersUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
+    console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
     res.json({
       success: true, base: baseKey, baseLabel: BASES[baseKey].label, warehouses,
-      matched, zeroed, total: matched + zeroed, buffersUpdated, excelBase64,
+      matched, zeroed, total: matched + zeroed, buffersUpdated, kitsUpdated, excelBase64,
       newItems,
     });
   } catch (e) {
