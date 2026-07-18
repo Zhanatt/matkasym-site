@@ -267,6 +267,22 @@ export default function AdminAgentSales() {
             </div>
           </div>
 
+          {/* Чистыми: продажи − возвраты. Совпадает с «Итого» из 1С. */}
+          <div style={{ flex: '1 1 250px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '16px 18px' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#2c5aa0', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>🧮 Чистыми</div>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#aaa' }}>Сумма</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.sum + returns.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>сом</span></div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#aaa' }}>Штук</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.qty + returns.qty)}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: '#bbb', marginTop: 8 }}>продажи − возвраты · как «Итого» в 1С</div>
+          </div>
+
           {/* Агенты */}
           <div style={{ flex: '1 1 120px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '16px 18px' }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>👤 Агенты</div>
