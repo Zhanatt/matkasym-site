@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-route
 import { useAuth } from '../../context/AuthContext';
 import { FrontmenProvider } from '../../context/FrontmenContext';
 import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram, adminGetReceiveAlertsCount, adminGetPendingReceiveCount, adminGetTechRequestCount } from '../../api';
+import { canEnterAdmin } from '../../constants/roles';
 import './Admin.css';
 
 const NAV_ALL = [
@@ -89,8 +90,6 @@ export default function AdminLayout() {
     if (location.pathname === '/admin/news') setNewsUnread(0);
   }, [location.pathname]);
 
-  const ALLOWED = ['owner', 'editor', 'viewer', 'navigator', 'warehouse'];
-
   // Waiting for AuthContext to verify token
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--admin-canvas)', fontFamily: 'var(--admin-font)' }}>
@@ -111,7 +110,7 @@ export default function AdminLayout() {
     </div>
   );
 
-  if (!user || !ALLOWED.includes(user.role)) {
+  if (!user || !canEnterAdmin(user.role)) {
     return <Navigate to="/admin/login" replace />;
   }
 
