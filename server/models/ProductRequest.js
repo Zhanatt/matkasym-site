@@ -26,10 +26,26 @@ const productRequestSchema = new mongoose.Schema({
   color:      { type: String, default: '', trim: true },
   note:       { type: String, default: '', trim: true },
 
-  // Доска: active = «В обработке», done = «Завершён»
-  status: { type: String, enum: ['active', 'done'], default: 'active' },
+  // Этапы доски закупки:
+  //   new             — Новые заявки (только что созданы)
+  //   searching       — Товар в поиске (закупщик ищет поставщиков)
+  //   supplier_select — Выбор поставщика (сравнение и выбор из найденных)
+  //   done            — Завершён
+  // Старое значение 'active' мигрируется в 'new' при старте сервера.
+  status: { type: String, enum: ['new', 'searching', 'supplier_select', 'done'], default: 'new' },
 
-  // Заполняет закупщик (роль purchaser) при переводе в «Завершён»
+  // Поставщики, которых нашёл закупщик на этапах «Поиск» / «Выбор».
+  // chosen — выбранный на этапе «Выбор поставщика».
+  suppliers: [{
+    name:     { type: String, default: '', trim: true },  // название / контакт / ссылка
+    price:    { type: Number, default: null },             // цена за шт
+    currency: { type: String, default: 'сом' },            // сом | ₸ | $
+    terms:    { type: String, default: '', trim: true },   // срок поставки / мин. заказ / условия
+    note:     { type: String, default: '', trim: true },
+    chosen:   { type: Boolean, default: false },
+  }],
+
+  // Итог по выбранному поставщику (проставляется при переводе в «Завершён»)
   purchasePrice: { type: Number, default: null },   // цена, по которой нам продают (за шт)
   deliveryDate:  { type: Date,   default: null },   // когда товар будет
   purchaseNote:  { type: String, default: '', trim: true },

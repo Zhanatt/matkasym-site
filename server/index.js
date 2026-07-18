@@ -107,6 +107,16 @@ mongoose
       console.error('⚠️ Migration stockByBase failed:', e.message);
     }
 
+    // Migration: заявки на заказ перешли с двух статусов (active/done) на этапы.
+    // Старое 'active' → 'new' (Новые заявки); 'done' остаётся.
+    try {
+      const ProductRequest = require('./models/ProductRequest');
+      const r = await ProductRequest.updateMany({ status: 'active' }, { $set: { status: 'new' } });
+      if (r.modifiedCount) console.log(`✅ Migration: заявок active→new: ${r.modifiedCount}`);
+    } catch (e) {
+      console.error('⚠️ Migration product-request stages failed:', e.message);
+    }
+
     // Migration: drop old ProductReview unique index (product+frontman) to allow audit-based index
     try {
       const ProductReview = require('./models/ProductReview');
