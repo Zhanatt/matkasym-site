@@ -314,11 +314,14 @@ export default function AdminAgentSales() {
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.qty + returns.qty)}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11.5, color: '#aaa' }}>Позиций</div>
+                <div style={{ fontSize: 11.5, color: '#aaa' }}>Всего товаров</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(data.positions)}</div>
               </div>
             </div>
-            <div style={{ fontSize: 11, color: '#bbb', marginTop: 8 }}>продажи − возвраты · как «Итого» в 1С</div>
+            <div style={{ fontSize: 11, color: '#bbb', marginTop: 8, lineHeight: 1.5 }}>
+              Сумма и штук — продажи минус возвраты (как «Итого» в 1С).<br />
+              «Всего товаров» — сколько разных товаров за период, включая возвращённые (поэтому больше, чем в «Продажах»).
+            </div>
           </div>
 
           {/* Агенты */}
