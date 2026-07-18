@@ -289,6 +289,39 @@ router.get('/products', async (req, res) => {
   }
 });
 
+// Счётчик «в наличии / нет в наличии» по бренду — те же правила, что в каталоге:
+// позиция = модель (группировка по name), штуки = сумма остатка страны.
+// KZ считает по складу Q-top, KG — по общему stock. Независимый комплект всегда доступен.
+async function brandStockStats(brand, country) {
+  const isKZ = country === 'KZ';
+  const units     = isKZ ? { $ifNull: ['$stockByBase.qtop', 0] } : { $ifNull: ['$stock', 0] };
+  const isIndKit  = { $and: [{ $eq: ['$isKit', true] }, { $eq: ['$kitType', 'independent'] }] };
+  const available = isKZ
+    ? { $or: [{ $gt: [{ $ifNull: ['$stockByBase.qtop', 0] }, 0] }, isIndKit] }
+    : { $or: [{ $gt: [{ $ifNull: ['$stock', 0] }, 0] }, '$inStock', '$isOnOrder', '$inTransit', isIndKit] };
+
+  const rows = await Product.aggregate([
+    { $match: { ...countryFilter(country), brand, productStatus: { $nin: ['kit_part'] }, category: { $ne: 'kit-part' } } },
+    { $addFields: { _avail: { $cond: [available, 1, 0] }, _units: units } },
+    // Позиция = модель (name): доступна, если доступен хоть один вариант
+    { $group: {
+      _id: { $ifNull: ['$name', '$fullName'] },
+      anyAvail:  { $max: '$_avail' },
+      unitsIn:   { $sum: { $cond: [{ $eq: ['$_avail', 1] }, '$_units', 0] } },
+      unitsOut:  { $sum: { $cond: [{ $eq: ['$_avail', 0] }, '$_units', 0] } },
+    }},
+    { $group: {
+      _id: null,
+      models:   { $sum: 1 },
+      inMod:    { $sum: '$anyAvail' },
+      inUnits:  { $sum: '$unitsIn' },
+      outUnits: { $sum: '$unitsOut' },
+    }},
+  ]);
+  const r = rows[0] || { models: 0, inMod: 0, inUnits: 0, outUnits: 0 };
+  return { inMod: r.inMod, outMod: r.models - r.inMod, inUnits: r.inUnits, outUnits: r.outUnits };
+}
+
 router.get('/products/facets', async (req, res) => {
   try {
     const { brand, set, category, search, country } = req.query;
@@ -303,12 +336,13 @@ router.get('/products/facets', async (req, res) => {
     ];
     const filterForSets = { ...base }; delete filterForSets.set;
     const filterForCats = { ...base }; delete filterForCats.category;
-    const [sets, categories, productCount] = await Promise.all([
+    const [sets, categories, productCount, stockStats] = await Promise.all([
       Product.distinct('set', filterForSets),
       Product.distinct('category', filterForCats),
       brand ? Product.countDocuments({ ...countryFilter(country), brand, productStatus: { $nin: ['kit_part'] } }) : null,
+      brand ? brandStockStats(brand, country) : null,
     ]);
-    res.json({ sets: sets.filter(Boolean).sort(), categories: categories.filter(Boolean).sort(), productCount });
+    res.json({ sets: sets.filter(Boolean).sort(), categories: categories.filter(Boolean).sort(), productCount, stockStats });
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }

@@ -184,7 +184,7 @@ function slugify(name) {
     .replace(/-+/g, '-');
 }
 
-function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog, frontmen, productCount = 0 }) {
+function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog, frontmen, productCount = 0, stockStats = null }) {
   const country = useCountry();
   const [editing, setEditing]     = useState(false);
   const [catalogSlug, setCatalog] = useState(() => autoOpenSet || null);
@@ -348,6 +348,28 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
           <div style={{ fontSize: 12, color: '#6b8997' }}>
             Линейки <span style={{ fontWeight: 700, color: accent }}>сетов</span>
           </div>
+
+          {/* Счётчик наличия по бренду: позиции (модели) · штуки на складе */}
+          {stockStats && (stockStats.inMod > 0 || stockStats.outMod > 0) && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#f0fdf4',
+                border: '1px solid #bbf7d0', borderRadius: 20, padding: '5px 12px' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a' }} />
+                <span style={{ fontSize: 12.5, color: '#5b6572' }}>В наличии</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#15803d' }}>{stockStats.inMod} поз</span>
+                <span style={{ fontSize: 11, color: '#86b89a' }}>·</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#15803d' }}>{stockStats.inUnits.toLocaleString('ru-RU')} шт</span>
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fef2f2',
+                border: '1px solid #fecaca', borderRadius: 20, padding: '5px 12px' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626' }} />
+                <span style={{ fontSize: 12.5, color: '#5b6572' }}>Нет</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#b91c1c' }}>{stockStats.outMod} поз</span>
+                <span style={{ fontSize: 11, color: '#e0a0a0' }}>·</span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#b91c1c' }}>{stockStats.outUnits.toLocaleString('ru-RU')} шт</span>
+              </span>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
           {!editing && (
@@ -1569,23 +1591,31 @@ export default function AdminSets() {
   }
 
   const [brandCounts, setBrandCounts] = useState({});
+  const [brandStats, setBrandStats]   = useState({});   // бренд → {inMod, outMod, inUnits, outUnits}
 
   useEffect(() => {
     setLoad(true);
     // Load sets for all brands from API
     Promise.all(
       Object.keys(BRAND_META).map(k =>
-        adminGetFacets({ brand: k, country }).then(r => [k, { sets: r.data.sets.filter(s => !EXCLUDE.has(s)), count: r.data.productCount || 0 }])
+        adminGetFacets({ brand: k, country }).then(r => [k, {
+          sets: r.data.sets.filter(s => !EXCLUDE.has(s)),
+          count: r.data.productCount || 0,
+          stockStats: r.data.stockStats || null,
+        }])
       )
     ).then(res => {
       const setsObj = {};
       const countsObj = {};
+      const statsObj = {};
       res.forEach(([k, data]) => {
         setsObj[k] = data.sets;
         countsObj[k] = data.count;
+        statsObj[k] = data.stockStats;
       });
       setSets(setsObj);
       setBrandCounts(countsObj);
+      setBrandStats(statsObj);
       setLoad(false);
     });
   }, [country]);
@@ -1642,6 +1672,7 @@ export default function AdminSets() {
                     onCloseCatalog={handleCloseCatalog}
                     frontmen={frontmen}
                     productCount={brandCounts[key] || 0}
+                    stockStats={brandStats[key] || null}
                   />
                 );
               })}
