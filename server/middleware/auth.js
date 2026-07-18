@@ -64,8 +64,10 @@ exports.canReceiveStock = (req, res, next) => {
   next();
 };
 
-// buffer stock page: owner/editor видят все зоны, остальные — только свою
+// Обзор буферного запаса открыт всем, кто вообще пущен в админку (ADMIN_ROLES).
+// Зоны разделяют только адресатов алертов, не право видеть страницу.
+// Менять буфер — отдельное право (canSetBufferStock), оно здесь не при чём.
 exports.canViewBufferStock = (req, res, next) => {
-  if (['owner', 'editor'].includes(req.user?.role) || req.user?.bufferZone) return next();
+  if (ADMIN_ROLES.includes(req.user?.role)) return next();
   res.status(403).json({ message: 'Нет доступа к буферному запасу' });
 };

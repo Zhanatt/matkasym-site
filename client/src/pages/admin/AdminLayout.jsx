@@ -142,8 +142,8 @@ export default function AdminLayout() {
         <nav className="admin-nav">
           {NAV_ALL.filter(n => {
             if (n.to === '/admin/pending-receive') return true; // общедоступно для всех, кто в админке
+            if (n.to === '/admin/buffer-stock') return true;     // обзор буфера виден всем в админке
             if (n.to === '/admin/users' && user.canViewUsers) return true;
-            if (n.to === '/admin/buffer-stock' && user.bufferZone) return true;
             return n.roles.includes(user.role);
           }).map(n => {
             const badgeCount = n.badge === 'pending' ? pendingCount : n.badge === 'news' ? newsUnread : n.badge === 'alerts' ? alertsCount : n.badge === 'pending_receive' ? pendingReceiveCount : n.badge === 'tech_requests' ? techRequestCount : 0;
