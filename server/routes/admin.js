@@ -21,6 +21,7 @@ const LoginLog     = require('../models/LoginLog');
 const ProductRequest = require('../models/ProductRequest');
 const SalesRecord  = require('../models/SalesRecord');
 const SalesDoc     = require('../models/SalesDoc');
+const SalesUpload  = require('../models/SalesUpload');
 const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto, publishToChannel } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
@@ -2661,12 +2662,22 @@ router.get('/agent-sales', viewer, async (req, res) => {
       { $group: { _id: null, min: { $min: '$docDate' }, max: { $max: '$docDate' } } },
     ]);
 
+    // Загружали ли отчёт за выбранный период (страна). Нужно, чтобы отличить
+    // «продаж не было (0)» от «отчёт ещё не загружали».
+    let uploaded = false;
+    if (dateFrom || dateTo) {
+      const f = dateFrom ? new Date(dateFrom + 'T00:00:00+06:00') : new Date('2000-01-01');
+      const t = dateTo   ? new Date(dateTo   + 'T23:59:59+06:00') : new Date('2999-01-01');
+      uploaded = await SalesUpload.exists({ ...countryMatch(country), periodFrom: { $lte: t }, periodTo: { $gte: f } });
+    }
+
     res.json({
       agents,
       sets,
       grandQty,
       grandSum: Math.round(grandSum),
       positions,
+      uploaded: !!uploaded,
       dataRange: bounds[0] ? { min: bounds[0].min, max: bounds[0].max } : null,
     });
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
@@ -2879,9 +2890,8 @@ router.post('/upload-sales', editor, upload.fields([{ name: 'file', maxCount: 1 
       // иначе строка-подзаголовок без чисел (номенклатурная подгруппа) — пропускаем
     }
 
-    if (parsed.length === 0) {
-      return res.status(400).json({ error: 'Не найдено ни одной строки товара. Проверьте, что это отчёт «Сводная продаж по агентам (по номенклатуре)».' });
-    }
+    // Пустой отчёт (0 строк) — это НЕ ошибка: в этот день могло не быть продаж.
+    // Записываем отметку о загрузке (ниже), чтобы отличить «продаж 0» от «не загружали».
 
     // 4. Сопоставить с товарами сайта → brand/set/productId
     const products = await Product.find({}).select('_id name fullName sku brand set').lean();
@@ -2914,7 +2924,15 @@ router.post('/upload-sales', editor, upload.fields([{ name: 'file', maxCount: 1 
     const from = new Date(dateFrom + 'T00:00:00+06:00');
     const to   = new Date(dateTo   + 'T23:59:59+06:00');
     const del  = await SalesRecord.deleteMany({ country, docDate: { $gte: from, $lte: to } });
-    await SalesRecord.insertMany(docs, { ordered: false });
+    if (docs.length) await SalesRecord.insertMany(docs, { ordered: false });
+
+    // 5b. Отметка о загрузке (нужна, чтобы «0 продаж» отличалось от «не загружали»).
+    // Перекрывающие отметки этой страны за период заменяем на одну новую.
+    await SalesUpload.deleteMany({ country, periodFrom: { $lte: to }, periodTo: { $gte: from } });
+    await SalesUpload.create({
+      country, periodFrom: from, periodTo: to, rows: docs.length,
+      uploadedBy: req.user ? { id: req.user._id, name: req.user.name || '' } : {},
+    });
 
     // 6. Второй файл — журнал «Реализации ТМЗ и услуг» с датой/временем накладных (опционально)
     let docsInserted = 0;

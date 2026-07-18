@@ -65,7 +65,7 @@ function ChartTooltip({ active, payload, groupBy, metric }) {
   );
 }
 
-export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG', onPeriodChange, dataRange }) {
+export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG', uploaded, onPeriodChange, dataRange }) {
   const [open, setOpen]       = useState(() => localStorage.getItem('agentSalesChartOpen') === '1');
   const [groupBy, setGroupBy] = useState('day');
   const [metric, setMetric]   = useState('sum');
@@ -159,8 +159,10 @@ export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG
             </div>
           ) : points.length === 0 ? (
             <div style={{ height: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
-              <div style={{ fontSize: 13.5 }}>Нет продаж за выбранный период</div>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>{uploaded ? '✅' : '📭'}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: uploaded ? '#15803d' : '#b45309' }}>
+                {uploaded ? 'За этот период продаж не было — 0' : 'Отчёт за этот период не загружен'}
+              </div>
             </div>
           ) : (
             <>

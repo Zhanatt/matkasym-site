@@ -255,6 +255,7 @@ export default function AdminAgentSales() {
         dateTo={dateTo}
         brand={brand}
         country={country}
+        uploaded={data?.uploaded}
         dataRange={data?.dataRange}
         onPeriodChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
       />
@@ -346,21 +347,38 @@ export default function AdminAgentSales() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>Загрузка...</div>
       ) : !data || (data.agents.length === 0 && (data.sets?.length || 0) === 0) ? (
-        <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', borderRadius: 16, border: '1px solid #eee' }}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>📭</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 6 }}>Нет данных за этот период</div>
-          <div style={{ fontSize: 13, color: '#999', maxWidth: 460, margin: '0 auto' }}>
-            {data?.dataRange
-              ? <>Загруженные продажи: с {fmtDate(data.dataRange.min)} по {fmtDate(data.dataRange.max)}, а выбран другой период выше.</>
-              : <>Продажи из 1С ещё не синхронизированы. Данные появятся, когда заработает выгрузка из 1С на сайт (эндпоинт <code>/api/admin/sync-sales</code>).</>}
+        data?.uploaded ? (
+          // Отчёт за период загружен, но продаж в нём не было
+          <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', borderRadius: 16, border: '1px solid #eee' }}>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>✅</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 6 }}>За этот период продаж не было — 0</div>
+            <div style={{ fontSize: 13, color: '#999', maxWidth: 460, margin: '0 auto' }}>
+              Отчёт из 1С за выбранный период загружен, но продаж в нём нет.
+            </div>
           </div>
-          {data?.dataRange && (
-            <button
-              onClick={() => { setDateFrom(ymd(new Date(data.dataRange.min))); setDateTo(ymd(new Date(data.dataRange.max))); }}
-              style={{ marginTop: 16, padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: '#111', color: '#fff', fontSize: 14, fontWeight: 700 }}
-            >📅 Показать за загруженный период</button>
-          )}
-        </div>
+        ) : (
+          // Отчёт ещё не загружали
+          <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', borderRadius: 16, border: '1px solid #f0d8a8' }}>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>📭</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#b45309', marginBottom: 6 }}>Отчёт за этот период не загружен</div>
+            <div style={{ fontSize: 13, color: '#999', maxWidth: 480, margin: '0 auto' }}>
+              За выбранный период отчёт из 1С ещё не загружали.
+              {data?.dataRange && <> Есть данные с {fmtDate(data.dataRange.min)} по {fmtDate(data.dataRange.max)}.</>}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 16 }}>
+              <button
+                onClick={() => { setUploadOpen(true); setUploadMsg(null); }}
+                style={{ padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer', background: '#111', color: '#fff', fontSize: 14, fontWeight: 700 }}
+              >⬆️ Загрузить отчёт</button>
+              {data?.dataRange && (
+                <button
+                  onClick={() => { setDateFrom(ymd(new Date(data.dataRange.min))); setDateTo(ymd(new Date(data.dataRange.max))); }}
+                  style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #e5e5e5', cursor: 'pointer', background: '#fff', color: '#555', fontSize: 14, fontWeight: 700 }}
+                >📅 Показать загруженный период</button>
+              )}
+            </div>
+          </div>
+        )
       ) : view === 'agents' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {data.agents.map(a => {
