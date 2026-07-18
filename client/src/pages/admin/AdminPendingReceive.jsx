@@ -20,7 +20,9 @@ function useIsMobile() {
 export default function AdminPendingReceive() {
   const { user } = useAuth();
   const isWarehouse = user?.role === 'warehouse';
-  const canSeeReceiving = ['owner', 'editor', 'warehouse'].includes(user?.role);
+  // Обзор поступлений (все вкладки) открыт всем, кто в админке.
+  // Само действие приёмки — отдельно, только у склада (canReceive ниже).
+  const canSeeReceiving = true;
   const isMobile = useIsMobile();
 
   // Фронтмены (viewer/navigator) видят только вкладку заявок на заказ
