@@ -2585,13 +2585,20 @@ function docDateMatch(dateFrom, dateTo) {
   return { docDate };
 }
 
+// Фильтр по стране отчёта. KG — Make-in/Matkasym (в старых записях поля country нет,
+// поэтому включаем и отсутствующее). KZ — только явно казахстанские (Q-top).
+function countryMatch(country) {
+  if (country === 'KZ') return { country: 'KZ' };
+  return { country: { $ne: 'KZ' } };
+}
+
 // ── Продажи по агентам (точные данные из 1С) ─────────────────────────────────
 // GET /api/admin/agent-sales?dateFrom=&dateTo=&brand=
 // Свод: агент → товар → количество/сумма, с подытогами по агентам.
 router.get('/agent-sales', viewer, async (req, res) => {
   try {
-    const { dateFrom, dateTo, brand } = req.query;
-    const match = { ...docDateMatch(dateFrom, dateTo), ...agentBrandMatch(brand) };
+    const { dateFrom, dateTo, brand, country } = req.query;
+    const match = { ...docDateMatch(dateFrom, dateTo), ...agentBrandMatch(brand), ...countryMatch(country) };
 
     const rows = await SalesRecord.aggregate([
       { $match: match },
@@ -2648,8 +2655,9 @@ router.get('/agent-sales', viewer, async (req, res) => {
     // Кол-во позиций — сколько разных товаров продано за период
     const positions = new Set(rows.map(r => r._id.product).filter(Boolean)).size;
 
-    // Диапазон дат имеющихся данных — чтобы UI подсказал, что вообще загружено
+    // Диапазон дат имеющихся данных (в пределах страны) — чтобы UI подсказал, что загружено
     const bounds = await SalesRecord.aggregate([
+      { $match: countryMatch(country) },
       { $group: { _id: null, min: { $min: '$docDate' }, max: { $max: '$docDate' } } },
     ]);
 
@@ -2669,8 +2677,8 @@ router.get('/agent-sales', viewer, async (req, res) => {
 // Источник — журнал «Реализации ТМЗ и услуг» (SalesDoc), у него реальные дата/время.
 router.get('/agent-sales/docs', viewer, async (req, res) => {
   try {
-    const { agent, dateFrom, dateTo } = req.query;
-    const match = {};
+    const { agent, dateFrom, dateTo, country } = req.query;
+    const match = { ...countryMatch(country) };
     if (agent === '(без агента)') match.agent = { $in: ['', null] };
     else if (agent) match.agent = agent;
     if (dateFrom || dateTo) {
@@ -2701,8 +2709,8 @@ router.get('/agent-sales/docs', viewer, async (req, res) => {
 // Точки только за те даты, где есть записи: пропуск = «за этот день не загружали», а не «ноль продаж».
 router.get('/agent-sales/timeseries', viewer, async (req, res) => {
   try {
-    const { dateFrom, dateTo, brand, groupBy = 'day' } = req.query;
-    const match = { ...docDateMatch(dateFrom, dateTo), ...agentBrandMatch(brand) };
+    const { dateFrom, dateTo, brand, groupBy = 'day', country } = req.query;
+    const match = { ...docDateMatch(dateFrom, dateTo), ...agentBrandMatch(brand), ...countryMatch(country) };
 
     const fmtMap = { day: '%Y-%m-%d', week: '%Y-%V', month: '%Y-%m' };
     const fmt    = fmtMap[groupBy] || fmtMap.day;
@@ -2806,6 +2814,8 @@ router.post('/upload-sales', editor, upload.fields([{ name: 'file', maxCount: 1 
   if (!agentsFile) return res.status(400).json({ error: 'Файл «по агентам» не загружен' });
   const { dateFrom, dateTo } = req.body;
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите период (с и по)' });
+  // Страна отчёта: KG (Make-in/Matkasym) или KZ (Q-top). Отчёты не смешиваются.
+  const country = req.body.country === 'KZ' ? 'KZ' : 'KG';
 
   try {
     const wb   = xlsx.read(agentsFile.buffer, { type: 'buffer' });
@@ -2895,21 +2905,22 @@ router.post('/upload-sales', editor, upload.fields([{ name: 'file', maxCount: 1 
         quantity: s.quantity,
         price: s.price,
         sum: s.sum,
+        country,
         source: '1c-excel',
       };
     });
 
-    // 5. Заменить период целиком
+    // 5. Заменить период целиком — только в пределах этой страны
     const from = new Date(dateFrom + 'T00:00:00+06:00');
     const to   = new Date(dateTo   + 'T23:59:59+06:00');
-    const del  = await SalesRecord.deleteMany({ docDate: { $gte: from, $lte: to } });
+    const del  = await SalesRecord.deleteMany({ country, docDate: { $gte: from, $lte: to } });
     await SalesRecord.insertMany(docs, { ordered: false });
 
     // 6. Второй файл — журнал «Реализации ТМЗ и услуг» с датой/временем накладных (опционально)
     let docsInserted = 0;
     if (timesFile) {
-      const docRecords = parseSalesJournal(timesFile.buffer);
-      const delDocs = await SalesDoc.deleteMany({ docDate: { $gte: from, $lte: to } });
+      const docRecords = parseSalesJournal(timesFile.buffer).map(d => ({ ...d, country }));
+      const delDocs = await SalesDoc.deleteMany({ country, docDate: { $gte: from, $lte: to } });
       if (docRecords.length) await SalesDoc.insertMany(docRecords, { ordered: false });
       docsInserted = docRecords.length;
       try { await uploadRawBuffer(timesFile.buffer, 'matkasym/sales-uploads', `sales_times_${Date.now()}`); } catch (_) {}
@@ -2922,8 +2933,8 @@ router.post('/upload-sales', editor, upload.fields([{ name: 'file', maxCount: 1 
 
     const matched = docs.filter(d => d.productId).length;
     const agentsCount = [...new Set(docs.map(d => d.agent))].length;
-    console.log(`[upload-sales] ${new Date().toISOString()} rows=${docs.length} agents=${agentsCount} matched=${matched} deleted=${del.deletedCount} [${dateFrom}..${dateTo}] src=${sourceUrl}`);
-    res.json({ success: true, inserted: docs.length, matched, unmatched: docs.length - matched, deleted: del.deletedCount, agents: agentsCount, docsInserted, sourceUrl });
+    console.log(`[upload-sales] ${new Date().toISOString()} country=${country} rows=${docs.length} agents=${agentsCount} matched=${matched} deleted=${del.deletedCount} [${dateFrom}..${dateTo}] src=${sourceUrl}`);
+    res.json({ success: true, country, inserted: docs.length, matched, unmatched: docs.length - matched, deleted: del.deletedCount, agents: agentsCount, docsInserted, sourceUrl });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }

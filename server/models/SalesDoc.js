@@ -12,6 +12,7 @@ const salesDocSchema = new Schema({
   counterparty: { type: String, default: '' },
   warehouse:    { type: String, default: '' },
   sum:          { type: Number, default: 0 },
+  country:      { type: String, enum: ['KG', 'KZ'], default: 'KG' },
   source:       { type: String, default: '1c-journal' },
 }, { timestamps: true });
 

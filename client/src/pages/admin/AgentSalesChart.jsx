@@ -65,7 +65,7 @@ function ChartTooltip({ active, payload, groupBy, metric }) {
   );
 }
 
-export default function AgentSalesChart({ dateFrom, dateTo, brand, onPeriodChange, dataRange }) {
+export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG', onPeriodChange, dataRange }) {
   const [open, setOpen]       = useState(() => localStorage.getItem('agentSalesChartOpen') === '1');
   const [groupBy, setGroupBy] = useState('day');
   const [metric, setMetric]   = useState('sum');
@@ -77,11 +77,11 @@ export default function AgentSalesChart({ dateFrom, dateTo, brand, onPeriodChang
   const load = useCallback(() => {
     if (!open) return;
     setLoading(true);
-    adminGetAgentSalesTimeseries({ dateFrom, dateTo, brand, groupBy })
+    adminGetAgentSalesTimeseries({ dateFrom, dateTo, brand, groupBy, country })
       .then(res => setPoints(res.data.points || []))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
-  }, [open, dateFrom, dateTo, brand, groupBy]);
+  }, [open, dateFrom, dateTo, brand, groupBy, country]);
 
   useEffect(() => { load(); }, [load]);
 

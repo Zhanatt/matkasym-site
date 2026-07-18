@@ -21,10 +21,15 @@ const salesRecordSchema = new Schema({
   price:        { type: Number, default: 0 },
   sum:          { type: Number, default: 0 },
 
+  // Страна учёта: KG (Make-in/Matkasym) или KZ (Q-top). Отчёты стран не смешиваются:
+  // загрузка одной страны заменяет только её записи за период.
+  country:      { type: String, enum: ['KG', 'KZ'], default: 'KG' },
+
   source:       { type: String, default: '1c' },
 }, { timestamps: true });
 
 salesRecordSchema.index({ docDate: -1 });
+salesRecordSchema.index({ country: 1, docDate: -1 });
 salesRecordSchema.index({ agent: 1, docDate: -1 });
 salesRecordSchema.index({ productId: 1, docDate: -1 });
 

@@ -32,6 +32,12 @@ const BRANDS = [
   { v: 'matkasym-shaar', l: 'SHAAR' },
   { v: 'matkasym-kyzmat', l: 'KYMAT' },
 ];
+
+const COUNTRIES = [
+  { key: 'KG', label: 'Кыргызстан', flag: '🇰🇬' },
+  { key: 'KZ', label: 'Казахстан',  flag: '🇰🇿' },
+];
+const COUNTRY_LABEL = { KG: 'Кыргызстан', KZ: 'Казахстан' };
 const BRAND_LABEL = { 'matkasym-home': 'HOME', 'matkasym-shaar': 'SHAAR', 'matkasym-kyzmat': 'KYMAT' };
 const BRAND_BADGE = {
   'matkasym-home':   { bg: '#fdecec', color: '#c0392b' },
@@ -46,6 +52,8 @@ export default function AdminAgentSales() {
   const [dateFrom, setDateFrom] = useState(ymd(monthStart));
   const [dateTo, setDateTo]     = useState(ymd(now));
   const [brand, setBrand]       = useState('');
+  // Страна отчёта: KG (Make-in/Matkasym) или KZ (Q-top). Отчёты не смешиваются.
+  const [country, setCountry]   = useState(() => localStorage.getItem('agentSalesCountry') || 'KG');
   const [view, setView]         = useState('sets'); // sets | agents
   const [loading, setLoading]   = useState(true);
   const [data, setData]         = useState(null);
@@ -58,17 +66,19 @@ export default function AdminAgentSales() {
   const [uploadMode, setUploadMode] = useState('day'); // 'day' | 'period'
   const [uploadDay, setUploadDay]   = useState(ymd(now));
 
+  useEffect(() => { localStorage.setItem('agentSalesCountry', country); }, [country]);
+
   const load = useCallback(() => {
     setLoading(true);
-    adminGetAgentSales({ dateFrom, dateTo, brand })
+    adminGetAgentSales({ dateFrom, dateTo, brand, country })
       .then(res => setData(res.data))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
-  }, [dateFrom, dateTo, brand]);
+  }, [dateFrom, dateTo, brand, country]);
 
   useEffect(() => { load(); }, [load]);
   // Смена фильтров сбрасывает раскрытые детали
-  useEffect(() => { setExpanded({}); setExpandedSet({}); }, [dateFrom, dateTo, brand]);
+  useEffect(() => { setExpanded({}); setExpandedSet({}); }, [dateFrom, dateTo, brand, country]);
 
   const toggleProducts = agent => setExpanded(p => ({ ...p, [agent]: !p[agent] }));
 
@@ -79,12 +89,12 @@ export default function AdminAgentSales() {
     if (!effFrom || !effTo) { setUploadMsg({ ok: false, text: uploadMode === 'day' ? 'Выбери день' : 'Выбери период (даты сверху)' }); return; }
     setUploading(true);
     setUploadMsg(null);
-    adminUploadSales(agentsSel, effFrom, effTo)
+    adminUploadSales(agentsSel, effFrom, effTo, null, country)
       .then(res => {
         const d = res.data;
         setUploadMsg({
           ok: true,
-          text: `Загружено строк: ${d.inserted}, агентов: ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.`,
+          text: `${COUNTRY_LABEL[country]}: загружено строк ${d.inserted}, агентов ${d.agents}. Сопоставлено с товарами: ${d.matched}${d.unmatched ? `, без сопоставления: ${d.unmatched}` : ''}.`,
           link: d.sourceUrl || '',
         });
         setUploadOpen(false); setAgentsSel(null);
@@ -112,13 +122,30 @@ export default function AdminAgentSales() {
 
   return (
     <div style={{ maxWidth: 1000 }}>
+      {/* Переключатель страны: KG и KZ ведутся раздельно, отчёты не смешиваются */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'inline-flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3 }}>
+          {COUNTRIES.map(c => (
+            <button key={c.key} onClick={() => setCountry(c.key)} style={{
+              padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+              background: country === c.key ? '#fff' : 'transparent',
+              color:      country === c.key ? '#111' : '#888',
+              boxShadow:  country === c.key ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+            }}>{c.flag} {c.label}</button>
+          ))}
+        </div>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#111', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             🧾 Продажи по агентам
           </h1>
           <p style={{ fontSize: 14, color: '#888', marginTop: 4 }}>
-            Точные данные из 1С (отчёт «Сводная продаж по агентам») — не по остаткам
+            {country === 'KZ'
+              ? 'Продажи Q-top (Казахстан) — отдельный отчёт из 1С'
+              : 'Точные данные из 1С (отчёт «Сводная продаж по агентам») — не по остаткам'}
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -132,7 +159,7 @@ export default function AdminAgentSales() {
             }}
           >⬆️ Загрузить таблицы из 1С</button>
           <span style={{ fontSize: 11, color: '#bbb', maxWidth: 220, textAlign: 'right' }}>
-            За период, что выбран выше
+            {COUNTRY_LABEL[country]} · за период выше
           </span>
         </div>
       </div>
@@ -144,7 +171,12 @@ export default function AdminAgentSales() {
           onClick={() => !uploading && setUploadOpen(false)}
         >
           <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 460, padding: 22 }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#111', marginBottom: 12 }}>Загрузка из 1С</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#111', marginBottom: 6 }}>Загрузка из 1С</div>
+            <div style={{ fontSize: 13, marginBottom: 12, padding: '8px 12px', borderRadius: 9,
+              background: country === 'KZ' ? '#fff7ed' : '#eff6ff', border: `1px solid ${country === 'KZ' ? '#fed7aa' : '#bfdbfe'}`,
+              color: country === 'KZ' ? '#b45309' : '#1d4ed8', fontWeight: 700 }}>
+              {country === 'KZ' ? '🇰🇿 Отчёт Q-top (Казахстан)' : '🇰🇬 Отчёт Кыргызстана'} · заменит только эту страну за период
+            </div>
 
             {/* Режим: за один день / за период */}
             <div style={{ display: 'flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3, marginBottom: 12 }}>
@@ -222,6 +254,7 @@ export default function AdminAgentSales() {
         dateFrom={dateFrom}
         dateTo={dateTo}
         brand={brand}
+        country={country}
         dataRange={data?.dataRange}
         onPeriodChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
       />

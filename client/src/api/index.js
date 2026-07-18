@@ -65,11 +65,12 @@ export const adminGetSalesChartSet   = (set, params) => api.get('/admin/sales-ch
 export const adminGetAgentSales      = (params) => api.get('/admin/agent-sales', { params });
 export const adminGetAgentSalesDocs  = (params) => api.get('/admin/agent-sales/docs', { params });
 export const adminGetAgentSalesTimeseries = (params) => api.get('/admin/agent-sales/timeseries', { params });
-export const adminUploadSales        = (file, dateFrom, dateTo, timesFile) => {
+export const adminUploadSales        = (file, dateFrom, dateTo, timesFile, country = 'KG') => {
   const fd = new FormData();
   fd.append('file', file);
   fd.append('dateFrom', dateFrom);
   fd.append('dateTo', dateTo);
+  fd.append('country', country);
   if (timesFile) fd.append('timesFile', timesFile);
   return api.post('/admin/upload-sales', fd);
 };
