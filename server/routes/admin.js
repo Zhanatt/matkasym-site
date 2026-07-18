@@ -2554,7 +2554,7 @@ const AGENT_BRAND_TOKENS = {
   'matkasym-kyzmat': [],
 };
 // Бренды, которым отдаём продажи без агента (пустой агент)
-const BRAND_INCLUDES_NO_AGENT = { 'matkasym-shaar': true };
+const BRAND_INCLUDES_NO_AGENT = { 'matkasym-home': true };
 function agentBrandOf(name) {
   const n = String(name || '');
   if (n === '' || n === '(без агента)') {
