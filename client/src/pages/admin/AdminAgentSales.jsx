@@ -312,6 +312,10 @@ export default function AdminAgentSales() {
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Штук</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.qty + returns.qty)}</div>
               </div>
+              <div>
+                <div style={{ fontSize: 11.5, color: '#aaa' }}>Позиций</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(data.positions)}</div>
+              </div>
             </div>
             <div style={{ fontSize: 11, color: '#bbb', marginTop: 8 }}>продажи − возвраты · как «Итого» в 1С</div>
           </div>
