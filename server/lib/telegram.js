@@ -78,14 +78,13 @@ async function sendTelegramPhoto(chatId, photoUrl, caption) {
   }
 }
 
-// Публикация поста в Telegram-канал (chat_id = process.env.TELEGRAM_CHANNEL_ID).
-// Бот должен быть админом канала. Возвращает { ok, error } — ошибка пробрасывается в UI.
+// Публикация поста в произвольный чат: канал, группу или личку.
+// Бот должен быть в чате и иметь право писать. Возвращает { ok, error } — ошибка идёт в UI.
 // Картинку по возможности заливаем байтами (multipart), а не URL-ом: так надёжнее,
 // потому что Telegram сам не всегда может скачать Google Drive / приватные ссылки.
-async function publishToChannel({ photoUrl, caption }) {
-  const channelId = process.env.TELEGRAM_CHANNEL_ID;
+async function publishToChat({ chatId, photoUrl, caption }) {
   if (!TELEGRAM_BOT_TOKEN) return { ok: false, error: 'TELEGRAM_BOT_TOKEN не настроен на сервере' };
-  if (!channelId)          return { ok: false, error: 'TELEGRAM_CHANNEL_ID не настроен на сервере' };
+  if (!chatId)          return { ok: false, error: 'Не указан чат для публикации' };
 
   const api = (method) => `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`;
   const text = String(caption || '');
@@ -97,7 +96,7 @@ async function publishToChannel({ photoUrl, caption }) {
       if (imgResp.ok) {
         const buf = Buffer.from(await imgResp.arrayBuffer());
         const form = new FormData();
-        form.append('chat_id', String(channelId));
+        form.append('chat_id', String(chatId));
         form.append('caption', text.slice(0, 1024));
         form.append('parse_mode', 'HTML');
         form.append('photo', new Blob([buf], { type: imgResp.headers.get('content-type') || 'image/jpeg' }), 'photo.jpg');
@@ -113,7 +112,7 @@ async function publishToChannel({ photoUrl, caption }) {
     // 2) fallback: отдаём Telegram сам URL
     const r = await fetch(api('sendPhoto'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: channelId, photo: photoUrl, caption: text.slice(0, 1024), parse_mode: 'HTML' }),
+      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: text.slice(0, 1024), parse_mode: 'HTML' }),
     });
     const d = await r.json();
     return d.ok ? { ok: true, data: d } : { ok: false, error: d.description };
@@ -122,10 +121,17 @@ async function publishToChannel({ photoUrl, caption }) {
   // без фото — обычное сообщение
   const r = await fetch(api('sendMessage'), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: channelId, text: text.slice(0, 4096), parse_mode: 'HTML', disable_web_page_preview: false }),
+    body: JSON.stringify({ chat_id: chatId, text: text.slice(0, 4096), parse_mode: 'HTML', disable_web_page_preview: false }),
   });
   const d = await r.json();
   return d.ok ? { ok: true, data: d } : { ok: false, error: d.description };
+}
+
+// Витрина-канал из env — частный случай publishToChat (используется очередью публикаций).
+async function publishToChannel({ photoUrl, caption }) {
+  const channelId = process.env.TELEGRAM_CHANNEL_ID;
+  if (!channelId) return { ok: false, error: 'TELEGRAM_CHANNEL_ID не настроен на сервере' };
+  return publishToChat({ chatId: channelId, photoUrl, caption });
 }
 
 async function sendNewsNotificationTelegram({ type, title, message, product }, recipients) {
@@ -225,4 +231,4 @@ async function sendBufferStockAlerts(alerts) {
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChannel };
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChannel, publishToChat };

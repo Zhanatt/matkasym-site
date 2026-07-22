@@ -212,4 +212,25 @@ export const adminDeleteVideoSchedule    = (id)           => api.delete(`/admin/
 export const adminGetVideoScheduleReport = ()             => api.get('/admin/video-schedule/report');
 export const adminGetVideoScheduleFrontmanReport = (id)   => api.get(`/admin/video-schedule/report/${id}`);
 
+// Автопубликации (Telegram-группы, Instagram, лента Битрикс24)
+export const socialGetAccounts     = ()          => api.get('/admin/social/accounts');
+export const socialCreateAccount   = (data)      => api.post('/admin/social/accounts', data);
+export const socialUpdateAccount   = (id, data)  => api.patch(`/admin/social/accounts/${id}`, data);
+export const socialDeleteAccount   = (id)        => api.delete(`/admin/social/accounts/${id}`);
+export const socialCheckAccount    = (id)        => api.post(`/admin/social/accounts/${id}/check`);
+export const socialGetTelegramChats= ()          => api.get('/admin/social/telegram/chats');
+
+export const socialGetFlows        = ()          => api.get('/admin/social/flows');
+export const socialCreateFlow      = (data)      => api.post('/admin/social/flows', data);
+export const socialUpdateFlow      = (id, data)  => api.patch(`/admin/social/flows/${id}`, data);
+export const socialDeleteFlow      = (id)        => api.delete(`/admin/social/flows/${id}`);
+export const socialGetFlowTargets  = (id)        => api.get(`/admin/social/flows/${id}/targets`);
+
+export const socialGetDraft        = (productId) => api.get(`/admin/social/draft/${productId}`);
+export const socialPreview         = (data)      => api.post('/admin/social/preview', data);
+export const socialPublish         = (data)      => api.post('/admin/social/publications', data);
+export const socialGetPublications = (limit)     => api.get('/admin/social/publications', { params: { limit } });
+export const socialRetryPublication= (id)        => api.post(`/admin/social/publications/${id}/retry`);
+export const socialDeletePublication=(id)        => api.delete(`/admin/social/publications/${id}`);
+
 export default api;

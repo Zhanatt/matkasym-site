@@ -20,6 +20,7 @@ app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/orders',   require('./routes/orders'));
 app.use('/api/catalog',  require('./routes/catalog'));  // AI-bot context API
+app.use('/api/admin/social', require('./routes/social')); // автопубликации по площадкам
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'OK', time: new Date() }));
@@ -32,17 +33,33 @@ app.get('/api/version', (req, res) => res.json({ version: SERVER_START }));
 // Нужен, потому что на бесплатном Render сервис засыпает и внутренний таймер не идёт.
 // Защищён ключом: ?key=CRON_KEY (или CATALOG_API_KEY как запасной).
 const { tickQueue } = require('./lib/telegramQueue');
+const { tickPublications } = require('./lib/socialPublish');
 app.get('/api/telegram-queue/tick', async (req, res) => {
   const expected = process.env.CRON_KEY || process.env.CATALOG_API_KEY;
   if (expected && req.query.key !== expected) return res.status(403).json({ message: 'forbidden' });
   const result = await tickQueue();
-  res.json({ ok: true, result });
+  const publications = await tickPublications(); // отложенные посты и задержки узлов схемы
+  res.json({ ok: true, result, publications });
 });
 
 // Telegram bot webhook
 app.post('/api/telegram-webhook', async (req, res) => {
   try {
-    const { message } = req.body;
+    const update = req.body || {};
+    const message = update.message;
+
+    // Запоминаем группы/каналы, где бота видели, — из них потом выбирают площадку
+    // в «Автопубликациях» вместо ручного ввода chat_id.
+    const anyChat = message?.chat || update.channel_post?.chat || update.my_chat_member?.chat;
+    if (anyChat && ['group', 'supergroup', 'channel'].includes(anyChat.type)) {
+      const { TelegramChat } = require('./models/SocialAccount');
+      await TelegramChat.updateOne(
+        { chatId: String(anyChat.id) },
+        { $set: { title: anyChat.title || '', type: anyChat.type, seenAt: new Date() } },
+        { upsert: true },
+      ).catch(() => {});
+    }
+
     if (!message) return res.sendStatus(200);
 
     const chatId = message.chat?.id;
@@ -136,6 +153,7 @@ mongoose
     // Дублируется внешним cron-пингом /api/telegram-queue/tick для надёжности на Render free.
     setInterval(() => {
       tickQueue().catch(e => console.error('[TelegramQueue] interval tick failed:', e.message));
+      tickPublications().catch(e => console.error('[socialPublish] interval tick failed:', e.message));
     }, 60 * 1000);
 
     app.listen(process.env.PORT, () =>
