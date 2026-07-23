@@ -12,6 +12,10 @@ const CARD = { background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 
 const L    = { fontSize: 12, fontWeight: 700, color: '#666', display: 'block', marginBottom: 8 };
 const INP  = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, outline: 'none', boxSizing: 'border-box' };
 
+// И Telegram (sendMediaGroup), и Instagram (карусель) принимают не больше 10 картинок —
+// столько же отмечаем автоматически, чтобы в UI не было выбрано больше, чем реально уйдёт.
+const MAX_IMAGES = 10;
+
 const fmtPrice = (n) => Number(n || 0).toLocaleString('ru-RU');
 
 // Грубое HTML→текст для предпросмотра: разметку площадки рендерят сами.
@@ -87,8 +91,11 @@ export default function AdminPublish() {
     try {
       const r = await socialGetDraft(p._id);
       setProduct({ ...p, ...(r.data.product || {}) });
-      setImages(r.data.images || []);
-      setPicked((r.data.images || []).length ? [0] : []);
+      const imgs = r.data.images || [];
+      setImages(imgs);
+      // По умолчанию берём ВСЕ фото товара — чаще всего нужен весь набор,
+      // а лишнее проще снять, чем отмечать каждое вручную. Больше 10 площадки не примут.
+      setPicked(imgs.slice(0, MAX_IMAGES).map((_, i) => i));
       setText(r.data.text || '');
     } catch (e) {
       setError(e.response?.data?.message || 'Не удалось загрузить товар');
@@ -102,6 +109,12 @@ export default function AdminPublish() {
 
   const togglePick = (i) => {
     setPicked(p => p.includes(i) ? p.filter(x => x !== i) : [...p, i]);
+    setPreviews([]);
+  };
+
+  // Снять все / вернуть все: снимать по одной при 8 картинках — то ещё удовольствие.
+  const toggleAllPicks = () => {
+    setPicked(p => p.length ? [] : images.slice(0, MAX_IMAGES).map((_, i) => i));
     setPreviews([]);
   };
 
@@ -243,11 +256,21 @@ export default function AdminPublish() {
         <>
           {/* 2. Контент */}
           <div style={CARD}>
-            <label style={L}>
-              Фото <span style={{ color: '#bbb', fontWeight: 400 }}>
-                (можно несколько — уйдут альбомом/каруселью; в историю Instagram — только первое)
-              </span>
-            </label>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+              <label style={{ ...L, marginBottom: 0 }}>
+                Фото <span style={{ color: '#bbb', fontWeight: 400 }}>
+                  (отмечены все — уйдут альбомом/каруселью; в историю Instagram — только первое)
+                </span>
+              </label>
+              {images.length > 1 && (
+                <button onClick={toggleAllPicks} style={{
+                  marginLeft: 'auto', background: 'none', border: 'none', padding: 0,
+                  fontSize: 12, fontWeight: 700, color: '#3463A3', cursor: 'pointer',
+                }}>
+                  {picked.length ? 'Снять все' : 'Выбрать все'}
+                </button>
+              )}
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 22 }}>
               {images.map((url, i) => {
                 const pos = picked.indexOf(i);
@@ -273,6 +296,12 @@ export default function AdminPublish() {
               }}>{uploading ? '...' : '+ Фото'}</button>
               <input ref={fileInput} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={upload} />
             </div>
+
+            {picked.length > MAX_IMAGES && (
+              <div style={{ fontSize: 12, color: '#b8860b', marginTop: -14, marginBottom: 18 }}>
+                Отмечено {picked.length} фото — площадки примут только первые {MAX_IMAGES}.
+              </div>
+            )}
 
             <label style={L}>Текст <span style={{ color: '#bbb', fontWeight: 400 }}>(поддерживает &lt;b&gt;; для Битрикс24 переводится в его разметку)</span></label>
             <textarea value={text} onChange={e => { setText(e.target.value); setPreviews([]); }} rows={8}
