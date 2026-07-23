@@ -135,7 +135,11 @@ function getPrice(p, mode) {
   return null;
 }
 
+// Служебное значение фильтра сетов: товары с пустым полем set — их нет ни в одном сете.
+const NO_SET = '__none__';
+
 function setLabel(slug) {
+  if (slug === NO_SET) return 'Без сета';
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
@@ -192,10 +196,17 @@ export default function AdminAllCatalog() {
       .sort((a, b) => (SET_NAMES[a] || a).localeCompare(SET_NAMES[b] || b, 'ru'));
   }, [products, fBrand]);
 
+  // Сколько товаров вообще без сета — по ним показываем пункт «Без сета» и счётчик.
+  const noSetCount = useMemo(() => {
+    const base = fBrand ? products.filter(p => p.brand === fBrand) : products;
+    return base.filter(p => !p.set).length;
+  }, [products, fBrand]);
+
   const availableCategories = useMemo(() => {
     let base = products;
     if (fBrand) base = base.filter(p => p.brand === fBrand);
-    if (fSet)   base = base.filter(p => p.set === fSet);
+    if (fSet === NO_SET) base = base.filter(p => !p.set);
+    else if (fSet)       base = base.filter(p => p.set === fSet);
     return [...new Set(base.map(p => p.category).filter(Boolean))]
       .sort((a, b) => catLabel(a).localeCompare(catLabel(b), 'ru'));
   }, [products, fBrand, fSet]);
@@ -213,7 +224,8 @@ export default function AdminAllCatalog() {
     let list = products;
     if (q)        list = list.filter(p => (p.name || '').toLowerCase().includes(q) || (p.fullName || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q));
     if (fBrand)   list = list.filter(p => p.brand === fBrand);
-    if (fSet)     list = list.filter(p => p.set === fSet);
+    if (fSet === NO_SET) list = list.filter(p => !p.set);
+    else if (fSet)       list = list.filter(p => p.set === fSet);
     if (fCategory)list = list.filter(p => p.category === fCategory);
     if (fStock === 'in')  list = list.filter(p => p.inStock || p.stock > 0);
     if (fStock === 'out') list = list.filter(p => !p.inStock && !(p.stock > 0));
@@ -256,7 +268,9 @@ export default function AdminAllCatalog() {
     const tree = {};
     inStockFiltered.forEach(p => {
       const brand = p.brand || 'matkasym-home';
-      const set   = p.set   || 'other';
+      // Пустой set — отдельная секция «Без сета», а не свалка в 'other' (Prochee):
+      // иначе товар без сета не отличить от того, что осознанно положили в «Прочее».
+      const set   = p.set   || NO_SET;
       if (!tree[brand]) tree[brand] = {};
       if (!tree[brand][set]) tree[brand][set] = [];
       tree[brand][set].push(p);
@@ -336,6 +350,7 @@ export default function AdminAllCatalog() {
 
           <select value={fSet} onChange={e => { setFSet(e.target.value); setFCategory(''); }} style={SEL}>
             <option value="">Все сеты</option>
+            {noSetCount > 0 && <option value={NO_SET}>🚫 Без сета ({noSetCount})</option>}
             {availableSets.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
           </select>
 
