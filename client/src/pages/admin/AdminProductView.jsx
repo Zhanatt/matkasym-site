@@ -377,15 +377,38 @@ export default function AdminProductView() {
             </div>
           </div>
 
-          {canEdit && (
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate(`/admin/products/${id}/edit`)}
-              style={{ alignSelf: 'flex-start', marginTop: 8 }}
-            >
-              Редактировать товар
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+            {canEdit && (
+              <button
+                className="btn btn-primary"
+                onClick={() => navigate(`/admin/products/${id}/edit`)}
+              >
+                Редактировать товар
+              </button>
+            )}
+
+            {product.techSheet?.files?.length > 0 && (
+              product.techSheet.files.map((f, i) => (
+                <a
+                  key={i}
+                  href={f.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  download={f.name}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 16px', borderRadius: 8,
+                    background: '#1e3a5f', color: '#fff',
+                    fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>📄</span>
+                  Скачать PDF{product.techSheet.files.length > 1 ? ` (${i + 1})` : ''}
+                </a>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
