@@ -161,7 +161,6 @@ export default function AdminAgentSales() {
   })();
   const prodTotalQty = productRows.reduce((n, p) => n + p.qty, 0);
   const prodTotalSum = productRows.reduce((n, p) => n + p.sum, 0);
-  const avgPrice = prodTotalQty ? Math.round(prodTotalSum / prodTotalQty) : 0;
 
   return (
     <div style={{ maxWidth: 1000 }}>
@@ -366,20 +365,10 @@ export default function AdminAgentSales() {
             <div style={{ fontSize: 11, color: '#bbb', marginTop: 8 }}>продажи − возвраты · как «Итого» в 1С</div>
           </div>
 
-          {/* Агенты · для Q-top субконто агента не заполняется, вместо счётчика — средняя цена */}
+          {/* Агенты */}
           <div style={{ flex: '1 1 120px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '16px 18px' }}>
-            {country === 'KZ' ? (
-              <>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>🏷 Ср. цена</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#111' }}>{money(avgPrice)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
-                <div style={{ fontSize: 11, color: '#bbb', marginTop: 6 }}>сумма ÷ штуки</div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>👤 Агенты</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#111' }}>{data.agents.length}</div>
-              </>
-            )}
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>👤 Агенты</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#111' }}>{data.agents.length}</div>
           </div>
         </div>
       )}
