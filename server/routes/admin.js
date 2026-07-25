@@ -1161,6 +1161,8 @@ function fetchBuffer(url) {
 
 // ── DOWNLOAD TECH SHEET FILE ─────────────────────────────────────────────────
 // GET /api/admin/products/:id/techsheet/:fileIdx — проксирует скачивание файла техлиста
+// Cloudinary блокирует прямой доступ к PDF (strict transformations), поэтому
+// скачиваем через generate_archive API → ZIP → извлекаем PDF.
 router.get('/products/:id/techsheet/:fileIdx', protect, viewer, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).select('techSheet name').lean();
@@ -1169,11 +1171,43 @@ router.get('/products/:id/techsheet/:fileIdx', protect, viewer, async (req, res)
     const idx = Number(req.params.fileIdx);
     if (idx < 0 || idx >= files.length) return res.status(404).json({ error: 'Файл не найден' });
     const file = files[idx];
-    const buf = await fetchBuffer(file.url);
+
+    // Извлекаем public_id из Cloudinary URL
+    const urlMatch = file.url.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+    const isRaw = file.url.includes('/raw/upload/');
+    const publicId = urlMatch ? urlMatch[1].replace(/\.\w+$/, '') : null;
+
+    if (!publicId) return res.status(400).json({ error: 'Невозможно определить файл' });
+
+    // Скачиваем через generate_archive (ZIP), затем извлекаем PDF
+    const archiveUrl = cloudinary.utils.download_archive_url({
+      public_ids: [publicId],
+      resource_type: isRaw ? 'raw' : 'image',
+      flatten_folders: true,
+    });
+
+    const zipBuf = await new Promise((resolve, reject) => {
+      require('https').get(archiveUrl, r => {
+        if (r.statusCode !== 200) return reject(new Error(`Cloudinary archive: HTTP ${r.statusCode}`));
+        const chunks = [];
+        r.on('data', c => chunks.push(c));
+        r.on('end', () => resolve(Buffer.concat(chunks)));
+        r.on('error', reject);
+      }).on('error', reject);
+    });
+
+    // Извлекаем первый файл из ZIP
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(zipBuf);
+    const entries = zip.getEntries();
+    const pdfEntry = entries.find(e => !e.isDirectory);
+    if (!pdfEntry) return res.status(404).json({ error: 'PDF не найден в архиве' });
+
+    const pdfBuf = pdfEntry.getData();
     const filename = file.name || 'techsheet.pdf';
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
-    res.send(buf);
+    res.send(pdfBuf);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
