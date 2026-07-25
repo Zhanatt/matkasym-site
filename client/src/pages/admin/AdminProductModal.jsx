@@ -63,6 +63,12 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const [localProduct, setLocalProduct] = useState(product);
   const [partPreview, setPartPreview] = useState(null); // деталь комплекта, открытая своей карточкой
   const [loadingPart, setLoadingPart] = useState(null); // id детали, которая грузится
+
+  // Подгружаем полные данные товара (techSheet и др. могут отсутствовать в списке)
+  useEffect(() => {
+    if (!product?._id) return;
+    adminGetProduct(product._id).then(r => setLocalProduct(prev => ({ ...prev, ...r.data }))).catch(() => {});
+  }, [product?._id]);
   const canSetBuffer = user?.role === 'owner' || user?.canSetBufferStock;
   const [bufferEdit, setBufferEdit] = useState(false);
   const [bufferVal, setBufferVal] = useState(product.bufferStock || 0);
@@ -800,6 +806,36 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   </div>
                   <div style={{ fontSize: 13, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                     {product.description}
+                  </div>
+                </div>
+              )}
+
+              {/* Технический лист — скачать PDF */}
+              {localProduct.techSheet?.files?.length > 0 && (
+                <div style={{ background: '#f0f7ff', border: '1.5px solid #93c5fd', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    📄 Технический лист
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {localProduct.techSheet.files.map((f, i) => (
+                      <a
+                        key={i}
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={f.name || 'techsheet.pdf'}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 8,
+                          padding: '8px 14px', borderRadius: 8,
+                          background: '#1d4ed8', color: '#fff',
+                          fontSize: 13, fontWeight: 700,
+                          textDecoration: 'none', cursor: 'pointer',
+                          width: 'fit-content',
+                        }}
+                      >
+                        ⬇ Скачать PDF{localProduct.techSheet.files.length > 1 ? ` (${i + 1})` : ''}
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}
