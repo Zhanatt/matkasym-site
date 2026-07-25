@@ -38,6 +38,15 @@ const COUNTRIES = [
   { key: 'KZ', label: 'Казахстан',  flag: '🇰🇿' },
 ];
 const COUNTRY_LABEL = { KG: 'Кыргызстан', KZ: 'Казахстан' };
+// Валюта отчёта: KG — Make-in/Matkasym (сом), KZ — Q-top / ТОО QTOP (тенге)
+const CURRENCY = { KG: 'сом', KZ: '₸' };
+// Бренды HOME/SHAAR/KYMAT — кыргызские. В отчёте Q-top их нет, фильтр не показываем.
+const HAS_BRANDS = { KG: true, KZ: false };
+
+// В выгрузке Q-top субконто «Торг агент» не заполнено: 1С отдаёт всю выручку
+// одной строкой-заглушкой. Показываем её по-человечески.
+const isNoAgent = a => !a || a === '(без агента)' || String(a).startsWith('Субконто не заполнено');
+const agentLabel = a => (isNoAgent(a) ? 'Без торгового агента' : a);
 const BRAND_LABEL = { 'matkasym-home': 'HOME', 'matkasym-shaar': 'SHAAR', 'matkasym-kyzmat': 'KYMAT' };
 const BRAND_BADGE = {
   'matkasym-home':   { bg: '#fdecec', color: '#c0392b' },
@@ -54,7 +63,8 @@ export default function AdminAgentSales() {
   const [brand, setBrand]       = useState('');
   // Страна отчёта: KG (Make-in/Matkasym) или KZ (Q-top). Отчёты не смешиваются.
   const [country, setCountry]   = useState(() => localStorage.getItem('agentSalesCountry') || 'KG');
-  const [view, setView]         = useState('sets'); // sets | agents
+  const [view, setView]         = useState('sets'); // sets | products | agents
+  const [prodSort, setProdSort] = useState('qty');  // qty | sum | name — сортировка «По товарам»
   const [loading, setLoading]   = useState(true);
   const [data, setData]         = useState(null);
   const [expanded, setExpanded] = useState({});   // agent → true (показать товары)
@@ -67,6 +77,17 @@ export default function AdminAgentSales() {
   const [uploadDay, setUploadDay]   = useState(ymd(now));
 
   useEffect(() => { localStorage.setItem('agentSalesCountry', country); }, [country]);
+
+  const cur = CURRENCY[country] || CURRENCY.KG;
+
+  // Смена страны: бренды кыргызские, для Q-top их фильтр не применим — сбрасываем,
+  // иначе после переключения показалась бы пустота. Сообщение о загрузке тоже чужое.
+  useEffect(() => {
+    if (!HAS_BRANDS[country]) setBrand('');
+    setUploadMsg(null);
+    if (country === 'KZ' && view === 'agents') setView('sets');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -120,6 +141,28 @@ export default function AdminAgentSales() {
     else             { sales.sum   += p.sum; sales.qty   += p.qty; sales.pos++; }
   }));
 
+  // Плоский список позиций: товар → штуки/сумма, с сетом. Один товар может прийти
+  // из разных сетов — схлопываем по названию, чтобы «позиций» совпадало с 1С.
+  const productRows = (() => {
+    const m = new Map();
+    (data?.sets || []).forEach(s => s.products.forEach(p => {
+      const g = m.get(p.productName) || { productName: p.productName, set: s.set, brand: s.brand, qty: 0, sum: 0 };
+      g.qty += p.qty;
+      g.sum += p.sum;
+      m.set(p.productName, g);
+    }));
+    const rows = [...m.values()];
+    const cmp = {
+      qty:  (a, b) => b.qty - a.qty,
+      sum:  (a, b) => b.sum - a.sum,
+      name: (a, b) => a.productName.localeCompare(b.productName, 'ru'),
+    }[prodSort];
+    return rows.sort(cmp);
+  })();
+  const prodTotalQty = productRows.reduce((n, p) => n + p.qty, 0);
+  const prodTotalSum = productRows.reduce((n, p) => n + p.sum, 0);
+  const avgPrice = prodTotalQty ? Math.round(prodTotalSum / prodTotalQty) : 0;
+
   return (
     <div style={{ maxWidth: 1000 }}>
       {/* Переключатель страны: KG и KZ ведутся раздельно, отчёты не смешиваются */}
@@ -140,11 +183,11 @@ export default function AdminAgentSales() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#111', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            🧾 Продажи по агентам
+            {country === 'KZ' ? '🇰🇿 Продажи Q-top' : '🧾 Продажи по агентам'}
           </h1>
           <p style={{ fontSize: 14, color: '#888', marginTop: 4 }}>
             {country === 'KZ'
-              ? 'Продажи Q-top (Казахстан) — отдельный отчёт из 1С'
+              ? 'ТОО QTOP (Казахстан) · 1С «Сводная продаж по агентам» · суммы в тенге'
               : 'Точные данные из 1С (отчёт «Сводная продаж по агентам») — не по остаткам'}
           </p>
         </div>
@@ -244,9 +287,11 @@ export default function AdminAgentSales() {
         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={inputStyle} />
         <span style={{ color: '#aaa' }}>—</span>
         <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={inputStyle} />
-        <select value={brand} onChange={e => setBrand(e.target.value)} style={{ ...inputStyle, fontWeight: 600 }}>
-          {BRANDS.map(b => <option key={b.v} value={b.v}>{b.l}</option>)}
-        </select>
+        {HAS_BRANDS[country] && (
+          <select value={brand} onChange={e => setBrand(e.target.value)} style={{ ...inputStyle, fontWeight: 600 }}>
+            {BRANDS.map(b => <option key={b.v} value={b.v}>{b.l}</option>)}
+          </select>
+        )}
       </div>
 
       {/* График динамики — раскрывается по кнопке */}
@@ -269,7 +314,7 @@ export default function AdminAgentSales() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Сумма</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#27ae60' }}>{money(sales.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>сом</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#27ae60' }}>{money(sales.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Штук</div>
@@ -288,7 +333,7 @@ export default function AdminAgentSales() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11.5, color: '#c9a' }}>Сумма</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(Math.abs(returns.sum))} <span style={{ fontSize: 12, color: '#d9a' }}>сом</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(Math.abs(returns.sum))} <span style={{ fontSize: 12, color: '#d9a' }}>{cur}</span></div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#c9a' }}>Штук</div>
@@ -307,7 +352,7 @@ export default function AdminAgentSales() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Сумма</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.sum + returns.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>сом</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.sum + returns.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Штук</div>
@@ -321,10 +366,20 @@ export default function AdminAgentSales() {
             <div style={{ fontSize: 11, color: '#bbb', marginTop: 8 }}>продажи − возвраты · как «Итого» в 1С</div>
           </div>
 
-          {/* Агенты */}
+          {/* Агенты · для Q-top субконто агента не заполняется, вместо счётчика — средняя цена */}
           <div style={{ flex: '1 1 120px', background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '16px 18px' }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>👤 Агенты</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#111' }}>{data.agents.length}</div>
+            {country === 'KZ' ? (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>🏷 Ср. цена</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#111' }}>{money(avgPrice)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
+                <div style={{ fontSize: 11, color: '#bbb', marginTop: 6 }}>сумма ÷ штуки</div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>👤 Агенты</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#111' }}>{data.agents.length}</div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -332,7 +387,12 @@ export default function AdminAgentSales() {
       {/* Переключатель По сетам / По агентам */}
       {data && (data.sets?.length > 0 || data.agents.length > 0) && (
         <div style={{ display: 'inline-flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
-          {[{ k: 'sets', l: '📦 По сетам' }, { k: 'agents', l: '👤 По агентам' }].map(t => (
+          {[
+            { k: 'sets',     l: '📦 По сетам' },
+            { k: 'products', l: '🏷 По товарам' },
+            // У Q-top субконто «Торг агент» пустое — разрез по агентам ничего не даёт
+            ...(country === 'KZ' && data.agents.every(a => isNoAgent(a.agent)) ? [] : [{ k: 'agents', l: '👤 По агентам' }]),
+          ].map(t => (
             <button key={t.k} onClick={() => setView(t.k)} style={{
               padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
               fontSize: 13, fontWeight: 700,
@@ -394,9 +454,15 @@ export default function AdminAgentSales() {
                   }}>
                     <span style={{ fontSize: 13, color: '#bbb', width: 14 }}>{isOpen ? '▼' : '▶'}</span>
                     <span style={{ fontSize: 15, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {a.agent}
+                      {agentLabel(a.agent)}
                     </span>
-                    {a.brand && BRAND_BADGE[a.brand] && (
+                    {isNoAgent(a.agent) && (
+                      <span title="В 1С у счёта учёта доходов не заполнено субконто «Торг агент»"
+                        style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: '#b45309', background: '#fff7ed', borderRadius: 20, padding: '1px 8px', whiteSpace: 'nowrap' }}>
+                        субконто не заполнено
+                      </span>
+                    )}
+                    {HAS_BRANDS[country] && a.brand && BRAND_BADGE[a.brand] && (
                       <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, borderRadius: 20, padding: '2px 8px', letterSpacing: 0.4, ...BRAND_BADGE[a.brand] }}>{BRAND_LABEL[a.brand]}</span>
                     )}
                     {agentReturns > 0 && (
@@ -404,7 +470,7 @@ export default function AdminAgentSales() {
                     )}
                   </button>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#27ae60' }}>{money(a.totalSum)} <span style={{ fontSize: 12, color: '#bbb' }}>сом</span></div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#27ae60' }}>{money(a.totalSum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
                     <div style={{ fontSize: 12, color: '#999' }}>{money(a.totalQty)} шт · {a.products.length} поз.</div>
                   </div>
                 </div>
@@ -439,6 +505,59 @@ export default function AdminAgentSales() {
             );
           })}
         </div>
+      ) : view === 'products' ? (
+        /* ── По товарам ── плоский список позиций: сколько штук и на какую сумму */
+        (() => {
+          const PRODGRID = '26px 1fr 104px 84px 108px 52px';
+          const sortHead = (key, label, align = 'right') => (
+            <span
+              onClick={() => setProdSort(key)}
+              style={{
+                textAlign: align, cursor: 'pointer', userSelect: 'none',
+                color: prodSort === key ? '#111' : '#888',
+              }}
+            >{label}{prodSort === key ? ' ↓' : ''}</span>
+          );
+          return (
+            <div style={{ border: '1px solid #eee', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: '9px 16px', background: '#f7f8fa', borderBottom: '1px solid #eee', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#888' }}>
+                <span>#</span>
+                {sortHead('name', 'Товар', 'left')}
+                <span>Сет</span>
+                {sortHead('qty', 'Продано, шт')}
+                {sortHead('sum', 'Сумма')}
+                <span style={{ textAlign: 'right' }}>% ∑</span>
+              </div>
+
+              {productRows.map((p, i) => {
+                const pctSum = prodTotalSum > 0 ? Math.round(p.sum / prodTotalSum * 100) : 0;
+                const ret = isReturn(p);
+                return (
+                  <div key={p.productName} style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: '9px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
+                    <span style={{ color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }} title={p.productName}>
+                      {p.productName}
+                      {ret && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px' }}>возврат</span>}
+                    </span>
+                    <span style={{ fontSize: 11.5, color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{setLabel(p.set)}</span>
+                    <span style={{ textAlign: 'right', fontWeight: 700, color: p.qty < 0 ? '#c0392b' : '#1e7e34' }}>{money(p.qty)}</span>
+                    <span style={{ textAlign: 'right', fontWeight: 600, color: p.sum < 0 ? '#c0392b' : '#111' }}>{money(p.sum)}</span>
+                    <span style={{ textAlign: 'right', fontSize: 11.5, color: '#aaa' }}>{pctSum}%</span>
+                  </div>
+                );
+              })}
+
+              <div style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: '11px 16px', background: '#f7f8fa', fontSize: 13 }}>
+                <span />
+                <span style={{ fontWeight: 700, color: '#111' }}>Итого · {productRows.length} поз.</span>
+                <span />
+                <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(prodTotalQty)} шт</span>
+                <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{money(prodTotalSum)}</span>
+                <span style={{ textAlign: 'right', fontSize: 11.5, color: '#aaa' }}>{cur}</span>
+              </div>
+            </div>
+          );
+        })()
       ) : (
         /* ── По сетам ── товары по сетам, строка раскрывается в список товаров */
         (() => {

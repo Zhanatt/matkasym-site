@@ -5,9 +5,12 @@ import {
 import { adminGetAgentSalesTimeseries } from '../../api';
 
 const METRICS = {
-  sum: { label: '💰 Сумма', color: '#27ae60', unit: 'сом' },
-  qty: { label: '📦 Штуки', color: '#3498db', unit: 'шт' },
+  sum: { label: '💰 Сумма', color: '#27ae60' },
+  qty: { label: '📦 Штуки', color: '#3498db' },
 };
+// Валюта отчёта зависит от страны: KG — Make-in/Matkasym (сом), KZ — Q-top / ТОО QTOP (тенге)
+const CURRENCY = { KG: 'сом', KZ: '₸' };
+const unitOf = (metric, cur) => (metric === 'sum' ? cur : 'шт');
 const GROUPS = [{ k: 'day', l: 'День' }, { k: 'week', l: 'Неделя' }, { k: 'month', l: 'Месяц' }];
 const MONTHS = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
@@ -41,10 +44,11 @@ function compact(n) {
   return String(n);
 }
 
-function ChartTooltip({ active, payload, groupBy, metric }) {
+function ChartTooltip({ active, payload, groupBy, metric, cur = 'сом' }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   const m = METRICS[metric];
+  const unit = unitOf(metric, cur);
   const ret = metric === 'sum' ? p.retSum : p.retQty;
   return (
     <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, padding: '9px 13px', boxShadow: '0 4px 16px rgba(0,0,0,.1)' }}>
@@ -52,14 +56,14 @@ function ChartTooltip({ active, payload, groupBy, metric }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <span style={{ width: 9, height: 9, borderRadius: '50%', background: m.color, flexShrink: 0 }} />
         <span style={{ fontSize: 15, fontWeight: 800, color: '#111' }}>
-          {money(metric === 'sum' ? p.sum : p.qty)} <span style={{ fontSize: 11, color: '#bbb' }}>{m.unit}</span>
+          {money(metric === 'sum' ? p.sum : p.qty)} <span style={{ fontSize: 11, color: '#bbb' }}>{unit}</span>
         </span>
       </div>
       <div style={{ fontSize: 11.5, color: '#aaa', marginTop: 4 }}>
-        {metric === 'sum' ? `${money(p.qty)} шт` : `${money(p.sum)} сом`}
+        {metric === 'sum' ? `${money(p.qty)} шт` : `${money(p.sum)} ${cur}`}
       </div>
       {ret > 0 && (
-        <div style={{ fontSize: 11.5, color: '#c0392b', marginTop: 3 }}>↩ возвраты: {money(ret)} {m.unit}</div>
+        <div style={{ fontSize: 11.5, color: '#c0392b', marginTop: 3 }}>↩ возвраты: {money(ret)} {unit}</div>
       )}
     </div>
   );
@@ -100,6 +104,7 @@ export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG
   };
 
   const m = METRICS[metric];
+  const cur = CURRENCY[country] || CURRENCY.KG;
   const seg = (activeKey, k) => ({
     padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
     background: activeKey === k ? '#fff' : 'transparent',
@@ -191,7 +196,7 @@ export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG
                     width={54}
                   />
                   <Tooltip
-                    content={<ChartTooltip groupBy={groupBy} metric={metric} />}
+                    content={<ChartTooltip groupBy={groupBy} metric={metric} cur={cur} />}
                     cursor={{ stroke: '#ddd', strokeWidth: 1 }}
                   />
                   <Area
