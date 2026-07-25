@@ -8,7 +8,7 @@ const PRICE_MODE_TO_TYPE = {
   none: 'none',
 };
 
-export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail' }) {
+export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail', currency = 'сом' }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const priceType = PRICE_MODE_TO_TYPE[priceMode] || 'price';
@@ -64,7 +64,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
                 : allProducts.some(p => p.brand === 'matkasym-shaar') ? 'shaar' : 'home';
 
     try {
-      await downloadCatalogPDF(pdfGroups, label, priceType, brand);
+      await downloadCatalogPDF(pdfGroups, label, priceType, brand, currency);
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {

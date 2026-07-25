@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { adminGetProducts } from '../../api/index';
 import { downloadCatalogPDF } from './CatalogPDF';
 
-export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Каталог' }) {
+export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Каталог', currency = 'сом' }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [priceType, setPriceType] = useState('price');
@@ -75,7 +75,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const brand = brandKey === 'matkasym-kyzmat' ? 'kyzmat'
                   : brandKey === 'matkasym-shaar' ? 'shaar' : 'home';
 
-      await downloadCatalogPDF(pdfGroups, brandLabel, priceType, brand);
+      await downloadCatalogPDF(pdfGroups, brandLabel, priceType, brand, currency);
 
       clearInterval(timerRef.current);
       setProgress(100);

@@ -373,7 +373,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
           {!editing && (
-            <BrandPdfButton brandKey={brandKey} sets={customSets} brandLabel={BRAND_META[brandKey].label} />
+            <BrandPdfButton brandKey={brandKey} sets={customSets} brandLabel={BRAND_META[brandKey].label} currency={CURRENCY[country] || CURRENCY.KG} />
           )}
           {editing ? (
             <>
@@ -636,6 +636,10 @@ function getPrice(product, mode) {
 function getPriceLabel(mode) {
   return PRICE_MODES.find(m => m.key === mode)?.label || '';
 }
+// Валюта страны учёта: Кыргызстан — сом, Казахстан (склад Q-top) — тенге
+const CURRENCY = { KG: 'сом', KZ: '₸' };
+const fmtPrice = (price, country) =>
+  price > 0 ? `${price.toLocaleString('ru')} ${CURRENCY[country] || CURRENCY.KG}` : '—';
 
 function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride, fetchParams }) {
   const country     = useCountry();
@@ -865,7 +869,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
             {/* PDF button on desktop */}
             {!isMobile && (
-              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} />
+              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
             )}
           </div>
 
@@ -880,7 +884,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               gap: 12,
             }}>
               {!loading && renderStockStats(11)}
-              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} />
+              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
             </div>
           )}
 
@@ -1143,7 +1147,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                                   fontStyle: primary.priceUndefined ? 'italic' : 'normal'
                                 }}
                               >
-                                {primary.priceUndefined ? 'Цена не определена' : (price > 0 ? `${price.toLocaleString('ru')} сом` : '—')}
+                                {primary.priceUndefined ? 'Цена не определена' : fmtPrice(price, country)}
                               </div>
                               <div className={`tube-stock-badge ${hasStock ? 'in-stock' : 'out-stock'}`}>
                                 {stockLabel}
@@ -1180,7 +1184,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       {primary.sku && <div style={{ fontSize: 10, color: '#ccc' }}>{primary.sku}</div>}
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 800, color: primary.priceUndefined ? '#888' : accent, flexShrink: 0, fontStyle: primary.priceUndefined ? 'italic' : 'normal' }}>
-                      {primary.priceUndefined ? 'Цена не определена' : (price > 0 ? `${price.toLocaleString('ru')} сом` : '—')}
+                      {primary.priceUndefined ? 'Цена не определена' : fmtPrice(price, country)}
                     </div>
                     <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
                       background: stockInfo.bg, color: stockInfo.color }}>
@@ -1274,7 +1278,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                                   <>
                                     <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
                                     <div style={{ fontSize: 14, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
-                                      {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                                      {fmtPrice(price, country)}
                                     </div>
                                   </>
                                 )}
@@ -1353,7 +1357,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                             <>
                               <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
                               <div style={{ fontSize: 14, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
-                                {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                                {fmtPrice(price, country)}
                               </div>
                             </>
                           )}
@@ -1444,7 +1448,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               <>
                                 <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
-                                  {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                                  {fmtPrice(price, country)}
                                 </div>
                               </>
                             )}

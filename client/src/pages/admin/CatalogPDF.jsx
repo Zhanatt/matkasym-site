@@ -434,7 +434,7 @@ const PRICE_LABELS = {
 const SPEC_ROWS = 4;
 
 // ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ product, priceType }) {
+function ProductCard({ product, priceType, currency = 'сом' }) {
   const imageUrl = pdfImg(product.images?.[0]);
   const noPhoto  = !imageUrl;
   const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
@@ -479,7 +479,7 @@ function ProductCard({ product, priceType }) {
               <Text style={S.priceLabel}>{priceLabel}</Text>
               <Text style={S.priceValue}>
                 {priceNum || '—'}{priceNum ? ' ' : ''}
-                {priceNum && <Text style={S.priceSom}>сом</Text>}
+                {priceNum && <Text style={S.priceSom}>{currency}</Text>}
               </Text>
             </>
           ) : (
@@ -500,7 +500,7 @@ function ProductCard({ product, priceType }) {
 }
 
 // ── Content Page ──────────────────────────────────────────────────────────────
-function ContentPage({ products, setName, pageIndex, priceType }) {
+function ContentPage({ products, setName, pageIndex, priceType, currency }) {
   const logoLeft = pageIndex % 2 === 0;
   return (
     <Page size="A4" style={S.contentPage}>
@@ -523,12 +523,12 @@ function ContentPage({ products, setName, pageIndex, priceType }) {
       {/* 2×2 grid — explicit rows to avoid flexWrap issues in react-pdf */}
       <View style={S.grid}>
         <View style={S.gridRow}>
-          {products[0] && <ProductCard product={products[0]} priceType={priceType} />}
-          {products[1] && <ProductCard product={products[1]} priceType={priceType} />}
+          {products[0] && <ProductCard product={products[0]} priceType={priceType} currency={currency} />}
+          {products[1] && <ProductCard product={products[1]} priceType={priceType} currency={currency} />}
         </View>
         <View style={S.gridRow}>
-          {products[2] && <ProductCard product={products[2]} priceType={priceType} />}
-          {products[3] && <ProductCard product={products[3]} priceType={priceType} />}
+          {products[2] && <ProductCard product={products[2]} priceType={priceType} currency={currency} />}
+          {products[3] && <ProductCard product={products[3]} priceType={priceType} currency={currency} />}
         </View>
       </View>
 
@@ -545,7 +545,7 @@ function ContentPage({ products, setName, pageIndex, priceType }) {
 
 // ── Document ──────────────────────────────────────────────────────────────────
 // groups: [{ groupName: string|null, products: Product[] }, ...]
-function CatalogDocument({ groups, setName, priceType, brand = 'home' }) {
+function CatalogDocument({ groups, setName, priceType, brand = 'home', currency = 'сом' }) {
   const PER_PAGE = 4;
   let pageCounter = 0;
 
@@ -566,6 +566,7 @@ function CatalogDocument({ groups, setName, priceType, brand = 'home' }) {
               setName={group.groupName || setName}
               pageIndex={currentPage}
               priceType={priceType}
+              currency={currency}
             />
           );
         });
@@ -577,9 +578,9 @@ function CatalogDocument({ groups, setName, priceType, brand = 'home' }) {
 
 // ── Export ────────────────────────────────────────────────────────────────────
 // groups: [{ groupName: string|null, products: Product[] }, ...]
-export async function downloadCatalogPDF(groups, setName, priceType = 'price', brand = 'home') {
+export async function downloadCatalogPDF(groups, setName, priceType = 'price', brand = 'home', currency = 'сом') {
   const blob = await pdf(
-    <CatalogDocument groups={groups} setName={setName} priceType={priceType} brand={brand} />
+    <CatalogDocument groups={groups} setName={setName} priceType={priceType} brand={brand} currency={currency} />
   ).toBlob();
 
   const url = URL.createObjectURL(blob);
