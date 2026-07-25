@@ -483,7 +483,7 @@ export default function AdminAgentSales() {
                         <tr style={{ color: '#aaa', textAlign: 'left' }}>
                           <th style={{ fontWeight: 600, padding: '6px 4px' }}>Товар</th>
                           <th style={{ fontWeight: 600, padding: '6px 4px', textAlign: 'right', width: 70 }}>Кол-во</th>
-                          <th style={{ fontWeight: 600, padding: '6px 4px', textAlign: 'right', width: 110 }}>Сумма</th>
+                          <th style={{ fontWeight: 600, padding: '6px 4px', textAlign: 'right', width: 110 }}>Сумма, {cur}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -525,7 +525,7 @@ export default function AdminAgentSales() {
                 {sortHead('name', 'Товар', 'left')}
                 <span>Сет</span>
                 {sortHead('qty', 'Продано, шт')}
-                {sortHead('sum', 'Сумма')}
+                {sortHead('sum', `Сумма, ${cur}`)}
                 <span style={{ textAlign: 'right' }}>% ∑</span>
               </div>
 
@@ -553,7 +553,7 @@ export default function AdminAgentSales() {
                 <span />
                 <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(prodTotalQty)} шт</span>
                 <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{money(prodTotalSum)}</span>
-                <span style={{ textAlign: 'right', fontSize: 11.5, color: '#aaa' }}>{cur}</span>
+                <span />
               </div>
             </div>
           );
@@ -569,7 +569,7 @@ export default function AdminAgentSales() {
             <span style={{ textAlign: 'right' }}>% от итога</span>
             <span style={{ textAlign: 'right' }}>Позиций</span>
             <span style={{ textAlign: 'right' }}>Продано, шт</span>
-            <span style={{ textAlign: 'right' }}>Сумма</span>
+            <span style={{ textAlign: 'right' }}>Сумма, {cur}</span>
           </div>
           {data.sets.map((s, i) => {
             const pct = data.grandQty > 0 ? Math.round(s.qty / data.grandQty * 100) : 0;
@@ -612,7 +612,7 @@ export default function AdminAgentSales() {
                         <tr style={{ color: '#aaa', textAlign: 'left' }}>
                           <th style={{ fontWeight: 600, padding: '6px 4px' }}>Товар</th>
                           <th style={{ fontWeight: 600, padding: '6px 4px', textAlign: 'right', width: 70 }}>Кол-во</th>
-                          <th style={{ fontWeight: 600, padding: '6px 4px', textAlign: 'right', width: 100 }}>Сумма</th>
+                          <th style={{ fontWeight: 600, padding: '6px 4px', textAlign: 'right', width: 100 }}>Сумма, {cur}</th>
                         </tr>
                       </thead>
                       <tbody>
