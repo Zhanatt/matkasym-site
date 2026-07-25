@@ -391,10 +391,9 @@ export default function AdminProductView() {
               product.techSheet.files.map((f, i) => (
                 <a
                   key={i}
-                  href={f.url}
+                  href={`/api/admin/products/${product._id}/techsheet/${i}`}
                   target="_blank"
                   rel="noreferrer"
-                  download={f.name}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     padding: '8px 16px', borderRadius: 8,

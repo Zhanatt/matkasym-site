@@ -820,10 +820,9 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     {localProduct.techSheet.files.map((f, i) => (
                       <a
                         key={i}
-                        href={f.url}
+                        href={`/api/admin/products/${localProduct._id}/techsheet/${i}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        download={f.name || 'techsheet.pdf'}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 8,
                           padding: '8px 14px', borderRadius: 8,

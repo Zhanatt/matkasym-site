@@ -1159,6 +1159,26 @@ function fetchBuffer(url) {
   });
 }
 
+// ── DOWNLOAD TECH SHEET FILE ─────────────────────────────────────────────────
+// GET /api/admin/products/:id/techsheet/:fileIdx — проксирует скачивание файла техлиста
+router.get('/products/:id/techsheet/:fileIdx', protect, viewer, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id).select('techSheet name').lean();
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+    const files = product.techSheet?.files || [];
+    const idx = Number(req.params.fileIdx);
+    if (idx < 0 || idx >= files.length) return res.status(404).json({ error: 'Файл не найден' });
+    const file = files[idx];
+    const buf = await fetchBuffer(file.url);
+    const filename = file.name || 'techsheet.pdf';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.send(buf);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── TZ PDF ───────────────────────────────────────────────────────────────────
 // GET /api/admin/pdf/tz/:id/:type  (type = 'development' | 'improvement')
 router.get('/pdf/tz/:id/:type', protect, viewer, async (req, res) => {
