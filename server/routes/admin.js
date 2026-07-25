@@ -1835,6 +1835,95 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
   }
 });
 
+// POST /api/admin/undo-stock-upload — откатить последнюю загрузку остатков для базы
+// Находит все StockLog записи этой загрузки и восстанавливает прежние остатки.
+router.post('/undo-stock-upload', editor, async (req, res) => {
+  const { base } = req.body;
+  if (!base || !isBaseKey(base)) return res.status(400).json({ error: 'Укажите базу' });
+
+  try {
+    // Найти самую последнюю загрузку: все логи с одинаковым sourceUrl (один файл)
+    const lastLog = await StockLog.findOne({ base, source: 'excel' }).sort({ createdAt: -1 }).lean();
+    if (!lastLog) return res.status(404).json({ error: 'Нет загрузок для отката' });
+
+    // Все логи этой загрузки (одинаковый sourceUrl и ±2 секунды от первой записи)
+    const filter = { base, source: 'excel' };
+    if (lastLog.sourceUrl) {
+      filter.sourceUrl = lastLog.sourceUrl;
+    } else {
+      // Фолбэк: по времени ±5 сек
+      filter.createdAt = {
+        $gte: new Date(lastLog.createdAt.getTime() - 5000),
+        $lte: new Date(lastLog.createdAt.getTime() + 5000),
+      };
+    }
+    const logs = await StockLog.find(filter).lean();
+    if (!logs.length) return res.status(404).json({ error: 'Логи загрузки не найдены' });
+
+    // Восстановить остатки
+    const ops = logs.map(log => {
+      const oldStock = log.fromStock;
+      return {
+        updateOne: {
+          filter: { _id: log.productId },
+          update: {
+            $set: {
+              stock: oldStock,
+              inStock: oldStock > 0,
+              stockStatus: oldStock > 0 ? 'in_stock' : 'out_of_stock',
+              [`stockByBase.${base}`]: log.notInFile ? (oldStock) : (log.fromStock - log.toStock + log.toStock),
+              [`inBase.${base}`]: log.notInFile ? true : true,
+            },
+          },
+        },
+      };
+    });
+
+    // Для точного восстановления stockByBase нам нужны текущие данные товаров
+    const productIds = logs.map(l => l.productId);
+    const products = await Product.find({ _id: { $in: productIds } }, 'stockByBase').lean();
+    const prodMap = new Map(products.map(p => [String(p._id), p]));
+
+    const preciseOps = logs.map(log => {
+      const p = prodMap.get(String(log.productId));
+      const byBase = { makein: 0, matkasym: 0, qtop: 0, ...(p?.stockByBase || {}) };
+      // Текущий stockByBase[base] — это то, что загрузка поставила.
+      // delta = toStock - fromStock, значит stockByBase[base] изменился на ту же дельту.
+      // Восстанавливаем: текущий base stock - delta
+      const currentBaseStock = byBase[base] || 0;
+      const restoredBaseStock = currentBaseStock - log.delta;
+      byBase[base] = Math.max(0, restoredBaseStock);
+      const newStock = STOCK_SUM_BASES.reduce((n, k) => n + (byBase[k] || 0), 0);
+
+      return {
+        updateOne: {
+          filter: { _id: log.productId },
+          update: {
+            $set: {
+              stock: newStock,
+              inStock: newStock > 0,
+              stockStatus: newStock > 0 ? 'in_stock' : 'out_of_stock',
+              [`stockByBase.${base}`]: byBase[base],
+              [`inBase.${base}`]: byBase[base] > 0,
+            },
+          },
+        },
+      };
+    });
+
+    if (preciseOps.length) await Product.bulkWrite(preciseOps, { ordered: false });
+
+    // Удалить логи этой загрузки
+    await StockLog.deleteMany({ _id: { $in: logs.map(l => l._id) } });
+
+    console.log(`[undo-stock] ${new Date().toISOString()} base=${base} restored=${preciseOps.length} logs`);
+    res.json({ success: true, restored: preciseOps.length });
+  } catch (e) {
+    console.error('[undo-stock] error:', e);
+    res.status(500).json({ error: 'Ошибка отката: ' + e.message });
+  }
+});
+
 // POST /api/admin/confirm-stock-items — создать товары, найденные в выгрузке остатков
 // body: { base, items: [{ name, stock, buffer, brand?, set? }] }
 // Вызывается после upload-stock, когда пользователь отметил, что из newItems реально товар.

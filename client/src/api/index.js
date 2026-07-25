@@ -115,6 +115,7 @@ export const adminUploadStock   = (file, base, onProgress)  => {
     onUploadProgress: e => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
   });
 };
+export const adminUndoStockUpload = (base) => api.post('/admin/undo-stock-upload', { base });
 export const adminUploadPhotos  = (files, onProgress, sourceFile = '')       => {
   const fd = new FormData();
   for (const f of files) fd.append('files', f);
@@ -231,6 +232,7 @@ export const socialPreview         = (data)      => api.post('/admin/social/prev
 export const socialPublish         = (data)      => api.post('/admin/social/publications', data);
 export const socialGetPublications = (limit)     => api.get('/admin/social/publications', { params: { limit } });
 export const socialRetryPublication= (id)        => api.post(`/admin/social/publications/${id}/retry`);
+export const socialUnpublish       = (id)        => api.post(`/admin/social/publications/${id}/unpublish`);
 export const socialDeletePublication=(id)        => api.delete(`/admin/social/publications/${id}`);
 
 export default api;

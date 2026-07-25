@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import * as pdfjsLib from 'pdfjs-dist';
-import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems } from '../../api/index';
+import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 
 // PDF.js worker
@@ -104,6 +104,7 @@ export default function AdminDashboard() {
   const [showAllLiquidation, setShowAllLiquidation] = useState(false);
   const [syncLoading,   setSyncLoading]   = useState(false);
   const [syncResult,    setSyncResult]    = useState(null);
+  const [undoingStock,  setUndoingStock]  = useState(false);
   const [stockBase,     setStockBase]     = useState('makein');
   // Товары из выгрузки, которых нет в каталоге — ждут подтверждения
   const [newItems,      setNewItems]      = useState(null);   // { base, items: [{name, stock, buffer, isGroup, checked}] }
@@ -669,7 +670,34 @@ export default function AdminDashboard() {
                 </>)
               : `❌ ${syncResult.error}`}
           </span>
-          <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5 }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {syncResult.ok && syncResult.base && syncResult.zeroed > 0 && (
+              <button
+                onClick={async () => {
+                  if (!confirm(`Откатить последнюю загрузку остатков базы ${syncResult.baseLabel}?`)) return;
+                  setUndoingStock(true);
+                  try {
+                    const r = await adminUndoStockUpload(syncResult.base);
+                    setSyncResult({ ok: true, msg: `↩️ Откат выполнен — восстановлено ${r.data.restored} товаров` });
+                  } catch (err) {
+                    setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка отката' });
+                  } finally {
+                    setUndoingStock(false);
+                  }
+                }}
+                disabled={undoingStock}
+                style={{
+                  padding: '5px 12px', borderRadius: 7, border: '1.5px solid #e74c3c',
+                  background: '#fff', color: '#e74c3c', fontSize: 12.5, fontWeight: 700,
+                  cursor: undoingStock ? 'wait' : 'pointer', opacity: undoingStock ? .5 : 1,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {undoingStock ? 'Откатываю…' : 'Отменить'}
+              </button>
+            )}
+            <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5 }}>×</button>
+          </div>
         </div>
       )}
 
