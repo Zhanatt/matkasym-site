@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminGetAgentSales, adminUploadSales } from '../../api';
+import { adminGetAgentSales, adminUploadSales, adminGetFxRate } from '../../api';
 import AgentSalesChart from './AgentSalesChart';
 
 const SET_NAMES = {
@@ -65,6 +65,10 @@ export default function AdminAgentSales() {
   const [country, setCountry]   = useState(() => localStorage.getItem('agentSalesCountry') || 'KG');
   const [view, setView]         = useState('sets'); // sets | products | agents
   const [prodSort, setProdSort] = useState('qty');  // qty | sum | name — сортировка «По товарам»
+  // Валюта показа для Казахстана: данные всегда в тенге, сомы — пересчёт по курсу НБКР
+  const [showIn, setShowIn]     = useState(() => localStorage.getItem('agentSalesShowIn') || 'KZT');
+  const [fx, setFx]             = useState(null); // { rate, date, stale }
+  const [fxErr, setFxErr]       = useState(false);
   const [loading, setLoading]   = useState(true);
   const [data, setData]         = useState(null);
   const [expanded, setExpanded] = useState({});   // agent → true (показать товары)
@@ -78,7 +82,22 @@ export default function AdminAgentSales() {
 
   useEffect(() => { localStorage.setItem('agentSalesCountry', country); }, [country]);
 
-  const cur = CURRENCY[country] || CURRENCY.KG;
+  // Пересчёт в сомы доступен только на казахстанском отчёте
+  const inKgs = country === 'KZ' && showIn === 'KGS' && !!fx?.rate;
+  const cur    = country === 'KZ' ? (inKgs ? 'сом' : '₸') : CURRENCY.KG;
+  const fxMul  = inKgs ? fx.rate : 1;
+  // Суммы: данные лежат в валюте страны, пересчёт — только для показа
+  const sumFmt = n => money(Math.round((n || 0) * fxMul));
+
+  useEffect(() => { localStorage.setItem('agentSalesShowIn', showIn); }, [showIn]);
+
+  // Курс тянем один раз при первом входе на казахстанский отчёт
+  useEffect(() => {
+    if (country !== 'KZ' || fx) return;
+    adminGetFxRate()
+      .then(r => { setFx(r.data); setFxErr(false); })
+      .catch(() => setFxErr(true));
+  }, [country, fx]);
 
   // Смена страны: бренды кыргызские, для Q-top их фильтр не применим — сбрасываем,
   // иначе после переключения показалась бы пустота. Сообщение о загрузке тоже чужое.
@@ -189,7 +208,7 @@ export default function AdminAgentSales() {
           </h1>
           <p style={{ fontSize: 14, color: '#888', marginTop: 4 }}>
             {country === 'KZ'
-              ? 'ТОО QTOP (Казахстан) · 1С «Сводная продаж по агентам» · суммы в тенге'
+              ? `ТОО QTOP (Казахстан) · 1С «Сводная продаж по агентам» · суммы в ${inKgs ? 'сомах' : 'тенге'}`
               : 'Точные данные из 1С (отчёт «Сводная продаж по агентам») — не по остаткам'}
           </p>
         </div>
@@ -294,6 +313,40 @@ export default function AdminAgentSales() {
             {BRANDS.map(b => <option key={b.v} value={b.v}>{b.l}</option>)}
           </select>
         )}
+
+        {/* Валюта показа — только для Q-top: в 1С суммы в тенге, сомы считаем по курсу НБКР */}
+        {country === 'KZ' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'inline-flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3 }}>
+              {[{ k: 'KZT', l: '₸ Тенге' }, { k: 'KGS', l: 'сом Сомы' }].map(o => {
+                const disabled = o.k === 'KGS' && !fx?.rate;
+                return (
+                  <button
+                    key={o.k}
+                    onClick={() => !disabled && setShowIn(o.k)}
+                    disabled={disabled}
+                    title={disabled ? 'Курс НБКР недоступен' : ''}
+                    style={{
+                      padding: '7px 14px', borderRadius: 8, border: 'none',
+                      cursor: disabled ? 'not-allowed' : 'pointer',
+                      fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+                      background: showIn === o.k ? '#fff' : 'transparent',
+                      color: disabled ? '#ccc' : showIn === o.k ? '#111' : '#888',
+                      boxShadow: showIn === o.k ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+                    }}
+                  >{o.l}</button>
+                );
+              })}
+            </div>
+            <span style={{ fontSize: 11.5, color: fxErr ? '#c0392b' : '#aaa' }}>
+              {fxErr
+                ? 'курс НБКР недоступен'
+                : fx
+                  ? `1 ₸ = ${fx.rate} сом · НБКР${fx.date ? ` на ${fx.date}` : ''}${fx.stale ? ' (устарел)' : ''}`
+                  : 'курс загружается…'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* График динамики — раскрывается по кнопке */}
@@ -304,6 +357,8 @@ export default function AdminAgentSales() {
         country={country}
         uploaded={data?.uploaded}
         dataRange={data?.dataRange}
+        cur={cur}
+        fxMul={fxMul}
         onPeriodChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
       />
 
@@ -316,7 +371,7 @@ export default function AdminAgentSales() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Сумма</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#27ae60' }}>{money(sales.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#27ae60' }}>{sumFmt(sales.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Штук</div>
@@ -335,7 +390,7 @@ export default function AdminAgentSales() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11.5, color: '#c9a' }}>Сумма</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(returns.sum)} <span style={{ fontSize: 12, color: '#d9a' }}>{cur}</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{sumFmt(returns.sum)} <span style={{ fontSize: 12, color: '#d9a' }}>{cur}</span></div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#c9a' }}>Штук</div>
@@ -354,7 +409,7 @@ export default function AdminAgentSales() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Сумма</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(net.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{sumFmt(net.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Штук</div>
@@ -462,7 +517,7 @@ export default function AdminAgentSales() {
                     )}
                   </button>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#27ae60' }}>{money(a.totalSum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#27ae60' }}>{sumFmt(a.totalSum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
                     <div style={{ fontSize: 12, color: '#999' }}>{money(a.totalQty)} шт · {a.products.length} поз.</div>
                   </div>
                 </div>
@@ -486,7 +541,7 @@ export default function AdminAgentSales() {
                               {isReturn(p) && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px' }}>возврат</span>}
                             </td>
                             <td style={{ padding: '6px 4px', textAlign: 'right', color: p.qty < 0 ? '#c0392b' : '#333', fontWeight: 600 }}>{money(p.qty)}</td>
-                            <td style={{ padding: '6px 4px', textAlign: 'right', color: p.sum < 0 ? '#c0392b' : '#111', fontWeight: 600 }}>{money(p.sum)}</td>
+                            <td style={{ padding: '6px 4px', textAlign: 'right', color: p.sum < 0 ? '#c0392b' : '#111', fontWeight: 600 }}>{sumFmt(p.sum)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -533,7 +588,7 @@ export default function AdminAgentSales() {
                     </span>
                     <span style={{ fontSize: 11.5, color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{setLabel(p.set)}</span>
                     <span style={{ textAlign: 'right', fontWeight: 700, color: p.qty < 0 ? '#c0392b' : '#1e7e34' }}>{money(p.qty)}</span>
-                    <span style={{ textAlign: 'right', fontWeight: 600, color: p.sum < 0 ? '#c0392b' : '#111' }}>{money(p.sum)}</span>
+                    <span style={{ textAlign: 'right', fontWeight: 600, color: p.sum < 0 ? '#c0392b' : '#111' }}>{sumFmt(p.sum)}</span>
                     <span style={{ textAlign: 'right', fontSize: 11.5, color: '#aaa' }}>{pctSum}%</span>
                   </div>
                 );
@@ -544,7 +599,7 @@ export default function AdminAgentSales() {
                 <span style={{ fontWeight: 700, color: '#111' }}>Итого · {productRows.length} поз.</span>
                 <span />
                 <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(prodTotalQty)} шт</span>
-                <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{money(prodTotalSum)}</span>
+                <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{sumFmt(prodTotalSum)}</span>
                 <span />
               </div>
             </div>
@@ -594,7 +649,7 @@ export default function AdminAgentSales() {
                   </div>
                   <span style={{ textAlign: 'right', fontWeight: 600, color: '#555' }}>{s.positions}</span>
                   <span style={{ textAlign: 'right', fontWeight: 700, color: s.qty < 0 ? '#c0392b' : '#1e7e34' }}>{money(s.qty)} шт</span>
-                  <span style={{ textAlign: 'right', fontWeight: 600, color: '#111' }}>{money(s.sum)}</span>
+                  <span style={{ textAlign: 'right', fontWeight: 600, color: '#111' }}>{sumFmt(s.sum)}</span>
                 </div>
 
                 {isOpen && (
@@ -615,7 +670,7 @@ export default function AdminAgentSales() {
                               {isReturn(p) && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px' }}>возврат</span>}
                             </td>
                             <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600, color: p.qty < 0 ? '#c0392b' : '#333' }}>{money(p.qty)}</td>
-                            <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600, color: p.sum < 0 ? '#c0392b' : '#111' }}>{money(p.sum)}</td>
+                            <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600, color: p.sum < 0 ? '#c0392b' : '#111' }}>{sumFmt(p.sum)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -629,7 +684,7 @@ export default function AdminAgentSales() {
             <span /><span style={{ fontWeight: 700, color: '#111' }}>Итого</span><span />
             <span style={{ textAlign: 'right', fontWeight: 800, color: '#555' }}>{data.sets.reduce((n, s) => n + s.positions, 0)}</span>
             <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(data.grandQty)} шт</span>
-            <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{money(data.grandSum)}</span>
+            <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{sumFmt(data.grandSum)}</span>
           </div>
         </div>
           );

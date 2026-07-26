@@ -65,6 +65,8 @@ export const adminGetSalesChartSet   = (set, params) => api.get('/admin/sales-ch
 export const adminGetAgentSales      = (params) => api.get('/admin/agent-sales', { params });
 export const adminGetAgentSalesDocs  = (params) => api.get('/admin/agent-sales/docs', { params });
 export const adminGetAgentSalesTimeseries = (params) => api.get('/admin/agent-sales/timeseries', { params });
+// Курс НБКР: сколько сомов в одном тенге (для показа отчёта Q-top в сомах)
+export const adminGetFxRate          = () => api.get('/admin/fx-rate');
 export const adminUploadSales        = (file, dateFrom, dateTo, timesFile, country = 'KG') => {
   const fd = new FormData();
   fd.append('file', file);

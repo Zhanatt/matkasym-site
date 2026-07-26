@@ -69,7 +69,7 @@ function ChartTooltip({ active, payload, groupBy, metric, cur = 'сом' }) {
   );
 }
 
-export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG', uploaded, onPeriodChange, dataRange }) {
+export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG', uploaded, onPeriodChange, dataRange, cur: curProp, fxMul = 1 }) {
   const [open, setOpen]       = useState(() => localStorage.getItem('agentSalesChartOpen') === '1');
   const [groupBy, setGroupBy] = useState('day');
   const [metric, setMetric]   = useState('sum');
@@ -104,7 +104,13 @@ export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG
   };
 
   const m = METRICS[metric];
-  const cur = CURRENCY[country] || CURRENCY.KG;
+  const cur = curProp || CURRENCY[country] || CURRENCY.KG;
+  // Суммы могут показываться в другой валюте (Q-top в сомах) — масштабируем перед отрисовкой
+  const plotPoints = fxMul === 1 ? points : points.map(p => ({
+    ...p,
+    sum:    Math.round(p.sum    * fxMul),
+    retSum: Math.round(p.retSum * fxMul),
+  }));
   const seg = (activeKey, k) => ({
     padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
     background: activeKey === k ? '#fff' : 'transparent',
@@ -172,7 +178,7 @@ export default function AgentSalesChart({ dateFrom, dateTo, brand, country = 'KG
           ) : (
             <>
               <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={points} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
+                <AreaChart data={plotPoints} margin={{ top: 6, right: 8, left: 4, bottom: 0 }}>
                   <defs>
                     <linearGradient id="agentSalesFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%"   stopColor={m.color} stopOpacity={0.14} />

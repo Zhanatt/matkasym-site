@@ -2736,6 +2736,44 @@ function countryMatch(country) {
   return { country: { $ne: 'KZ' } };
 }
 
+// ── Курс тенге к сому ─────────────────────────────────────────────────────────
+// Источник — официальные курсы Нацбанка КР (обновляются раз в сутки).
+// Нужен, чтобы отчёт Q-top можно было посмотреть в сомах, не трогая сами данные.
+const NBKR_URL = 'https://www.nbkr.kg/XML/daily.xml';
+const FX_TTL_MS = 6 * 60 * 60 * 1000;
+let fxCache = null; // { rate, date, fetchedAt }
+
+async function fetchKztToKgs() {
+  const { data } = await require('axios').get(NBKR_URL, {
+    timeout: 10000,
+    responseType: 'arraybuffer',        // XML в windows-1251, латиница тегов читается как ascii
+  });
+  const xml = Buffer.from(data).toString('latin1');
+  const date = (xml.match(/Date="([^"]+)"/) || [])[1] || '';
+  const block = xml.match(/<Currency\s+ISOCode="KZT">([\s\S]*?)<\/Currency>/);
+  if (!block) throw new Error('KZT не найден в выгрузке НБКР');
+  const nominal = parseFloat((block[1].match(/<Nominal>([\d.,]+)<\/Nominal>/) || [])[1]?.replace(',', '.') || '1');
+  const value   = parseFloat((block[1].match(/<Value>([\d.,]+)<\/Value>/)     || [])[1]?.replace(',', '.') || '0');
+  if (!value || !nominal) throw new Error('Не разобрал курс KZT');
+  return { rate: value / nominal, date };
+}
+
+// GET /api/admin/fx-rate — сколько сомов в одном тенге
+router.get('/fx-rate', viewer, async (req, res) => {
+  try {
+    if (fxCache && Date.now() - fxCache.fetchedAt < FX_TTL_MS) {
+      return res.json({ ...fxCache, cached: true });
+    }
+    const fresh = await fetchKztToKgs();
+    fxCache = { ...fresh, fetchedAt: Date.now(), source: 'НБКР' };
+    res.json({ ...fxCache, cached: false });
+  } catch (e) {
+    // Курс протух, но старое значение лучше, чем ничего — отдаём его с пометкой
+    if (fxCache) return res.json({ ...fxCache, stale: true });
+    res.status(502).json({ error: 'Не удалось получить курс НБКР' });
+  }
+});
+
 // Количество со знаком возврата. В выгрузке 1С часть строк-возвратов приходит
 // с положительным количеством при отрицательной сумме — знак суммы надёжнее,
 // поэтому по нему и определяем возврат, иначе штуки прибавляются вместо вычитания.
