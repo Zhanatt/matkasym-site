@@ -2736,6 +2736,11 @@ function countryMatch(country) {
   return { country: { $ne: 'KZ' } };
 }
 
+// Количество со знаком возврата. В выгрузке 1С часть строк-возвратов приходит
+// с положительным количеством при отрицательной сумме — знак суммы надёжнее,
+// поэтому по нему и определяем возврат, иначе штуки прибавляются вместо вычитания.
+const NET_QTY = { $cond: [{ $lt: ['$sum', 0] }, { $multiply: [-1, { $abs: '$quantity' }] }, '$quantity'] };
+
 // ── Продажи по агентам (точные данные из 1С) ─────────────────────────────────
 // GET /api/admin/agent-sales?dateFrom=&dateTo=&brand=
 // Свод: агент → товар → количество/сумма, с подытогами по агентам.
@@ -2748,7 +2753,7 @@ router.get('/agent-sales', viewer, async (req, res) => {
       { $match: match },
       { $group: {
         _id: { agent: { $ifNull: ['$agent', ''] }, product: { $ifNull: ['$productName', ''] } },
-        qty:  { $sum: '$quantity' },
+        qty:  { $sum: NET_QTY },
         sum:  { $sum: '$sum' },
       }},
       { $sort: { '_id.agent': 1, sum: -1 } },
@@ -2775,7 +2780,7 @@ router.get('/agent-sales', viewer, async (req, res) => {
       { $match: match },
       { $group: {
         _id: { set: { $ifNull: ['$set', ''] }, brand: { $ifNull: ['$brand', ''] }, product: { $ifNull: ['$productName', ''] } },
-        qty: { $sum: '$quantity' },
+        qty: { $sum: NET_QTY },
         sum: { $sum: '$sum' },
       }},
     ]);
@@ -2875,9 +2880,9 @@ router.get('/agent-sales/timeseries', viewer, async (req, res) => {
       { $group: {
         _id:    { $dateToString: { format: fmt, date: '$docDate', timezone: '+06:00' } },
         sum:    { $sum: '$sum' },
-        qty:    { $sum: '$quantity' },
-        retSum: { $sum: { $cond: [{ $lt: ['$sum', 0] },      { $abs: '$sum' },      0] } },
-        retQty: { $sum: { $cond: [{ $lt: ['$quantity', 0] }, { $abs: '$quantity' }, 0] } },
+        qty:    { $sum: NET_QTY },
+        retSum: { $sum: { $cond: [{ $lt: ['$sum', 0] }, { $abs: '$sum' },      0] } },
+        retQty: { $sum: { $cond: [{ $lt: ['$sum', 0] }, { $abs: '$quantity' }, 0] } },
       }},
       { $sort: { _id: 1 } },
     ]);

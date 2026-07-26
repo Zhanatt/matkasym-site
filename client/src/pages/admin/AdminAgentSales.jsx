@@ -136,10 +136,13 @@ export default function AdminAgentSales() {
   const isReturn = p => p.qty < 0 || p.sum < 0;
   const sales   = { sum: 0, qty: 0, pos: 0 };
   const returns = { sum: 0, qty: 0, pos: 0 };
+  // Возвраты копим по модулю и вычитаем явно: в выгрузке 1С знак количества
+  // у возвратных строк непостоянен, поэтому складывать их с продажами нельзя.
   (data?.sets || []).forEach(s => s.products.forEach(p => {
-    if (isReturn(p)) { returns.sum += p.sum; returns.qty += p.qty; returns.pos++; }
-    else             { sales.sum   += p.sum; sales.qty   += p.qty; sales.pos++; }
+    if (isReturn(p)) { returns.sum += Math.abs(p.sum); returns.qty += Math.abs(p.qty); returns.pos++; }
+    else             { sales.sum   += p.sum;           sales.qty   += p.qty;           sales.pos++; }
   }));
+  const net = { sum: sales.sum - returns.sum, qty: sales.qty - returns.qty, pos: sales.pos - returns.pos };
 
   // Плоский список позиций: товар → штуки/сумма, с сетом. Один товар может прийти
   // из разных сетов — схлопываем по названию, чтобы «позиций» совпадало с 1С.
@@ -332,11 +335,11 @@ export default function AdminAgentSales() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11.5, color: '#c9a' }}>Сумма</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(Math.abs(returns.sum))} <span style={{ fontSize: 12, color: '#d9a' }}>{cur}</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(returns.sum)} <span style={{ fontSize: 12, color: '#d9a' }}>{cur}</span></div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#c9a' }}>Штук</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(Math.abs(returns.qty))}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#c0392b' }}>{money(returns.qty)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#c9a' }}>Позиций</div>
@@ -351,15 +354,15 @@ export default function AdminAgentSales() {
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Сумма</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.sum + returns.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(net.sum)} <span style={{ fontSize: 12, color: '#bbb' }}>{cur}</span></div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Штук</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.qty + returns.qty)}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(net.qty)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 11.5, color: '#aaa' }}>Позиций</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(sales.pos - returns.pos)}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#2c5aa0' }}>{money(net.pos)}</div>
               </div>
             </div>
             <div style={{ fontSize: 11, color: '#bbb', marginTop: 8 }}>продажи − возвраты · как «Итого» в 1С</div>
