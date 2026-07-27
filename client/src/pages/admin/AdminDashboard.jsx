@@ -127,7 +127,7 @@ export default function AdminDashboard() {
     : null;
 
   const isOwner = user?.role === 'owner';
-  const canEdit = ['owner', 'editor'].includes(user?.role);
+  const canEdit = ['owner', 'editor', 'designer'].includes(user?.role);
 
   const setProgress = (key, val) => setUploadProgress(p => ({ ...p, [key]: val }));
 

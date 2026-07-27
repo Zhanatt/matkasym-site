@@ -11,6 +11,6 @@
  * заводить нельзя (у AdminLayout была своя — из-за неё «Закупщик»
  * логинился, но тут же выкидывался обратно на форму входа).
  */
-export const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser'];
+export const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer'];
 
 export const canEnterAdmin = role => ADMIN_ROLES.includes(role);

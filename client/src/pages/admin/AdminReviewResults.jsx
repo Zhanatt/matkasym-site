@@ -48,7 +48,7 @@ const formatDateLong = (d) => d ? new Date(d).toLocaleDateString('ru', { day: 'n
 export default function AdminReviewResults() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const canEdit = user?.role === 'owner' || user?.role === 'editor';
+  const canEdit = ['owner', 'editor', 'designer'].includes(user?.role);
 
   const [loading, setLoading] = useState(true);
   const [audits, setAudits] = useState([]);

@@ -286,7 +286,7 @@ export default function AdminNews() {
   const [loading, setLoading] = useState(true);
   const [unread,  setUnread]  = useState(0);
 
-  const isEditor = ['owner', 'editor'].includes(user?.role);
+  const isEditor = ['owner', 'editor', 'designer'].includes(user?.role);
 
   const load = useCallback((p = 1) => {
     setLoading(true);

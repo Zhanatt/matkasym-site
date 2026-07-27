@@ -13,7 +13,9 @@ const userSchema = new mongoose.Schema({
   },
   favorites:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   // purchaser — Закупщик: обрабатывает заявки на заказ товара, ставит цену закупки и дату поставки
-  role:       { type: String, enum: ['user','owner','editor','viewer','navigator','warehouse','purchaser','banned'], default: 'user' },
+  // designer  — Дизайнер: публикует и редактирует товары, видит все вкладки; сеты за ним закреплены
+  //             отдельными карточками на странице «Фронтмены и дизайнеры» (Frontman с kind='designer')
+  role:       { type: String, enum: ['user','owner','editor','viewer','navigator','warehouse','purchaser','designer','banned'], default: 'user' },
   isPending:  { type: Boolean, default: false },
   resetPasswordToken:   { type: String },
   resetPasswordExpires: { type: Date },

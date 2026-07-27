@@ -40,11 +40,11 @@ function useIsMobile() {
 
 // zBase — этаж модалки. Деталь комплекта открывается такой же карточкой поверх родительской,
 // поэтому слои не зашиты, а сдвигаются: вложенная встаёт выше всех окон родителя.
-export default function AdminProductModal({ product, onClose, onDeleted, onSaved, extraActions, zBase = 1600 }) {
+export default function AdminProductModal({ product, onClose, onDeleted, onSaved, extraActions, zBase = 1600, country }) {
   const { user }    = useAuth();
   const navigate    = useNavigate();
   const isMobile    = useIsMobile();
-  const canEdit     = user?.role === 'owner' || user?.role === 'editor';
+  const canEdit     = ['owner', 'editor', 'designer'].includes(user?.role);
   const canDelete   = user?.role === 'owner';
   const canReceive  = ['owner', 'editor', 'warehouse'].includes(user?.role);
   const [imgIdx,    setImgIdx]    = useState(0);
@@ -547,18 +547,29 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     ➕ Добавить
                   </button>
                 )}
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                  background: localProduct.isKit && localProduct.kitType === 'independent' ? '#f5f3ff' : (localProduct.inStock ? '#e8f5e9' : '#fce8e8'),
-                  color: localProduct.isKit && localProduct.kitType === 'independent' ? '#7c3aed' : (localProduct.inStock ? '#2d7a3a' : '#c00') }}>
-                  {localProduct.isKit && localProduct.kitType === 'independent' ? 'Комплект' : (localProduct.stock > 0 ? `${localProduct.stock} шт.` : (localProduct.inStock ? 'Есть' : 'Нет'))}
-                </span>
+                {(() => {
+                  const displayStock = country === 'KZ' ? (localProduct.stockByBase?.qtop || 0) : (localProduct.stock || 0);
+                  const displayInStock = country === 'KZ' ? displayStock > 0 : localProduct.inStock;
+                  return (
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+                      background: localProduct.isKit && localProduct.kitType === 'independent' ? '#f5f3ff' : (displayInStock ? '#e8f5e9' : '#fce8e8'),
+                      color: localProduct.isKit && localProduct.kitType === 'independent' ? '#7c3aed' : (displayInStock ? '#2d7a3a' : '#c00') }}>
+                      {localProduct.isKit && localProduct.kitType === 'independent' ? 'Комплект' : (displayStock > 0 ? `${displayStock} шт.` : (displayInStock ? 'Есть' : 'Нет'))}
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Прайс каждой базы отдельно. Набор цен у баз разный: у Matkasym нет
                   розничной, зато есть экспортный прайс в долларах — по нему закупается
                   Matkasym KZ, а сам он продаёт в Казахстане в тенге. */}
               {localProduct.pricesByBase && (() => {
-                const rows = PRICE_BASES.map(b => {
+                const visibleBases = country === 'KZ'
+                  ? PRICE_BASES.filter(b => b.kz)
+                  : country === 'KG'
+                    ? PRICE_BASES.filter(b => !b.kz)
+                    : PRICE_BASES;
+                const rows = visibleBases.map(b => {
                   const pr = localProduct.pricesByBase?.[b.key] || {};
                   const cells = b.priceTypes.filter(t => Number(pr[t]) > 0)
                     .map(t => `${PRICE_LABEL[t]} ${Number(pr[t]).toLocaleString('ru-RU')} ${priceCurrency(b.key, t)}`);
@@ -590,7 +601,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     { key: 'makein',   label: 'Make-in',  hint: 'Кыргызстан' },
                     { key: 'matkasym', label: 'Matkasym', hint: 'Кыргызстан' },
                     { key: 'qtop',     label: 'Q-top',    hint: 'Казахстан', kz: true },
-                  ].map(b => {
+                  ].filter(b => country === 'KZ' ? b.kz : country === 'KG' ? !b.kz : true).map(b => {
                     const qty = localProduct.stockByBase?.[b.key] || 0;
                     const known = localProduct.inBase?.[b.key];
                     if (!qty && !known) return null;   // базе этот товар неизвестен — не мусорим
@@ -608,8 +619,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 </div>
               )}
 
-              {/* Буферный запас — видят все, менять могут owner и canSetBufferStock */}
-              {!(localProduct.isKit && localProduct.kitType === 'independent') && (
+              {/* Буферный запас — видят все, менять могут owner и canSetBufferStock (только KG) */}
+              {!(localProduct.isKit && localProduct.kitType === 'independent') && country !== 'KZ' && (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
                   background: (localProduct.bufferStock > 0 && (localProduct.stock || 0) < localProduct.bufferStock) ? '#fef2f2' : '#f8f8f8',
@@ -680,8 +691,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 {product.sku && <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>SKU: {product.sku}</div>}
               </div>
 
-              {/* Prices — скрыть для независимых комплектов */}
-              {prices.length > 0 && !(product.isKit && product.kitType === 'independent') && (
+              {/* Prices — скрыть для независимых комплектов и для KZ (у них свои цены в pricesByBase) */}
+              {prices.length > 0 && !(product.isKit && product.kitType === 'independent') && country !== 'KZ' && (
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                     Цены
@@ -1195,6 +1206,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       {partPreview && (
         <AdminProductModal
           product={partPreview}
+          country={country}
           zBase={zBase + 500}
           onClose={() => setPartPreview(null)}
           onSaved={handlePartSaved}

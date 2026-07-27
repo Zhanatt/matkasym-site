@@ -10,7 +10,7 @@ import AdminProductModal from './AdminProductModal';
 
 export default function AdminSuppliers() {
   const { user } = useAuth();
-  const canEdit = user?.role === 'owner' || user?.role === 'editor';
+  const canEdit = ['owner', 'editor', 'designer'].includes(user?.role);
 
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);

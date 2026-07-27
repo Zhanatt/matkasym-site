@@ -29,7 +29,7 @@ export default function AdminProductView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const canEdit = user?.role === 'owner' || user?.role === 'editor';
+  const canEdit = ['owner', 'editor', 'designer'].includes(user?.role);
 
   const [product,    setProduct]    = useState(null);
   const [loading,    setLoading]    = useState(true);

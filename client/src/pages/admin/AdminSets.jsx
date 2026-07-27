@@ -223,9 +223,15 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
 
   const getFrontmenForSet = (slug, channel) => {
     return frontmen.filter(f =>
+      (f.kind || 'frontman') === 'frontman' &&
       f.brand === brandKey && f.sets?.includes(slug) && f.channel === channel
     );
   };
+
+  // Дизайнеры ведут сеты без привязки к каналу продаж — отдельная колонка справа
+  const getDesignersForSet = slug =>
+    frontmen.filter(f => f.kind === 'designer' && f.brand === brandKey && f.sets?.includes(slug));
+  const DESIGNER_COLOR = '#be185d';
 
   // Sets come from DB (customSets), sorted by order field
   const allSets = useMemo(() => {
@@ -432,6 +438,17 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
               {ch.label}
             </div>
           ))}
+          <div style={{
+            flex: 1,
+            textAlign: 'center',
+            fontSize: 10,
+            fontWeight: 700,
+            color: DESIGNER_COLOR,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}>
+            Дизайнеры
+          </div>
         </div>
       )}
 
@@ -552,6 +569,24 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                       </div>
                     );
                   })}
+
+                  {/* Дизайнеры сета — одна колонка на все каналы */}
+                  <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', minHeight: 20 }}>
+                    {getDesignersForSet(slug).map(d => (
+                      <span key={d._id} style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: d.color || DESIGNER_COLOR,
+                        background: `${d.color || DESIGNER_COLOR}15`,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        whiteSpace: 'nowrap',
+                      }}>{d.name}</span>
+                    ))}
+                    {getDesignersForSet(slug).length === 0 && (
+                      <span style={{ fontSize: 10, color: '#ddd' }}>—</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1471,7 +1506,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
       {/* Product detail modal */}
       {detailProduct && (
-        <AdminProductModal product={detailProduct} onClose={() => setDetailProduct(null)}
+        <AdminProductModal product={detailProduct} country={country} onClose={() => setDetailProduct(null)}
           onDeleted={id => { setProducts(p => p.filter(x => x._id !== id)); setDetailProduct(null); }} />
       )}
     </>,

@@ -1,6 +1,9 @@
 const { Schema, model } = require('mongoose');
 
 const FrontmanSchema = new Schema({
+  // Одна коллекция на две роли: фронтмены (снимают контент по каналам продаж)
+  // и дизайнеры (ведут сеты). Различаются только kind — сеты, бренд и цвет общие.
+  kind:      { type: String, enum: ['frontman', 'designer'], default: 'frontman' },
   name:      { type: String, required: true },
   brand:     { type: String, required: true },
   sets:      [{ type: String }],

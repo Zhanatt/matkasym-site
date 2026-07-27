@@ -3233,7 +3233,7 @@ const NEWS_TYPE_TITLES = {
 async function autoPublishNews({ type, product, changedBy, message = '' }) {
   try {
     const users = await User.find({
-      role: { $in: ['owner', 'editor', 'viewer'] },
+      role: { $in: ['owner', 'editor', 'viewer', 'designer'] },
       isPending: { $ne: true },
     }).lean();
 
@@ -3360,9 +3360,9 @@ router.post('/news', editor, async (req, res) => {
 
     let users;
     if (Array.isArray(recipientIds) && recipientIds.length > 0) {
-      users = await User.find({ _id: { $in: recipientIds }, role: { $in: ['owner', 'editor', 'viewer'] }, isPending: false }).lean();
+      users = await User.find({ _id: { $in: recipientIds }, role: { $in: ['owner', 'editor', 'viewer', 'designer'] }, isPending: false }).lean();
     } else {
-      users = await User.find({ role: { $in: ['owner', 'editor', 'viewer'] }, isPending: false }).lean();
+      users = await User.find({ role: { $in: ['owner', 'editor', 'viewer', 'designer'] }, isPending: false }).lean();
     }
 
     const recipients = users.map(u => ({ userId: u._id, name: u.name, email: u.email, read: false }));

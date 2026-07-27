@@ -69,7 +69,7 @@ const CHANNEL_LABELS = {
 export default function AdminFrontmen() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const canEdit = user?.role === 'owner' || user?.role === 'editor';
+  const canEdit = ['owner', 'editor', 'designer'].includes(user?.role);
 
   const { frontmen, loading: frontmenLoading, createFrontman, updateFrontman, deleteFrontman } = useFrontmen();
   const [users, setUsers] = useState([]);
@@ -79,11 +79,15 @@ export default function AdminFrontmen() {
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  // Одна страница на две роли: у дизайнера нет канала продаж, только бренд и сеты
+  const [kind, setKind] = useState('frontman');
+  const isDesigner = kind === 'designer';
+  const KIND_LABEL = { frontman: 'фронтмен', designer: 'дизайнер' };
 
   useEffect(() => {
     adminGetUsers()
       .then(res => {
-        const filtered = res.data.filter(u => ['owner', 'editor', 'viewer'].includes(u.role));
+        const filtered = res.data.filter(u => ['owner', 'editor', 'viewer', 'designer'].includes(u.role));
         filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
         setUsers(filtered);
       })
@@ -100,10 +104,15 @@ export default function AdminFrontmen() {
 
   const loading = frontmenLoading || usersLoading;
 
+  const counts = {
+    frontman: frontmen.filter(f => (f.kind || 'frontman') === 'frontman').length,
+    designer: frontmen.filter(f => f.kind === 'designer').length,
+  };
+
   const grouped = Object.entries(BRAND_META).map(([key, meta]) => ({
     brandKey: key,
     meta,
-    items: frontmen.filter(f => f.brand === key).sort((a, b) => {
+    items: frontmen.filter(f => f.brand === key && (f.kind || 'frontman') === kind).sort((a, b) => {
       const aIsMe = a.userId?._id === user?._id || a.userId === user?._id;
       const bIsMe = b.userId?._id === user?._id || b.userId === user?._id;
       if (aIsMe && !bIsMe) return -1;
@@ -114,7 +123,7 @@ export default function AdminFrontmen() {
 
   function startNew(brandKey) {
     const color = PALETTE[frontmen.length % PALETTE.length];
-    setForm({ userId: '', name: '', brand: brandKey, instagram: '', sets: [], color, channel: '' });
+    setForm({ userId: '', name: '', brand: brandKey, instagram: '', sets: [], color, channel: '', kind });
     setEditId('new');
   }
 
@@ -127,6 +136,7 @@ export default function AdminFrontmen() {
       sets: [...fm.sets],
       color: fm.color,
       channel: fm.channel || '',
+      kind: fm.kind || 'frontman',
     });
     setEditId(fm._id);
   }
@@ -147,7 +157,12 @@ export default function AdminFrontmen() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const payload = { ...form, userId: form.userId || null, channel: form.channel || null };
+      const payload = {
+        ...form,
+        userId: form.userId || null,
+        kind: form.kind || 'frontman',
+        channel: form.kind === 'designer' ? null : (form.channel || null),
+      };
       if (editId === 'new') {
         await createFrontman(payload);
       } else {
@@ -159,7 +174,7 @@ export default function AdminFrontmen() {
   }
 
   async function del(id) {
-    if (!window.confirm('Удалить фронтмена?')) return;
+    if (!window.confirm(`Удалить ${KIND_LABEL[kind]}а?`)) return;
     await deleteFrontman(id);
   }
 
@@ -167,13 +182,26 @@ export default function AdminFrontmen() {
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      <div className="admin-page-header" style={{ marginBottom: 32 }}>
+      <div className="admin-page-header" style={{ marginBottom: 18 }}>
         <div>
-          <h1 className="admin-page-title">Фронтмены</h1>
+          <h1 className="admin-page-title">Фронтмены и дизайнеры</h1>
           <p style={{ color: 'var(--slate)', fontSize: 13, margin: '2px 0 0' }}>
-            {frontmen.length} человек
+            {counts.frontman} фронтменов · {counts.designer} дизайнеров
           </p>
         </div>
+      </div>
+
+      {/* Фронтмены закреплены за каналами продаж, дизайнеры — только за сетами */}
+      <div style={{ display: 'inline-flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3, marginBottom: 24 }}>
+        {[{ k: 'frontman', l: '👤 Фронтмены' }, { k: 'designer', l: '🎨 Дизайнеры' }].map(t => (
+          <button key={t.k} onClick={() => { setKind(t.k); setEditId(null); setExpandedId(null); }} style={{
+            padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+            background: kind === t.k ? '#fff' : 'transparent',
+            color:      kind === t.k ? '#111' : '#888',
+            boxShadow:  kind === t.k ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+          }}>{t.l} <span style={{ opacity: 0.5, fontWeight: 600 }}>{counts[t.k]}</span></button>
+        ))}
       </div>
 
       {grouped.map(({ brandKey, meta, items }) => (
@@ -375,6 +403,7 @@ export default function AdminFrontmen() {
                   ))}
                 </select>
 
+                {form.kind !== 'designer' && (
                 <select
                   value={form.channel}
                   onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}
@@ -385,6 +414,7 @@ export default function AdminFrontmen() {
                     <option key={ch.key} value={ch.key}>{ch.label}</option>
                   ))}
                 </select>
+                )}
               </div>
 
               <div>

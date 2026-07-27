@@ -32,15 +32,15 @@ exports.admin = (req, res, next) => {
   next();
 };
 
-// owner + editor
+// owner + editor + designer (дизайнер правит и публикует товары наравне с редактором)
 exports.editor = (req, res, next) => {
-  if (!['owner', 'editor'].includes(req.user?.role)) return res.status(403).json({ message: 'Нет прав для редактирования' });
+  if (!['owner', 'editor', 'designer'].includes(req.user?.role)) return res.status(403).json({ message: 'Нет прав для редактирования' });
   next();
 };
 
-// owner + editor + viewer (or canViewUsers flag)
+// owner + editor + designer + viewer (or canViewUsers flag)
 exports.viewer = (req, res, next) => {
-  if (!['owner', 'editor', 'viewer'].includes(req.user?.role) && !req.user?.canViewUsers) {
+  if (!['owner', 'editor', 'designer', 'viewer'].includes(req.user?.role) && !req.user?.canViewUsers) {
     return res.status(403).json({ message: 'Доступ запрещён' });
   }
   next();
@@ -50,7 +50,7 @@ exports.viewer = (req, res, next) => {
 // Список ДОЛЖЕН совпадать с client/src/constants/roles.js → ADMIN_ROLES:
 // иначе роль заходит на сервер, но форма входа её не пускает (так было со «Складом»,
 // потом с «Закупщиком»). Добавляешь роль — правь оба места.
-const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser'];
+const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer'];
 exports.ADMIN_ROLES = ADMIN_ROLES;
 
 exports.warehouse = (req, res, next) => {
