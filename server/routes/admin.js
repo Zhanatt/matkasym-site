@@ -28,6 +28,7 @@ const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
   STOCK_SUM_BASES, basesOfCountry, PRICE_TYPES, isPriceType, currencyOf,
+  normSku, normNameLoose,
 } = require('../lib/stockBases');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock, ADMIN_ROLES } = require('../middleware/auth');
 
@@ -1686,7 +1687,7 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
     // Make-in разбираем прежним парсером — формат его выгрузки не менялся
-    let stockMap, warehouses = [];
+    let stockMap, warehouses = [], looseMap = new Map(), skuMap = new Map(), hasSku = false;
     if (BASES[baseKey].legacyParser) {
       const { colOsn, colKomm, minOsn, minKomm, dataStart } = detectStockColumns(rows);
       const hasBufferCols = minOsn !== null || minKomm !== null;
@@ -1700,13 +1701,35 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
         const kommRaw = Number(row[colKomm]);
         const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
         const buffer  = hasBufferCols ? bufferFromMins(minOsn === null ? 0 : row[minOsn], minKomm === null ? 0 : row[minKomm]) : 0;
-        stockMap.set(normName(name), { stock: osnNum + kommNum, buffer, name, raw: name });
+        const entry = { stock: osnNum + kommNum, buffer, name, raw: name, sku: '' };
+        stockMap.set(normName(name), entry);
+        if (!looseMap.has(normNameLoose(name))) looseMap.set(normNameLoose(name), entry);
       }
     } else {
-      ({ stockMap, warehouses } = parseStockRows(rows, baseKey, normName));
+      ({ stockMap, looseMap, skuMap, hasSku, warehouses } = parseStockRows(rows, baseKey, normName));
     }
 
-    const products = await Product.find({}, '_id fullName name sku category price priceWholesale stock stockByBase inBase bufferStock brand supplier.company isKit kitType kitParts');
+    const products = await Product.find({}, '_id fullName name sku skuByBase category price priceWholesale stock stockByBase inBase bufferStock brand supplier.company isKit kitType kitParts');
+
+    // Товар из выгрузки ищем по артикулу, а не по названию: в разных базах 1С одну
+    // и ту же позицию пишут по-разному («Эко мангал R10» / «Эко мангал R 10»), и остаток
+    // уезжал на карточку-дубликат. Имя остаётся запасным вариантом — по нему связь
+    // и устанавливается в первый раз, пока артикул у товара ещё не записан.
+    let bySku = 0, byName = 0, byLoose = 0, skuLearned = 0;
+    const findRow = p => {
+      if (hasSku) {
+        const own = normSku(p.skuByBase?.[baseKey]);
+        if (own) { const r = skuMap.get(own); if (r) { bySku++; return r; } }
+        const common = normSku(p.sku);
+        if (common) { const r = skuMap.get(common); if (r) { bySku++; return r; } }
+      }
+      const nm = p.fullName || p.name || '';
+      const exact = stockMap.get(normName(nm));
+      if (exact) { byName++; return exact; }
+      const loose = looseMap.get(normNameLoose(nm));
+      if (loose) { byLoose++; return loose; }
+      return undefined;
+    };
     let matched = 0, zeroed = 0, buffersUpdated = 0;
     const notFoundRows = [];
     const stockLogDocs = [];
@@ -1717,8 +1740,12 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     // Их остаток считается по деталям ниже, после записи остатков.
     const kitProducts = products.filter(p => p.isKit);
     const ops = products.filter(p => !p.isKit).map(p => {
-      const key = normName(p.fullName || p.name || '');
-      const row = stockMap.get(key);
+      const row = findRow(p);
+
+      // Артикул базы запоминаем при первом же совпадении — дальше связь держится
+      // на нём, и переименование номенклатуры в 1С её больше не рвёт.
+      const skuBase = { makein: '', matkasym: '', qtop: '', ...(p.skuByBase ? (p.skuByBase.toObject?.() || p.skuByBase) : {}) };
+      if (row?.sku && !skuBase[baseKey]) { skuBase[baseKey] = row.sku; skuLearned++; }
 
       // Правим только остаток этой базы, остальные оставляем как есть
       const byBase = { makein: 0, matkasym: 0, qtop: 0, ...(p.stockByBase ? p.stockByBase.toObject() : {}) };
@@ -1778,6 +1805,7 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
         bufferStock: newBuffer,
         [`stockByBase.${baseKey}`]: byBase[baseKey],
         [`inBase.${baseKey}`]:      !!row,
+        [`skuByBase.${baseKey}`]:   skuBase[baseKey],
       } } } };
     });
     if (ops.length) await Product.bulkWrite(ops, { ordered: false });
@@ -1855,10 +1883,18 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     // Товары, которые есть в выгрузке с остатком, но которых нет в каталоге.
     // Не создаём молча: в выгрузке кроме товаров лежат строки-группы и сырьё,
     // поэтому список идёт на подтверждение (POST /admin/confirm-stock-items).
+    // Ключи те же, что у findRow: иначе карточка, найденная по артикулу или по имени
+    // без пробелов, попадёт в «новые» и её заведут вторым дублем.
     const known = new Set();
+    const knownLoose = new Set();
+    const knownSku = new Set();
     for (const p of products) {
       known.add(normName(p.fullName || p.name || ''));
-      if (p.name) known.add(normName(p.name));
+      knownLoose.add(normNameLoose(p.fullName || p.name || ''));
+      if (p.name) { known.add(normName(p.name)); knownLoose.add(normNameLoose(p.name)); }
+      if (p.sku) knownSku.add(normSku(p.sku));
+      const bs = normSku(p.skuByBase?.[baseKey]);
+      if (bs) knownSku.add(bs);
     }
     // В Q-top разделы выгрузки названы ровно как сеты сайта («KOSH KELINIZ», «TAZA KIYM») —
     // сверяем с ними, иначе такая строка выглядит как обычный товар.
@@ -1868,6 +1904,8 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     const newItems = [];
     for (const [key, row] of stockMap) {
       if (known.has(key) || !row.stock) continue;
+      if (knownLoose.has(normNameLoose(row.name || key))) continue;
+      if (row.sku && knownSku.has(normSku(row.sku))) continue;
       const rawName = row.name || key;
       newItems.push({
         name:    rawName,
@@ -1878,11 +1916,14 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
     }
     newItems.sort((a, b) => b.stock - a.stock);
 
-    console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
+    console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} (sku=${bySku} name=${byName} loose=${byLoose}) skuLearned=${skuLearned} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
     res.json({
       success: true, base: baseKey, baseLabel: BASES[baseKey].label, warehouses,
       matched, zeroed, total: matched + zeroed, buffersUpdated, kitsUpdated, excelBase64,
       newItems,
+      // Как именно сошлись товары — видно, работает ли связь по артикулу
+      matchedBy: { sku: bySku, name: byName, looseName: byLoose },
+      hasSkuColumn: hasSku, skuLearned,
     });
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });

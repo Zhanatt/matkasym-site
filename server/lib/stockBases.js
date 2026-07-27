@@ -133,6 +133,19 @@ const toNum = v => {
   return isNaN(n) ? 0 : n;
 };
 
+// Артикул для сравнения: регистр и разделители в базах пишут по-разному
+// («BBQ-R10», «bbq r10»), значимы только буквы и цифры.
+const normSku = s => String(s || '').toLowerCase().replace(/[^a-zа-я0-9]/gi, '');
+
+// Запасное сравнение имён, когда артикула в выгрузке нет: пробелы не значимы,
+// иначе «Эко мангал R10» и «Эко мангал R 10» считаются разными товарами
+// и остаток уезжает на дубликат.
+const normNameLoose = s => String(s || '')
+  .toLowerCase()
+  .replace(/[«»"""''`]/g, '')
+  .replace(/\s+/g, '')
+  .trim();
+
 /**
  * Колонки складов выгрузки: шапка (headerCell) задаёт группы, следующая строка — их поля.
  * Возвращает { dataStart, stockCols, minCols } — только для складов из base.warehouses.
@@ -166,7 +179,17 @@ function detectColumns(rows, base) {
   }
   if (!stockCols.length) return null;
 
-  return { headRow, dataStart: headRow + 2, stockCols, minCols, warehouses: wanted.map(g => g.name) };
+  // Колонка артикула, если её вывели в отчёт. Ищем и в шапке, и в строке под ней —
+  // 1С кладёт реквизиты номенклатуры то туда, то туда.
+  let skuCol = -1;
+  for (const r of [rows[headRow] || [], sub]) {
+    r.forEach((cell, c) => {
+      if (skuCol < 0 && c !== 0 && /^(артикул|код)\b/i.test(String(cell || '').trim())) skuCol = c;
+    });
+    if (skuCol >= 0) break;
+  }
+
+  return { headRow, dataStart: headRow + 2, stockCols, minCols, skuCol, warehouses: wanted.map(g => g.name) };
 }
 
 /**
@@ -186,7 +209,9 @@ function parseStockRows(rows, baseKey, normName) {
     );
   }
 
-  const stockMap = new Map();
+  const stockMap = new Map();   // по точному имени (как раньше)
+  const looseMap = new Map();   // по имени без пробелов — запасной вариант
+  const skuMap   = new Map();   // по артикулу из 1С — основной, если колонка есть
   let rowsRead = 0;
   for (let i = cols.dataStart; i < rows.length; i++) {
     const row = rows[i] || [];
@@ -199,14 +224,19 @@ function parseStockRows(rows, baseKey, normName) {
     const stock  = Math.max(0, Math.floor(cols.stockCols.reduce((n, c) => n + toNum(row[c]), 0)));
     // Буфер 1С ведёт по каждому складу отдельно — берём больший, 0 = не задан
     const buffer = cols.minCols.reduce((n, c) => Math.max(n, Math.floor(toNum(row[c]))), 0);
+    const sku    = cols.skuCol >= 0 ? String(row[cols.skuCol] || '').trim() : '';
 
     // raw нужен как есть: признак «товар/группа» у Matkasym читается по единице
     // измерения, а в name она уже отрезана
-    stockMap.set(normName(name), { stock, buffer, name, raw });
+    const entry = { stock, buffer, name, raw, sku };
+    stockMap.set(normName(name), entry);
+    // Первая строка выигрывает: в иерархии выгрузки ниже могут идти подытоги
+    if (!looseMap.has(normNameLoose(name))) looseMap.set(normNameLoose(name), entry);
+    if (sku && !skuMap.has(normSku(sku)))   skuMap.set(normSku(sku), entry);
     rowsRead++;
   }
 
-  return { stockMap, warehouses: cols.warehouses, rowsRead };
+  return { stockMap, looseMap, skuMap, hasSku: cols.skuCol >= 0, warehouses: cols.warehouses, rowsRead };
 }
 
 /**
@@ -252,6 +282,7 @@ function parsePriceRows(rows, priceType, normName) {
 
 module.exports = {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
+  normSku, normNameLoose,
   COUNTRIES, basesOfCountry, STOCK_SUM_BASES,
   PRICE_TYPES, PRICE_TYPE_KEYS, isPriceType, currencyOf, CURRENCY_SIGN,
 };
