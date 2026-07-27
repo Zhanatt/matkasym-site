@@ -121,11 +121,26 @@ export default function AdminFrontmen() {
     }),
   }));
 
-  function startNew(brandKey) {
+  function startNew(brandKey, preset = null) {
     const color = PALETTE[frontmen.length % PALETTE.length];
-    setForm({ userId: '', name: '', brand: brandKey, instagram: '', sets: [], color, channel: '', kind });
+    setForm({
+      userId: preset?._id || '',
+      name: preset?.name || '',
+      brand: brandKey,
+      instagram: preset?.instagram || '',
+      sets: [], color, channel: '', kind,
+    });
     setEditId('new');
   }
+
+  // Роль «Дизайнер» в «Пользователях» даёт права, но карточку с сетами не создаёт.
+  // Показываем тех, кого назначили ролью, но ещё нигде не завели, — чтобы не искать вручную.
+  const assignedIds = new Set(
+    frontmen.filter(f => f.kind === 'designer').map(f => String(f.userId?._id || f.userId || '')),
+  );
+  const unlistedDesigners = isDesigner
+    ? users.filter(u => u.role === 'designer' && !assignedIds.has(String(u._id)))
+    : [];
 
   function startEdit(fm) {
     setForm({
@@ -203,6 +218,36 @@ export default function AdminFrontmen() {
           }}>{t.l} <span style={{ opacity: 0.5, fontWeight: 600 }}>{counts[t.k]}</span></button>
         ))}
       </div>
+
+      {unlistedDesigners.length > 0 && (
+        <div style={{
+          marginBottom: 24, padding: '14px 16px', borderRadius: 12,
+          background: '#fdf2f8', border: '1px solid #fbcfe8',
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#9d174d', marginBottom: 4 }}>
+            Роль «Дизайнер» есть, карточки с сетами — нет
+          </div>
+          <div style={{ fontSize: 12, color: '#a86a86', marginBottom: 10 }}>
+            {canEdit
+              ? 'Нажми на имя, чтобы завести карточку и отметить сеты. Для каждого бренда карточка своя.'
+              : 'Карточки заводит владелец или редактор.'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {unlistedDesigners.map(u => (
+              <button
+                key={u._id}
+                onClick={() => canEdit && startNew('matkasym-home', u)}
+                disabled={!canEdit}
+                style={{
+                  fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 8,
+                  background: '#fff', color: '#9d174d', border: '1px solid #fbcfe8',
+                  cursor: canEdit ? 'pointer' : 'default', fontFamily: 'inherit',
+                }}
+              >+ {u.name || u.email}</button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {grouped.map(({ brandKey, meta, items }) => (
         <div key={brandKey} style={{ marginBottom: 32 }}>
@@ -343,7 +388,9 @@ export default function AdminFrontmen() {
             })}
 
             {items.length === 0 && (
-              <div style={{ fontSize: 13, color: '#ccc', padding: '16px 14px' }}>Нет фронтменов</div>
+              <div style={{ fontSize: 13, color: '#ccc', padding: '16px 14px' }}>
+                {isDesigner ? 'Нет дизайнеров' : 'Нет фронтменов'}
+              </div>
             )}
           </div>
         </div>
@@ -362,7 +409,7 @@ export default function AdminFrontmen() {
             width: 380, maxWidth: '90vw', boxShadow: '0 8px 40px rgba(0,0,0,.18)',
           }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 20px' }}>
-              {editId === 'new' ? 'Новый фронтмен' : 'Редактировать'}
+              {editId === 'new' ? (form.kind === 'designer' ? 'Новый дизайнер' : 'Новый фронтмен') : 'Редактировать'}
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
