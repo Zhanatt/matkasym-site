@@ -73,6 +73,24 @@ router.delete('/accounts/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Ошибки Meta приходят англоязычной простынёй, из которой не видно, что делать.
+// Переводим типовые случаи в инструкцию: почти всегда лечится перевыпуском токена.
+function igError(err = {}) {
+  const msg = String(err.message || '');
+  if (/permission\(s\) must be granted|pages_show_list|pages_read_engagement/i.test(msg)) {
+    return 'У токена нет прав на страницу. Перевыпустите его в Graph API Explorer с разрешениями '
+      + 'pages_show_list, pages_read_engagement, instagram_basic, instagram_content_publish — '
+      + 'и возьмите токен САМОЙ СТРАНИЦЫ (GET /me/accounts), а не пользователя.';
+  }
+  if (/expired|Session has expired/i.test(msg)) {
+    return 'Токен истёк. Выпустите новый долгоживущий токен страницы (60 дней) и вставьте его в «Изменить».';
+  }
+  if (Number(err.code) === 190) {
+    return `Токен недействителен: ${msg}`;
+  }
+  return msg || 'Instagram API error';
+}
+
 // POST /accounts/:id/check — проверка связи без публикации: доступен ли чат / жив ли токен.
 router.post('/accounts/:id/check', async (req, res) => {
   const acc = await SocialAccount.findById(req.params.id);
@@ -95,7 +113,7 @@ router.post('/accounts/:id/check', async (req, res) => {
       const r = await fetch(`https://graph.facebook.com/v21.0/${igUserId}?fields=username,name&access_token=${encodeURIComponent(accessToken)}`);
       const d = await r.json();
       return res.json(d.error
-        ? { ok: false, error: d.error.message }
+        ? { ok: false, error: igError(d.error) }
         : { ok: true, info: '@' + (d.username || d.name || igUserId) });
     }
 
