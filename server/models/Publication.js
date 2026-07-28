@@ -9,7 +9,8 @@ const targetSchema = new mongoose.Schema({
   postType:    { type: String, default: 'feed' }, // feed / story (Instagram)
   caption:     { type: String, default: '' },    // итоговый текст ИМЕННО для этой площадки
   dueAt:       { type: Date },                   // когда отправлять (учитывает задержку узла в схеме)
-  status:      { type: String, enum: ['pending', 'publishing', 'published', 'failed', 'skipped'], default: 'pending' },
+  // deleted — пост снят с площадки; needs_manual — снять через API нельзя, нужно руками
+  status:      { type: String, enum: ['pending', 'publishing', 'published', 'failed', 'skipped', 'deleted', 'needs_manual'], default: 'pending' },
   error:       { type: String, default: '' },
   externalId:  { type: String, default: '' },    // id поста на площадке
   externalUrl: { type: String, default: '' },

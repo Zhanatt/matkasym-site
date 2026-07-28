@@ -22,6 +22,13 @@ export const PLATFORMS = {
       { key: 'accessToken', label: 'Access Token',       placeholder: 'EAAG...', required: true, secret: true },
     ],
   },
+  site: {
+    label: 'Сайт',
+    icon:  '🌐',
+    color: '#267846',
+    hint:  'Лента новостей самой матрицы (/admin/news) — пост увидят все сотрудники. Настраивать нечего.',
+    fields: [],
+  },
   bitrix24: {
     label: 'Битрикс24',
     icon:  '🅱️',

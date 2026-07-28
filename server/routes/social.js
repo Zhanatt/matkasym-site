@@ -8,7 +8,7 @@ const { SocialAccount, TelegramChat } = require('../models/SocialAccount');
 const PublishFlow  = require('../models/PublishFlow');
 const Publication  = require('../models/Publication');
 const Product      = require('../models/Product');
-const { buildProductText, captionFor, runPublication, PLATFORM_LABELS } = require('../lib/socialPublish');
+const { buildProductText, captionFor, runPublication, unpublishPublication, PLATFORM_LABELS } = require('../lib/socialPublish');
 
 router.use(protect, editor);
 
@@ -22,7 +22,7 @@ router.get('/accounts', async (req, res) => {
 router.post('/accounts', async (req, res) => {
   try {
     const { platform, title, config, postTypes, captionTemplate, enabled } = req.body || {};
-    if (!['telegram', 'instagram', 'bitrix24'].includes(platform)) {
+    if (!['telegram', 'instagram', 'bitrix24', 'site'].includes(platform)) {
       return res.status(400).json({ message: 'Неизвестная платформа' });
     }
     if (!String(title || '').trim()) return res.status(400).json({ message: 'Укажите название площадки' });
@@ -97,6 +97,16 @@ router.post('/accounts/:id/check', async (req, res) => {
       return res.json(d.error
         ? { ok: false, error: d.error.message }
         : { ok: true, info: '@' + (d.username || d.name || igUserId) });
+    }
+
+    // Сайт — своя же база, проверять связь не с кем. Показываем, скольким сотрудникам
+    // новость попадёт в ленту: если получателей ноль, публиковать бессмысленно.
+    if (acc.platform === 'site') {
+      const User = require('../models/User');
+      const n = await User.countDocuments({ role: { $in: ['owner', 'editor', 'viewer'] }, isPending: false });
+      return res.json(n
+        ? { ok: true, info: `лента новостей · получателей: ${n}` }
+        : { ok: false, error: 'Нет ни одного сотрудника — новость никто не увидит' });
     }
 
     // Битрикс24 — вебхук общий с каталогом, проверяем, что он вообще отвечает.
@@ -280,6 +290,18 @@ router.get('/publications/:id', async (req, res) => {
 router.post('/publications/:id/retry', async (req, res) => {
   try {
     const result = await runPublication(req.params.id, { onlyFailed: true });
+    if (result.error) return res.status(404).json({ message: result.error });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /publications/:id/unpublish — снять пост со всех площадок, где он вышел.
+// Запись в журнале остаётся: по ней видно, что снялось само, а что надо убрать руками.
+router.post('/publications/:id/unpublish', async (req, res) => {
+  try {
+    const result = await unpublishPublication(req.params.id);
     if (result.error) return res.status(404).json({ message: result.error });
     res.json(result);
   } catch (e) {

@@ -22,8 +22,10 @@ async function sendAlbum(chatId, images, caption) {
   });
   const d = await r.json();
   if (!d.ok) return { ok: false, error: d.description };
-  const first = Array.isArray(d.result) ? d.result[0] : null;
-  return { ok: true, externalId: first ? String(first.message_id) : '' };
+  // Альбом — это N отдельных сообщений. Запоминаем ВСЕ id: чтобы потом удалить пост
+  // целиком, каждое придётся удалять своим вызовом deleteMessage.
+  const ids = (Array.isArray(d.result) ? d.result : []).map(m => m.message_id).filter(Boolean);
+  return { ok: true, externalId: ids.join(',') };
 }
 
 // account.config = { chatId }
@@ -43,4 +45,34 @@ async function publish({ account, caption, images }) {
   return { ok: true, externalId: res.data?.result?.message_id ? String(res.data.result.message_id) : '' };
 }
 
-module.exports = { publish, CAPTION_LIMIT };
+// Удаление поста. Бот может удалить своё сообщение только в течение 48 часов —
+// это ограничение Bot API, обойти его нечем. Альбом удаляем по всем id сразу.
+async function unpublish({ account, externalId }) {
+  const chatId = account?.config?.chatId;
+  if (!chatId)     return { ok: false, error: 'Не указан chat_id группы' };
+  if (!externalId) return { ok: false, error: 'Не сохранён id сообщения — удалите вручную' };
+
+  const ids = String(externalId).split(',').map(s => s.trim()).filter(Boolean);
+  const errors = [];
+
+  for (const id of ids) {
+    const r = await fetch(`https://api.telegram.org/bot${TOKEN()}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: Number(id) }),
+    });
+    const d = await r.json().catch(() => ({}));
+    // «message to delete not found» — сообщения уже нет, для нас это успех.
+    if (!d.ok && !/not found/i.test(d.description || '')) errors.push(d.description || 'неизвестная ошибка');
+  }
+
+  if (!errors.length) return { ok: true };
+  const tooOld = errors.some(e => /can't be deleted|too old/i.test(e));
+  return {
+    ok: false,
+    error: tooOld ? 'Прошло больше 48 часов — Telegram не даёт боту удалить пост' : errors[0],
+    manual: true,
+  };
+}
+
+module.exports = { publish, unpublish, CAPTION_LIMIT };

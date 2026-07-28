@@ -135,11 +135,18 @@ function getPrice(p, mode) {
   return null;
 }
 
-// Служебное значение фильтра сетов: товары с пустым полем set — их нет ни в одном сете.
-const NO_SET = '__none__';
+// Служебные значения фильтра сетов — товары с пустым полем set.
+// Их два вида, и мешать их в одну кучу бессмысленно: деталь комплекта сета и не должна иметь,
+// а вот самостоятельный товар без сета — это недоработка, которую надо видеть.
+const NO_SET    = '__none__';
+const KIT_PARTS = '__kit_parts__';
+
+// Деталь комплекта помечают двумя способами — статусом и категорией (как в AdminSets).
+const isKitPart = p => p.productStatus === 'kit_part' || p.category === 'kit-part';
 
 function setLabel(slug) {
-  if (slug === NO_SET) return 'Без сета';
+  if (slug === NO_SET)    return 'Без сета';
+  if (slug === KIT_PARTS) return 'Детали комплектов';
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
@@ -196,20 +203,37 @@ export default function AdminAllCatalog() {
       .sort((a, b) => (SET_NAMES[a] || a).localeCompare(SET_NAMES[b] || b, 'ru'));
   }, [products, fBrand]);
 
-  // Сколько товаров вообще без сета — по ним показываем пункт «Без сета» и счётчик.
-  const noSetCount = useMemo(() => {
+  // Деталь можно опознать и без пометки — если товар числится в составе чьего-то комплекта.
+  const kitPartIds = useMemo(() => {
+    const s = new Set();
+    products.forEach(p => (p.kitParts || []).forEach(k => {
+      const id = k.product?._id || k.product;
+      if (id) s.add(String(id));
+    }));
+    return s;
+  }, [products]);
+
+  const isPart = p => isKitPart(p) || kitPartIds.has(String(p._id));
+
+  // Счётчики для пунктов «Без сета» и «Детали комплектов» — считаем в рамках выбранного бренда.
+  const { noSetCount, kitPartCount } = useMemo(() => {
     const base = fBrand ? products.filter(p => p.brand === fBrand) : products;
-    return base.filter(p => !p.set).length;
-  }, [products, fBrand]);
+    const orphans = base.filter(p => !p.set);
+    return {
+      noSetCount:   orphans.filter(p => !isPart(p)).length,
+      kitPartCount: orphans.filter(isPart).length,
+    };
+  }, [products, fBrand, kitPartIds]);
 
   const availableCategories = useMemo(() => {
     let base = products;
     if (fBrand) base = base.filter(p => p.brand === fBrand);
-    if (fSet === NO_SET) base = base.filter(p => !p.set);
-    else if (fSet)       base = base.filter(p => p.set === fSet);
+    if (fSet === NO_SET)         base = base.filter(p => !p.set && !isPart(p));
+    else if (fSet === KIT_PARTS) base = base.filter(p => !p.set && isPart(p));
+    else if (fSet)               base = base.filter(p => p.set === fSet);
     return [...new Set(base.map(p => p.category).filter(Boolean))]
       .sort((a, b) => catLabel(a).localeCompare(catLabel(b), 'ru'));
-  }, [products, fBrand, fSet]);
+  }, [products, fBrand, fSet, kitPartIds]);
 
   const statuses = useMemo(() =>
     [...new Set(products.map(p => p.productStatus).filter(Boolean))].sort(),
@@ -224,8 +248,9 @@ export default function AdminAllCatalog() {
     let list = products;
     if (q)        list = list.filter(p => (p.name || '').toLowerCase().includes(q) || (p.fullName || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q));
     if (fBrand)   list = list.filter(p => p.brand === fBrand);
-    if (fSet === NO_SET) list = list.filter(p => !p.set);
-    else if (fSet)       list = list.filter(p => p.set === fSet);
+    if (fSet === NO_SET)         list = list.filter(p => !p.set && !isPart(p));
+    else if (fSet === KIT_PARTS) list = list.filter(p => !p.set && isPart(p));
+    else if (fSet)               list = list.filter(p => p.set === fSet);
     if (fCategory)list = list.filter(p => p.category === fCategory);
     if (fStock === 'in')  list = list.filter(p => p.inStock || p.stock > 0);
     if (fStock === 'out') list = list.filter(p => !p.inStock && !(p.stock > 0));
@@ -246,7 +271,7 @@ export default function AdminAllCatalog() {
       list = [...list].sort((a, b) => (b.stock || 0) - (a.stock || 0));
     }
     return list;
-  }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, fPhoto, sortStock, sortNewest]);
+  }, [products, search, fBrand, fSet, fCategory, fStock, fStatus, fPhoto, sortStock, sortNewest, kitPartIds]);
 
   // Разделение на товары в наличии и без
   const { inStockFiltered, outOfStockFiltered } = useMemo(() => {
@@ -268,15 +293,16 @@ export default function AdminAllCatalog() {
     const tree = {};
     inStockFiltered.forEach(p => {
       const brand = p.brand || 'matkasym-home';
-      // Пустой set — отдельная секция «Без сета», а не свалка в 'other' (Prochee):
-      // иначе товар без сета не отличить от того, что осознанно положили в «Прочее».
-      const set   = p.set   || NO_SET;
+      // Пустой set — отдельная секция, а не свалка в 'other' (Prochee): иначе товар без сета
+      // не отличить от того, что осознанно положили в «Прочее». Детали комплектов при этом
+      // идут своей секцией — им сет и не положен, они не должны выглядеть как недоработка.
+      const set   = p.set   || (isPart(p) ? KIT_PARTS : NO_SET);
       if (!tree[brand]) tree[brand] = {};
       if (!tree[brand][set]) tree[brand][set] = [];
       tree[brand][set].push(p);
     });
     return { tree };
-  }, [inStockFiltered]);
+  }, [inStockFiltered, kitPartIds]);
 
   const brandOrder = ['matkasym-home', 'matkasym-shaar', 'matkasym-kyzmat'];
 
@@ -286,9 +312,13 @@ export default function AdminAllCatalog() {
     brandOrder.forEach(brandKey => {
       const sets = tree[brandKey];
       if (!sets) return;
-      Object.entries(sets).sort(([a], [b]) => a.localeCompare(b)).forEach(([setSlug, prods]) => {
-        result.push({ brandKey, setSlug, prods });
-      });
+      // Служебные секции («Без сета», «Детали комплектов») — всегда в конце бренда.
+      const rank = (s) => (s === NO_SET ? 1 : s === KIT_PARTS ? 2 : 0);
+      Object.entries(sets)
+        .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+        .forEach(([setSlug, prods]) => {
+          result.push({ brandKey, setSlug, prods });
+        });
     });
     return result;
   }, [tree]);
@@ -350,7 +380,8 @@ export default function AdminAllCatalog() {
 
           <select value={fSet} onChange={e => { setFSet(e.target.value); setFCategory(''); }} style={SEL}>
             <option value="">Все сеты</option>
-            {noSetCount > 0 && <option value={NO_SET}>🚫 Без сета ({noSetCount})</option>}
+            {noSetCount   > 0 && <option value={NO_SET}>🚫 Без сета ({noSetCount})</option>}
+            {kitPartCount > 0 && <option value={KIT_PARTS}>🧩 Детали комплектов ({kitPartCount})</option>}
             {availableSets.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
           </select>
 
@@ -458,8 +489,16 @@ export default function AdminAllCatalog() {
                   </div>
                 )}
                 <div style={{ marginBottom: 28 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#444', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>{setLabel(setSlug)}</span>
+                  <div style={{
+                    fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.8,
+                    marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8,
+                    // «Без сета» подсвечиваем — это то, что стоит разнести по сетам.
+                    color: setSlug === NO_SET ? '#b8860b' : setSlug === KIT_PARTS ? '#888' : '#444',
+                  }}>
+                    <span>
+                      {setSlug === NO_SET ? '⚠️ ' : setSlug === KIT_PARTS ? '🧩 ' : ''}
+                      {setLabel(setSlug)}
+                    </span>
                     <span style={{ fontWeight: 400, fontSize: 11, color: '#aaa' }}>{prods.length} тов.</span>
                   </div>
                   {viewMode === 'list' ? (

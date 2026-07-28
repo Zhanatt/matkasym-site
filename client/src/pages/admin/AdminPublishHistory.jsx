@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { socialGetPublications, socialRetryPublication, socialDeletePublication } from '../../api';
+import { socialGetPublications, socialRetryPublication, socialUnpublish, socialDeletePublication } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
 import { platformMeta } from '../../config/socialPlatforms';
 
 const STATUS = {
-  published: { label: 'опубликовано', color: '#1e7c3a', icon: '✅' },
-  failed:    { label: 'ошибка',       color: '#c0392b', icon: '❌' },
-  pending:   { label: 'ожидает',      color: '#8a6d00', icon: '🕓' },
-  publishing:{ label: 'отправляется', color: '#8a6d00', icon: '⏳' },
-  skipped:   { label: 'пропущено',    color: '#888',    icon: '–' },
+  published:   { label: 'опубликовано',  color: '#1e7c3a', icon: '✅' },
+  failed:      { label: 'ошибка',        color: '#c0392b', icon: '❌' },
+  pending:     { label: 'ожидает',       color: '#8a6d00', icon: '🕓' },
+  publishing:  { label: 'отправляется',  color: '#8a6d00', icon: '⏳' },
+  skipped:     { label: 'пропущено',     color: '#888',    icon: '–' },
+  deleted:     { label: 'снято',         color: '#888',    icon: '🗑' },
+  needs_manual:{ label: 'снять вручную', color: '#b8860b', icon: '✋' },
 };
 
 export default function AdminPublishHistory() {
@@ -34,10 +36,37 @@ export default function AdminPublishHistory() {
     setBusy('');
   };
 
-  const remove = async (id) => {
-    if (!confirm('Удалить запись из журнала? На площадках пост останется.')) return;
-    await socialDeletePublication(id);
-    load();
+  // ✕ снимает пост со всех площадок, где он вышел, и только потом убирает запись.
+  // Если где-то удалить нельзя (Instagram, старше 48 часов Telegram) — запись остаётся,
+  // чтобы не потерять ссылку на пост, который придётся снимать руками.
+  const remove = async (p) => {
+    const live = (p.targets || []).filter(t => t.status === 'published');
+    const ok = confirm(live.length
+      ? `Удалить пост на площадках (${live.map(t => t.title).join(', ')}) и убрать запись из журнала?`
+      : 'Убрать запись из журнала?');
+    if (!ok) return;
+
+    setBusy(p._id);
+    try {
+      let stuck = [];
+      if (live.length) {
+        const r = await socialUnpublish(p._id);
+        stuck = (r.data.results || []).filter(x => !x.ok);
+      }
+      if (stuck.length) {
+        alert(
+          'Снято не везде:\n\n' +
+          stuck.map(m => `• ${m.title}: ${m.error}${m.externalUrl ? `\n  ${m.externalUrl}` : ''}`).join('\n\n') +
+          '\n\nЗапись оставлена в журнале. Снимите пост вручную и нажмите ✕ ещё раз.'
+        );
+      } else {
+        await socialDeletePublication(p._id);
+      }
+      load();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Не удалось удалить');
+    }
+    setBusy('');
   };
 
   return (
@@ -88,10 +117,11 @@ export default function AdminPublishHistory() {
                     fontSize: 12, fontWeight: 700, cursor: busy === p._id ? 'wait' : 'pointer',
                   }}>{busy === p._id ? '...' : `↻ Повторить (${failed})`}</button>
                 )}
-                <button onClick={() => remove(p._id)} style={{
+                <button onClick={() => remove(p)} disabled={busy === p._id} title="Снять пост со всех площадок и убрать из журнала" style={{
                   padding: '6px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0',
-                  background: '#fff', color: '#c0392b', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                }}>Удалить</button>
+                  background: '#fff', color: '#c0392b', fontSize: 12, fontWeight: 600,
+                  cursor: busy === p._id ? 'wait' : 'pointer',
+                }}>{busy === p._id ? '...' : '✕ Удалить везде'}</button>
               </div>
             </div>
 

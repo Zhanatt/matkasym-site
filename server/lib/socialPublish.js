@@ -5,17 +5,20 @@
 // упавшие площадки (retry) — уже опубликованное не дублируется.
 const Publication   = require('../models/Publication');
 const { SocialAccount } = require('../models/SocialAccount');
+const { buildCaption } = require('./postCaption');
 
 const PUBLISHERS = {
   telegram:  require('./publishers/telegram'),
   instagram: require('./publishers/instagram'),
   bitrix24:  require('./publishers/bitrix24'),
+  site:      require('./publishers/site'),
 };
 
 const PLATFORM_LABELS = {
   telegram:  'Telegram',
   instagram: 'Instagram',
   bitrix24:  'Битрикс24',
+  site:      'Сайт',
 };
 
 function fmtPrice(n) {
@@ -53,19 +56,9 @@ function captionFor({ nodeTemplate, account, product, text }) {
 }
 
 // Автотекст для товара — общий черновик, который потом можно править руками.
-// Остатки не включаются: это витрина для клиентов, а не внутренняя сводка.
-function buildProductText(p) {
-  if (!p) return '';
-  const lines = [`🆕 <b>${p.fullName || p.name || ''}</b>`];
-  const specs = (p.specs || []).filter(s => s && s.key && s.value);
-  if (specs.length) {
-    lines.push('');
-    specs.forEach(s => lines.push(`• ${s.key}: ${s.value}`));
-  }
-  lines.push('');
-  lines.push(p.priceUndefined || !p.price ? '💰 Цена по запросу' : `💰 Цена: <b>${fmtPrice(p.price)} сом</b>`);
-  return lines.join('\n');
-}
+// Тот же генератор, что у поста в канал и очереди публикаций (lib/postCaption.js),
+// чтобы текст не расходился между /admin/publish и /admin/telegram-post.
+const buildProductText = buildCaption;
 
 // Отправка одной площадки. Возвращает обновлённый объект target (не сохраняет).
 async function publishTarget(pub, target) {
@@ -87,6 +80,7 @@ async function publishTarget(pub, target) {
     caption:  target.caption || pub.text || '',
     images:   pub.images || [],
     postType: target.postType || 'feed',
+    publication: pub, // нужен ленте сайта: товар и автор публикации
   });
 
   await SocialAccount.updateOne({ _id: account._id }, {
@@ -143,6 +137,57 @@ async function runPublication(pubId, { onlyFailed = false } = {}) {
   };
 }
 
+// Снять публикацию со всех площадок, где она реально вышла.
+// Площадки независимы и здесь: Битрикс удалится, а Instagram придётся снимать руками —
+// такие помечаем needs_manual и НЕ считаем ошибкой, это ограничение самой Meta.
+async function unpublishPublication(pubId) {
+  const pub = await Publication.findById(pubId);
+  if (!pub) return { error: 'Публикация не найдена' };
+
+  const results = [];
+
+  for (let i = 0; i < pub.targets.length; i++) {
+    const t = pub.targets[i];
+    if (t.status !== 'published') continue; // удалять нечего
+
+    const account   = await SocialAccount.findById(t.account);
+    const publisher = account ? PUBLISHERS[account.platform] : null;
+
+    let res;
+    if (!publisher?.unpublish) {
+      res = { ok: false, manual: true, error: 'Для этой площадки удаление не поддерживается' };
+    } else {
+      try {
+        res = await publisher.unpublish({ account, externalId: t.externalId });
+      } catch (e) {
+        res = { ok: false, error: e.message };
+      }
+    }
+
+    pub.targets[i].status = res.ok ? 'deleted' : (res.manual ? 'needs_manual' : 'failed');
+    pub.targets[i].error  = res.ok ? '' : (res.error || '');
+
+    results.push({
+      title:       t.title,
+      platform:    t.platform,
+      ok:          !!res.ok,
+      manual:      !res.ok && !!res.manual,
+      error:       res.ok ? '' : (res.error || ''),
+      externalUrl: t.externalUrl || '',
+    });
+  }
+
+  await pub.save();
+
+  return {
+    ok: true,
+    results,
+    removed: results.filter(r => r.ok).length,
+    manual:  results.filter(r => r.manual).length,
+    failed:  results.filter(r => !r.ok && !r.manual).length,
+  };
+}
+
 let running = false;
 
 // Тик планировщика: публикует всё, чей срок наступил (отложенные посты и задержки узлов).
@@ -175,5 +220,6 @@ module.exports = {
   templateContext,
   captionFor,
   runPublication,
+  unpublishPublication,
   tickPublications,
 };

@@ -59,6 +59,26 @@ function visibleLength(html) {
     .length;
 }
 
+// Телефон для показа человеку: 996502902905 → +996 502 902 905.
+function formatPhone(digits) {
+  const d = String(digits || '').replace(/\D/g, '');
+  if (!d) return '';
+  return '+' + d.slice(0, 3) + ' ' + (d.slice(3).match(/.{1,3}/g) || []).join(' ');
+}
+
+// HTML → простой текст для площадок без разметки (Instagram).
+// Ссылку на WhatsApp разворачиваем в читаемый номер: сырой wa.me с
+// URL-кодированным ?text= в подписи Instagram выглядит мусором.
+function htmlToPlain(html) {
+  return String(html || '')
+    .replace(/<a\s+href="https:\/\/wa\.me\/(\d+)[^"]*"\s*>(.*?)<\/a>/gis, (m, phone, label) => `${label}: ${formatPhone(phone)}`)
+    .replace(/<a\s+href="([^"]*)"\s*>(.*?)<\/a>/gis, '$2: $1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 function fmtPrice(n) {
   return Number(n || 0).toLocaleString('ru-RU');
 }
@@ -173,4 +193,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, visibleLength, buildHashtags, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
+module.exports = { buildCaption, htmlToPlain, formatPhone, visibleLength, buildHashtags, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };

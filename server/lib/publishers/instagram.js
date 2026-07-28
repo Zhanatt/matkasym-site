@@ -5,6 +5,8 @@
 // публичным и отдавать jpeg. Cloudinary подходит, приватные Drive-ссылки — нет.
 //
 // account.config = { igUserId, accessToken, username }
+const { htmlToPlain } = require('../postCaption');
+
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
 // Instagram принимает только определённые пропорции (пост 4:5…1.91:1, история 9:16)
@@ -46,10 +48,14 @@ async function waitReady(containerId, accessToken, tries = 12) {
   throw new Error('Instagram слишком долго обрабатывает картинку');
 }
 
-async function publish({ account, caption, images, postType = 'feed' }) {
+async function publish({ account, caption: rawCaption, images, postType = 'feed' }) {
   const { igUserId, accessToken } = account?.config || {};
   if (!igUserId || !accessToken) return { ok: false, error: 'Не заданы igUserId / accessToken' };
   if (!images.length) return { ok: false, error: 'Instagram не принимает пост без картинки' };
+
+  // Instagram не понимает разметку: HTML ушёл бы в подпись буквально,
+  // а wa.me-ссылка — простынёй URL-кодированного текста. Отдаём чистый текст.
+  const caption = htmlToPlain(rawCaption);
 
   try {
     let containerId;
@@ -110,4 +116,14 @@ async function publish({ account, caption, images, postType = 'feed' }) {
   }
 }
 
-module.exports = { publish, fitForInstagram };
+// Instagram удалять через API НЕ УМЕЕТ: в Content Publishing API есть только создание.
+// Поэтому честно говорим, что пост надо снять руками, и отдаём ссылку на него.
+async function unpublish() {
+  return {
+    ok: false,
+    manual: true,
+    error: 'Instagram не даёт удалять посты через API — снимите пост вручную в приложении',
+  };
+}
+
+module.exports = { publish, unpublish, fitForInstagram };

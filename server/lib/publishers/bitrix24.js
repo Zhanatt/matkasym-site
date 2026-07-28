@@ -51,4 +51,17 @@ async function publish({ account, caption, images }) {
   }
 }
 
-module.exports = { publish, htmlToBBCode };
+// Удаление поста из ленты. Срока давности, в отличие от Telegram, здесь нет.
+async function unpublish({ externalId }) {
+  if (!externalId) return { ok: false, error: 'Не сохранён id поста — удалите вручную', manual: true };
+  try {
+    await call('log.blogpost.delete', { POST_ID: externalId });
+    return { ok: true };
+  } catch (e) {
+    // Пост могли удалить руками раньше — это не ошибка для нас.
+    if (/not found|не найден/i.test(e.message)) return { ok: true };
+    return { ok: false, error: e.message, manual: true };
+  }
+}
+
+module.exports = { publish, unpublish, htmlToBBCode };
