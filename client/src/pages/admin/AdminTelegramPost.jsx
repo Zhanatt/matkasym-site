@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminGetProducts, adminGetProduct, adminUploadImage, adminPublishTelegram, adminGetTelegramChannel } from '../../api';
 import { driveThumb, cloudinaryOpt } from '../../utils/drive';
+import { buildCaption } from '../../utils/postCaption';
 
 // Все картинки-кандидаты товара (Cloudinary + Google Drive) для выбора обложки поста.
 function imageCandidates(p) {
@@ -20,35 +21,15 @@ function fmtPrice(n) {
   return Number(n || 0).toLocaleString('ru-RU');
 }
 
-// Черновик текста поста из данных товара: название, характеристики, розничная цена.
-// Остатки НЕ включаются — это витрина для клиентов.
-function buildCaption(p) {
-  if (!p) return '';
-  const lines = [];
-  lines.push(`🆕 <b>${p.fullName || p.name || ''}</b>`);
-
-  const specs = (p.specs || []).filter(s => s && s.key && s.value);
-  if (specs.length) {
-    lines.push('');
-    specs.forEach(s => lines.push(`• ${s.key}: ${s.value}`));
-  }
-
-  lines.push('');
-  if (p.priceUndefined || !p.price) {
-    lines.push('💰 Цена по запросу');
-  } else {
-    lines.push(`💰 Цена: <b>${fmtPrice(p.price)} сом</b>`);
-  }
-
-  return lines.join('\n');
-}
-
 // Грубое HTML→текст для предпросмотра (Telegram рендерит <b>, остальное убираем).
 function stripHtml(s) {
   return String(s || '')
+    .replace(/<a\s[^>]*>(.*?)<\/a>/g, '$1')
     .replace(/<b>|<\/b>/g, '')
     .replace(/<i>|<\/i>/g, '')
-    .replace(/&amp;/g, '&');
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
 }
 
 export default function AdminTelegramPost() {

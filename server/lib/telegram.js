@@ -51,6 +51,20 @@ async function sendTelegramMessage(chatId, text, options = {}) {
   }
 }
 
+// Обрезка подписи под лимит Telegram без разрыва HTML-тега:
+// слепой slice мог разрезать <a href="..."> посередине и уронить парсинг.
+// Лимит считается по видимому тексту (Telegram: «after entities parsing»),
+// поэтому режем только реально длинные подписи.
+function clampCaption(caption) {
+  const s = String(caption || '');
+  const visible = s.replace(/<[^>]+>/g, '').length;
+  if (visible <= 1024) return s;
+  let cut = s.slice(0, 1024);
+  const lastOpen = cut.lastIndexOf('<');
+  if (lastOpen > cut.lastIndexOf('>')) cut = cut.slice(0, lastOpen);
+  return cut.replace(/<a\s[^>]*>(?![\s\S]*<\/a>)/, '');
+}
+
 async function sendTelegramPhoto(chatId, photoUrl, caption) {
   if (!TELEGRAM_BOT_TOKEN || !chatId) return null;
   try {
@@ -61,7 +75,7 @@ async function sendTelegramPhoto(chatId, photoUrl, caption) {
       body: JSON.stringify({
         chat_id: chatId,
         photo: photoUrl,
-        caption: caption.slice(0, 1024),
+        caption: clampCaption(caption),
         parse_mode: 'HTML',
       }),
     });
@@ -97,7 +111,7 @@ async function publishToChat({ chatId, photoUrl, caption }) {
         const buf = Buffer.from(await imgResp.arrayBuffer());
         const form = new FormData();
         form.append('chat_id', String(chatId));
-        form.append('caption', text.slice(0, 1024));
+        form.append('caption', clampCaption(text));
         form.append('parse_mode', 'HTML');
         form.append('photo', new Blob([buf], { type: imgResp.headers.get('content-type') || 'image/jpeg' }), 'photo.jpg');
         const r = await fetch(api('sendPhoto'), { method: 'POST', body: form });
@@ -112,7 +126,7 @@ async function publishToChat({ chatId, photoUrl, caption }) {
     // 2) fallback: отдаём Telegram сам URL
     const r = await fetch(api('sendPhoto'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: text.slice(0, 1024), parse_mode: 'HTML' }),
+      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: clampCaption(text), parse_mode: 'HTML' }),
     });
     const d = await r.json();
     return d.ok ? { ok: true, data: d } : { ok: false, error: d.description };

@@ -4,34 +4,9 @@
 // (/api/telegram-queue/tick) — на бесплатном Render внутренний таймер может «спать».
 const { TelegramQueue, TelegramQueueConfig } = require('../models/TelegramQueue');
 const { publishToChannel } = require('./telegram');
+const { buildCaption } = require('./postCaption');
 
 const KG_OFFSET = 6; // Кыргызстан = UTC+6, без перехода на летнее время
-
-function fmtPrice(n) {
-  return Number(n || 0).toLocaleString('ru-RU');
-}
-
-// Авто-черновик текста поста: название + характеристики + розничная цена.
-// Остатки НЕ включаются — это витрина для клиентов. Совпадает с логикой AdminTelegramPost.
-function buildCaption(p) {
-  if (!p) return '';
-  const lines = [];
-  lines.push(`🆕 <b>${p.fullName || p.name || ''}</b>`);
-
-  const specs = (p.specs || []).filter(s => s && s.key && s.value);
-  if (specs.length) {
-    lines.push('');
-    specs.forEach(s => lines.push(`• ${s.key}: ${s.value}`));
-  }
-
-  lines.push('');
-  if (p.priceUndefined || !p.price) {
-    lines.push('💰 Цена по запросу');
-  } else {
-    lines.push(`💰 Цена: <b>${fmtPrice(p.price)} сом</b>`);
-  }
-  return lines.join('\n');
-}
 
 // Обложка поста: первая http-картинка Cloudinary, иначе Google Drive thumbnail.
 function pickPhoto(p) {
