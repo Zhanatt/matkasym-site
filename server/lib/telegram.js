@@ -65,6 +65,25 @@ function clampCaption(caption) {
   return cut.replace(/<a\s[^>]*>(?![\s\S]*<\/a>)/, '');
 }
 
+// Telegram не принимает фото больше 5 МБ по URL, а исходники товаров лежат в Cloudinary
+// как PNG по 5–6 МБ: альбом падал с «wrong type of the web page content», а фолбэк
+// докачивал мегабайты байтами — отсюда пятиминутная публикация. Просим Cloudinary отдать
+// ужатый JPEG: те же 6 МБ превращаются в ~250 КБ.
+const TG_TRANSFORM = 'f_jpg,q_auto:good,w_1600,c_limit';
+function tgImage(url) {
+  const s = String(url || '');
+  const m = s.match(/^(.*\/image\/upload\/)(.+)$/);
+  if (!m || !/res\.cloudinary\.com/.test(s)) return s;
+  const parts = m[2].split('/');
+  // Свою трансформацию ставим ПОСЛЕ уже имеющихся (кроп из редактора), но перед версией,
+  // иначе чужие координаты кропа посчитаются от уже уменьшенной картинки.
+  let i = 0;
+  while (i < parts.length && /^[a-z]{1,3}_[^/]+/.test(parts[i]) && !/^v\d+$/.test(parts[i])) i++;
+  if (parts.slice(0, i).some(p => p.includes('f_jpg'))) return s;   // уже ужато
+  parts.splice(i, 0, TG_TRANSFORM);
+  return m[1] + parts.join('/');
+}
+
 async function sendTelegramPhoto(chatId, photoUrl, caption) {
   if (!TELEGRAM_BOT_TOKEN || !chatId) return null;
   try {
@@ -106,7 +125,7 @@ async function publishToChat({ chatId, photoUrl, caption }) {
   if (photoUrl) {
     // 1) пробуем скачать картинку и отправить её байтами
     try {
-      const imgResp = await fetch(photoUrl);
+      const imgResp = await fetch(tgImage(photoUrl));
       if (imgResp.ok) {
         const buf = Buffer.from(await imgResp.arrayBuffer());
         const form = new FormData();
@@ -126,7 +145,7 @@ async function publishToChat({ chatId, photoUrl, caption }) {
     // 2) fallback: отдаём Telegram сам URL
     const r = await fetch(api('sendPhoto'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: clampCaption(text), parse_mode: 'HTML' }),
+      body: JSON.stringify({ chat_id: chatId, photo: tgImage(photoUrl), caption: clampCaption(text), parse_mode: 'HTML' }),
     });
     const d = await r.json();
     return d.ok ? { ok: true, data: d } : { ok: false, error: d.description };
@@ -245,4 +264,4 @@ async function sendBufferStockAlerts(alerts) {
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChannel, publishToChat };
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChannel, publishToChat, tgImage };

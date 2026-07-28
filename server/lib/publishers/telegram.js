@@ -1,6 +1,6 @@
 // Публикация в Telegram-группу / канал. Бот — тот же (TELEGRAM_BOT_TOKEN),
 // адрес берётся из настроек площадки (config.chatId), а не из env: групп может быть несколько.
-const { publishToChat } = require('../telegram');
+const { publishToChat, tgImage } = require('../telegram');
 
 const TOKEN = () => process.env.TELEGRAM_BOT_TOKEN;
 
@@ -12,7 +12,8 @@ const CAPTION_LIMIT = 1024;
 async function sendAlbum(chatId, images, caption) {
   const media = images.slice(0, 10).map((url, i) => ({
     type: 'photo',
-    media: url,
+    // Ужатая версия: исходные PNG по 5–6 МБ Telegram по URL не принимает
+    media: tgImage(url),
     ...(i === 0 ? { caption: caption.slice(0, CAPTION_LIMIT), parse_mode: 'HTML' } : {}),
   }));
   const r = await fetch(`https://api.telegram.org/bot${TOKEN()}/sendMediaGroup`, {
