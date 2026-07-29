@@ -229,7 +229,7 @@ export const socialUpdateFlow      = (id, data)  => api.patch(`/admin/social/flo
 export const socialDeleteFlow      = (id)        => api.delete(`/admin/social/flows/${id}`);
 export const socialGetFlowTargets  = (id)        => api.get(`/admin/social/flows/${id}/targets`);
 
-export const socialGetDraft        = (productId) => api.get(`/admin/social/draft/${productId}`);
+export const socialGetDraft        = (productId, priceMode) => api.get(`/admin/social/draft/${productId}`, { params: priceMode ? { price: priceMode } : {} });
 // Сколько раз и куда товар уже публиковали — показывается в поиске товара
 export const socialGetPublishStats = ()          => api.get('/admin/social/publish-stats');
 export const socialPreview         = (data)      => api.post('/admin/social/preview', data);

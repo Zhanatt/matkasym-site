@@ -173,9 +173,20 @@ function whatsappLink(p) {
 // Черновик поста. Структура: заголовок → сет → описание → характеристики →
 // цена → кнопка заказа → хэштеги. Пустые блоки просто пропускаются,
 // поэтому текст корректен и для товара без specs и без description.
+// Какая цена уходит в пост. Оптовая — для постов на партнёров/дилеров,
+// розничная — для витрины. Дефолт розничный: канал читают покупатели.
+function priceLine(p, mode) {
+  const wholesale = mode === 'wholesale';
+  const value = wholesale ? p.priceWholesale : p.price;
+  const label = wholesale ? 'Оптовая цена' : 'Цена';
+  if (p.priceUndefined || !value) return '💰 Цена по запросу';
+  return `💰 ${label}: <b>${fmtPrice(value)} сом</b>`;
+}
+
 function buildCaption(p, opts = {}) {
   if (!p) return '';
   const withDescription = opts.withDescription !== false;
+  const priceMode = opts.priceMode === 'wholesale' ? 'wholesale' : 'retail';
 
   const { title: rawTitle, params } = extractNameParams(p.fullName || p.name || '');
   const title = esc(rawTitle || String(p.name || '').trim());
@@ -204,12 +215,7 @@ function buildCaption(p, opts = {}) {
       shown.forEach(s => lines.push(`• ${esc(s.key)}: ${esc(String(s.value).trim())}`));
     }
 
-    lines.push('');
-    if (p.priceUndefined || !p.price) {
-      lines.push('💰 Цена по запросу');
-    } else {
-      lines.push(`💰 Цена: <b>${fmtPrice(p.price)} сом</b>`);
-    }
+    lines.push('', priceLine(p, priceMode));
 
     lines.push('', `📲 <a href="${whatsappLink(p)}">Заказать товар в WhatsApp</a>`);
 
@@ -228,4 +234,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-export { buildCaption, extractNameParams, htmlToPlain, formatPhone, visibleLength, buildHashtags, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
+export { buildCaption, priceLine, extractNameParams, htmlToPlain, formatPhone, visibleLength, buildHashtags, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };

@@ -227,13 +227,18 @@ router.get('/publish-stats', async (req, res) => {
 router.get('/draft/:productId', async (req, res) => {
   const p = await Product.findById(req.params.productId).lean();
   if (!p) return res.status(404).json({ message: 'Товар не найден' });
+  // ?price=wholesale — пост на партнёров/дилеров вместо витрины.
+  const priceMode = req.query.price === 'wholesale' ? 'wholesale' : 'retail';
   res.json({
-    text: buildProductText(p),
+    text: buildProductText(p, { priceMode }),
     images: [
       ...(p.images || []).filter(u => u && u.startsWith('http')),
       ...(p.driveImages || []).filter(Boolean).map(id => `https://drive.google.com/thumbnail?id=${id}&sz=w1200`),
     ],
-    product: { _id: p._id, name: p.name, fullName: p.fullName, price: p.price, priceUndefined: p.priceUndefined },
+    product: {
+      _id: p._id, name: p.name, fullName: p.fullName,
+      price: p.price, priceWholesale: p.priceWholesale, priceUndefined: p.priceUndefined,
+    },
   });
 });
 

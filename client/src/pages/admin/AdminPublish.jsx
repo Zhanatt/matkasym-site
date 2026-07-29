@@ -61,6 +61,8 @@ export default function AdminPublish() {
   const [images,   setImages]   = useState([]);     // все кандидаты
   const [picked,   setPicked]   = useState([]);     // выбранные индексы (порядок = порядок в карусели)
   const [text,     setText]     = useState('');
+  const [priceMode, setPriceMode] = useState('retail');  // retail | wholesale
+  const [textDirty, setTextDirty] = useState(false);     // текст правили руками
   const [uploading, setUploading] = useState(false);
 
   const [accounts, setAccounts] = useState([]);
@@ -121,7 +123,7 @@ export default function AdminPublish() {
   const selectProduct = async (p) => {
     setProductQ(''); setFound([]); setError(''); setResult(null);
     try {
-      const r = await socialGetDraft(p._id);
+      const r = await socialGetDraft(p._id, priceMode);
       setProduct({ ...p, ...(r.data.product || {}) });
       const imgs = r.data.images || [];
       setImages(imgs);
@@ -129,6 +131,7 @@ export default function AdminPublish() {
       // а лишнее проще снять, чем отмечать каждое вручную. Больше 10 площадки не примут.
       setPicked(imgs.slice(0, MAX_IMAGES).map((_, i) => i));
       setText(r.data.text || '');
+      setTextDirty(false);
     } catch (e) {
       setError(e.response?.data?.message || 'Не удалось загрузить товар');
     }
@@ -136,7 +139,24 @@ export default function AdminPublish() {
 
   const reset = () => {
     setProduct(null); setImages([]); setPicked([]); setText('');
-    setError(''); setResult(null); setPreviews([]);
+    setError(''); setResult(null); setPreviews([]); setTextDirty(false);
+  };
+
+  // Смена цены перегенерирует весь текст: подменять одну строку регуляркой
+  // ненадёжно — пользователь мог её отредактировать или перенести.
+  const changePriceMode = async (mode) => {
+    if (mode === priceMode) return;
+    if (textDirty && !window.confirm('Текст правили вручную — при смене цены он будет перегенерирован. Продолжить?')) return;
+    setPriceMode(mode);
+    if (!product) return;
+    try {
+      const r = await socialGetDraft(product._id, mode);
+      setText(r.data.text || '');
+      setTextDirty(false);
+      setPreviews([]);
+    } catch {
+      setError('Не удалось перегенерировать текст');
+    }
   };
 
   const togglePick = (i) => {
@@ -343,8 +363,28 @@ export default function AdminPublish() {
               </div>
             )}
 
-            <label style={L}>Текст <span style={{ color: '#bbb', fontWeight: 400 }}>(поддерживает &lt;b&gt;; для Битрикс24 переводится в его разметку)</span></label>
-            <textarea value={text} onChange={e => { setText(e.target.value); setPreviews([]); }} rows={8}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+              <label style={{ ...L, margin: 0 }}>Текст <span style={{ color: '#bbb', fontWeight: 400 }}>(поддерживает &lt;b&gt;; для Битрикс24 переводится в его разметку)</span></label>
+              {kind === 'product' && product && (
+                <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                  {[['retail', '🏷 Розничная'], ['wholesale', '📦 Оптовая']].map(([m, label]) => {
+                    const missing = m === 'wholesale' && !product.priceWholesale;
+                    return (
+                      <button key={m} onClick={() => changePriceMode(m)} disabled={missing}
+                        title={missing ? 'У товара не заполнена оптовая цена' : ''}
+                        style={{
+                          padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                          cursor: missing ? 'not-allowed' : 'pointer',
+                          border: priceMode === m ? '2px solid #111' : '1.5px solid #e0e0e0',
+                          background: priceMode === m ? '#f4f5f7' : '#fff',
+                          color: missing ? '#bbb' : '#111',
+                        }}>{label}</button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <textarea value={text} onChange={e => { setText(e.target.value); setTextDirty(true); setPreviews([]); }} rows={8}
               placeholder={kind === 'custom' ? 'Текст новости или объявления...' : ''}
               style={{ ...INP, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
           </div>

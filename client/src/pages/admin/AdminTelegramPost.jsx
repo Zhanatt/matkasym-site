@@ -43,6 +43,8 @@ export default function AdminTelegramPost() {
   const [images,   setImages]   = useState([]);   // кандидаты обложки
   const [imgIdx,   setImgIdx]   = useState(0);     // выбранная обложка (индекс), -1 = без фото
   const [caption,  setCaption]  = useState('');
+  const [priceMode, setPriceMode] = useState('retail');  // retail | wholesale
+  const [textDirty, setTextDirty] = useState(false);     // текст правили руками
   const [uploading, setUploading] = useState(false);
 
   const [channelConfigured, setChannelConfigured] = useState(true);
@@ -83,11 +85,21 @@ export default function AdminTelegramPost() {
     const imgs = imageCandidates(full);
     setImages(imgs);
     setImgIdx(imgs.length ? 0 : -1);
-    setCaption(buildCaption(full));
+    setCaption(buildCaption(full, { priceMode }));
+    setTextDirty(false);
+  };
+
+  // Смена цены перегенерирует весь текст: подменять одну строку регуляркой
+  // ненадёжно — пользователь мог её отредактировать или перенести.
+  const changePriceMode = (mode) => {
+    if (mode === priceMode) return;
+    if (textDirty && !window.confirm('Текст правили вручную — при смене цены он будет перегенерирован. Продолжить?')) return;
+    setPriceMode(mode);
+    if (product) { setCaption(buildCaption(product, { priceMode: mode })); setTextDirty(false); }
   };
 
   const reset = () => {
-    setProduct(null); setImages([]); setImgIdx(0); setCaption(''); setError(''); setDone(false);
+    setProduct(null); setImages([]); setImgIdx(0); setCaption(''); setError(''); setDone(false); setTextDirty(false);
   };
 
   const uploadCustom = async (e) => {
@@ -214,10 +226,28 @@ export default function AdminTelegramPost() {
             </div>
 
             {/* Текст поста */}
-            <label style={L}>Текст поста <span style={{ color: '#bbb', fontWeight: 400 }}>(можно редактировать, поддерживает &lt;b&gt;)</span></label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+              <label style={{ ...L, margin: 0 }}>Текст поста <span style={{ color: '#bbb', fontWeight: 400 }}>(можно редактировать, поддерживает &lt;b&gt;)</span></label>
+              <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                {[['retail', '🏷 Розничная'], ['wholesale', '📦 Оптовая']].map(([m, label]) => {
+                  const missing = m === 'wholesale' && !product.priceWholesale;
+                  return (
+                    <button key={m} onClick={() => changePriceMode(m)} disabled={missing}
+                      title={missing ? 'У товара не заполнена оптовая цена' : ''}
+                      style={{
+                        padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                        cursor: missing ? 'not-allowed' : 'pointer',
+                        border: priceMode === m ? '2px solid #111' : '1.5px solid #e0e0e0',
+                        background: priceMode === m ? '#f4f5f7' : '#fff',
+                        color: missing ? '#bbb' : '#111',
+                      }}>{label}</button>
+                  );
+                })}
+              </div>
+            </div>
             <textarea
               value={caption}
-              onChange={e => setCaption(e.target.value)}
+              onChange={e => { setCaption(e.target.value); setTextDirty(true); }}
               rows={8}
               style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, outline: 'none', marginBottom: 24, boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
             />
