@@ -3,10 +3,36 @@ import { useNavigate } from 'react-router-dom';
 import {
   adminGetProducts, adminUploadImage,
   socialGetAccounts, socialGetFlows, socialGetFlowTargets,
-  socialGetDraft, socialPreview, socialPublish,
+  socialGetDraft, socialPreview, socialPublish, socialGetPublishStats,
 } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
 import { POST_TYPES, platformMeta } from '../../config/socialPlatforms';
+
+// Куда товар уже уходил: иконка площадки и сколько раз. Нужно, чтобы не отправить
+// один и тот же товар дважды — в поиске это видно до выбора.
+function PublishedBadges({ stat, size = 11 }) {
+  const counts = stat?.counts || {};
+  const items = Object.entries(counts).filter(([, n]) => n > 0);
+  if (!items.length) return null;
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      {items.map(([platform, n]) => {
+        const m = platformMeta(platform);
+        return (
+          <span key={platform}
+            title={`${m.label}: опубликован ${n} раз${n === 1 ? '' : n < 5 ? 'а' : ''}`}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              fontSize: size, fontWeight: 700, color: m.color,
+              background: `${m.color}14`, borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap',
+            }}>
+            <span style={{ fontSize: size + 1 }}>{m.icon}</span>{n}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 const CARD = { background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 1px 6px rgba(0,0,0,.07)', marginBottom: 16 };
 const L    = { fontSize: 12, fontWeight: 700, color: '#666', display: 'block', marginBottom: 8 };
@@ -30,6 +56,7 @@ export default function AdminPublish() {
   const [found,    setFound]    = useState([]);
   const [searching, setSearching] = useState(false);
   const [product,  setProduct]  = useState(null);
+  const [pubStats, setPubStats] = useState({});    // productId → { counts, last }
 
   const [images,   setImages]   = useState([]);     // все кандидаты
   const [picked,   setPicked]   = useState([]);     // выбранные индексы (порядок = порядок в карусели)
@@ -49,6 +76,11 @@ export default function AdminPublish() {
 
   const debounce   = useRef(null);
   const fileInput  = useRef(null);
+
+  // Статистика публикаций грузится один раз: список короткий, а в поиске нужна мгновенно
+  useEffect(() => {
+    socialGetPublishStats().then(r => setPubStats(r.data || {})).catch(() => {});
+  }, []);
 
   useEffect(() => {
     socialGetAccounts().then(r => setAccounts((r.data.accounts || []).filter(a => a.enabled))).catch(() => {});
@@ -182,6 +214,8 @@ export default function AdminPublish() {
         scheduledAt: scheduledAt || undefined,
       });
       setResult(r.data);
+      // Счётчики «где уже публиковали» должны сразу учесть этот пост
+      socialGetPublishStats().then(x => setPubStats(x.data || {})).catch(() => {});
     } catch (e) {
       setError(e.response?.data?.message || 'Ошибка публикации');
     }
@@ -226,8 +260,11 @@ export default function AdminPublish() {
             {images[0] && <img src={cloudinaryOpt(images[0], 300)} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{product.fullName || product.name}</div>
-              <div style={{ fontSize: 12, color: '#7d96a0', marginTop: 2 }}>
-                {product.priceUndefined || !product.price ? 'Цена по запросу' : `${fmtPrice(product.price)} сом`}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: '#7d96a0' }}>
+                  {product.priceUndefined || !product.price ? 'Цена по запросу' : `${fmtPrice(product.price)} сом`}
+                </span>
+                <PublishedBadges stat={pubStats[product._id]} />
               </div>
             </div>
             <button onClick={reset} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 20 }}>×</button>
@@ -243,7 +280,10 @@ export default function AdminPublish() {
                   <button key={p._id} onClick={() => selectProduct(p)}
                     style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #f4f4f4' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{p.fullName || p.name}</div>
-                    <div style={{ fontSize: 11, color: '#aaa' }}>{p.priceUndefined || !p.price ? 'Цена по запросу' : `${fmtPrice(p.price)} сом`}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <span style={{ fontSize: 11, color: '#aaa' }}>{p.priceUndefined || !p.price ? 'Цена по запросу' : `${fmtPrice(p.price)} сом`}</span>
+                      <PublishedBadges stat={pubStats[p._id]} size={10} />
+                    </div>
                   </button>
                 ))}
               </div>

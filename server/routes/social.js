@@ -196,6 +196,33 @@ router.get('/flows/:id/targets', async (req, res) => {
 
 // ===== Публикации =====
 
+// GET /publish-stats — сколько раз и куда уже публиковали каждый товар.
+// Нужно в поиске на странице публикации: видно, что товар недавно постили,
+// и не выйдет случайного повтора. Считаем только реально ушедшие посты.
+router.get('/publish-stats', async (req, res) => {
+  try {
+    const rows = await Publication.aggregate([
+      { $match: { product: { $ne: null } } },
+      { $unwind: '$targets' },
+      { $match: { 'targets.status': 'published' } },
+      { $group: {
+        _id:  { product: '$product', platform: '$targets.platform' },
+        n:    { $sum: 1 },
+        last: { $max: '$updatedAt' },
+      } },
+    ]);
+
+    const byProduct = {};
+    for (const r of rows) {
+      const id = String(r._id.product);
+      const e = byProduct[id] || (byProduct[id] = { counts: {}, last: null });
+      e.counts[r._id.platform] = r.n;
+      if (!e.last || r.last > e.last) e.last = r.last;
+    }
+    res.json(byProduct);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 // Черновик текста по товару — тот же, что уходит в предпросмотр.
 router.get('/draft/:productId', async (req, res) => {
   const p = await Product.findById(req.params.productId).lean();
