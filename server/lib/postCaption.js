@@ -97,16 +97,47 @@ function setLabel(slug) {
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// Человеческий заголовок из технического названия 1С:
+// Тех.параметры, зашитые в название номенклатуры 1С. В карточках они почти
+// всегда пустые (IP есть в имени у 67 щитов и ни у одного — в specs), поэтому
+// вытаскиваем их в отдельные строки, а заголовок оставляем коротким.
+// Кириллица требует явных диапазонов: \w в JS — это только [A-Za-z0-9_],
+// из-за чего «цепей» обрезалось до «цеп», а «ей» оставалось мусором в названии.
+const NAME_PARAMS = [
+  { key: 'Степень защиты', re: /\bIP\s?-?\d{2}\b/i, fmt: m => m[0].replace(/[\s-]/g, '').toUpperCase() },
+  { key: 'Кол-во цепей',   re: /\b(\d+)\s*цеп[а-яё]*/i, fmt: m => m[1] },
+  { key: 'Габариты',
+    re: /\b\d{2,4}\s*[хx*]\s*\d{2,4}(?:\s*[хx*]\s*\d{2,4})?(?:\s*(?:мм|см|м|дюйм[а-яё]*))?/i,
+    fmt: m => m[0].replace(/\s*[хx*]\s*/gi, '×').replace(/×(\D)/, ' $1').replace(/\s+/g, ' ').trim() },
+];
+
+// Разбор названия: короткий заголовок + вытащенные из него параметры.
+// «Электрощит (коробка обратной цепи, металлопластик) 18 цепей К. IP40»
+//   → «Электрощит» + Кол-во цепей: 18, Степень защиты: IP40
 // «MATKASYM HOME — Bosogo 9SW (чёрный)» → «Bosogo 9SW»
-// «Стремянка HuanLai 5 (Серый)»          → «Стремянка HuanLai 5»
-// Цвет убираем намеренно: он идёт отдельной строкой в характеристиках,
-// а в скобках у карточек 1С он часто не совпадает с фото.
+// Цвет в скобках убираем намеренно: он есть отдельной строкой в характеристиках,
+// а в названиях 1С часто не совпадает с фото товара.
+function extractNameParams(raw) {
+  let rest = String(raw || '').replace(/^MATKASYM\s+(HOME|SHAAR)\s*[—–-]\s*/i, '');
+  const params = [];
+  for (const { key, re, fmt } of NAME_PARAMS) {
+    const m = rest.match(re);
+    if (!m) continue;
+    params.push({ key, value: fmt(m) });
+    rest = rest.replace(re, ' ');
+  }
+  rest = rest
+    .replace(/\([^()]*\)/g, ' ')            // скобки — целиком, где бы ни стояли
+    .replace(/\s+[A-ZА-ЯЁ]\.(?=\s|$)/g, ' ')  // висячие «К.» из номенклатуры
+    .replace(/\s*([,;])\s*(?=[,;])/g, '')    // осадок вида «140, , одинарный»
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^[\s,;-]+|[\s,;-]+$/g, '')
+    .trim();
+  return { title: rest, params };
+}
+
 function postTitle(p) {
-  let t = String(p.fullName || p.name || '').trim();
-  t = t.replace(/^MATKASYM\s+(HOME|SHAAR)\s*[—–-]\s*/i, '');
-  t = t.replace(/\s*\([^()]*\)\s*$/, '');
-  return t.trim() || String(p.name || '').trim();
+  const { title } = extractNameParams(p.fullName || p.name || '');
+  return title || String(p.name || '').trim();
 }
 
 // Строка → хэштег: всё кроме букв и цифр становится «_».
@@ -146,12 +177,16 @@ function buildCaption(p, opts = {}) {
   if (!p) return '';
   const withDescription = opts.withDescription !== false;
 
-  const title = esc(postTitle(p));
+  const { title: rawTitle, params } = extractNameParams(p.fullName || p.name || '');
+  const title = esc(rawTitle || String(p.name || '').trim());
   const set   = setLabel(p.set);
   const desc  = withDescription ? String(p.description || '').trim() : '';
-  const specs = (p.specs || [])
-    .filter(s => s && s.key && String(s.value).trim())
-    .slice(0, MAX_SPECS);
+
+  const own  = (p.specs || []).filter(s => s && s.key && String(s.value).trim());
+  const have = new Set(own.map(s => String(s.key).trim().toLowerCase()));
+  // Вытащенные из названия параметры идут первыми — они опознают товар лучше,
+  // чем вес. Заполненную руками характеристику с тем же ключом не перебиваем.
+  const specs = [...params.filter(x => !have.has(x.key.toLowerCase())), ...own].slice(0, MAX_SPECS);
 
   const build = (descLimit, specLimit) => {
     const lines = [];
@@ -193,4 +228,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, htmlToPlain, formatPhone, visibleLength, buildHashtags, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
+module.exports = { buildCaption, extractNameParams, htmlToPlain, formatPhone, visibleLength, buildHashtags, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
