@@ -7,7 +7,11 @@
 // Меняете здесь — меняйте и там.
 
 // Номер WhatsApp для приёма заказов, только цифры в международном формате.
-const ORDER_WHATSAPP = (import.meta.env.VITE_WHATSAPP_ORDER_PHONE || '996502902905').replace(/\D/g, '');
+const ORDER_WHATSAPP = (import.meta.env.VITE_WHATSAPP_ORDER_PHONE || '996500001652').replace(/\D/g, '');
+
+// Метка источника в первом сообщении клиента: по ней в WhatsApp видно,
+// что лид пришёл с поста, а не откуда-то ещё.
+const TRAFFIC_TAG = '#tg_matrix';
 
 // Слаг сета → человекочитаемое название (как в AdminSets.jsx).
 const SET_NAMES = {
@@ -59,7 +63,7 @@ function visibleLength(html) {
     .length;
 }
 
-// Телефон для показа человеку: 996502902905 → +996 502 902 905.
+// Телефон для показа человеку: 996500001652 → +996 500 001 652.
 function formatPhone(digits) {
   const d = String(digits || '').replace(/\D/g, '');
   if (!d) return '';
@@ -166,7 +170,7 @@ function buildHashtags(p) {
 // Ссылка «Заказать товар» — открывает WhatsApp с готовым текстом заказа.
 function whatsappLink(p) {
   const title = postTitle(p);
-  const text  = `Хочу заказать: ${title}`;
+  const text  = `Хочу заказать: ${title}\n\n${TRAFFIC_TAG}`;
   return `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(text)}`;
 }
 
