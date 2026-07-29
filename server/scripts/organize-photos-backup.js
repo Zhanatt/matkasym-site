@@ -93,9 +93,20 @@ async function main() {
   }
   console.log(`Привязок картинка→товар: ${targets.size}`);
 
-  // Плоские файлы в корне — это то, что скачал backup-cloudinary.js
-  const flat = fs.readdirSync(OUT, { withFileTypes: true })
-    .filter(d => d.isFile() && !d.name.startsWith('_') && !d.name.startsWith('.'));
+  // Обход рекурсивный: public_id может содержать «/», и тогда backup-cloudinary.js
+  // сохранил файл в подпапке (matkasym/covers/…, samples/… и т.п.).
+  // Уже разложенные каталоги пропускаем, чтобы скрипт можно было запускать повторно.
+  const SKIP = new Set([...Object.values(BRAND_DIRS), 'Прочие бренды', '_не привязано к товару']);
+  const flat = [];
+  (function walk(dir, rel) {
+    for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (d.name.startsWith('.')) continue;
+      const r = rel ? `${rel}/${d.name}` : d.name;
+      if (d.isDirectory()) { if (!SKIP.has(r)) walk(path.join(dir, d.name), r); continue; }
+      if (d.name.startsWith('_')) continue;   // _manifest.json
+      flat.push({ name: r });
+    }
+  })(OUT, '');
 
   let moved = 0, linked = 0, orphan = 0;
   const orphanDir = path.join(OUT, '_не привязано к товару');
@@ -103,12 +114,13 @@ async function main() {
   for (const f of flat) {
     const src = path.join(OUT, f.name);
     const ext = path.extname(f.name);
-    const pid = f.name.slice(0, -ext.length);
+    const pid = f.name.slice(0, -ext.length);   // public_id = путь от корня без расширения
     const dests = targets.get(pid);
 
     if (!dests || !dests.length) {
       fs.mkdirSync(orphanDir, { recursive: true });
-      fs.renameSync(src, path.join(orphanDir, f.name));
+      const dest = path.join(orphanDir, path.basename(f.name));
+      if (!fs.existsSync(dest)) fs.renameSync(src, dest);
       orphan++;
       continue;
     }
@@ -124,7 +136,21 @@ async function main() {
     });
   }
 
-  console.log(`\nПеремещено: ${moved} | ссылок на общие фото: ${linked} | без товара: ${orphan}`);
+  // После переноса от структуры Cloudinary остаются пустые каталоги — убираем,
+  // иначе в Finder рядом с понятными папками висят «matkasym-tz», «samples» и т.п.
+  let removed = 0;
+  (function prune(dir, rel) {
+    for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!d.isDirectory()) continue;
+      const r = rel ? `${rel}/${d.name}` : d.name;
+      if (SKIP.has(r)) continue;
+      const full = path.join(dir, d.name);
+      prune(full, r);
+      if (!fs.readdirSync(full).length) { fs.rmdirSync(full); removed++; }
+    }
+  })(OUT, '');
+
+  console.log(`\nПеремещено: ${moved} | ссылок на общие фото: ${linked} | без товара: ${orphan} | удалено пустых папок: ${removed}`);
   console.log('Папка:', OUT);
 }
 
