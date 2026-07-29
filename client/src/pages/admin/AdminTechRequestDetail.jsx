@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminGetTechRequest, adminUpdateTechRequest, adminDeleteTechRequest } from '../../api';
 import { PRIORITIES, STATUS_LABELS, legalStatus, symbolType } from '../../config/techRequest';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const STATUS_COLORS = {
   new:         { color: '#1976d2', bg: '#e3f2fd' },
@@ -155,7 +156,7 @@ export default function AdminTechRequestDetail() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
             {req.spec.media.map(url => (
               <a key={url} href={url} target="_blank" rel="noreferrer">
-                <img src={url} alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} />
+                <img src={cloudinaryOpt(url, 200)} alt="" style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} />
               </a>
             ))}
           </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { adminDeleteImage } from '../api/index';
 import './ImageUploader.css';
+import { cloudinaryOpt } from '../utils/drive';
 
 const CLOUD_NAME    = 'dnbg21ef8';
 const UPLOAD_PRESET = 'Matkasym';
@@ -87,7 +88,7 @@ export default function ImageUploader({ images = [], onChange }) {
       <div className="img-uploader__grid">
         {images.map((url, i) => (
           <div key={url} className={`img-uploader__item ${deleting === url ? 'deleting' : ''}`}>
-            <img src={url} alt="" />
+            <img src={cloudinaryOpt(url, 200)} alt="" />
             {deleting === url && <div className="img-uploader__spinner" />}
             {i === 0 && <span className="img-uploader__main-badge">Главное</span>}
             <div className="img-uploader__actions">

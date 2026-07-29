@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { adminGetReviewGrouped } from '../../api/index';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const SET_NAMES = {
   'achyk-asman': 'Achyk Asman',
@@ -116,7 +117,7 @@ export default function AdminReviewVotes() {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 20, borderBottom: '1px solid #f0f0f0' }}>
                 <img
-                  src={getImageUrl(item)}
+                  src={cloudinaryOpt(getImageUrl(item), 160)}
                   alt=""
                   style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 8, background: '#f8f8f8' }}
                   onError={(e) => { e.target.src = '/placeholder.png'; }}

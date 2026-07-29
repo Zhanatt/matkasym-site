@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { adminGetSalesChartSet, adminGetProduct } from '../../api';
 import AdminProductModal from './AdminProductModal';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const LINE_COLORS = [
   '#DC1E24','#3463A3','#2ECC71','#F39C12','#9B59B6',
@@ -242,7 +243,7 @@ export default function AdminSetSalesChart() {
                     <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:5, fontSize:10, fontWeight:800, ...abcStyle }}>{item.abc}</span>
                     <div style={{ width:36, height:36, borderRadius:6, overflow:'hidden', background:'#f5f5f5', flexShrink:0 }}>
                       {imgUrl ? (
-                        <img src={imgUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                        <img src={cloudinaryOpt(imgUrl, 200)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                       ) : (
                         <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#ccc', fontSize:14 }}>📦</div>
                       )}

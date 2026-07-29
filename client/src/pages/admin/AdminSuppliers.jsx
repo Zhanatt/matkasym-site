@@ -7,6 +7,7 @@ import {
   adminGetProducts,
 } from '../../api/index';
 import AdminProductModal from './AdminProductModal';
+import { cloudinaryOpt } from '../../utils/drive';
 
 export default function AdminSuppliers() {
   const { user } = useAuth();
@@ -201,7 +202,7 @@ export default function AdminSuppliers() {
                       fontSize: 12, color: '#555',
                     }}>
                       {p.images?.[0] && (
-                        <img src={p.images[0]} alt="" style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'cover' }} />
+                        <img src={cloudinaryOpt(p.images[0], 100)} alt="" style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'cover' }} />
                       )}
                       <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {p.name}
@@ -297,7 +298,7 @@ export default function AdminSuppliers() {
                   >
                     <div style={{ aspectRatio: '1', background: '#f8f8f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {p.images?.[0] ? (
-                        <img src={p.images[0]} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                        <img src={cloudinaryOpt(p.images[0], 400)} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                       ) : (
                         <span style={{ fontSize: 40, color: '#ddd' }}>📦</span>
                       )}
@@ -414,7 +415,7 @@ export default function AdminSuppliers() {
                         borderRadius: 8, padding: '6px 10px', fontSize: 13,
                       }}>
                         {p.images?.[0] && (
-                          <img src={p.images[0]} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
+                          <img src={cloudinaryOpt(p.images[0], 100)} alt="" style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
                         )}
                         <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {p.name}
@@ -465,7 +466,7 @@ export default function AdminSuppliers() {
                           }}
                         >
                           {p.images?.[0] && (
-                            <img src={p.images[0]} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover' }} />
+                            <img src={cloudinaryOpt(p.images[0], 100)} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover' }} />
                           )}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

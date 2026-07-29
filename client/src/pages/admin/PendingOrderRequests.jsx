@@ -9,6 +9,7 @@ import {
   adminGetProducts,
 } from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const CLOUD = 'dnbg21ef8';
 const PRESET = 'Matkasym';
@@ -415,7 +416,7 @@ export default function PendingOrderRequests({ onCountChange }) {
                   <div className="por-photo"
                     style={{ position: 'relative', width: 72, height: 72, flexShrink: 0, borderRadius: 10, overflow: 'hidden',
                       background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {pics[0] ? <img src={pics[0]} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {pics[0] ? <img src={cloudinaryOpt(pics[0], 160)} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                              : <span style={{ fontSize: 26 }}>{t.icon}</span>}
                     {pics.length > 1 && (
                       <span style={{ position: 'absolute', bottom: 4, right: 4, background: 'rgba(0,0,0,.65)',
@@ -517,7 +518,7 @@ export default function PendingOrderRequests({ onCountChange }) {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
                 {edit.photos.map((p, i) => (
                   <div key={i} style={{ position: 'relative', width: 74, height: 74, borderRadius: 10, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
-                    <img src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={cloudinaryOpt(p, 160)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <button onClick={() => setEdit(s => ({ ...s, photos: s.photos.filter((_, j) => j !== i) }))}
                       title="Убрать фото"
                       style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 6, border: 'none',
@@ -615,7 +616,7 @@ export default function PendingOrderRequests({ onCountChange }) {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: 8, marginBottom: 18 }}>
                     {photos.map((url, i) => (
                       <div key={url + i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '1px solid #eceff3' }}>
-                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={cloudinaryOpt(url, 400)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         <button onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
                           style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,.6)', color: '#fff',
                             border: 'none', borderRadius: 16, width: 24, height: 24, cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>✕</button>
@@ -717,7 +718,7 @@ export default function PendingOrderRequests({ onCountChange }) {
                             background: low ? '#fff5f5' : '#fff' }}
                           onMouseOver={e => e.currentTarget.style.borderColor = '#DC1E24'}
                           onMouseOut={e => e.currentTarget.style.borderColor = low ? '#fecaca' : '#eceff3'}>
-                          <img src={p.images?.[0] || NO_PHOTO} alt="" loading="lazy" onError={e => { e.target.src = NO_PHOTO; }}
+                          <img src={cloudinaryOpt(p.images?.[0] || NO_PHOTO, 100)} alt="" loading="lazy" onError={e => { e.target.src = NO_PHOTO; }}
                             style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', background: '#f1f5f9', flexShrink: 0 }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 600, color: '#111', overflow: 'hidden',
@@ -745,7 +746,7 @@ export default function PendingOrderRequests({ onCountChange }) {
                   <div style={label}>Выбранный товар</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12,
                     border: '1.5px solid #fde68a', background: '#fffbeb', marginBottom: 16 }}>
-                    <img src={picked.images?.[0] || NO_PHOTO} alt="" onError={e => { e.target.src = NO_PHOTO; }}
+                    <img src={cloudinaryOpt(picked.images?.[0] || NO_PHOTO, 160)} alt="" onError={e => { e.target.src = NO_PHOTO; }}
                       style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', background: '#f1f5f9', flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>{picked.fullName || picked.name}</div>
@@ -828,7 +829,7 @@ export default function PendingOrderRequests({ onCountChange }) {
                     {pics.length > 0 && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8, marginBottom: 16 }}>
                         {pics.map((url, i) => (
-                          <img key={url + i} src={url} alt="" onClick={() => setGallery({ photos: pics, i })}
+                          <img key={url + i} src={cloudinaryOpt(url, 400)} alt="" onClick={() => setGallery({ photos: pics, i })}
                             style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 10,
                               border: '1px solid #eceff3', cursor: 'zoom-in' }} />
                         ))}
@@ -927,7 +928,7 @@ export default function PendingOrderRequests({ onCountChange }) {
       {gallery && createPortal(
         <div onClick={() => setGallery(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.88)',
           zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <img src={gallery.photos[gallery.i]} alt=""
+          <img src={cloudinaryOpt(gallery.photos[gallery.i], 1200)} alt=""
             onClick={e => { e.stopPropagation(); if (gallery.photos.length > 1) setGallery(g => ({ ...g, i: (g.i + 1) % g.photos.length })); }}
             style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8, cursor: gallery.photos.length > 1 ? 'pointer' : 'default' }} />
           {gallery.photos.length > 1 && (

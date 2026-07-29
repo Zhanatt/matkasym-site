@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock, adminGetProduct } from '../../api';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -447,7 +448,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     </div>
                   </div>
                 ) : (
-                  <img src={img} alt={product.name}
+                  <img src={cloudinaryOpt(img, 800)} alt={product.name}
                     style={{ maxWidth: '100%', maxHeight: isMobile ? 280 : 380, objectFit: 'contain', display: 'block', padding: 16 }}
                     onError={e => { e.target.src = NO_PHOTO; }} />
                 )}
@@ -490,7 +491,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
               {images.length > 1 && (
                 <div style={{ display: 'flex', gap: 6, padding: '8px 12px', overflowX: 'auto', background: '#efece6', flexShrink: 0 }}>
                   {images.map((src, i) => (
-                    <img key={i} src={src} alt="" onClick={() => setImgIdx(i)}
+                    <img key={i} src={cloudinaryOpt(src, 160)} alt="" onClick={() => setImgIdx(i)}
                       style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', flexShrink: 0,
                         border: i === imgIdx ? '2px solid #333' : '2px solid transparent',
                         opacity: i === imgIdx ? 1 : 0.6 }} />
@@ -912,7 +913,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                         >
                           {p.images?.[0] && (
-                            <img src={p.images[0]} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, background: '#f8f8f8' }} />
+                            <img src={cloudinaryOpt(p.images[0], 100)} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, background: '#f8f8f8' }} />
                           )}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

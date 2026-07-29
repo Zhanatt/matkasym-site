@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { cloudinaryOpt } from '../../utils/drive';
 import {
   adminGetAudits,
   adminGetActiveAudit,
@@ -686,7 +687,7 @@ export default function AdminReviewResults() {
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <img
-                              src={getImageUrl(r)}
+                              src={cloudinaryOpt(getImageUrl(r), 100)}
                               alt=""
                               style={{ width: 44, height: 44, objectFit: 'contain', borderRadius: 6, background: '#f8f8f8' }}
                               onError={(e) => { e.target.src = '/placeholder.png'; }}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminGetNews, adminMarkNewsRead, adminMarkAllNewsRead, adminDeleteNews, adminSyncNewsProduct } from '../../api';
 import { useAuth } from '../../context/AuthContext';
+import { cloudinaryOpt } from '../../utils/drive';
 
 // Типы, которые автоматически синхронизируют статус товара
 const SYNC_TYPES = new Set(['discontinued', 'nelikvid', 'out_of_stock', 'restocked']);
@@ -128,7 +129,7 @@ function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
       {img && (
         <div style={{ margin: '0 22px 18px', background: '#f7f6f3', borderRadius: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
           <img
-            src={img}
+            src={cloudinaryOpt(img, 800)}
             alt=""
             style={{ width: '100%', maxHeight: 340, objectFit: 'contain', display: 'block', padding: '16px 0' }}
           />
@@ -181,7 +182,7 @@ function NewsCard({ item, onRead, onDelete, onSync, canDelete }) {
         {item.images?.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             {item.images.map((url, i) => (
-              <img key={i} src={url} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); window.open(url, '_blank'); }} />
+              <img key={i} src={cloudinaryOpt(url, 200)} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 10, cursor: 'pointer' }} onClick={e => { e.stopPropagation(); window.open(url, '_blank'); }} />
             ))}
           </div>
         )}

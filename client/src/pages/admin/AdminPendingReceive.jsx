@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { adminGetProducts, adminReceiveProduct, adminGetProductRequestCount } from '../../api';
 import AdminProductModal from './AdminProductModal';
 import PendingOrderRequests from './PendingOrderRequests';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -214,7 +215,7 @@ export default function AdminPendingReceive() {
                 }}
               >
                 <img
-                  src={p.images?.[0] || NO_PHOTO}
+                  src={cloudinaryOpt(p.images?.[0] || NO_PHOTO, 160)}
                   alt=""
                   style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, background: '#f5f5f5' }}
                   onError={e => { e.target.src = NO_PHOTO; }}
@@ -298,7 +299,7 @@ export default function AdminPendingReceive() {
               {/* Header */}
               <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
                 <img
-                  src={selected.images?.[0] || NO_PHOTO}
+                  src={cloudinaryOpt(selected.images?.[0] || NO_PHOTO, 200)}
                   alt=""
                   style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 12, background: '#f5f5f5' }}
                   onError={e => { e.target.src = NO_PHOTO; }}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { cloudinaryOpt } from '../../utils/drive';
 import {
   adminGetStockLog,
   adminGetPriceLog,
@@ -118,7 +119,7 @@ function ImageList({ urls, bg }) {
     <div style={{ background: bg, borderRadius: 6, padding: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
       {urls.map((url, i) => (
         <a key={i} href={url} target="_blank" rel="noreferrer">
-          <img src={url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(0,0,0,.08)' }}
+          <img src={cloudinaryOpt(url, 160)} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(0,0,0,.08)' }}
             onError={e => { e.currentTarget.style.display = 'none'; }} />
         </a>
       ))}
@@ -396,7 +397,7 @@ function PhotoTab() {
                   <div>
                     {log.imageUrl ? (
                       <a href={log.imageUrl} target="_blank" rel="noopener noreferrer">
-                        <img src={log.imageUrl} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }} />
+                        <img src={cloudinaryOpt(log.imageUrl, 100)} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }} />
                       </a>
                     ) : (
                       <div style={{ width: 40, height: 40, background: '#f5f5f5', borderRadius: 6 }} />

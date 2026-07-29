@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { adminGetVideoScheduleFrontmanReport } from '../../api';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const BRAND_META = {
   'matkasym-home': { label: 'HOME', accent: '#DC1E24' },
@@ -68,7 +69,7 @@ function ProductThumb({ product, size = 40 }) {
     : product?.images?.[0] || '/placeholder.png';
   return (
     <img
-      src={src}
+      src={cloudinaryOpt(src, 400)}
       alt=""
       style={{ width: size, height: size, objectFit: 'cover', borderRadius: 6, background: '#f5f5f5', flexShrink: 0 }}
     />

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { cloudinaryOpt } from '../../utils/drive';
 import {
   adminGetMySets,
   adminGetAllSetProducts,
@@ -623,7 +624,7 @@ export default function AdminProductReview() {
               }}
             >
               <img
-                src={getImageUrl(currentProduct)}
+                src={cloudinaryOpt(getImageUrl(currentProduct), 800)}
                 alt={currentProduct.name}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 onError={(e) => { e.target.src = '/placeholder.png'; }}
@@ -855,7 +856,7 @@ export default function AdminProductReview() {
                       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                         {suggestionPhotos.map((url, i) => (
                           <div key={url} style={{ position: 'relative' }}>
-                            <img src={url} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover' }} />
+                            <img src={cloudinaryOpt(url, 160)} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover' }} />
                             <button
                               onClick={() => removePhoto(i)}
                               style={{

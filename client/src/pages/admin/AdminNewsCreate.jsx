@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminCreateNews, adminGetUsers, adminGetProducts, adminUploadImage } from '../../api';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const TYPE_META = {
   discontinued: { label: 'Снят с производства', color: '#c0392b', bg: '#fdf0ef' },
@@ -138,7 +139,7 @@ export default function AdminNewsCreate() {
         </label>
         {selectedProd ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f7f8fa', border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '10px 14px', marginBottom: 24 }}>
-            {productImg(selectedProd) && <img src={productImg(selectedProd)} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
+            {productImg(selectedProd) && <img src={cloudinaryOpt(productImg(selectedProd), 100)} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{selectedProd.fullName || selectedProd.name}</div>
               <div style={{ fontSize: 12, color: '#7d96a0', marginTop: 2 }}>Остаток: {selectedProd.stock ?? '—'} шт.</div>
@@ -159,7 +160,7 @@ export default function AdminNewsCreate() {
                 {products.map(p => (
                   <button key={p._id} onClick={() => { setSelectedProd(p); setProductQ(''); setProducts([]); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #f4f4f4' }}>
-                    {productImg(p) && <img src={productImg(p)} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
+                    {productImg(p) && <img src={cloudinaryOpt(productImg(p), 100)} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{p.fullName || p.name}</div>
                       <div style={{ fontSize: 11, color: '#aaa' }}>Остаток: {p.stock ?? '—'}</div>
@@ -199,7 +200,7 @@ export default function AdminNewsCreate() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
           {images.map((url, i) => (
             <div key={i} style={{ position: 'relative', width: 80, height: 80 }}>
-              <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+              <img src={cloudinaryOpt(url, 200)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
               <button
                 onClick={() => setImages(imgs => imgs.filter((_, idx) => idx !== i))}
                 style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#c0392b', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}

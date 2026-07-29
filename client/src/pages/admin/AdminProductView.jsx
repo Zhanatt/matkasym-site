@@ -126,7 +126,7 @@ export default function AdminProductView() {
             {images.length > 0 ? (
               <>
                 <img
-                  src={imgSrc(images[imgIdx])}
+                  src={cloudinaryOpt(imgSrc(images[imgIdx]), 800)}
                   alt={product.name}
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 />
@@ -197,7 +197,7 @@ export default function AdminProductView() {
                     cursor: 'pointer', background: '#f7f6f3',
                   }}>
                     <img
-                      src={imgSrc(url)}
+                      src={cloudinaryOpt(imgSrc(url), 160)}
                       alt=""
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminCreateTechRequest } from '../../api';
 import { LEGAL_STATUSES, SYMBOL_TYPES, PRIORITIES, needsCompany } from '../../config/techRequest';
+import { cloudinaryOpt } from '../../utils/drive';
 
 const inputStyle = {
   width: '100%', padding: '11px 12px', borderRadius: 8, border: '1.5px solid #e0e0e0',
@@ -273,7 +274,7 @@ export default function AdminTechRequestForm() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
               {specMedia.map(url => (
                 <div key={url} style={{ position: 'relative' }}>
-                  <img src={url} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} />
+                  <img src={cloudinaryOpt(url, 160)} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} />
                   <button
                     onClick={() => setSpecMedia(prev => prev.filter(u => u !== url))}
                     style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', border: 'none', background: '#d32f2f', color: '#fff', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}

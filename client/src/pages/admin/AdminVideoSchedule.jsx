@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { cloudinaryOpt } from '../../utils/drive';
 import {
   adminGetVideoScheduleMy,
   adminCreateVideoSchedule,
@@ -86,7 +87,7 @@ function ProductThumb({ product }) {
     : product.images?.[0] || '/placeholder.png';
   return (
     <img
-      src={src}
+      src={cloudinaryOpt(src, 100)}
       alt=""
       style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, background: '#f5f5f5' }}
     />

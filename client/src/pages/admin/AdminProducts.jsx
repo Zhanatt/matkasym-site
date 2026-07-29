@@ -492,7 +492,7 @@ export default function AdminProducts() {
                             onClick={() => navigate(`/admin/products/${primary._id}`)}
                           >
                             {imgUrl ? (
-                              <img src={imgUrl} alt="" className="admin-table-img" />
+                              <img src={cloudinaryOpt(imgUrl, 200)} alt="" className="admin-table-img" />
                             ) : (
                               <div className="admin-table-img-placeholder">📦</div>
                             )}
