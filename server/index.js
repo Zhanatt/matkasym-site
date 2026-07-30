@@ -2,6 +2,7 @@ const express      = require('express');
 const mongoose     = require('mongoose');
 const cors         = require('cors');
 const cookieParser = require('cookie-parser');
+const compression  = require('compression');
 const dotenv       = require('dotenv');
 const path         = require('path');
 
@@ -10,6 +11,10 @@ dotenv.config();
 const app = express();
 
 // Middleware
+// Сжатие обязательно: клиентский бандл — 3,4 МБ одним файлом, и без gzip каждый
+// заход на сайт съедал столько же трафика. На бесплатном тарифе Render (5 ГБ/мес)
+// это выбирало лимит за считанные дни. С gzip те же 3,4 МБ едут примерно как 1 МБ.
+app.use(compression());
 app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -88,8 +93,22 @@ app.post('/api/telegram-webhook', async (req, res) => {
 // Serve React build in production
 if (process.env.NODE_ENV === 'production') {
   const clientBuild = path.join(__dirname, '../client/dist');
-  app.use(express.static(clientBuild));
+  // В именах файлов сборки есть хеш (index-DC_VoRZH.js), поэтому их можно кэшировать
+  // навсегда: после нового деплоя имя другое и браузер скачает новое сам.
+  // Раньше кэш-заголовков не было — при каждом обновлении версии всё качалось заново.
+  app.use(express.static(clientBuild, {
+    setHeaders: (res, filePath) => {
+      // Vite кладёт в assets/ только файлы с хешем в имени (index-Dtiv0LFe.js)
+      if (/[\\/]assets[\\/]/.test(filePath)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  }));
   app.get('*', (req, res) => {
+    // index.html кэшировать нельзя: в нём ссылки на файлы сборки
+    res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
 }
