@@ -13,7 +13,9 @@ export const STATUS_BADGE = {
 
 export function SupplierBadge({ product, size = 'normal' }) {
   const { user } = useAuth();
-  const canSeeSupplier = ['owner', 'navigator', 'warehouse'].includes(user?.role);
+  // Дизайнер готовит карточки и посты по привозным товарам — ему нужно видеть,
+  // от какого поставщика товар, наравне с владельцем, навигатором и складом.
+  const canSeeSupplier = ['owner', 'navigator', 'warehouse', 'designer'].includes(user?.role);
 
   if (!product.isSupplied || !canSeeSupplier) return null;
 
