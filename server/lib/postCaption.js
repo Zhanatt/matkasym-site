@@ -13,6 +13,38 @@ const ORDER_WHATSAPP = (process.env.WHATSAPP_ORDER_PHONE || '996500001652').repl
 // что лид пришёл с поста, а не откуда-то ещё.
 const TRAFFIC_TAG = '#tg_matrix';
 
+// Короткий призыв к действию перед ссылкой на WhatsApp.
+// Одна строка: в ленте канала длинный текст дочитывают редко.
+const CTA_LINE = 'Заказать просто — напишите нам 👇';
+
+// Тип товара для названий, где его нет вообще: «Ailana» ничего не говорит
+// покупателю, а «Скамейка Ailana» — говорит. Список точечный, а не общий
+// по категориям: у многих товаров тип уже есть в названии, а часть категорий
+// («Прочее», «other», «Покраска») подставлять просто нечего.
+const CATEGORY_PREFIX = {
+  'Узоры (профиль 15x15)':    'Узор',
+  'Узоры (квадрат 10мм)':     'Узор',
+  'Балясины (профиль 15x15)': 'Балясина',
+  'Балясины (квадрат 10мм)':  'Балясина',
+  'Уголки (профиль 15x15)':   'Уголок',
+  'скамейка':                 'Скамейка',
+  'Ограждения':               'Ограждение',
+  'фонарь':                   'Фонарь',
+  'Кашпо':                    'Кашпо',
+  'Перголы':                  'Пергола',
+  'Трубы':                    'Труба',
+  'Стойки':                   'Стойка',
+  'Акустические экраны':      'Акустический экран',
+  'Щиты монтажные (ЩМП)':     'Щит монтажный',
+  'Щиты сантехнические':      'Щит сантехнический',
+  'Щиты этажные':             'Щит этажный',
+  'Шкафы пожарные':           'Пожарный шкаф',
+  'ландшафтный-светильник':   'Ландшафтный светильник',
+  'навес-для-скамьи':         'Навес для скамьи',
+  'потолочный-люк':           'Потолочный люк',
+  'качели':                   'Качели',
+};
+
 // Слаг сета → человекочитаемое название (как в AdminSets.jsx).
 const SET_NAMES = {
   'onuguu-set':         'Onuguu Set',
@@ -44,11 +76,6 @@ const SET_NAMES = {
 
 // Служебные сеты — в пост их не пишем, для покупателя это шум.
 const HIDDEN_SETS = new Set(['misc', 'equipment', 'other', 'samples', 'small-batch', 'poly-fabrikat']);
-
-const BRAND_TAGS = {
-  'matkasym-home':  'MATKASYM_HOME',
-  'matkasym-shaar': 'MATKASYM_SHAAR',
-};
 
 const MAX_CAPTION = 1024;  // жёсткий лимит Telegram на подпись к фото
 const MAX_SPECS   = 6;
@@ -139,32 +166,23 @@ function extractNameParams(raw) {
   return { title: rest, params };
 }
 
+// Дописываем тип товара в начало, если его там нет. Сравниваем по основам ВСЕХ
+// слов префикса: у «Акустический экран» опорное слово второе, и проверка только
+// по первому давала «Акустический экран EILIF настольный экран». Нормализация
+// «ё»→«е» нужна, иначе «Ершик» не совпадёт с категорией «Ёршики».
+function withTypePrefix(title, category) {
+  const prefix = CATEGORY_PREFIX[category];
+  if (!prefix || !title) return title;
+  const norm = (s) => s.toLowerCase().replace(/ё/g, 'е');
+  const haystack = norm(title);
+  const stems = norm(prefix).split(/\s+/).filter(w => w.length > 3).map(w => w.slice(0, -1));
+  if (stems.some(st => haystack.includes(st))) return title;
+  return `${prefix} ${title}`;
+}
+
 function postTitle(p) {
   const { title } = extractNameParams(p.fullName || p.name || '');
-  return title || String(p.name || '').trim();
-}
-
-// Строка → хэштег: всё кроме букв и цифр становится «_».
-// «Полки для обуви» → #Полки_для_обуви, «Uzak Koldon» → #Uzak_Koldon.
-function toTag(s) {
-  const body = String(s || '')
-    .trim()
-    .replace(/[^\p{L}\p{N}]+/gu, '_')
-    .replace(/^_+|_+$/g, '');
-  if (!body) return '';
-  if (/^\d/.test(body)) return '#_' + body;   // хэштег не может начинаться с цифры
-  return '#' + body;
-}
-
-// Хэштеги для навигации внутри канала: тапнув по тегу, покупатель
-// видит все похожие товары. Порядок: категория → сет → бренд.
-function buildHashtags(p) {
-  const tags = [];
-  const push = (t) => { if (t && !tags.includes(t)) tags.push(t); };
-  push(toTag(p.category));
-  push(toTag(setLabel(p.set)));
-  push(toTag(BRAND_TAGS[p.brand]));
-  return tags;
+  return withTypePrefix(title || String(p.name || '').trim(), p.category);
 }
 
 // Ссылка «Заказать товар» — открывает WhatsApp с готовым текстом заказа.
@@ -175,7 +193,7 @@ function whatsappLink(p) {
 }
 
 // Черновик поста. Структура: заголовок → сет → описание → характеристики →
-// цена → кнопка заказа → хэштеги. Пустые блоки просто пропускаются,
+// цена → призыв к действию и кнопка заказа. Пустые блоки просто пропускаются,
 // поэтому текст корректен и для товара без specs и без description.
 // Какая цена уходит в пост. Оптовая — для постов на партнёров/дилеров,
 // розничная — для витрины. Дефолт розничный: канал читают покупатели.
@@ -193,7 +211,7 @@ function buildCaption(p, opts = {}) {
   const priceMode = opts.priceMode === 'wholesale' ? 'wholesale' : 'retail';
 
   const { title: rawTitle, params } = extractNameParams(p.fullName || p.name || '');
-  const title = esc(rawTitle || String(p.name || '').trim());
+  const title = esc(withTypePrefix(rawTitle || String(p.name || '').trim(), p.category));
   const set   = setLabel(p.set);
   const desc  = withDescription ? String(p.description || '').trim() : '';
 
@@ -221,10 +239,7 @@ function buildCaption(p, opts = {}) {
 
     lines.push('', priceLine(p, priceMode));
 
-    lines.push('', `📲 <a href="${whatsappLink(p)}">Заказать товар в WhatsApp</a>`);
-
-    const tags = buildHashtags(p);
-    if (tags.length) lines.push('', tags.join(' '));
+    lines.push('', CTA_LINE, `📲 <a href="${whatsappLink(p)}">Заказать товар в WhatsApp</a>`);
 
     return lines.join('\n');
   };
@@ -238,4 +253,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, priceLine, extractNameParams, htmlToPlain, formatPhone, visibleLength, buildHashtags, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
+module.exports = { buildCaption, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
