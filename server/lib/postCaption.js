@@ -13,9 +13,37 @@ const ORDER_WHATSAPP = (process.env.WHATSAPP_ORDER_PHONE || '996500001652').repl
 // что лид пришёл с поста, а не откуда-то ещё.
 const TRAFFIC_TAG = '#tg_matrix';
 
-// Короткий призыв к действию перед ссылкой на WhatsApp.
-// Одна строка: в ленте канала длинный текст дочитывают редко.
-const CTA_LINE = 'Заказать просто — напишите нам 👇';
+// Короткий призыв к действию перед ссылкой на WhatsApp — одна строка,
+// в ленте канала длинный текст дочитывают редко.
+//
+// Фраза выбирается по РЕАЛЬНОМУ состоянию товара, а не ставится наугад:
+// «успейте, осталось мало» под товаром, которого на складе 500 штук, читатель
+// раскусит с первого раза, и дальше он не поверит ни одному посту.
+// «Осталось мало» без числа — намеренно: точный остаток это внутренняя цифра.
+const CTA = {
+  discount: '🔥 Выгодная цена — успейте купить',
+  low:      '⚡ Осталось мало — успейте заказать',
+  inStock:  '✅ В наличии — успейте заказать',
+  onOrder:  '📦 Под заказ — напишите, уточним сроки',
+  default:  'Заказать просто — напишите нам 👇',
+};
+
+// Порог «мало»: сначала буферный запас из 1С (это собственное определение
+// бизнеса, когда товар считается заканчивающимся), иначе 3 штуки.
+const LOW_STOCK_FALLBACK = 3;
+
+function ctaLine(p) {
+  if (p.oldPrice > 0 && p.price > 0 && p.oldPrice > p.price) return CTA.discount;
+
+  const stock = Number(p.stock) || 0;
+  if (stock > 0) {
+    const threshold = Number(p.bufferStock) > 0 ? Number(p.bufferStock) : LOW_STOCK_FALLBACK;
+    return stock <= threshold ? CTA.low : CTA.inStock;
+  }
+
+  if (p.isOnOrder || p.inTransit) return CTA.onOrder;
+  return CTA.default;
+}
 
 // Тип товара для названий, где его нет вообще: «Ailana» ничего не говорит
 // покупателю, а «Скамейка Ailana» — говорит. Список точечный, а не общий
@@ -239,7 +267,7 @@ function buildCaption(p, opts = {}) {
 
     lines.push('', priceLine(p, priceMode));
 
-    lines.push('', CTA_LINE, `📲 <a href="${whatsappLink(p)}">Заказать товар в WhatsApp</a>`);
+    lines.push('', ctaLine(p), `📲 <a href="${whatsappLink(p)}">Заказать товар в WhatsApp</a>`);
 
     return lines.join('\n');
   };
@@ -253,4 +281,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
+module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
