@@ -56,8 +56,7 @@ function captionFor({ nodeTemplate, account, product, text }) {
 }
 
 // Автотекст для товара — общий черновик, который потом можно править руками.
-// Тот же генератор, что у поста в канал и очереди публикаций (lib/postCaption.js),
-// чтобы текст не расходился между /admin/publish и /admin/telegram-post.
+// Генератор общий для всех площадок — lib/postCaption.js.
 const buildProductText = buildCaption;
 
 // Отправка одной площадки. Возвращает обновлённый объект target (не сохраняет).

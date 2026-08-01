@@ -22,8 +22,6 @@ import AdminTechRequestDetail from './pages/admin/AdminTechRequestDetail';
 import AdminAllCatalog    from './pages/admin/AdminAllCatalog';
 import AdminNews         from './pages/admin/AdminNews';
 import AdminNewsCreate   from './pages/admin/AdminNewsCreate';
-import AdminTelegramPost from './pages/admin/AdminTelegramPost';
-import AdminTelegramQueue from './pages/admin/AdminTelegramQueue';
 import AdminPublish         from './pages/admin/AdminPublish';
 import AdminPublishFlow     from './pages/admin/AdminPublishFlow';
 import AdminPublishAccounts from './pages/admin/AdminPublishAccounts';
@@ -66,8 +64,6 @@ export default function App() {
         <Route path="agent-sales"           element={<AdminAgentSales />} />
         <Route path="news" element={<AdminNews />} />
         <Route path="news/create" element={<AdminNewsCreate />} />
-        <Route path="telegram-post" element={<AdminTelegramPost />} />
-        <Route path="telegram-queue" element={<AdminTelegramQueue />} />
         <Route path="publish"           element={<AdminPublish />} />
         <Route path="publish/flow"      element={<AdminPublishFlow />} />
         <Route path="publish/accounts"  element={<AdminPublishAccounts />} />

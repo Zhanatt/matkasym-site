@@ -34,17 +34,16 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', time: new Date() }
 const SERVER_START = Date.now().toString();
 app.get('/api/version', (req, res) => res.json({ version: SERVER_START }));
 
-// Telegram-очередь: тик планировщика по внешнему пингу (cron-job.org / UptimeRobot).
+// Автопубликации: тик планировщика по внешнему пингу (cron-job.org / UptimeRobot).
 // Нужен, потому что на бесплатном Render сервис засыпает и внутренний таймер не идёт.
 // Защищён ключом: ?key=CRON_KEY (или CATALOG_API_KEY как запасной).
-const { tickQueue } = require('./lib/telegramQueue');
+// Старый путь /api/telegram-queue/tick оставлен алиасом — на него настроен внешний cron.
 const { tickPublications } = require('./lib/socialPublish');
-app.get('/api/telegram-queue/tick', async (req, res) => {
+app.get(['/api/cron/tick', '/api/telegram-queue/tick'], async (req, res) => {
   const expected = process.env.CRON_KEY || process.env.CATALOG_API_KEY;
   if (expected && req.query.key !== expected) return res.status(403).json({ message: 'forbidden' });
-  const result = await tickQueue();
   const publications = await tickPublications(); // отложенные посты и задержки узлов схемы
-  res.json({ ok: true, result, publications });
+  res.json({ ok: true, publications });
 });
 
 // Telegram bot webhook
@@ -168,10 +167,9 @@ mongoose
       }
     }
 
-    // Внутренний тик очереди Telegram-публикаций каждую минуту (пока сервис не спит).
-    // Дублируется внешним cron-пингом /api/telegram-queue/tick для надёжности на Render free.
+    // Внутренний тик автопубликаций каждую минуту (пока сервис не спит).
+    // Дублируется внешним cron-пингом /api/cron/tick для надёжности на Render free.
     setInterval(() => {
-      tickQueue().catch(e => console.error('[TelegramQueue] interval tick failed:', e.message));
       tickPublications().catch(e => console.error('[socialPublish] interval tick failed:', e.message));
     }, 60 * 1000);
 

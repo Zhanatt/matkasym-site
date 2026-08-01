@@ -160,13 +160,6 @@ async function publishToChat({ chatId, photoUrl, caption }) {
   return d.ok ? { ok: true, data: d } : { ok: false, error: d.description };
 }
 
-// Витрина-канал из env — частный случай publishToChat (используется очередью публикаций).
-async function publishToChannel({ photoUrl, caption }) {
-  const channelId = process.env.TELEGRAM_CHANNEL_ID;
-  if (!channelId) return { ok: false, error: 'TELEGRAM_CHANNEL_ID не настроен на сервере' };
-  return publishToChat({ chatId: channelId, photoUrl, caption });
-}
-
 async function sendNewsNotificationTelegram({ type, title, message, product }, recipients) {
   const typeLabel = NEWS_TYPE_LABELS[type] || '📢 Новость';
   const productName = product?.fullName || product?.name || '';
@@ -264,4 +257,4 @@ async function sendBufferStockAlerts(alerts) {
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChannel, publishToChat, tgImage };
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage };
