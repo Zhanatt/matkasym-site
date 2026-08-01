@@ -5,6 +5,10 @@ const productSchema = new mongoose.Schema({
   name:     { type: String, required: true },
   fullName: { type: String, required: true },
   sku:      { type: String, default: '' },
+  // Развёрнутое название для номенклатуры 1С — описывает конструкцию товара,
+  // а не серию: «Шкаф двухстворчатый с прозрачными стеклянными дверцами W052 H1850*W850*D400».
+  // На сайте не показывается, нужно только для заведения позиции в 1С.
+  nomenclature1C: { type: String, default: '' },
 
   // Brand & Set
   brand:    { type: String, required: true, default: 'matkasym-home' },

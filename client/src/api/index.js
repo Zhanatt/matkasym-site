@@ -50,6 +50,7 @@ export const adminDeleteUser  = (id)    => api.delete(`/admin/users/${id}`);
 export const adminGetUserActivity = (id) => api.get(`/admin/users/${id}/activity`);
 export const adminSetBufferStock = (id, bufferStock) => api.patch(`/admin/products/${id}/buffer-stock`, { bufferStock });
 export const adminGetBufferStock = (zone) => api.get('/admin/buffer-stock', { params: zone ? { zone } : {} });
+export const adminGetNomenclature = (set) => api.get('/admin/nomenclature', { params: set ? { set } : {} });
 export const adminDeleteImage = (url)       => api.delete('/admin/images', { data: { url } });
 export const adminGetCustomCategories  = ()          => api.get('/admin/custom-categories');
 export const adminCreateCustomCategory = (data)      => api.post('/admin/custom-categories', data);

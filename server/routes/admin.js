@@ -53,7 +53,7 @@ const PRICE_FIELDS = { retail: 'price', wholesale: 'priceWholesale', dealer: 'pr
 const PRICE_FIELD_TO_TYPE = Object.fromEntries(Object.entries(PRICE_FIELDS).map(([t, f]) => [f, t]));
 
 const TRACKED_FIELDS = [
-  'name','fullName','sku','price','priceWholesale','priceDealer','priceCost',
+  'name','fullName','sku','nomenclature1C','price','priceWholesale','priceDealer','priceCost',
   'inStock','stock','stockStatus','productStatus','description','dimensions',
   'category','set','color','isNew','developmentStage',
   'developmentTZ','improvementTZ','pauseNote',
@@ -61,6 +61,7 @@ const TRACKED_FIELDS = [
 
 const FIELD_LABELS = {
   name: 'Название', fullName: 'Полное название', sku: 'SKU',
+  nomenclature1C: 'Название для 1С',
   price: 'Розничная цена', priceWholesale: 'Оптовая цена',
   priceDealer: 'Дилерская цена', priceCost: 'Себестоимость',
   inStock: 'В наличии', stock: 'Количество', stockStatus: 'Статус склада',
@@ -2376,6 +2377,31 @@ router.post('/upload-photos', editor, upload.array('files', 100), async (req, re
   } catch (e) {
     res.status(500).json({ error: 'Ошибка: ' + e.message });
   }
+});
+
+// ── Номенклатура для 1С ──────────────────────────────────────────────────────
+// GET /api/admin/nomenclature?set=uzak-koldon
+// Товары сета с развёрнутым названием для заведения позиции в 1С.
+// Правится через общий PATCH /admin/products/:id (поле nomenclature1C).
+router.get('/nomenclature', viewer, async (req, res) => {
+  try {
+    const set = req.query.set || 'uzak-koldon';
+
+    const products = await Product.find({ set })
+      .select('_id name fullName sku nomenclature1C dimensions description category brand set images supplier.company supplier.sku')
+      .lean();
+
+    // Сначала по категории, внутри — по артикулу (как в 1С удобнее сверять)
+    products.sort((a, b) =>
+      (a.category || '').localeCompare(b.category || '', 'ru') ||
+      (a.sku || '').localeCompare(b.sku || '', 'ru'));
+
+    res.json({
+      products,
+      set,
+      filled: products.filter(p => (p.nomenclature1C || '').trim()).length,
+    });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
 // ── Buffer Stock ─────────────────────────────────────────────────────────────
