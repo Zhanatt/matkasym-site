@@ -335,7 +335,7 @@ export default function PendingOrderRequests({ onCountChange }) {
         background: '#fef2f2', padding: '12px 16px', borderRadius: 10, marginBottom: 16,
         fontSize: 13, color: '#b3161b',
       }}>
-        📥 Заявки на заказ товара. Создайте заявку — её обработает Джипар.
+        📥 Заявки на заказ товара. Создайте заявку — процесс ведёт Зайнагуль.
       </div>
 
       {toast && (

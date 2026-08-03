@@ -19,12 +19,16 @@ const { COMPANY_REQUIRED } = require('../models/TechRequest');
 const VideoSchedule = require('../models/VideoSchedule');
 const LoginLog     = require('../models/LoginLog');
 const ProductRequest = require('../models/ProductRequest');
+const ProductLaunch  = require('../models/ProductLaunch');
 const SalesRecord  = require('../models/SalesRecord');
 const SalesDoc     = require('../models/SalesDoc');
 const SalesUpload  = require('../models/SalesUpload');
 const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
+const {
+  PL_STAGES, isContentManager, isDesignerUser, ensureLaunch, notifyStage,
+} = require('../lib/productLaunch');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
   STOCK_SUM_BASES, basesOfCountry, PRICE_TYPES, isPriceType, currencyOf,
@@ -904,6 +908,7 @@ router.post('/products/:id/receive', protect, canReceiveStock, async (req, res) 
     const actualQty = receivedQty ?? expectedQty;
 
     // Добавляем к остаткам, убираем статусы "в пути" и "ожидает приёмки"
+    const fromStock = product.stock || 0;
     product.stock = (product.stock || 0) + actualQty;
     product.inStock = actualQty > 0;
     product.stockStatus = actualQty > 0 ? 'in_stock' : 'out_of_stock';
@@ -920,15 +925,15 @@ router.post('/products/:id/receive', protect, canReceiveStock, async (req, res) 
     if (comment) note += `: ${comment}`;
 
     await StockLog.create({
-      product: product._id,
-      productId: product._id,
+      productId:   product._id,
       productName: product.fullName || product.name,
-      action: 'receive',
-      oldValue: 0,
-      newValue: actualQty,
-      source: 'warehouse',
+      sku:         product.sku || '',
+      delta:       actualQty,
+      fromStock,
+      toStock:     product.stock,
+      source:      'warehouse',
       note,
-      user: req.user._id,
+      changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
     });
 
     // Если есть проблема — создаём алерт для админа
@@ -944,6 +949,14 @@ router.post('/products/:id/receive', protect, canReceiveStock, async (req, res) 
         receivedBy: req.user._id,
         receivedByName: req.user.name,
       });
+    }
+
+    // Тестовый товар приняли — сразу заводим карточку запуска (контент → дизайн → пост → результат)
+    if (product.productStatus === 'test_sale' && actualQty > 0) {
+      try {
+        const { launch, created } = await ensureLaunch(product, req.user);
+        if (created) await notifyStage(launch, 'content');
+      } catch (e) { console.error('[receive] launch create failed:', e.message); }
     }
 
     res.json({
@@ -1012,15 +1025,15 @@ router.post('/products/:id/add-stock', protect, canReceiveStock, async (req, res
 
     // Логируем добавление
     await StockLog.create({
-      product: product._id,
-      productId: product._id,
+      productId:   product._id,
       productName: product.fullName || product.name,
-      action: 'add',
-      oldValue: oldStock,
-      newValue: product.stock,
-      source: 'warehouse',
-      note: comment || `Добавлено ${qty} шт. пользователем ${req.user.name}`,
-      user: req.user._id,
+      sku:         product.sku || '',
+      delta:       qty,
+      fromStock:   oldStock,
+      toStock:     product.stock,
+      source:      'warehouse',
+      note:        comment || `Добавлено ${qty} шт. пользователем ${req.user.name}`,
+      changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
     });
 
     res.json({
@@ -4294,10 +4307,10 @@ router.delete('/tech-requests/:id', admin, async (req, res) => {
 });
 
 // =====================
-// PRODUCT REQUESTS (фронтмен → заказ товара, инбокс Джипар)
+// PRODUCT REQUESTS (фронтмен → заказ товара, инбокс закупщика)
 // =====================
 
-// Доступ к инбоксу заказов: владелец или пользователь с флагом canOrderProducts (Джипар)
+// Доступ к инбоксу заказов: владелец или пользователь с флагом canOrderProducts
 const canOrders = (req, res, next) => {
   if (req.user?.role === 'owner' || req.user?.role === 'purchaser' || req.user?.canOrderProducts) return next();
   return res.status(403).json({ message: 'Нет доступа к заказам товаров' });
@@ -4488,7 +4501,7 @@ router.patch('/product-requests/:id', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// DELETE /api/admin/product-requests/:id — снять заявку (владелец, Джипар или её автор)
+// DELETE /api/admin/product-requests/:id — снять заявку (владелец, закупщик или её автор)
 router.delete('/product-requests/:id', async (req, res) => {
   try {
     const request = await ProductRequest.findById(req.params.id);
@@ -4497,6 +4510,187 @@ router.delete('/product-requests/:id', async (req, res) => {
     const isCreator = String(request.createdBy) === String(req.user._id);
     if (!isOwner && !isCreator) return res.status(403).json({ error: 'Нет доступа' });
     await request.deleteOne();
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// =====================
+// PRODUCT LAUNCH — запуск нового товара после приёмки:
+// контент (Зайнагуль) → дизайн → опубликовано → обратная связь
+// =====================
+
+// Кто двигает карточку: контент-менеджер всегда; дизайнер — только со своего этапа.
+const canMoveLaunch = (user, fromStage, toStage) => {
+  if (isContentManager(user)) return true;
+  return isDesignerUser(user) && fromStage === 'design' && toStage === 'published';
+};
+
+const sanitizeLinks = (list) => (Array.isArray(list) ? list : [])
+  .map(l => ({ platform: String(l?.platform || '').trim(), url: String(l?.url || '').trim() }))
+  .filter(l => l.platform || l.url);
+
+// Пустое значение метрики = «ещё не считали», а не ноль
+const numOrNull = (v) => {
+  if (v === '' || v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+};
+
+// GET /api/admin/product-launches/count — бейдж (незавершённые)
+router.get('/product-launches/count', async (req, res) => {
+  try {
+    const activeCount = await ProductLaunch.countDocuments({ stage: { $ne: 'done' } });
+    res.json({ activeCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/product-launches — доска целиком (видна всем в админке)
+router.get('/product-launches', async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.stage) filter.stage = req.query.stage;
+
+    const [launches, activeCount] = await Promise.all([
+      ProductLaunch.find(filter)
+        .populate('product', 'name fullName sku images stock price productStatus brand set')
+        .populate('design.assignee', 'name')
+        .sort({ createdAt: -1 })
+        .limit(300),
+      ProductLaunch.countDocuments({ stage: { $ne: 'done' } }),
+    ]);
+    res.json({ launches, activeCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/product-launches — завести карточку запуска на товар из каталога
+router.post('/product-launches', async (req, res) => {
+  try {
+    if (!isContentManager(req.user)) {
+      return res.status(403).json({ error: 'Запуск товара заводит контент-менеджер' });
+    }
+    const { product: productId, request } = req.body;
+    if (!isValidId(productId)) return res.status(400).json({ error: 'Выберите товар' });
+
+    const product = await Product.findById(productId).select('name fullName sku images');
+    if (!product) return res.status(404).json({ error: 'Товар не найден' });
+
+    const { launch, created } = await ensureLaunch(product, req.user, {
+      request: isValidId(request) ? request : undefined,
+    });
+    if (!created) return res.status(409).json({ error: 'Этот товар уже на доске запуска' });
+
+    await notifyStage(launch, 'content');
+    const populated = await ProductLaunch.findById(launch._id)
+      .populate('product', 'name fullName sku images stock price productStatus brand set');
+    res.status(201).json(populated);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/product-launches/:id — контент, дизайн, публикация, результат, этап.
+// Права: контент/публикация/результат — контент-менеджер; блок дизайна — дизайнер тоже.
+router.patch('/product-launches/:id', async (req, res) => {
+  try {
+    const launch = await ProductLaunch.findById(req.params.id);
+    if (!launch) return res.status(404).json({ error: 'Карточка не найдена' });
+
+    const { content, design, publish, result, stage } = req.body;
+    const contentMgr = isContentManager(req.user);
+    const designer   = isDesignerUser(req.user);
+
+    // ── Контент: три поля от Зайнагуль ──
+    if (content !== undefined) {
+      if (!contentMgr) return res.status(403).json({ error: 'Контент заполняет контент-менеджер' });
+      if (Array.isArray(content.photos)) launch.content.photos = content.photos.filter(Boolean);
+      if (content.sourceUrl   !== undefined) launch.content.sourceUrl   = String(content.sourceUrl).trim();
+      if (content.description !== undefined) launch.content.description = String(content.description).trim();
+      launch.content.filledBy     = req.user._id;
+      launch.content.filledByName = req.user.name || '';
+      launch.content.filledAt     = new Date();
+    }
+
+    // ── Дизайн ──
+    if (design !== undefined) {
+      if (!contentMgr && !designer) return res.status(403).json({ error: 'Блок дизайна ведут дизайнеры' });
+      if (design.assignee !== undefined) {
+        // 'me' — дизайнер берёт карточку на себя прямо с доски
+        if (design.assignee === 'me') {
+          launch.design.assignee     = req.user._id;
+          launch.design.assigneeName = req.user.name || '';
+        } else if (isValidId(design.assignee)) {
+          const u = await User.findById(design.assignee).select('name');
+          launch.design.assignee     = design.assignee;
+          launch.design.assigneeName = u?.name || '';
+        } else {
+          launch.design.assignee = null;
+          launch.design.assigneeName = '';
+        }
+      }
+      if (Array.isArray(design.files)) launch.design.files = design.files.filter(Boolean);
+      if (design.note !== undefined)   launch.design.note  = String(design.note).trim();
+    }
+
+    // ── Публикация ──
+    if (publish !== undefined) {
+      if (!contentMgr && !designer) return res.status(403).json({ error: 'Нет доступа' });
+      if (publish.links !== undefined) launch.publish.links = sanitizeLinks(publish.links);
+      if (publish.note  !== undefined) launch.publish.note  = String(publish.note).trim();
+      if (publish.publishedAt !== undefined) {
+        launch.publish.publishedAt = publish.publishedAt ? new Date(publish.publishedAt) : null;
+      }
+    }
+
+    // ── Результат поста ──
+    if (result !== undefined) {
+      if (!contentMgr) return res.status(403).json({ error: 'Результат вносит контент-менеджер' });
+      for (const key of ['inquiries', 'reactions', 'comments', 'orders']) {
+        if (result[key] !== undefined) launch.result[key] = numOrNull(result[key]);
+      }
+      if (result.note !== undefined) launch.result.note = String(result.note).trim();
+      launch.result.updatedByName = req.user.name || '';
+      launch.result.updatedAt = new Date();
+    }
+
+    // ── Этап ──
+    let movedTo = null;
+    if (stage !== undefined && stage !== launch.stage) {
+      if (!PL_STAGES.includes(stage)) return res.status(400).json({ error: 'Неверный этап' });
+      if (!canMoveLaunch(req.user, launch.stage, stage)) {
+        return res.status(403).json({ error: 'Этап двигает контент-менеджер' });
+      }
+      // Дизайнерам нужны все три поля — иначе им не с чем работать
+      const goingForward = PL_STAGES.indexOf(stage) > PL_STAGES.indexOf(launch.stage);
+      if (stage === 'design' && goingForward) {
+        const c = launch.content || {};
+        if (!c.photos?.length || !c.sourceUrl || !c.description) {
+          return res.status(400).json({ error: 'Для передачи в дизайн нужны фото, ссылка на источник и описание' });
+        }
+      }
+      if (stage === 'published' && goingForward) {
+        launch.design.doneBy     = req.user._id;
+        launch.design.doneByName = req.user.name || '';
+        launch.design.doneAt     = new Date();
+        if (!launch.publish.publishedAt) launch.publish.publishedAt = new Date();
+        launch.publish.byName = req.user.name || '';
+      }
+      launch.stage = stage;
+      movedTo = stage;
+    }
+
+    await launch.save();
+    if (movedTo) await notifyStage(launch, movedTo);
+
+    const populated = await ProductLaunch.findById(launch._id)
+      .populate('product', 'name fullName sku images stock price productStatus brand set')
+      .populate('design.assignee', 'name');
+    res.json(populated);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/product-launches/:id — убрать карточку с доски
+router.delete('/product-launches/:id', async (req, res) => {
+  try {
+    if (!isContentManager(req.user)) return res.status(403).json({ error: 'Нет доступа' });
+    await ProductLaunch.findByIdAndDelete(req.params.id);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

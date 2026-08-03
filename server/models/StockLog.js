@@ -8,9 +8,10 @@ const stockLogSchema = new Schema({
   delta:       { type: Number, required: true },   // +30 приход, -10 уход
   fromStock:   { type: Number, default: 0 },
   toStock:     { type: Number, default: 0 },
-  source:      { type: String, enum: ['manual', 'excel', 'sync_1c'], default: 'manual' },
+  source:      { type: String, enum: ['manual', 'excel', 'sync_1c', 'warehouse'], default: 'manual' },
   base:        { type: String, default: '' },  // база 1С выгрузки: makein | matkasym | qtop
   sourceUrl:   { type: String, default: '' },
+  note:        { type: String, default: '' },  // комментарий склада: приёмка, недостача, ручной приход
   notInFile:   { type: Boolean, default: false }, // товар отсутствовал в выгрузке 1С → обнулён (не продажа!)
   changedBy: {
     id:    { type: Schema.Types.ObjectId, ref: 'User' },

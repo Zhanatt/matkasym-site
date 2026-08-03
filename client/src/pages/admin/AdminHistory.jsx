@@ -22,6 +22,7 @@ const SOURCE_LABEL = {
   excel:    { label: 'Excel',     bg: '#e6f4ea', color: '#1e7e34' },
   sync_1c:  { label: '1С Синк',   bg: '#fff3e0', color: '#e65100' },
   api:      { label: 'API',       bg: '#fff3e0', color: '#e65100' },
+  warehouse:{ label: 'Склад',     bg: '#f3e8ff', color: '#7c3aed' },
 };
 
 const PRICE_TYPE_META = {
@@ -165,6 +166,7 @@ function StockTab() {
           <option value="manual">Вручную</option>
           <option value="excel">Excel</option>
           <option value="sync_1c">1С Синк</option>
+          <option value="warehouse">Склад</option>
         </select>
         <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} style={SEL} />
         <span style={{ color: '#aaa', fontSize: 12 }}>—</span>

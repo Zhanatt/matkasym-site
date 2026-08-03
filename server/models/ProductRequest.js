@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 //   new     — новый товар (заполняется форма с нуля)
 //   catalog — заказать товар из существующего каталога
 //   (test/real — устаревшие типы, оставлены для старых записей)
-// Инбокс обрабатывает Джипар (User.canOrderProducts) — отмечает выполненные.
+// Инбокс обрабатывает закупщик (role=purchaser / User.canOrderProducts) — отмечает выполненные.
 const productRequestSchema = new mongoose.Schema({
   number:        { type: Number, index: true },
 

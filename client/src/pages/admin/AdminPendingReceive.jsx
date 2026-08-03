@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminGetProducts, adminReceiveProduct, adminGetProductRequestCount } from '../../api';
+import { adminGetProducts, adminReceiveProduct, adminGetProductRequestCount, adminGetProductLaunchCount } from '../../api';
 import AdminProductModal from './AdminProductModal';
 import PendingOrderRequests from './PendingOrderRequests';
+import ProductLaunchBoard from './ProductLaunchBoard';
 import { cloudinaryOpt } from '../../utils/drive';
 
 const NO_PHOTO = '/logos/no-photo.png';
@@ -27,8 +28,9 @@ export default function AdminPendingReceive() {
   const isMobile = useIsMobile();
 
   // Фронтмены (viewer/navigator) видят только вкладку заявок на заказ
-  const [tab, setTab] = useState(canSeeReceiving ? 'pending' : 'orders'); // 'orders' | 'inTransit' | 'pending' | 'received'
+  const [tab, setTab] = useState(canSeeReceiving ? 'pending' : 'orders'); // 'orders' | 'inTransit' | 'pending' | 'received' | 'launch'
   const [orderCount, setOrderCount] = useState(0);
+  const [launchCount, setLaunchCount] = useState(0);
   const [inTransitProducts, setInTransitProducts] = useState([]);
   const [pendingProducts, setPendingProducts] = useState([]);
   const [receivedProducts, setReceivedProducts] = useState([]);
@@ -43,9 +45,12 @@ export default function AdminPendingReceive() {
   const load = async () => {
     setLoading(true);
     try {
-      // Счётчик активных заявок на заказ для бейджа вкладки
+      // Счётчики для бейджей вкладок: заявки на заказ и незакрытые запуски товаров
       adminGetProductRequestCount()
         .then(r => setOrderCount(r.data.activeCount || 0))
+        .catch(() => {});
+      adminGetProductLaunchCount()
+        .then(r => setLaunchCount(r.data.activeCount || 0))
         .catch(() => {});
 
       // Складские данные нужны только тем, кто видит вкладки приёмки
@@ -85,6 +90,8 @@ export default function AdminPendingReceive() {
       { key: 'pending', label: '📋 Ожидают приёмки', count: pendingProducts.length, color: '#f59e0b' },
       { key: 'received', label: '✓ В продаже', count: receivedProducts.length, color: '#22c55e' },
     ] : []),
+    // Продолжение процесса: товар в продаже → контент → дизайн → пост → результат
+    { key: 'launch', label: '🚀 Запуск товара', count: launchCount, color: '#7c3aed' },
   ];
 
   const products = tab === 'inTransit' ? inTransitProducts
@@ -125,8 +132,9 @@ export default function AdminPendingReceive() {
 
   const expectedQty = selected ? (selected.pendingReceiveQty || selected.inTransitQty || 0) : 0;
 
+  // Доске запуска нужны 4-5 колонок рядом — на ней страница шире
   return (
-    <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: '24px', maxWidth: tab === 'launch' ? 1400 : 900, margin: '0 auto' }}>
       <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>📦 Поступления товаров</h1>
       <p style={{ color: '#888', marginBottom: 20 }}>Отслеживание этапов поставки</p>
 
@@ -157,9 +165,11 @@ export default function AdminPendingReceive() {
         ))}
       </div>
 
-      {/* Заявки на заказ (отдельная вкладка) */}
+      {/* Заявки на заказ и доска запуска — отдельные вкладки */}
       {tab === 'orders' ? (
         <PendingOrderRequests onCountChange={setOrderCount} />
+      ) : tab === 'launch' ? (
+        <ProductLaunchBoard onCountChange={setLaunchCount} />
       ) : (
        <>
       {/* Status explanation */}
