@@ -420,7 +420,8 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
                           isContentMgr={isContentMgr} busy={busy} onSave={save}
                           onCreateProduct={onCreateProduct} />
           )}
-          {reached('review')    && <ReviewBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />}
+          {(reached('review') || l.review?.note) &&
+            <ReviewBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />}
           {reached('published') && <PublishBlock launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />}
           {reached('target')    && <TargetBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />}
           {reached('target')    && <ResultBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />}
@@ -695,42 +696,76 @@ function DesignBlock({ launch: l, canEdit, isDesigner, isContentMgr, busy, onSav
   );
 }
 
-// Согласование: утвердить макеты или вернуть дизайнеру с замечаниями
+// Согласование: две кнопки — «Доработать» (с замечаниями, карточка едет обратно
+// к дизайнеру, ему уходит Telegram) и «Утвердить» (следующий этап).
 function ReviewBlock({ launch: l, canEdit, busy, onSave }) {
-  const [note, setNote] = useState(l.review?.note || '');
-  useEffect(() => { setNote(l.review?.note || ''); }, [l._id, JSON.stringify(l.review)]);
+  const [rework, setRework] = useState(false);
+  const [note, setNote] = useState('');
 
-  const dirty = note !== (l.review?.note || '');
+  useEffect(() => { setRework(false); setNote(''); }, [l._id, l.stage]);
+
+  const onReview = l.stage === 'review';
+  const approved = !!l.review?.approvedByName;
+
+  const sendRework = async () => {
+    if (!note.trim()) { alert('Напишите, что нужно поправить'); return; }
+    await onSave({ review: { note }, stage: 'design' }, 'rework');
+  };
 
   return (
     <Section title="👀 Согласование дизайна" accent="#0e7490" bg="#ecfeff" line="#a5f3fc">
-      {l.review?.approvedByName ? (
+      {approved && (
         <div style={{ fontSize: 13, color: '#5b6572', marginBottom: 10 }}>
           ✅ Утвердил: <b style={{ color: '#111' }}>{l.review.approvedByName}</b> · {fmtDay(l.review.approvedAt)}
         </div>
-      ) : l.stage === 'review' ? (
-        <div style={{ fontSize: 12.5, color: '#0e7490', marginBottom: 10 }}>
-          Макеты ждут решения. Утвердить — кнопка «Опубликовано ▶» выше; вернуть — «◀ Дизайн»,
-          замечания уйдут дизайнеру в Telegram.
+      )}
+
+      {/* Замечания с прошлого круга — их видит и дизайнер, когда карточка вернулась к нему */}
+      {l.review?.note && !rework && (
+        <div style={{ fontSize: 13.5, color: '#334155', background: '#fff', border: '1px solid #a5f3fc',
+          borderRadius: 10, padding: 12, marginBottom: 12, whiteSpace: 'pre-wrap' }}>
+          💬 {l.review.note}
         </div>
-      ) : null}
+      )}
 
-      <div style={{ marginBottom: canEdit ? 12 : 0 }}>
-        <div style={labelStyle}>Замечания / что поправить</div>
-        {canEdit ? (
-          <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
-            placeholder="Например: логотип мелкий, поменять фон…" style={{ ...inputStyle, resize: 'vertical' }} />
-        ) : (
-          <div style={{ fontSize: 13.5, color: note ? '#334155' : '#9aa5b1', whiteSpace: 'pre-wrap' }}>{note || '—'}</div>
-        )}
-      </div>
+      {onReview && canEdit && !rework && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => setRework(true)} disabled={!!busy}
+            style={{ flex: '1 1 150px', padding: '12px', fontSize: 14, fontWeight: 700, color: '#b45309',
+              background: '#fff', border: '1.5px solid #fde68a', borderRadius: 10, cursor: 'pointer' }}>
+            ↩️ Доработать
+          </button>
+          <button onClick={() => onSave({ stage: 'published' }, 'approve')} disabled={!!busy}
+            style={{ flex: '1 1 150px', padding: '12px', fontSize: 14, fontWeight: 700, color: '#fff',
+              background: '#0891b2', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+            {busy === 'approve' ? 'Утверждаю…' : '✓ Утвердить'}
+          </button>
+        </div>
+      )}
 
-      {canEdit && dirty && (
-        <button onClick={() => onSave({ review: { note } }, 'review')} disabled={!!busy}
-          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, color: '#fff',
-            background: '#0891b2', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
-          {busy === 'review' ? 'Сохраняю…' : 'Сохранить замечания'}
-        </button>
+      {onReview && canEdit && rework && (
+        <>
+          <div style={labelStyle}>Что поправить</div>
+          <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} autoFocus
+            placeholder="Например: логотип мелкий, поменять фон…"
+            style={{ ...inputStyle, resize: 'vertical', marginBottom: 10 }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => { setRework(false); setNote(''); }} disabled={!!busy}
+              style={{ flex: '0 0 auto', padding: '12px 16px', fontSize: 14, fontWeight: 600, color: '#555',
+                background: '#f1f5f9', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+              Отмена
+            </button>
+            <button onClick={sendRework} disabled={!!busy}
+              style={{ flex: 1, padding: '12px', fontSize: 14, fontWeight: 700, color: '#fff',
+                background: '#b45309', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+              {busy === 'rework' ? 'Отправляю…' : 'Сохранить и вернуть дизайнеру'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {onReview && !canEdit && (
+        <div style={{ fontSize: 12.5, color: '#0e7490' }}>Макеты ждут решения согласующего.</div>
       )}
     </Section>
   );
