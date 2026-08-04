@@ -172,11 +172,12 @@ export default function ProductLaunchBoard({ onCountChange }) {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(260px, 1fr))`, gap: 14, alignItems: 'start' }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', overflowX: 'auto', paddingBottom: 12 }}>
           {columns.map(col => {
             const colItems = items.filter(x => (x.stage || 'content') === col.key);
             return (
-              <div key={col.key} style={{ background: col.bg, border: `1px solid ${col.line}`, borderRadius: 14, padding: 12 }}>
+              <div key={col.key} style={{ flex: '0 0 280px', minWidth: 280, background: col.bg,
+                border: `1px solid ${col.line}`, borderRadius: 14, padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, padding: '0 2px' }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.dot }} />
                   <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', textTransform: 'uppercase', letterSpacing: .3 }}>
