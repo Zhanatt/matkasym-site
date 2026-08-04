@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 // Товара ещё нет ни на складе, ни в каталоге: его нашли в интернете и проверяют спрос.
 //   content   — Зайнагуль скидывает фото, ссылку на источник и описание
 //   design    — дизайнеры делают карточку товара и креативы
+//   review    — макеты на согласовании: утвердить или вернуть на доработку
 //   published — пост вышел, «продаём фотки»
 //   target    — решили крутить рекламу: задача уходит таргетологу в Telegram
 //   feedback  — что принёс пост и таргет: обращения, реакции, комментарии, заявки клиентов
@@ -23,7 +24,7 @@ const productLaunchSchema = new mongoose.Schema({
   // Заявка на заказ первой партии, созданная из этой карточки
   request: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductRequest' },
 
-  stage: { type: String, enum: ['content', 'design', 'published', 'target', 'feedback', 'done'], default: 'content' },
+  stage: { type: String, enum: ['content', 'design', 'review', 'published', 'target', 'feedback', 'done'], default: 'content' },
 
   // Чем кончилась тестовая продажа: заказали первую партию или спроса не нашлось
   outcome: { type: String, enum: ['', 'ordered', 'rejected'], default: '' },
@@ -46,6 +47,13 @@ const productLaunchSchema = new mongoose.Schema({
     doneBy:       { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     doneByName:   { type: String, default: '' },
     doneAt:       { type: Date },
+  },
+
+  // Согласование дизайна: правки от согласующего и отметка об утверждении
+  review: {
+    note:           { type: String, default: '', trim: true },
+    approvedByName: { type: String, default: '' },
+    approvedAt:     { type: Date },
   },
 
   publish: {

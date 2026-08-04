@@ -27,7 +27,7 @@ const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const {
-  PL_STAGES, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage,
+  PL_STAGES, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage, notifyRework,
 } = require('../lib/productLaunch');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
@@ -4517,7 +4517,7 @@ router.delete('/product-requests/:id', async (req, res) => {
 // Кто двигает карточку: контент-менеджер всегда; дизайнер и таргетолог — только со своего этапа.
 const canMoveLaunch = (user, fromStage, toStage) => {
   if (isContentManager(user)) return true;
-  if (isDesignerUser(user)) return fromStage === 'design' && toStage === 'published';
+  if (isDesignerUser(user)) return fromStage === 'design' && toStage === 'review';
   return isAdsManager(user) && fromStage === 'target' && toStage === 'feedback';
 };
 
@@ -4707,7 +4707,7 @@ router.patch('/product-launches/:id', async (req, res) => {
     const launch = await ProductLaunch.findById(req.params.id);
     if (!launch) return res.status(404).json({ error: 'Карточка не найдена' });
 
-    const { content, design, publish, target, result, stage, name, product, outcome } = req.body;
+    const { content, design, review, publish, target, result, stage, name, product, outcome } = req.body;
     const contentMgr = isContentManager(req.user);
     const designer   = isDesignerUser(req.user);
     const ads        = isAdsManager(req.user);
@@ -4793,6 +4793,12 @@ router.patch('/product-launches/:id', async (req, res) => {
       }
     }
 
+    // ── Согласование дизайна ──
+    if (review !== undefined) {
+      if (!contentMgr) return res.status(403).json({ error: 'Дизайн согласует контент-менеджер' });
+      if (review.note !== undefined) launch.review.note = String(review.note).trim();
+    }
+
     // ── Таргет ──
     if (target !== undefined) {
       if (!contentMgr && !ads) return res.status(403).json({ error: 'Блок таргета ведёт таргетолог' });
@@ -4815,6 +4821,7 @@ router.patch('/product-launches/:id', async (req, res) => {
 
     // ── Этап ──
     let movedTo = null;
+    let rework  = false;
     if (stage !== undefined && stage !== launch.stage) {
       if (!PL_STAGES.includes(stage)) return res.status(400).json({ error: 'Неверный этап' });
       if (!canMoveLaunch(req.user, launch.stage, stage)) {
@@ -4836,15 +4843,24 @@ router.patch('/product-launches/:id', async (req, res) => {
         launch.design.doneBy     = req.user._id;
         launch.design.doneByName = req.user.name || '';
         launch.design.doneAt     = new Date();
+        launch.review.approvedByName = req.user.name || '';
+        launch.review.approvedAt     = new Date();
         if (!launch.publish.publishedAt) launch.publish.publishedAt = new Date();
         launch.publish.byName = req.user.name || '';
+      }
+      // Возврат с согласования — макеты дорабатывают, отметка об утверждении снимается
+      if (launch.stage === 'review' && stage === 'design') {
+        launch.review.approvedByName = '';
+        launch.review.approvedAt     = null;
+        rework = true;
       }
       launch.stage = stage;
       movedTo = stage;
     }
 
     await launch.save();
-    if (movedTo) await notifyStage(launch, movedTo);
+    if (rework)       await notifyRework(launch);
+    else if (movedTo) await notifyStage(launch, movedTo);
 
     const populated = await ProductLaunch.findById(launch._id)
       .populate('product', 'name fullName sku images stock price productStatus brand set')

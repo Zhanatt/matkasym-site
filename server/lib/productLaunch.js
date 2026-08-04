@@ -5,10 +5,11 @@ const { sendTelegramMessage } = require('./telegram');
 
 const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
 
-const PL_STAGES = ['content', 'design', 'published', 'target', 'feedback', 'done'];
+const PL_STAGES = ['content', 'design', 'review', 'published', 'target', 'feedback', 'done'];
 const PL_STAGE_LABEL = {
   content:   'Контент',
   design:    'Дизайн',
+  review:    'Согласование',
   published: 'Опубликовано',
   target:    'Таргет',
   feedback:  'Обратная связь',
@@ -33,6 +34,7 @@ async function recipientsForStage(stage) {
   const filter = stage === 'design' ? { role: 'designer' }
                : stage === 'target' ? { canRunAds: true }
                : { $or: [{ canManageContent: true }, { role: 'editor' }] };
+  // review, content, published… — те, кто ведёт доску
   return User.find({ ...filter, telegramChatId: { $nin: ['', null] } })
     .select('telegramChatId name').lean();
 }
@@ -43,6 +45,10 @@ const STAGE_TEXT = {
                   (l.content?.sourceUrl ? `Источник: ${l.content.sourceUrl}\n` : '') +
                   (l.content?.description ? `Описание: ${l.content.description}\n` : '') +
                   `Фото: ${l.content?.photos?.length || 0} шт.`,
+  review:    l => `👀 <b>Дизайн на согласовании</b> №${l.number}\n${l.name}\n\n` +
+                  `Макетов: ${l.design?.files?.length || 0} шт.` +
+                  (l.design?.assigneeName ? `\nДизайнер: ${l.design.assigneeName}` : '') +
+                  `\n\nПосмотрите и утвердите — или верните на доработку с замечаниями.`,
   published: l => `📣 <b>Пост вышел, идёт тестовая продажа</b> №${l.number}\n${l.name}\n\nСобираем отклик: обращения, реакции, комментарии, заявки клиентов.`,
   // Задача таргетологу: важно, чтобы он понимал — товара на складе нет, это проверка спроса
   target:    l => `🎯 <b>Задача: запустить таргет</b> №${l.number}\n` +
@@ -59,6 +65,24 @@ const STAGE_TEXT = {
   done:      l => `✅ <b>Тестовая продажа закрыта</b> №${l.number}\n${l.name}`,
 };
 
+// Возврат с согласования — адресно тому, кто делал макеты
+async function notifyRework(launch) {
+  try {
+    const filter = launch.design?.assignee
+      ? { _id: launch.design.assignee }
+      : { role: 'designer' };
+    const users = await User.find({ ...filter, telegramChatId: { $nin: ['', null] } })
+      .select('telegramChatId').lean();
+    if (!users.length) return;
+    const text = `↩️ <b>Дизайн вернули на доработку</b> №${launch.number}\n${launch.name}\n\n` +
+      (launch.review?.note ? `Замечания: ${launch.review.note}\n` : '') +
+      `\n${SITE_URL}/admin/pending-receive`;
+    for (const u of users) await sendTelegramMessage(u.telegramChatId, text);
+  } catch (e) {
+    console.error('[product-launch] telegram rework notify failed:', e.message);
+  }
+}
+
 async function notifyStage(launch, stage) {
   try {
     const build = STAGE_TEXT[stage];
@@ -72,4 +96,4 @@ async function notifyStage(launch, stage) {
   }
 }
 
-module.exports = { PL_STAGES, PL_STAGE_LABEL, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage };
+module.exports = { PL_STAGES, PL_STAGE_LABEL, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage, notifyRework };

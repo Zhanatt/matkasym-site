@@ -22,6 +22,8 @@ const STAGES = [
     hint: 'Зайнагуль: фото, ссылка на источник, описание' },
   { key: 'design',    label: 'Дизайн',          icon: '🎨', dot: '#7c3aed', bg: '#faf5ff', line: '#e9d5ff',
     hint: 'Дизайнеры делают карточку товара и креативы' },
+  { key: 'review',    label: 'Согласование',    icon: '👀', dot: '#0891b2', bg: '#ecfeff', line: '#a5f3fc',
+    hint: 'Смотрим макеты: утвердить или вернуть на доработку' },
   { key: 'published', label: 'Опубликовано',    icon: '📣', dot: '#2563eb', bg: '#eff6ff', line: '#bfdbfe',
     hint: 'Пост вышел — идёт тестовая продажа' },
   { key: 'target',    label: 'Таргет',          icon: '🎯', dot: '#ea580c', bg: '#fff7ed', line: '#fed7aa',
@@ -121,7 +123,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
         padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#475569',
       }}>
         🧪 <b>Тестовая продажа — первый этап.</b> Зайнагуль находит товар в интернете и собирает контент →
-        дизайнеры делают карточку и креативы → выходит пост, продаём по фото → на выбранные товары
+        дизайнеры делают карточку и креативы → согласовываем макеты → выходит пост, продаём по фото → на выбранные товары
         запускаем таргет → собираем заявки клиентов. Есть спрос — из карточки создаётся
         <b>заявка на заказ</b> первой партии.
       </div>
@@ -198,6 +200,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
                     <LaunchCard
                       key={l._id} launch={l} col={col}
                       canMove={isContentMgr || (isDesigner && l.stage === 'design') || (isAds && l.stage === 'target')}
+
                       onOpen={() => setDetail(l)}
                       onMove={(stage) => move(l, stage)}
                     />
@@ -288,7 +291,7 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
         </div>
       )}
 
-      {l.stage === 'design' && (
+      {(l.stage === 'design' || l.stage === 'review') && (
         <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', fontSize: 11.5 }}>
           <span style={{ fontWeight: 700, color: '#7c3aed', background: '#faf5ff', border: '1px solid #e9d5ff',
             borderRadius: 8, padding: '2px 8px' }}>
@@ -413,6 +416,7 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
           <DesignBlock  launch={l} canEdit={isContentMgr || isDesigner} isDesigner={isDesigner}
                         isContentMgr={isContentMgr} busy={busy} onSave={save}
                         onCreateProduct={onCreateProduct} />
+          <ReviewBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
           <PublishBlock launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
           <TargetBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />
           <ResultBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />
@@ -682,6 +686,50 @@ function DesignBlock({ launch: l, canEdit, isDesigner, isContentMgr, busy, onSav
         <div style={{ fontSize: 11.5, color: '#9aa5b1', marginTop: 8 }}>
           ✅ Передал в публикацию: {l.design.doneByName} · {fmtDay(l.design.doneAt)}
         </div>
+      )}
+    </Section>
+  );
+}
+
+// Согласование: утвердить макеты или вернуть дизайнеру с замечаниями
+function ReviewBlock({ launch: l, canEdit, busy, onSave }) {
+  const [note, setNote] = useState(l.review?.note || '');
+  useEffect(() => { setNote(l.review?.note || ''); }, [l._id, JSON.stringify(l.review)]);
+
+  // До сдачи макетов согласовывать нечего
+  if (['content', 'design'].includes(l.stage)) return null;
+
+  const dirty = note !== (l.review?.note || '');
+
+  return (
+    <Section title="👀 Согласование дизайна" accent="#0e7490" bg="#ecfeff" line="#a5f3fc">
+      {l.review?.approvedByName ? (
+        <div style={{ fontSize: 13, color: '#5b6572', marginBottom: 10 }}>
+          ✅ Утвердил: <b style={{ color: '#111' }}>{l.review.approvedByName}</b> · {fmtDay(l.review.approvedAt)}
+        </div>
+      ) : l.stage === 'review' && (
+        <div style={{ fontSize: 12.5, color: '#0e7490', marginBottom: 10 }}>
+          Макеты ждут решения. Утвердить — кнопка «Опубликовано ▶» выше; вернуть — «◀ Дизайн»,
+          замечания уйдут дизайнеру в Telegram.
+        </div>
+      )}
+
+      <div style={{ marginBottom: canEdit ? 12 : 0 }}>
+        <div style={labelStyle}>Замечания / что поправить</div>
+        {canEdit ? (
+          <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+            placeholder="Например: логотип мелкий, поменять фон…" style={{ ...inputStyle, resize: 'vertical' }} />
+        ) : (
+          <div style={{ fontSize: 13.5, color: note ? '#334155' : '#9aa5b1', whiteSpace: 'pre-wrap' }}>{note || '—'}</div>
+        )}
+      </div>
+
+      {canEdit && dirty && (
+        <button onClick={() => onSave({ review: { note } }, 'review')} disabled={!!busy}
+          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, color: '#fff',
+            background: '#0891b2', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+          {busy === 'review' ? 'Сохраняю…' : 'Сохранить замечания'}
+        </button>
       )}
     </Section>
   );
