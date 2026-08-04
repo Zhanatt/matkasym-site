@@ -389,7 +389,8 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, o
           )}
 
           <ContentBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
-          <DesignBlock  launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
+          <DesignBlock  launch={l} canEdit={isContentMgr || isDesigner} isDesigner={isDesigner}
+                        isContentMgr={isContentMgr} busy={busy} onSave={save} />
           <PublishBlock launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
           <ResultBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
           <OutcomeBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} onOrdered={onOrdered} />
@@ -512,7 +513,7 @@ function ContentBlock({ launch: l, canEdit, busy, onSave }) {
   );
 }
 
-function DesignBlock({ launch: l, canEdit, busy, onSave }) {
+function DesignBlock({ launch: l, canEdit, isDesigner, isContentMgr, busy, onSave }) {
   const [files, setFiles] = useState(l.design?.files || []);
   const [note, setNote]   = useState(l.design?.note || '');
   const [uploading, setUploading] = useState(false);
@@ -543,11 +544,19 @@ function DesignBlock({ launch: l, canEdit, busy, onSave }) {
         <span style={{ fontSize: 13, color: '#5b6572' }}>
           Исполнитель: <b style={{ color: '#111' }}>{l.design?.assigneeName || '—'}</b>
         </span>
-        {canEdit && (
+        {isDesigner && (
           <button onClick={() => onSave({ design: { assignee: 'me' } }, 'assign')} disabled={!!busy}
+            title="Карточка сразу перейдёт на этап «Дизайн»"
             style={{ padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#7c3aed', background: '#fff',
               border: '1.5px solid #e9d5ff', borderRadius: 8, cursor: 'pointer' }}>
             Беру на себя
+          </button>
+        )}
+        {isContentMgr && l.design?.assignee && (
+          <button onClick={() => onSave({ design: { assignee: null } }, 'unassign')} disabled={!!busy}
+            style={{ padding: '6px 10px', fontSize: 12.5, fontWeight: 700, color: '#c0392b', background: '#fdecea',
+              border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+            Убрать
           </button>
         )}
       </div>

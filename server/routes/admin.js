@@ -32,7 +32,7 @@ const {
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
   STOCK_SUM_BASES, basesOfCountry, PRICE_TYPES, isPriceType, currencyOf,
-  normSku, normNameLoose,
+  normSku, normNameLoose, signOf,
 } = require('../lib/stockBases');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock, ADMIN_ROLES } = require('../middleware/auth');
 
@@ -492,7 +492,10 @@ router.patch('/products/:id', editor, async (req, res) => {
           c.field === FIELD_LABELS.price || c.field === FIELD_LABELS.priceWholesale
         );
         if (retailOrWholesale) {
-          const priceMsg = priceChanges.map(c => `${c.field}: ${c.from} → ${c.to} тг`).join('\n');
+          // Валюта берётся у самого товара (Product.currency), а не зашивается:
+          // раньше здесь всегда стояло «тг», хотя цены Make-in — в сомах.
+          const sign = signOf(p);
+          const priceMsg = priceChanges.map(c => `${c.field}: ${c.from} → ${c.to} ${sign}`).join('\n');
           autoPublishNews({
             type: 'price_change',
             product: p,
@@ -1112,7 +1115,7 @@ router.post('/pdf/catalog', protect, viewer, async (req, res) => {
         p.fullName || p.name || '—',
         p.sku || '—',
         specs || '—',
-        ...(priceMode !== 'none' ? [price > 0 ? `${price.toLocaleString('ru')} сом` : '—'] : []),
+        ...(priceMode !== 'none' ? [price > 0 ? `${price.toLocaleString('ru')} ${signOf(p)}` : '—'] : []),
         stock,
       ];
 
@@ -4703,15 +4706,25 @@ router.patch('/product-launches/:id', async (req, res) => {
     if (design !== undefined) {
       if (!contentMgr && !designer) return res.status(403).json({ error: 'Блок дизайна ведут дизайнеры' });
       if (design.assignee !== undefined) {
-        // 'me' — дизайнер берёт карточку на себя прямо с доски
+        // 'me' — дизайнер берёт карточку на себя, и она сразу уезжает на этап «Дизайн»
         if (design.assignee === 'me') {
+          if (!designer) return res.status(403).json({ error: 'Взять карточку в работу может только дизайнер' });
           launch.design.assignee     = req.user._id;
           launch.design.assigneeName = req.user.name || '';
+          if (launch.stage === 'content') {
+            const c = launch.content || {};
+            if (!c.photos?.length || !c.sourceUrl || !c.description) {
+              return res.status(400).json({ error: 'Контент ещё не собран: нужны фото, ссылка на источник и описание' });
+            }
+            launch.stage = 'design';
+          }
         } else if (isValidId(design.assignee)) {
+          if (!contentMgr) return res.status(403).json({ error: 'Назначает исполнителя контент-менеджер' });
           const u = await User.findById(design.assignee).select('name');
           launch.design.assignee     = design.assignee;
           launch.design.assigneeName = u?.name || '';
         } else {
+          if (!contentMgr) return res.status(403).json({ error: 'Снять исполнителя может контент-менеджер' });
           launch.design.assignee = null;
           launch.design.assigneeName = '';
         }
