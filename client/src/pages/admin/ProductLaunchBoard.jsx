@@ -5,6 +5,7 @@ import {
   adminCreateProductLaunch,
   adminUpdateProductLaunch,
   adminDeleteProductLaunch,
+  adminCreateLaunchOrderRequest,
   adminGetProducts,
 } from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -19,13 +20,13 @@ const STAGES = [
   { key: 'content',   label: 'Контент',         icon: '📸', dot: '#DC1E24', bg: '#fef2f2', line: '#fecaca',
     hint: 'Зайнагуль: фото, ссылка на источник, описание' },
   { key: 'design',    label: 'Дизайн',          icon: '🎨', dot: '#7c3aed', bg: '#faf5ff', line: '#e9d5ff',
-    hint: 'Дизайнеры готовят карточку и креативы' },
+    hint: 'Дизайнеры делают карточку товара и креативы' },
   { key: 'published', label: 'Опубликовано',    icon: '📣', dot: '#2563eb', bg: '#eff6ff', line: '#bfdbfe',
-    hint: 'Пост вышел — ждём отклик' },
+    hint: 'Пост вышел — идёт тестовая продажа' },
   { key: 'feedback',  label: 'Обратная связь',  icon: '📊', dot: '#22c55e', bg: '#f0fdf4', line: '#bbf7d0',
-    hint: 'Результат поста: обращения, реакции, комментарии, заказы' },
+    hint: 'Отклик и заявки клиентов — есть спрос, заказываем партию' },
 ];
-const DONE = { key: 'done', label: 'Завершён', icon: '✓', dot: '#94a3b8', bg: '#f8fafc', line: '#e2e8f0', hint: 'Запуск закрыт' };
+const DONE = { key: 'done', label: 'Итог', icon: '✓', dot: '#94a3b8', bg: '#f8fafc', line: '#e2e8f0', hint: 'Заказали партию или спроса нет' };
 const ALL_STAGES = [...STAGES, DONE];
 const ST = Object.fromEntries(ALL_STAGES.map(s => [s.key, s]));
 const idxOf = k => ALL_STAGES.findIndex(s => s.key === k);
@@ -34,7 +35,7 @@ const METRICS = [
   { key: 'inquiries', label: 'Новые обращения', icon: '💬' },
   { key: 'reactions', label: 'Реакции',         icon: '❤️' },
   { key: 'comments',  label: 'Комментарии',     icon: '🗨' },
-  { key: 'orders',    label: 'Заказы',          icon: '🛒' },
+  { key: 'requests',  label: 'Заявки клиентов', icon: '🛒' },
 ];
 
 const fmtDay = d => d ? new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
@@ -97,7 +98,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
   };
 
   const remove = async (id) => {
-    if (!window.confirm('Убрать товар с доски запуска?')) return;
+    if (!window.confirm('Убрать товар с доски тестовых продаж?')) return;
     try {
       await adminDeleteProductLaunch(id);
       setDetail(null);
@@ -115,8 +116,9 @@ export default function ProductLaunchBoard({ onCountChange }) {
         background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
         padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#475569',
       }}>
-        🚀 <b>Запуск нового товара.</b> Товар принят на склад — дальше его надо вывести на рынок:
-        Зайнагуль собирает контент → дизайнеры делают креативы → выходит пост → снимаем результат.
+        🧪 <b>Тестовая продажа — первый этап.</b> Зайнагуль находит товар в интернете и собирает контент →
+        дизайнеры делают карточку и креативы → выходит пост, продаём по фото → собираем заявки клиентов.
+        Есть спрос — из карточки создаётся <b>заявка на заказ</b> первой партии.
       </div>
 
       {/* Шкала этапов */}
@@ -144,7 +146,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
             style={{ flex: '1 1 220px', padding: '14px', fontSize: 15, fontWeight: 700, color: '#fff',
               background: 'linear-gradient(135deg, #DC1E24 0%, #b3161b 100%)', border: 'none',
               borderRadius: 12, cursor: 'pointer', boxShadow: '0 6px 18px rgba(220,30,36,.22)' }}>
-            ＋ Товар на доску запуска
+            ＋ Новый товар на тест
           </button>
         )}
         <button onClick={() => setShowDone(v => !v)}
@@ -158,10 +160,10 @@ export default function ProductLaunchBoard({ onCountChange }) {
         <div style={{ color: '#aaa', textAlign: 'center', padding: 40 }}>Загрузка…</div>
       ) : items.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 50, background: '#f9f9f9', borderRadius: 16, color: '#888' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🚀</div>
-          <div style={{ fontSize: 15 }}>Пока нечего запускать</div>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🧪</div>
+          <div style={{ fontSize: 15 }}>Нет товаров на тесте</div>
           <div style={{ fontSize: 13, color: '#aaa', marginTop: 6 }}>
-            Тестовые товары попадают сюда сами после приёмки — или добавьте вручную
+            Нашли товар в интернете — заведите его здесь, с этого начинается процесс
           </div>
         </div>
       ) : (
@@ -209,17 +211,21 @@ export default function ProductLaunchBoard({ onCountChange }) {
           onClose={() => setDetail(null)}
           onPatch={(data) => patch(detail, data)}
           onDelete={() => remove(detail._id)}
+          onOrdered={async (quantity) => {
+            const r = await adminCreateLaunchOrderRequest(detail._id, { quantity });
+            setDetail(null);
+            load();
+            alert(`Заявка на заказ №${r.data.request.number} создана — она во вкладке «Заявки на заказ».`);
+          }}
         />, document.body)}
 
       {picker && createPortal(
-        <ProductPicker
+        <NewLaunchForm
           onClose={() => setPicker(false)}
-          onPick={async (p) => {
-            try {
-              await adminCreateProductLaunch({ product: p._id });
-              setPicker(false);
-              load();
-            } catch (e) { alert(e?.response?.data?.error || 'Не удалось добавить товар'); }
+          onCreate={async (data) => {
+            await adminCreateProductLaunch(data);
+            setPicker(false);
+            load();
           }}
         />, document.body)}
     </div>
@@ -248,9 +254,11 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10.5, color: '#b0b8c1' }}>№{l.number}</div>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: '#111', margin: '2px 0 3px' }}>
-            {l.productName || l.product?.fullName || l.product?.name}
+            {l.name || l.productName}
           </div>
-          <div style={{ fontSize: 11.5, color: '#94a3b8' }}>{l.sku || l.product?.sku}</div>
+          <div style={{ fontSize: 11.5, color: '#94a3b8' }}>
+            {l.sku || l.product?.sku || 'ещё нет в каталоге'}
+          </div>
         </div>
       </div>
 
@@ -319,7 +327,7 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
 }
 
 // ── Карточка целиком: контент, дизайн, публикация, результат ─────────────────
-function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, onDelete }) {
+function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, onDelete, onOrdered }) {
   const st = ST[l.stage] || ST.content;
   const i = idxOf(l.stage);
   const prev = i > 0 ? ALL_STAGES[i - 1] : null;
@@ -347,9 +355,9 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, o
               onError={e => { e.target.src = NO_PHOTO; }}
               style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', background: '#f1f5f9' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11.5, color: '#b0b8c1' }}>Запуск №{l.number}</div>
+              <div style={{ fontSize: 11.5, color: '#b0b8c1' }}>Тест №{l.number}</div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#111', margin: '2px 0 4px' }}>
-                {l.productName || l.product?.fullName || l.product?.name}
+                {l.name || l.productName}
               </div>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#334155', background: st.bg,
                 border: `1px solid ${st.line}`, padding: '3px 10px', borderRadius: 20 }}>
@@ -384,6 +392,7 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, o
           <DesignBlock  launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
           <PublishBlock launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
           <ResultBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
+          <OutcomeBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} onOrdered={onOrdered} />
 
           {isContentMgr && (
             <button onClick={onDelete}
@@ -507,6 +516,7 @@ function DesignBlock({ launch: l, canEdit, busy, onSave }) {
   const [files, setFiles] = useState(l.design?.files || []);
   const [note, setNote]   = useState(l.design?.note || '');
   const [uploading, setUploading] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     setFiles(l.design?.files || []);
@@ -541,6 +551,34 @@ function DesignBlock({ launch: l, canEdit, busy, onSave }) {
           </button>
         )}
       </div>
+
+      {/* Карточка в каталоге появляется здесь же — привязываем её к тесту */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13, color: '#5b6572' }}>
+          Карточка в каталоге: <b style={{ color: '#111' }}>{l.productName || 'не заведена'}</b>
+          {l.sku ? <span style={{ color: '#94a3b8' }}> · {l.sku}</span> : null}
+        </span>
+        {canEdit && (
+          <button onClick={() => setLinking(true)} disabled={!!busy}
+            style={{ padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#7c3aed', background: '#fff',
+              border: '1.5px solid #e9d5ff', borderRadius: 8, cursor: 'pointer' }}>
+            {l.product ? 'Заменить' : 'Привязать товар'}
+          </button>
+        )}
+        {canEdit && l.product && (
+          <button onClick={() => onSave({ product: null }, 'unlink')} disabled={!!busy}
+            style={{ padding: '6px 10px', fontSize: 12.5, fontWeight: 700, color: '#c0392b', background: '#fdecea',
+              border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+            Отвязать
+          </button>
+        )}
+      </div>
+
+      {linking && createPortal(
+        <ProductPicker
+          onClose={() => setLinking(false)}
+          onPick={async (p) => { await onSave({ product: p._id }, 'link'); setLinking(false); }}
+        />, document.body)}
 
       <div style={labelStyle}>Готовые макеты</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -724,6 +762,170 @@ function ResultBlock({ launch: l, canEdit, busy, onSave }) {
         </div>
       )}
     </Section>
+  );
+}
+
+// ── Итог теста: заказываем партию или закрываем без спроса ───────────────────
+function OutcomeBlock({ launch: l, canEdit, busy, onSave, onOrdered }) {
+  const [qty, setQty] = useState('');
+  const [sending, setSending] = useState(false);
+
+  // До публикации подводить итог нечему
+  if (!['published', 'feedback', 'done'].includes(l.stage)) return null;
+
+  const order = async () => {
+    if (!window.confirm('Создать заявку на заказ первой партии? Карточка теста закроется.')) return;
+    setSending(true);
+    try { await onOrdered(qty ? Number(qty) : undefined); }
+    catch (e) { alert(e?.response?.data?.error || 'Не удалось создать заявку'); }
+    finally { setSending(false); }
+  };
+
+  if (l.outcome === 'ordered') {
+    return (
+      <Section title="✅ Итог теста" accent="#b45309" bg="#fffbeb" line="#fde68a">
+        <div style={{ fontSize: 13.5, color: '#334155' }}>
+          Спрос подтвердился — создана заявка на заказ
+          {l.request?.number ? <b> №{l.request.number}</b> : null}. Дальше она идёт по вкладке «Заявки на заказ».
+        </div>
+      </Section>
+    );
+  }
+
+  if (l.outcome === 'rejected') {
+    return (
+      <Section title="✖️ Итог теста" accent="#64748b" bg="#f8fafc" line="#e2e8f0">
+        <div style={{ fontSize: 13.5, color: '#334155' }}>Спроса не нашлось — товар не заказываем.</div>
+        {canEdit && (
+          <button onClick={() => onSave({ outcome: '', stage: 'feedback' }, 'outcome')} disabled={!!busy}
+            style={{ marginTop: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#475569',
+              background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 9, cursor: 'pointer' }}>
+            Вернуть в работу
+          </button>
+        )}
+      </Section>
+    );
+  }
+
+  if (!canEdit) return null;
+
+  return (
+    <Section title="🛒 Есть спрос — заказываем партию" accent="#b45309" bg="#fffbeb" line="#fde68a">
+      <div style={{ fontSize: 12.5, color: '#92400e', marginBottom: 10 }}>
+        Заявка уйдёт во вкладку «Заявки на заказ» с фото, названием и числом заявок от клиентов.
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 150px' }}>
+          <div style={labelStyle}>Сколько заказываем, шт</div>
+          <input inputMode="numeric" value={qty} onChange={e => setQty(e.target.value.replace(/[^\d]/g, ''))}
+            placeholder="необязательно" style={inputStyle} />
+        </div>
+        <button onClick={order} disabled={sending || !!busy}
+          style={{ flex: '1 1 200px', padding: '12px', fontSize: 14.5, fontWeight: 700, color: '#fff',
+            background: sending ? '#cbd5e1' : '#b45309', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+          {sending ? 'Создаю…' : '📥 Создать заявку на заказ'}
+        </button>
+      </div>
+      <button onClick={() => onSave({ outcome: 'rejected', stage: 'done' }, 'outcome')} disabled={!!busy}
+        style={{ width: '100%', marginTop: 10, padding: '10px', fontSize: 13.5, fontWeight: 700, color: '#64748b',
+          background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 10, cursor: 'pointer' }}>
+        ✖️ Спроса нет — не берём
+      </button>
+    </Section>
+  );
+}
+
+// ── Новый товар на тест: то, что Зайнагуль нашла в интернете ─────────────────
+function NewLaunchForm({ onClose, onCreate }) {
+  const [name, setName] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const upload = async (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = '';
+    if (!files.length) return;
+    setUploading(true);
+    for (const f of files) {
+      try { const url = await uploadToCloudinary(f); setPhotos(p => [...p, url]); }
+      catch (err) { setError(err.message); }
+    }
+    setUploading(false);
+  };
+
+  const submit = async () => {
+    if (!name.trim()) return setError('Укажите название товара');
+    setSaving(true); setError('');
+    try { await onCreate({ name, photos, sourceUrl, description }); }
+    catch (e) { setError(e?.response?.data?.error || 'Не удалось создать'); setSaving(false); }
+  };
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1700 }} />
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1701, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: 20, pointerEvents: 'none' }}>
+        <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 540, maxHeight: '92vh',
+          overflow: 'auto', padding: 22, pointerEvents: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>🧪 Новый товар на тест</div>
+            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 9, background: '#f5f5f5',
+              border: 'none', fontSize: 16, cursor: 'pointer' }}>✕</button>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <div style={labelStyle}>Название товара <span style={{ color: '#DC1E24' }}>*</span></div>
+            <input value={name} onChange={e => setName(e.target.value)}
+              placeholder="Например: Складной табурет" style={inputStyle} />
+          </div>
+
+          <div style={labelStyle}>Фото {photos.length > 0 && <span style={{ color: '#94a3b8', fontWeight: 400 }}>({photos.length})</span>}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+            {photos.map((p, i) => (
+              <div key={p + i} style={{ position: 'relative', width: 74, height: 74, borderRadius: 10, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                <img src={cloudinaryOpt(p, 200)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button onClick={() => setPhotos(list => list.filter((_, j) => j !== i))} title="Убрать"
+                  style={{ position: 'absolute', top: 3, right: 3, width: 20, height: 20, borderRadius: 6, border: 'none',
+                    background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: 11, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+              </div>
+            ))}
+            <label style={{ width: 74, height: 74, borderRadius: 10, border: '1.5px dashed #cbd5e1', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', fontSize: 20 }}>
+              {uploading ? '…' : '＋'}
+              <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={upload} />
+            </label>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <div style={labelStyle}>Ссылка на источник</div>
+            <input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://…" style={inputStyle} />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <div style={labelStyle}>Описание</div>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4}
+              placeholder="Что за товар, чем хорош, для кого…" style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+
+          {error && <div style={{ color: '#c00', fontSize: 13, marginBottom: 12 }}>{error}</div>}
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onClose}
+              style={{ flex: '0 0 auto', padding: '13px 18px', fontSize: 15, fontWeight: 600, color: '#555',
+                background: '#f1f5f9', border: 'none', borderRadius: 12, cursor: 'pointer' }}>Отмена</button>
+            <button onClick={submit} disabled={saving || uploading}
+              style={{ flex: 1, padding: '13px', fontSize: 15, fontWeight: 700, color: '#fff',
+                background: saving ? '#9aa5b1' : '#DC1E24', border: 'none', borderRadius: 12, cursor: 'pointer' }}>
+              {saving ? 'Создаю…' : 'На доску теста'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 

@@ -27,7 +27,7 @@ const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const {
-  PL_STAGES, isContentManager, isDesignerUser, ensureLaunch, notifyStage,
+  PL_STAGES, isContentManager, isDesignerUser, nextNumber, notifyStage,
 } = require('../lib/productLaunch');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
@@ -949,14 +949,6 @@ router.post('/products/:id/receive', protect, canReceiveStock, async (req, res) 
         receivedBy: req.user._id,
         receivedByName: req.user.name,
       });
-    }
-
-    // Тестовый товар приняли — сразу заводим карточку запуска (контент → дизайн → пост → результат)
-    if (product.productStatus === 'test_sale' && actualQty > 0) {
-      try {
-        const { launch, created } = await ensureLaunch(product, req.user);
-        if (created) await notifyStage(launch, 'content');
-      } catch (e) { console.error('[receive] launch create failed:', e.message); }
     }
 
     res.json({
@@ -4515,8 +4507,8 @@ router.delete('/product-requests/:id', async (req, res) => {
 });
 
 // =====================
-// PRODUCT LAUNCH — запуск нового товара после приёмки:
-// контент (Зайнагуль) → дизайн → опубликовано → обратная связь
+// PRODUCT LAUNCH — тестовая продажа нового товара, самый первый этап:
+// контент (Зайнагуль) → дизайн → опубликовано → заявки клиентов → заявка на заказ партии
 // =====================
 
 // Кто двигает карточку: контент-менеджер всегда; дизайнер — только со своего этапа.
@@ -4554,6 +4546,7 @@ router.get('/product-launches', async (req, res) => {
       ProductLaunch.find(filter)
         .populate('product', 'name fullName sku images stock price productStatus brand set')
         .populate('design.assignee', 'name')
+        .populate('request', 'number status')
         .sort({ createdAt: -1 })
         .limit(300),
       ProductLaunch.countDocuments({ stage: { $ne: 'done' } }),
@@ -4562,27 +4555,96 @@ router.get('/product-launches', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/admin/product-launches — завести карточку запуска на товар из каталога
+// POST /api/admin/product-launches — завести товар, найденный в интернете.
+// Каталожной карточки у него ещё нет: только название и то, что собрала Зайнагуль.
 router.post('/product-launches', async (req, res) => {
   try {
     if (!isContentManager(req.user)) {
-      return res.status(403).json({ error: 'Запуск товара заводит контент-менеджер' });
+      return res.status(403).json({ error: 'Новый товар на тест заводит контент-менеджер' });
     }
-    const { product: productId, request } = req.body;
-    if (!isValidId(productId)) return res.status(400).json({ error: 'Выберите товар' });
+    const { name, photos, sourceUrl, description } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Укажите название товара' });
 
-    const product = await Product.findById(productId).select('name fullName sku images');
-    if (!product) return res.status(404).json({ error: 'Товар не найден' });
-
-    const { launch, created } = await ensureLaunch(product, req.user, {
-      request: isValidId(request) ? request : undefined,
+    const photoList = Array.isArray(photos) ? photos.filter(Boolean) : [];
+    const launch = await ProductLaunch.create({
+      number: await nextNumber(),
+      name:   name.trim(),
+      image:  photoList[0] || '',
+      stage:  'content',
+      content: {
+        photos:       photoList,
+        sourceUrl:    String(sourceUrl || '').trim(),
+        description:  String(description || '').trim(),
+        filledBy:     photoList.length || sourceUrl || description ? req.user._id : undefined,
+        filledByName: photoList.length || sourceUrl || description ? (req.user.name || '') : '',
+        filledAt:     photoList.length || sourceUrl || description ? new Date() : undefined,
+      },
+      createdBy:     req.user._id,
+      createdByName: req.user.name || '',
     });
-    if (!created) return res.status(409).json({ error: 'Этот товар уже на доске запуска' });
 
     await notifyStage(launch, 'content');
-    const populated = await ProductLaunch.findById(launch._id)
-      .populate('product', 'name fullName sku images stock price productStatus brand set');
-    res.status(201).json(populated);
+    res.status(201).json(launch);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// POST /api/admin/product-launches/:id/order-request — спрос подтвердился:
+// заводим заявку на заказ первой партии и закрываем тестовую продажу.
+router.post('/product-launches/:id/order-request', async (req, res) => {
+  try {
+    if (!isContentManager(req.user)) return res.status(403).json({ error: 'Нет доступа' });
+
+    const launch = await ProductLaunch.findById(req.params.id);
+    if (!launch) return res.status(404).json({ error: 'Карточка не найдена' });
+    if (launch.request) return res.status(409).json({ error: 'Заявка по этому товару уже создана' });
+
+    const qty = Number(req.body?.quantity);
+    const photoList = launch.content?.photos?.length ? launch.content.photos : (launch.image ? [launch.image] : []);
+    const noteParts = [
+      `Тестовая продажа №${launch.number}`,
+      launch.result?.requests ? `заявок от клиентов: ${launch.result.requests}` : '',
+      launch.content?.sourceUrl ? `источник: ${launch.content.sourceUrl}` : '',
+      String(req.body?.note || '').trim(),
+    ].filter(Boolean);
+
+    const last = await ProductRequest.findOne().sort({ number: -1 }).select('number');
+    const request = await ProductRequest.create({
+      number:        (last?.number || 0) + 1,
+      createdBy:     req.user._id,
+      createdByName: req.user.name || '',
+      type:          'new',
+      product:       launch.product || undefined,
+      sku:           launch.sku || '',
+      photo:         photoList[0] || '',
+      photos:        photoList,
+      name:          launch.productName || launch.name,
+      quantity:      Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : null,
+      note:          noteParts.join(' · '),
+      status:        'new',
+    });
+
+    launch.request = request._id;
+    launch.outcome = 'ordered';
+    launch.stage   = 'done';
+    await launch.save();
+
+    // Закупщикам — та же сводка, что и по обычной заявке фронтмена
+    try {
+      const recipients = await User.find({ $or: [{ canOrderProducts: true }, { role: 'purchaser' }] })
+        .select('telegramChatId').lean();
+      const caption = `🛒 Новая заявка №${request.number} · по итогам тестовой продажи\n` +
+        `Товар: ${request.name}\n` +
+        (launch.result?.requests ? `Заявок от клиентов: ${launch.result.requests}\n` : '') +
+        (request.quantity ? `Количество: ${request.quantity} шт\n` : '') +
+        `От: ${request.createdByName || ''}`;
+      for (const u of recipients) {
+        if (!u.telegramChatId) continue;
+        if (request.photo) await sendTelegramPhoto(u.telegramChatId, request.photo, caption);
+        else               await sendTelegramMessage(u.telegramChatId, caption);
+      }
+    } catch (e) { console.error('[product-launch] telegram notify failed:', e.message); }
+
+    res.status(201).json({ launch, request });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -4593,9 +4655,38 @@ router.patch('/product-launches/:id', async (req, res) => {
     const launch = await ProductLaunch.findById(req.params.id);
     if (!launch) return res.status(404).json({ error: 'Карточка не найдена' });
 
-    const { content, design, publish, result, stage } = req.body;
+    const { content, design, publish, result, stage, name, product, outcome } = req.body;
     const contentMgr = isContentManager(req.user);
     const designer   = isDesignerUser(req.user);
+
+    if (name !== undefined) {
+      if (!contentMgr) return res.status(403).json({ error: 'Название меняет контент-менеджер' });
+      if (!String(name).trim()) return res.status(400).json({ error: 'Название не может быть пустым' });
+      launch.name = String(name).trim();
+    }
+
+    // Дизайнеры завели карточку в каталоге — привязываем её к тестовой продаже
+    if (product !== undefined) {
+      if (!contentMgr && !designer) return res.status(403).json({ error: 'Нет доступа' });
+      if (isValidId(product)) {
+        const p = await Product.findById(product).select('name fullName sku images');
+        if (!p) return res.status(404).json({ error: 'Товар не найден' });
+        launch.product     = p._id;
+        launch.productName = p.fullName || p.name || '';
+        launch.sku         = p.sku || '';
+        if (!launch.image) launch.image = p.images?.[0] || '';
+      } else {
+        launch.product = null;
+        launch.productName = '';
+        launch.sku = '';
+      }
+    }
+
+    if (outcome !== undefined) {
+      if (!contentMgr) return res.status(403).json({ error: 'Итог подводит контент-менеджер' });
+      if (!['', 'ordered', 'rejected'].includes(outcome)) return res.status(400).json({ error: 'Неверный итог' });
+      launch.outcome = outcome;
+    }
 
     // ── Контент: три поля от Зайнагуль ──
     if (content !== undefined) {
@@ -4642,7 +4733,7 @@ router.patch('/product-launches/:id', async (req, res) => {
     // ── Результат поста ──
     if (result !== undefined) {
       if (!contentMgr) return res.status(403).json({ error: 'Результат вносит контент-менеджер' });
-      for (const key of ['inquiries', 'reactions', 'comments', 'orders']) {
+      for (const key of ['inquiries', 'reactions', 'comments', 'requests']) {
         if (result[key] !== undefined) launch.result[key] = numOrNull(result[key]);
       }
       if (result.note !== undefined) launch.result.note = String(result.note).trim();
@@ -4681,7 +4772,8 @@ router.patch('/product-launches/:id', async (req, res) => {
 
     const populated = await ProductLaunch.findById(launch._id)
       .populate('product', 'name fullName sku images stock price productStatus brand set')
-      .populate('design.assignee', 'name');
+      .populate('design.assignee', 'name')
+      .populate('request', 'number status');
     res.json(populated);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });

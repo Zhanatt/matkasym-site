@@ -1,24 +1,31 @@
 const mongoose = require('mongoose');
 
-// Запуск нового (тестового) товара — продолжение доски поступлений.
-// Товар уже заказан, приехал и лежит на складе; дальше его надо показать рынку:
+// Тестовая продажа нового товара — САМЫЙ ПЕРВЫЙ этап, до заявки на заказ.
+// Товара ещё нет ни на складе, ни в каталоге: его нашли в интернете и проверяют спрос.
 //   content   — Зайнагуль скидывает фото, ссылку на источник и описание
-//   design    — дизайнеры делают карточку/креативы
-//   published — пост вышел
-//   feedback  — результат поста: обращения, реакции, комментарии, заказы
+//   design    — дизайнеры делают карточку товара и креативы
+//   published — пост вышел, «продаём фотки»
+//   feedback  — что принёс пост: обращения, реакции, комментарии, заявки клиентов
+// Есть спрос → из карточки создаётся заявка на заказ первой партии (ProductRequest).
 // Ведёт доску контент-менеджер (User.canManageContent), этап «Дизайн» — роль designer.
 const productLaunchSchema = new mongoose.Schema({
   number: { type: Number, index: true },
 
-  product:     { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  productName: { type: String, default: '' },   // снимок — карточка остаётся читаемой, если товар переименуют
-  sku:         { type: String, default: '' },
-  image:       { type: String, default: '' },   // превью из каталога на момент запуска
+  name:  { type: String, required: true, trim: true },  // название, под которым товар ведут до каталога
+  image: { type: String, default: '' },                 // превью (первое фото)
 
-  // Откуда пришёл товар (если запуск создан из заявки на заказ)
+  // Товар из каталога — появляется, когда дизайнеры завели карточку
+  product:     { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+  productName: { type: String, default: '' },
+  sku:         { type: String, default: '' },
+
+  // Заявка на заказ первой партии, созданная из этой карточки
   request: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductRequest' },
 
   stage: { type: String, enum: ['content', 'design', 'published', 'feedback', 'done'], default: 'content' },
+
+  // Чем кончилась тестовая продажа: заказали первую партию или спроса не нашлось
+  outcome: { type: String, enum: ['', 'ordered', 'rejected'], default: '' },
 
   // Три поля от Зайнагуль
   content: {
@@ -55,7 +62,7 @@ const productLaunchSchema = new mongoose.Schema({
     inquiries:     { type: Number, default: null },  // новые обращения
     reactions:     { type: Number, default: null },
     comments:      { type: Number, default: null },
-    orders:        { type: Number, default: null },  // заказов после поста
+    requests:      { type: Number, default: null },  // заявки от клиентов — из них и растёт заказ партии
     note:          { type: String, default: '', trim: true },
     updatedByName: { type: String, default: '' },
     updatedAt:     { type: Date },

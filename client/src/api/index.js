@@ -95,12 +95,13 @@ export const adminCreateTechRequest   = (data)     => api.post('/admin/tech-requ
 export const adminUpdateTechRequest   = (id, data) => api.patch(`/admin/tech-requests/${id}`, data);
 export const adminDeleteTechRequest   = (id)       => api.delete(`/admin/tech-requests/${id}`);
 
-// Product launch — запуск нового товара: контент → дизайн → опубликовано → обратная связь
+// Тестовая продажа нового товара: контент → дизайн → пост → заявки клиентов → заказ партии
 export const adminGetProductLaunches    = (params)   => api.get('/admin/product-launches', { params });
 export const adminGetProductLaunchCount = ()         => api.get('/admin/product-launches/count');
 export const adminCreateProductLaunch   = (data)     => api.post('/admin/product-launches', data);
 export const adminUpdateProductLaunch   = (id, data) => api.patch(`/admin/product-launches/${id}`, data);
 export const adminDeleteProductLaunch   = (id)       => api.delete(`/admin/product-launches/${id}`);
+export const adminCreateLaunchOrderRequest = (id, data) => api.post(`/admin/product-launches/${id}/order-request`, data);
 
 // Product requests (фронтмен → заказ товара, инбокс закупщика)
 export const adminCreateProductRequest = (data)     => api.post('/admin/product-requests', data);

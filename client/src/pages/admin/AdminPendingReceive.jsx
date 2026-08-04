@@ -83,15 +83,16 @@ export default function AdminPendingReceive() {
 
   useEffect(() => { load(); }, []);
 
+  // Порядок вкладок = порядок процесса: нашли товар и проверили спрос → заказали →
+  // привезли → приняли → продаём
   const tabs = [
+    { key: 'launch', label: '🧪 Тестовая продажа', count: launchCount, color: '#7c3aed' },
     { key: 'orders', label: '📥 Заявки на заказ', count: orderCount, color: '#DC1E24' },
     ...(canSeeReceiving ? [
       { key: 'inTransit', label: '🚚 В пути', count: inTransitProducts.length, color: '#3b82f6' },
       { key: 'pending', label: '📋 Ожидают приёмки', count: pendingProducts.length, color: '#f59e0b' },
       { key: 'received', label: '✓ В продаже', count: receivedProducts.length, color: '#22c55e' },
     ] : []),
-    // Продолжение процесса: товар в продаже → контент → дизайн → пост → результат
-    { key: 'launch', label: '🚀 Запуск товара', count: launchCount, color: '#7c3aed' },
   ];
 
   const products = tab === 'inTransit' ? inTransitProducts
