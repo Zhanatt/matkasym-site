@@ -349,6 +349,8 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
   const prev = i > 0 ? ALL_STAGES[i - 1] : null;
   const next = i < ALL_STAGES.length - 1 ? ALL_STAGES[i + 1] : null;
   const canMove = isContentMgr || (isDesigner && l.stage === 'design') || (isAds && l.stage === 'target');
+  // Блок этапа показываем, только когда до него дошли
+  const reached = (key) => idxOf(l.stage) >= idxOf(key);
 
   const [busy, setBusy] = useState('');
   const save = async (data, tag) => {
@@ -413,14 +415,16 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
           )}
 
           <ContentBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
-          <DesignBlock  launch={l} canEdit={isContentMgr || isDesigner} isDesigner={isDesigner}
-                        isContentMgr={isContentMgr} busy={busy} onSave={save}
-                        onCreateProduct={onCreateProduct} />
-          <ReviewBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
-          <PublishBlock launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
-          <TargetBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />
-          <ResultBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />
-          <OutcomeBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} onOrdered={onOrdered} />
+          {reached('design') && (
+            <DesignBlock  launch={l} canEdit={isContentMgr || isDesigner} isDesigner={isDesigner}
+                          isContentMgr={isContentMgr} busy={busy} onSave={save}
+                          onCreateProduct={onCreateProduct} />
+          )}
+          {reached('review')    && <ReviewBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />}
+          {reached('published') && <PublishBlock launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />}
+          {reached('target')    && <TargetBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />}
+          {reached('target')    && <ResultBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />}
+          {reached('feedback')  && <OutcomeBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} onOrdered={onOrdered} />}
 
           {isContentMgr && (
             <button onClick={onDelete}
@@ -696,9 +700,6 @@ function ReviewBlock({ launch: l, canEdit, busy, onSave }) {
   const [note, setNote] = useState(l.review?.note || '');
   useEffect(() => { setNote(l.review?.note || ''); }, [l._id, JSON.stringify(l.review)]);
 
-  // До сдачи макетов согласовывать нечего
-  if (['content', 'design'].includes(l.stage)) return null;
-
   const dirty = note !== (l.review?.note || '');
 
   return (
@@ -707,12 +708,12 @@ function ReviewBlock({ launch: l, canEdit, busy, onSave }) {
         <div style={{ fontSize: 13, color: '#5b6572', marginBottom: 10 }}>
           ✅ Утвердил: <b style={{ color: '#111' }}>{l.review.approvedByName}</b> · {fmtDay(l.review.approvedAt)}
         </div>
-      ) : l.stage === 'review' && (
+      ) : l.stage === 'review' ? (
         <div style={{ fontSize: 12.5, color: '#0e7490', marginBottom: 10 }}>
           Макеты ждут решения. Утвердить — кнопка «Опубликовано ▶» выше; вернуть — «◀ Дизайн»,
           замечания уйдут дизайнеру в Telegram.
         </div>
-      )}
+      ) : null}
 
       <div style={{ marginBottom: canEdit ? 12 : 0 }}>
         <div style={labelStyle}>Замечания / что поправить</div>
@@ -819,17 +820,13 @@ function TargetBlock({ launch: l, canEdit, busy, onSave }) {
   const [note, setNote] = useState(l.target?.note || '');
   useEffect(() => { setNote(l.target?.note || ''); }, [l._id, JSON.stringify(l.target)]);
 
-  // До публикации таргет запускать не на что
-  if (!['published', 'target', 'feedback', 'done'].includes(l.stage)) return null;
-
   const dirty = note !== (l.target?.note || '');
 
   return (
     <Section title="🎯 Таргет" accent="#c2410c" bg="#fff7ed" line="#fed7aa">
-      {l.stage === 'published' && (
+      {l.stage === 'target' && (
         <div style={{ fontSize: 12.5, color: '#9a3412', marginBottom: 10 }}>
-          Решили крутить рекламу на этот товар? Переведите карточку на этап «Таргет» —
-          Байэлу придёт задача в Telegram.
+          Задача ушла Байэлу в Telegram. Он открутит рекламу и заполнит результат ниже.
         </div>
       )}
       {l.target?.startedAt && (
@@ -917,9 +914,6 @@ function ResultBlock({ launch: l, canEdit, busy, onSave }) {
 function OutcomeBlock({ launch: l, canEdit, busy, onSave, onOrdered }) {
   const [qty, setQty] = useState('');
   const [sending, setSending] = useState(false);
-
-  // До публикации подводить итог нечему
-  if (!['published', 'target', 'feedback', 'done'].includes(l.stage)) return null;
 
   const order = async () => {
     if (!window.confirm('Создать заявку на заказ первой партии? Карточка теста закроется.')) return;
