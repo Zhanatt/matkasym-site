@@ -27,7 +27,7 @@ const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const {
-  PL_STAGES, isContentManager, isDesignerUser, nextNumber, notifyStage,
+  PL_STAGES, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage,
 } = require('../lib/productLaunch');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
@@ -4514,10 +4514,11 @@ router.delete('/product-requests/:id', async (req, res) => {
 // контент (Зайнагуль) → дизайн → опубликовано → заявки клиентов → заявка на заказ партии
 // =====================
 
-// Кто двигает карточку: контент-менеджер всегда; дизайнер — только со своего этапа.
+// Кто двигает карточку: контент-менеджер всегда; дизайнер и таргетолог — только со своего этапа.
 const canMoveLaunch = (user, fromStage, toStage) => {
   if (isContentManager(user)) return true;
-  return isDesignerUser(user) && fromStage === 'design' && toStage === 'published';
+  if (isDesignerUser(user)) return fromStage === 'design' && toStage === 'published';
+  return isAdsManager(user) && fromStage === 'target' && toStage === 'feedback';
 };
 
 const sanitizeLinks = (list) => (Array.isArray(list) ? list : [])
@@ -4706,9 +4707,10 @@ router.patch('/product-launches/:id', async (req, res) => {
     const launch = await ProductLaunch.findById(req.params.id);
     if (!launch) return res.status(404).json({ error: 'Карточка не найдена' });
 
-    const { content, design, publish, result, stage, name, product, outcome } = req.body;
+    const { content, design, publish, target, result, stage, name, product, outcome } = req.body;
     const contentMgr = isContentManager(req.user);
     const designer   = isDesignerUser(req.user);
+    const ads        = isAdsManager(req.user);
 
     if (name !== undefined) {
       if (!contentMgr) return res.status(403).json({ error: 'Название меняет контент-менеджер' });
@@ -4791,9 +4793,18 @@ router.patch('/product-launches/:id', async (req, res) => {
       }
     }
 
-    // ── Результат поста ──
+    // ── Таргет ──
+    if (target !== undefined) {
+      if (!contentMgr && !ads) return res.status(403).json({ error: 'Блок таргета ведёт таргетолог' });
+      if (target.note !== undefined) launch.target.note = String(target.note).trim();
+      if (target.startedAt !== undefined) {
+        launch.target.startedAt = target.startedAt ? new Date(target.startedAt) : null;
+      }
+    }
+
+    // ── Результат поста ── его же заполняет таргетолог по итогам рекламы
     if (result !== undefined) {
-      if (!contentMgr) return res.status(403).json({ error: 'Результат вносит контент-менеджер' });
+      if (!contentMgr && !ads) return res.status(403).json({ error: 'Результат вносит контент-менеджер или таргетолог' });
       for (const key of ['inquiries', 'reactions', 'comments', 'requests']) {
         if (result[key] !== undefined) launch.result[key] = numOrNull(result[key]);
       }
@@ -4816,6 +4827,10 @@ router.patch('/product-launches/:id', async (req, res) => {
         if (!c.photos?.length || !c.sourceUrl || !c.description) {
           return res.status(400).json({ error: 'Для передачи в дизайн нужны фото, ссылка на источник и описание' });
         }
+      }
+      if (stage === 'target' && goingForward) {
+        launch.target.byName = req.user.name || '';
+        if (!launch.target.startedAt) launch.target.startedAt = new Date();
       }
       if (stage === 'published' && goingForward) {
         launch.design.doneBy     = req.user._id;

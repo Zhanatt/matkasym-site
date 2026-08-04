@@ -5,7 +5,8 @@ const mongoose = require('mongoose');
 //   content   — Зайнагуль скидывает фото, ссылку на источник и описание
 //   design    — дизайнеры делают карточку товара и креативы
 //   published — пост вышел, «продаём фотки»
-//   feedback  — что принёс пост: обращения, реакции, комментарии, заявки клиентов
+//   target    — решили крутить рекламу: задача уходит таргетологу в Telegram
+//   feedback  — что принёс пост и таргет: обращения, реакции, комментарии, заявки клиентов
 // Есть спрос → из карточки создаётся заявка на заказ первой партии (ProductRequest).
 // Ведёт доску контент-менеджер (User.canManageContent), этап «Дизайн» — роль designer.
 const productLaunchSchema = new mongoose.Schema({
@@ -22,7 +23,7 @@ const productLaunchSchema = new mongoose.Schema({
   // Заявка на заказ первой партии, созданная из этой карточки
   request: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductRequest' },
 
-  stage: { type: String, enum: ['content', 'design', 'published', 'feedback', 'done'], default: 'content' },
+  stage: { type: String, enum: ['content', 'design', 'published', 'target', 'feedback', 'done'], default: 'content' },
 
   // Чем кончилась тестовая продажа: заказали первую партию или спроса не нашлось
   outcome: { type: String, enum: ['', 'ordered', 'rejected'], default: '' },
@@ -57,7 +58,14 @@ const productLaunchSchema = new mongoose.Schema({
     byName: { type: String, default: '' },
   },
 
-  // Итог поста — цифры вносит тот, кто ведёт доску
+  // Таргет: задача уходит таргетологу, он же потом заполняет результат
+  target: {
+    startedAt: { type: Date },
+    note:      { type: String, default: '', trim: true },  // что крутили, бюджет, аудитория
+    byName:    { type: String, default: '' },              // кто отправил в таргет
+  },
+
+  // Итог поста и рекламы — цифры вносит тот, кто ведёт доску, или таргетолог
   result: {
     inquiries:     { type: Number, default: null },  // новые обращения
     reactions:     { type: Number, default: null },

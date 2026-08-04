@@ -24,6 +24,8 @@ const STAGES = [
     hint: 'Дизайнеры делают карточку товара и креативы' },
   { key: 'published', label: 'Опубликовано',    icon: '📣', dot: '#2563eb', bg: '#eff6ff', line: '#bfdbfe',
     hint: 'Пост вышел — идёт тестовая продажа' },
+  { key: 'target',    label: 'Таргет',          icon: '🎯', dot: '#ea580c', bg: '#fff7ed', line: '#fed7aa',
+    hint: 'Крутим рекламу — задача уходит Байэлу в Telegram' },
   { key: 'feedback',  label: 'Обратная связь',  icon: '📊', dot: '#22c55e', bg: '#f0fdf4', line: '#bbf7d0',
     hint: 'Отклик и заявки клиентов — есть спрос, заказываем партию' },
 ];
@@ -63,6 +65,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
   const { user } = useAuth();
   const isContentMgr = ['owner', 'editor'].includes(user?.role) || !!user?.canManageContent;
   const isDesigner   = user?.role === 'designer';
+  const isAds        = !!user?.canRunAds;
 
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
@@ -118,8 +121,9 @@ export default function ProductLaunchBoard({ onCountChange }) {
         padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#475569',
       }}>
         🧪 <b>Тестовая продажа — первый этап.</b> Зайнагуль находит товар в интернете и собирает контент →
-        дизайнеры делают карточку и креативы → выходит пост, продаём по фото → собираем заявки клиентов.
-        Есть спрос — из карточки создаётся <b>заявка на заказ</b> первой партии.
+        дизайнеры делают карточку и креативы → выходит пост, продаём по фото → на выбранные товары
+        запускаем таргет → собираем заявки клиентов. Есть спрос — из карточки создаётся
+        <b>заявка на заказ</b> первой партии.
       </div>
 
       {/* Шкала этапов */}
@@ -192,7 +196,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
                   {colItems.map(l => (
                     <LaunchCard
                       key={l._id} launch={l} col={col}
-                      canMove={isContentMgr || (isDesigner && l.stage === 'design')}
+                      canMove={isContentMgr || (isDesigner && l.stage === 'design') || (isAds && l.stage === 'target')}
                       onOpen={() => setDetail(l)}
                       onMove={(stage) => move(l, stage)}
                     />
@@ -209,6 +213,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
           launch={detail}
           isContentMgr={isContentMgr}
           isDesigner={isDesigner}
+          isAds={isAds}
           onClose={() => setDetail(null)}
           onPatch={(data) => patch(detail, data)}
           onDelete={() => remove(detail._id)}
@@ -294,7 +299,7 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
         </div>
       )}
 
-      {(l.stage === 'published' || l.stage === 'feedback' || l.stage === 'done') && (
+      {(l.stage === 'published' || l.stage === 'target' || l.stage === 'feedback' || l.stage === 'done') && (
         <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 11.5 }}>
           {l.publish?.publishedAt && (
             <span style={{ fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', border: '1px solid #bfdbfe',
@@ -304,7 +309,7 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
         </div>
       )}
 
-      {(l.stage === 'feedback' || l.stage === 'done') && (
+      {(l.stage === 'target' || l.stage === 'feedback' || l.stage === 'done') && (
         <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
           {METRICS.map(m => (
             <div key={m.key} style={{ textAlign: 'center', background: '#f8fafc', borderRadius: 8, padding: '5px 2px' }}>
@@ -334,12 +339,12 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
 }
 
 // ── Карточка целиком: контент, дизайн, публикация, результат ─────────────────
-function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, onDelete, onOrdered, onCreateProduct }) {
+function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onPatch, onDelete, onOrdered, onCreateProduct }) {
   const st = ST[l.stage] || ST.content;
   const i = idxOf(l.stage);
   const prev = i > 0 ? ALL_STAGES[i - 1] : null;
   const next = i < ALL_STAGES.length - 1 ? ALL_STAGES[i + 1] : null;
-  const canMove = isContentMgr || (isDesigner && l.stage === 'design');
+  const canMove = isContentMgr || (isDesigner && l.stage === 'design') || (isAds && l.stage === 'target');
 
   const [busy, setBusy] = useState('');
   const save = async (data, tag) => {
@@ -392,6 +397,14 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, o
                   {next.label} ▶
                 </button>
               )}
+              {/* Таргет нужен не каждому товару — можно сразу к отклику */}
+              {l.stage === 'published' && isContentMgr && (
+                <button onClick={() => save({ stage: 'feedback' }, 'stage')} disabled={!!busy}
+                  style={{ flex: '1 1 140px', padding: '11px', fontSize: 13.5, fontWeight: 700, color: '#64748b',
+                    background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: 10, cursor: 'pointer' }}>
+                  Без таргета ▶
+                </button>
+              )}
             </div>
           )}
 
@@ -400,7 +413,8 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, o
                         isContentMgr={isContentMgr} busy={busy} onSave={save}
                         onCreateProduct={onCreateProduct} />
           <PublishBlock launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
-          <ResultBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
+          <TargetBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />
+          <ResultBlock  launch={l} canEdit={isContentMgr || isAds} busy={busy} onSave={save} />
           <OutcomeBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} onOrdered={onOrdered} />
 
           {isContentMgr && (
@@ -751,6 +765,50 @@ function PublishBlock({ launch: l, canEdit, busy, onSave }) {
   );
 }
 
+// Таргет: задача Байэлу. Заметка видна ему в Telegram, если заполнить её до перевода.
+function TargetBlock({ launch: l, canEdit, busy, onSave }) {
+  const [note, setNote] = useState(l.target?.note || '');
+  useEffect(() => { setNote(l.target?.note || ''); }, [l._id, JSON.stringify(l.target)]);
+
+  // До публикации таргет запускать не на что
+  if (!['published', 'target', 'feedback', 'done'].includes(l.stage)) return null;
+
+  const dirty = note !== (l.target?.note || '');
+
+  return (
+    <Section title="🎯 Таргет" accent="#c2410c" bg="#fff7ed" line="#fed7aa">
+      {l.stage === 'published' && (
+        <div style={{ fontSize: 12.5, color: '#9a3412', marginBottom: 10 }}>
+          Решили крутить рекламу на этот товар? Переведите карточку на этап «Таргет» —
+          Байэлу придёт задача в Telegram.
+        </div>
+      )}
+      {l.target?.startedAt && (
+        <div style={{ fontSize: 13, color: '#5b6572', marginBottom: 10 }}>
+          Отправлен в таргет: <b style={{ color: '#111' }}>{fmtDay(l.target.startedAt)}</b>
+          {l.target?.byName ? ` · ${l.target.byName}` : ''}
+        </div>
+      )}
+      <div style={{ marginBottom: canEdit ? 12 : 0 }}>
+        <div style={labelStyle}>Заметка по рекламе</div>
+        {canEdit ? (
+          <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+            placeholder="Бюджет, аудитория, что крутили…" style={{ ...inputStyle, resize: 'vertical' }} />
+        ) : (
+          <div style={{ fontSize: 13.5, color: note ? '#334155' : '#9aa5b1', whiteSpace: 'pre-wrap' }}>{note || '—'}</div>
+        )}
+      </div>
+      {canEdit && dirty && (
+        <button onClick={() => onSave({ target: { note } }, 'target')} disabled={!!busy}
+          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, color: '#fff',
+            background: '#ea580c', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+          {busy === 'target' ? 'Сохраняю…' : 'Сохранить заметку'}
+        </button>
+      )}
+    </Section>
+  );
+}
+
 function ResultBlock({ launch: l, canEdit, busy, onSave }) {
   const init = () => Object.fromEntries(METRICS.map(m => [m.key, l.result?.[m.key] ?? '']));
   const [vals, setVals] = useState(init);
@@ -812,7 +870,7 @@ function OutcomeBlock({ launch: l, canEdit, busy, onSave, onOrdered }) {
   const [sending, setSending] = useState(false);
 
   // До публикации подводить итог нечему
-  if (!['published', 'feedback', 'done'].includes(l.stage)) return null;
+  if (!['published', 'target', 'feedback', 'done'].includes(l.stage)) return null;
 
   const order = async () => {
     if (!window.confirm('Создать заявку на заказ первой партии? Карточка теста закроется.')) return;

@@ -26,6 +26,8 @@ const userSchema = new mongoose.Schema({
   canOrderProducts: { type: Boolean, default: false }, // видит инбокс заявок фронтменов на заказ товаров
   // Ведёт запуск нового товара: контент → дизайн → публикация → результат поста (Зайнагуль)
   canManageContent: { type: Boolean, default: false },
+  // Таргетолог: получает задачу на рекламу тестового товара и заполняет её результат (Байэл)
+  canRunAds: { type: Boolean, default: false },
   // Зона ответственности за буферный запас: получает алерты и видит страницу только по своим товарам
   bufferZone: { type: String, enum: ['', 'ikea', 'home', 'shaar'], default: '' },
 
