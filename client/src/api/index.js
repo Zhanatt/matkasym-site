@@ -102,6 +102,7 @@ export const adminCreateProductLaunch   = (data)     => api.post('/admin/product
 export const adminUpdateProductLaunch   = (id, data) => api.patch(`/admin/product-launches/${id}`, data);
 export const adminDeleteProductLaunch   = (id)       => api.delete(`/admin/product-launches/${id}`);
 export const adminCreateLaunchOrderRequest = (id, data) => api.post(`/admin/product-launches/${id}/order-request`, data);
+export const adminCreateLaunchProduct      = (id)       => api.post(`/admin/product-launches/${id}/product`);
 
 // Product requests (фронтмен → заказ товара, инбокс закупщика)
 export const adminCreateProductRequest = (data)     => api.post('/admin/product-requests', data);

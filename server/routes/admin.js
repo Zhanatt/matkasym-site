@@ -4591,6 +4591,54 @@ router.post('/product-launches', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// POST /api/admin/product-launches/:id/product — завести карточку товара в каталоге
+// прямо с этапа дизайна: имя, фото и описание берутся из теста, карточка сразу привязывается.
+router.post('/product-launches/:id/product', async (req, res) => {
+  try {
+    if (!isContentManager(req.user) && !isDesignerUser(req.user)) {
+      return res.status(403).json({ error: 'Нет доступа' });
+    }
+    const launch = await ProductLaunch.findById(req.params.id);
+    if (!launch) return res.status(404).json({ error: 'Карточка не найдена' });
+    if (launch.product) return res.status(409).json({ error: 'Товар уже привязан к этому тесту' });
+
+    const product = await Product.create({
+      name:           launch.name,
+      fullName:       launch.name,
+      brand:          'matkasym-home',
+      category:       'other',
+      price:          0,
+      priceUndefined: true,          // цену узнаем у поставщика на этапе заявки
+      productStatus:  'test_sale',
+      isSupplied:     true,          // товар не наш, найден у стороннего продавца
+      description:    launch.content?.description || '',
+      images:         launch.content?.photos?.length ? [...launch.content.photos] : [],
+    });
+
+    await ProductLog.create({
+      action:      'added',
+      productId:   product._id,
+      productName: product.fullName || product.name,
+      sku:         product.sku || '',
+      brand:       product.brand || '',
+      source:      'manual',
+      changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
+    });
+
+    launch.product     = product._id;
+    launch.productName = product.fullName || product.name;
+    launch.sku         = product.sku || '';
+    if (!launch.image) launch.image = product.images?.[0] || '';
+    await launch.save();
+
+    const populated = await ProductLaunch.findById(launch._id)
+      .populate('product', 'name fullName sku images stock price productStatus brand set')
+      .populate('design.assignee', 'name')
+      .populate('request', 'number status');
+    res.status(201).json({ launch: populated, product });
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
 // POST /api/admin/product-launches/:id/order-request — спрос подтвердился:
 // заводим заявку на заказ первой партии и закрываем тестовую продажу.
 router.post('/product-launches/:id/order-request', async (req, res) => {

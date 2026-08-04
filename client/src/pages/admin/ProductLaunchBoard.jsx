@@ -6,6 +6,7 @@ import {
   adminUpdateProductLaunch,
   adminDeleteProductLaunch,
   adminCreateLaunchOrderRequest,
+  adminCreateLaunchProduct,
   adminGetProducts,
 } from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -211,6 +212,12 @@ export default function ProductLaunchBoard({ onCountChange }) {
           onClose={() => setDetail(null)}
           onPatch={(data) => patch(detail, data)}
           onDelete={() => remove(detail._id)}
+          onCreateProduct={async () => {
+            const r = await adminCreateLaunchProduct(detail._id);
+            setDetail(r.data.launch);
+            setItems(list => list.map(x => x._id === r.data.launch._id ? r.data.launch : x));
+            load();
+          }}
           onOrdered={async (quantity) => {
             const r = await adminCreateLaunchOrderRequest(detail._id, { quantity });
             setDetail(null);
@@ -327,7 +334,7 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
 }
 
 // ── Карточка целиком: контент, дизайн, публикация, результат ─────────────────
-function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, onDelete, onOrdered }) {
+function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, onDelete, onOrdered, onCreateProduct }) {
   const st = ST[l.stage] || ST.content;
   const i = idxOf(l.stage);
   const prev = i > 0 ? ALL_STAGES[i - 1] : null;
@@ -390,7 +397,8 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, onClose, onPatch, o
 
           <ContentBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
           <DesignBlock  launch={l} canEdit={isContentMgr || isDesigner} isDesigner={isDesigner}
-                        isContentMgr={isContentMgr} busy={busy} onSave={save} />
+                        isContentMgr={isContentMgr} busy={busy} onSave={save}
+                        onCreateProduct={onCreateProduct} />
           <PublishBlock launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
           <ResultBlock  launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
           <OutcomeBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} onOrdered={onOrdered} />
@@ -513,11 +521,21 @@ function ContentBlock({ launch: l, canEdit, busy, onSave }) {
   );
 }
 
-function DesignBlock({ launch: l, canEdit, isDesigner, isContentMgr, busy, onSave }) {
+function DesignBlock({ launch: l, canEdit, isDesigner, isContentMgr, busy, onSave, onCreateProduct }) {
   const [files, setFiles] = useState(l.design?.files || []);
   const [note, setNote]   = useState(l.design?.note || '');
   const [uploading, setUploading] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [adding, setAdding]   = useState(false);
+
+  // Дизайнер заводит карточку товара прямо отсюда: имя, фото и описание берутся из теста,
+  // остальное (цена, сет, характеристики) дозаполняется в самой карточке.
+  const addProduct = async () => {
+    setAdding(true);
+    try { await onCreateProduct(); }
+    catch (e) { alert(e?.response?.data?.error || 'Не удалось создать товар'); }
+    finally { setAdding(false); }
+  };
 
   useEffect(() => {
     setFiles(l.design?.files || []);
@@ -561,18 +579,32 @@ function DesignBlock({ launch: l, canEdit, isDesigner, isContentMgr, busy, onSav
         )}
       </div>
 
-      {/* Карточка в каталоге появляется здесь же — привязываем её к тесту */}
+      {/* Карточка в каталоге: заводим новую из данных теста или привязываем существующую */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 13, color: '#5b6572' }}>
           Карточка в каталоге: <b style={{ color: '#111' }}>{l.productName || 'не заведена'}</b>
           {l.sku ? <span style={{ color: '#94a3b8' }}> · {l.sku}</span> : null}
         </span>
+        {canEdit && !l.product && (
+          <button onClick={addProduct} disabled={!!busy || adding}
+            title="Создать товар в каталоге по названию, фото и описанию из теста"
+            style={{ padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#fff', background: '#7c3aed',
+              border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+            {adding ? 'Добавляю…' : '＋ Добавить товар'}
+          </button>
+        )}
         {canEdit && (
-          <button onClick={() => setLinking(true)} disabled={!!busy}
+          <button onClick={() => setLinking(true)} disabled={!!busy || adding}
             style={{ padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#7c3aed', background: '#fff',
               border: '1.5px solid #e9d5ff', borderRadius: 8, cursor: 'pointer' }}>
             {l.product ? 'Заменить' : 'Привязать товар'}
           </button>
+        )}
+        {l.product && (
+          <a href={`/admin/products/${l.product?._id || l.product}`} target="_blank" rel="noreferrer"
+            style={{ fontSize: 12.5, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}>
+            Открыть карточку ↗
+          </a>
         )}
         {canEdit && l.product && (
           <button onClick={() => onSave({ product: null }, 'unlink')} disabled={!!busy}
