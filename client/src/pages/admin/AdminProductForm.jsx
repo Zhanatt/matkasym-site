@@ -463,7 +463,6 @@ export default function AdminProductForm() {
     if (form.productStatus === 'test_sale') {
       const errors = [];
       if (!form.isSupplied || !form.supplier?.company) errors.push('Поставщик');
-      if (isOwner && (!form.priceCost || Number(form.priceCost) <= 0)) errors.push('Себестоимость');
       if (!form.images || form.images.length === 0) errors.push('Фото');
       if (errors.length > 0) {
         setError(`Для статуса "Тест" обязательно: ${errors.join(', ')}`);
@@ -480,7 +479,7 @@ export default function AdminProductForm() {
         priceCost:      Number(form.priceCost) || 0,
         priceWholesale: Number(form.priceWholesale) || 0,
         priceDealer:    Number(form.priceDealer) || 0,
-        price:          Number(form.price),
+        price:          Number(form.price) || 0,
         stock:          Number(form.stock) || 0,
         inStock:        form.stockStatus === 'in_stock',
       };
@@ -899,8 +898,8 @@ export default function AdminProductForm() {
                 <input type="number" min="0" value={form.priceDealer} onChange={e => set('priceDealer', e.target.value)} placeholder="0" />
               </div>
               <div className="admin-form-group">
-                <label>Розничная *</label>
-                <input required type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="0" />
+                <label>Розничная</label>
+                <input type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="0" />
               </div>
             </div>
           )}
