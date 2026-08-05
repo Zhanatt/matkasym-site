@@ -11,6 +11,8 @@ import {
 import ImageUploader  from '../../components/ImageUploader';
 import SelectWithAdd  from '../../components/SelectWithAdd';
 import { CATEGORIES, CATEGORY_SPECS } from '../../config/categorySpecs';
+import { useAuth } from '../../context/AuthContext';
+import { CURRENCIES, CURRENCY_SIGN } from '../../utils/price';
 
 // Spec keys that duplicate top-level fields (dimensions, color) — skip in specs grid
 const SKIP_SPEC_KEYS = new Set(['Цвет']);
@@ -92,6 +94,7 @@ const EMPTY = {
   dimensions: '',
   specs: [],
   priceCost: '', priceWholesale: '', priceDealer: '', price: '', priceUndefined: false,
+  currency: 'KGS',
   description: '',
   images: [],
   inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', inTransit: false, inTransitQty: 0, isOnOrder: false, productStatus: 'for_sale', developmentStage: '',
@@ -212,6 +215,8 @@ function Card({ children }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function AdminProductForm() {
+  const { user } = useAuth();
+  const isOwner = user?.role === 'owner';   // себестоимость — только владельцу
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -307,6 +312,7 @@ export default function AdminProductForm() {
           priceWholesale: p.priceWholesale ?? '',
           priceDealer:    p.priceDealer ?? '',
           priceUndefined: p.priceUndefined || false,
+          currency:       p.currency || 'KGS',   // товары до появления поля — сомовые
           dimensions:     p.dimensions || '',
           isSupplied:     p.isSupplied || false,
           supplier:       p.supplier || { company: '', contactName: '', sku: '' },
@@ -457,7 +463,7 @@ export default function AdminProductForm() {
     if (form.productStatus === 'test_sale') {
       const errors = [];
       if (!form.isSupplied || !form.supplier?.company) errors.push('Поставщик');
-      if (!form.priceCost || Number(form.priceCost) <= 0) errors.push('Себестоимость');
+      if (isOwner && (!form.priceCost || Number(form.priceCost) <= 0)) errors.push('Себестоимость');
       if (!form.images || form.images.length === 0) errors.push('Фото');
       if (errors.length > 0) {
         setError(`Для статуса "Тест" обязательно: ${errors.join(', ')}`);
@@ -842,7 +848,32 @@ export default function AdminProductForm() {
 
         {/* ── ЦЕНЫ ── */}
         <Card>
-          <SH text="Цены (сом)" />
+          {/* Валюта не пересчитывает суммы — она говорит, в чём указаны цены товара,
+              и подставляется всюду, где они показываются (карточки, посты, уведомления). */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <SH text={`Цены (${CURRENCY_SIGN[form.currency] || 'сом'})`} />
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+              {CURRENCIES.map(c => {
+                const active = (form.currency || 'KGS') === c.value;
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => set('currency', c.value)}
+                    style={{
+                      padding: '7px 16px', borderRadius: 8, cursor: 'pointer',
+                      fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                      border: `1.5px solid ${active ? 'var(--red)' : 'var(--gray-200)'}`,
+                      background: active ? 'var(--admin-red-wash)' : '#fff',
+                      color: active ? 'var(--red)' : 'var(--slate)',
+                      transition: 'all .15s',
+                    }}>
+                    {c.label} · {c.sign}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 16 }}>
             <input
               type="checkbox"
@@ -853,10 +884,12 @@ export default function AdminProductForm() {
           </label>
           {!form.priceUndefined && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-              <div className="admin-form-group">
-                <label>Себестоимость {form.isSupplied && <span style={{ fontSize: 10, color: '#888', fontWeight: 400 }}>(цена поставщика)</span>}</label>
-                <input type="number" min="0" value={form.priceCost} onChange={e => set('priceCost', e.target.value)} placeholder="0" />
-              </div>
+              {isOwner && (
+                <div className="admin-form-group">
+                  <label>Себестоимость {form.isSupplied && <span style={{ fontSize: 10, color: '#888', fontWeight: 400 }}>(цена поставщика)</span>}</label>
+                  <input type="number" min="0" value={form.priceCost} onChange={e => set('priceCost', e.target.value)} placeholder="0" />
+                </div>
+              )}
               <div className="admin-form-group">
                 <label>Оптовая</label>
                 <input type="number" min="0" value={form.priceWholesale} onChange={e => set('priceWholesale', e.target.value)} placeholder="0" />

@@ -8,6 +8,7 @@ import { cloudinaryOpt } from '../../utils/drive';
 import { CATEGORIES } from '../../config/categorySpecs';
 import { useAuth } from '../../context/AuthContext';
 import { CRM_STAGES } from './AdminProductForm';
+import { signOf } from '../../utils/price';
 
 const BRANDS = [
   { value: '', label: 'Все бренды' },
@@ -569,7 +570,7 @@ export default function AdminProducts() {
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>
                             <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--slate)', display: 'block', lineHeight: 1.2 }}>Опт.</span>
-                            <span style={{ fontWeight: 700 }}>{(primary.priceWholesale || 0).toLocaleString('ru')} сом</span>
+                            <span style={{ fontWeight: 700 }}>{(primary.priceWholesale || 0).toLocaleString('ru')} {signOf(primary)}</span>
                           </td>
                           <td>
                             {(() => {

@@ -7,6 +7,7 @@ import {
   adminGetProducts,
 } from '../../api/index';
 import AdminProductModal from './AdminProductModal';
+import { signOf } from '../../utils/price';
 import { cloudinaryOpt } from '../../utils/drive';
 
 export default function AdminSuppliers() {
@@ -310,7 +311,7 @@ export default function AdminSuppliers() {
                       </div>
                       {p.price > 0 && (
                         <div style={{ fontSize: 14, fontWeight: 800, color: '#1d4ed8', marginTop: 6 }}>
-                          {p.price.toLocaleString('ru')} сом
+                          {p.price.toLocaleString('ru')} {signOf(p)}
                         </div>
                       )}
                       {p.sku && <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>{p.sku}</div>}

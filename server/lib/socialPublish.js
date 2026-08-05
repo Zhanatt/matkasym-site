@@ -6,6 +6,7 @@
 const Publication   = require('../models/Publication');
 const { SocialAccount } = require('../models/SocialAccount');
 const { buildCaption } = require('./postCaption');
+const { signOf } = require('./stockBases');
 
 const PUBLISHERS = {
   telegram:  require('./publishers/telegram'),
@@ -33,7 +34,7 @@ function templateContext(product, text) {
   return {
     name:     p.fullName || p.name || '',
     fullName: p.fullName || p.name || '',
-    price:    p.priceUndefined || !p.price ? 'по запросу' : `${fmtPrice(p.price)} сом`,
+    price:    p.priceUndefined || !p.price ? 'по запросу' : `${fmtPrice(p.price)} ${signOf(p)}`,
     sku:      p.sku || '',
     specs,
     set:      p.set || '',

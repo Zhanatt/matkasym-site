@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cloudinaryOpt } from '../../utils/drive';
+import { useAuth } from '../../context/AuthContext';
 import {
   adminGetStockLog,
   adminGetPriceLog,
@@ -227,6 +228,9 @@ function StockTab() {
 
 // ============ PRICE TAB ============
 function PriceTab() {
+  const { user } = useAuth();
+  // Себестоимость видит только владелец: сервер её строки не отдаёт, здесь убираем и фильтр
+  const isOwner = user?.role === 'owner';
   const [logs, setLogs] = useState([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
@@ -259,7 +263,9 @@ function PriceTab() {
   return (
     <div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        {[{ value: '', label: 'Все цены' }, ...Object.entries(PRICE_TYPE_META).map(([k, v]) => ({ value: k, label: v.label }))].map(opt => (
+        {[{ value: '', label: 'Все цены' }, ...Object.entries(PRICE_TYPE_META)
+            .filter(([k]) => isOwner || k !== 'cost')
+            .map(([k, v]) => ({ value: k, label: v.label }))].map(opt => (
           <button key={opt.value} onClick={() => { setPriceType(opt.value); setPage(1); }}
             style={{ padding: '6px 14px', borderRadius: 8, border: `2px solid ${priceType === opt.value ? (PRICE_TYPE_META[opt.value]?.color || '#111') : '#e0e0e0'}`, background: priceType === opt.value ? (PRICE_TYPE_META[opt.value]?.bg || '#f0f0f0') : '#fff', color: priceType === opt.value ? (PRICE_TYPE_META[opt.value]?.color || '#111') : '#555', cursor: 'pointer', fontWeight: priceType === opt.value ? 700 : 500, fontSize: 12 }}>
             {opt.label}

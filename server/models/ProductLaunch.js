@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 // Тестовая продажа нового товара — САМЫЙ ПЕРВЫЙ этап, до заявки на заказ.
 // Товара ещё нет ни на складе, ни в каталоге: его нашли в интернете и проверяют спрос.
+//   proposed  — менеджер предложил товар: увидел спрос у клиентов, скинул на рассмотрение
 //   content   — Зайнагуль скидывает фото, ссылку на источник и описание
 //   design    — дизайнеры делают карточку товара и креативы
 //   review    — макеты на согласовании: утвердить или вернуть на доработку
@@ -24,7 +25,7 @@ const productLaunchSchema = new mongoose.Schema({
   // Заявка на заказ первой партии, созданная из этой карточки
   request: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductRequest' },
 
-  stage: { type: String, enum: ['content', 'design', 'review', 'published', 'target', 'feedback', 'done'], default: 'content' },
+  stage: { type: String, enum: ['proposed', 'content', 'design', 'review', 'published', 'target', 'feedback', 'done'], default: 'content' },
 
   // Чем кончилась тестовая продажа: заказали первую партию или спроса не нашлось
   outcome: { type: String, enum: ['', 'ordered', 'rejected'], default: '' },

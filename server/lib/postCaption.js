@@ -4,6 +4,9 @@
 // Единый генератор подписи для автопубликаций (socialPublish).
 // Меняете здесь — меняйте и там.
 
+// Валюта подписи берётся у товара (Product.currency): сом или тенге.
+const { signOf } = require('./stockBases');
+
 // Номер WhatsApp для приёма заказов, только цифры в международном формате.
 const ORDER_WHATSAPP = (process.env.WHATSAPP_ORDER_PHONE || '996500001652').replace(/\D/g, '');
 
@@ -228,7 +231,7 @@ function priceLine(p, mode) {
   const value = wholesale ? p.priceWholesale : p.price;
   const label = wholesale ? 'Оптовая цена' : 'Цена';
   if (p.priceUndefined || !value) return '💰 Цена по запросу';
-  return `💰 ${label}: <b>${fmtPrice(value)} сом</b>`;
+  return `💰 ${label}: <b>${fmtPrice(value)} ${signOf(p)}</b>`;
 }
 
 function buildCaption(p, opts = {}) {

@@ -36,6 +36,11 @@ const productSchema = new mongoose.Schema({
   price:             { type: Number, required: true, min: 0 }, // Розничная цена (на сайте)
   priceUndefined:    { type: Boolean, default: false }, // Цена ещё не определена
 
+  // Валюта цен выше. Переключается в редакторе товара и определяет подпись
+  // ВЕЗДЕ, где эти цены показываются: карточки, посты в Telegram, уведомления.
+  // Товары Кыргызстана — сомы, товары казахстанского каталога — тенге.
+  currency:          { type: String, enum: ['KGS', 'KZT'], default: 'KGS' },
+
   // Прайс каждой базы 1С отдельно. Набор цен у баз разный (см. server/lib/stockBases.js):
   // у Matkasym нет розничной, зато есть экспортный прайс в USD — по нему у него
   // закупается Matkasym KZ. Валюта зависит от базы и типа цены (currencyOf).

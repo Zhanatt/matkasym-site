@@ -111,6 +111,37 @@ async function sendTelegramPhoto(chatId, photoUrl, caption) {
   }
 }
 
+// Альбом из нескольких фото (sendMediaGroup). Подпись кладётся на первую картинку,
+// иначе Telegram покажет альбом вообще без текста. Больше 10 фото API не принимает.
+async function sendTelegramAlbum(chatId, images, caption) {
+  if (!TELEGRAM_BOT_TOKEN || !chatId) return null;
+  const list = (images || []).slice(0, 10);
+  if (list.length < 2) return null;
+
+  try {
+    const media = list.map((url, i) => ({
+      type: 'photo',
+      media: tgImage(url),
+      ...(i === 0 ? { caption: clampCaption(caption), parse_mode: 'HTML' } : {}),
+    }));
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMediaGroup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, media }),
+    });
+    const data = await response.json();
+    if (!data.ok) {
+      console.error(`[Telegram] Error sending album to ${chatId}:`, data.description);
+      return null;
+    }
+    console.log(`[Telegram] ✓ Album (${list.length} photos) sent to ${chatId}`);
+    return data;
+  } catch (e) {
+    console.error(`[Telegram] ✗ Failed to send album to ${chatId}:`, e.message);
+    return null;
+  }
+}
+
 // Публикация поста в произвольный чат: канал, группу или личку.
 // Бот должен быть в чате и иметь право писать. Возвращает { ok, error } — ошибка идёт в UI.
 // Картинку по возможности заливаем байтами (multipart), а не URL-ом: так надёжнее,
@@ -183,8 +214,10 @@ async function sendNewsNotificationTelegram({ type, title, message, product }, r
 
   text += `\n\n<a href="${SITE_URL}/admin/news">Открыть в матрице →</a>`;
 
-  // Use first Cloudinary image if available
-  const photoUrl = product?.images?.find(img => img && img.startsWith('http')) || null;
+  // Все фото товара, а не только обложка: раньше уходила одна первая картинка,
+  // и по уведомлению нельзя было понять, как товар выглядит с других сторон.
+  const photos = (product?.images || []).filter(img => img && img.startsWith('http')).slice(0, 10);
+  const photoUrl = photos[0] || null;
 
   const recipientsList = Array.isArray(recipients) ? recipients : [recipients];
   console.log(`[Telegram] Sending news "${title}" to ${recipientsList.length} recipients`);
@@ -195,12 +228,11 @@ async function sendNewsNotificationTelegram({ type, title, message, product }, r
       console.log(`[Telegram] Skipping ${r.name || r.email} — no telegramChatId`);
       continue;
     }
-    if (photoUrl) {
-      const result = await sendTelegramPhoto(chatId, photoUrl, text);
-      if (!result) await sendTelegramMessage(chatId, text); // fallback
-    } else {
-      await sendTelegramMessage(chatId, text);
-    }
+    // Несколько фото — альбомом; если альбом не прошёл (недоступная картинка,
+    // лимиты), откатываемся на одну обложку, а в крайнем случае — на текст.
+    let sent = photos.length > 1 ? await sendTelegramAlbum(chatId, photos, text) : null;
+    if (!sent && photoUrl) sent = await sendTelegramPhoto(chatId, photoUrl, text);
+    if (!sent) await sendTelegramMessage(chatId, text);
   }
 }
 
@@ -257,4 +289,4 @@ async function sendBufferStockAlerts(alerts) {
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage };
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage };

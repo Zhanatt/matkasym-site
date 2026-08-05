@@ -71,6 +71,16 @@ function currencyOf(baseKey, priceType) {
 }
 const CURRENCY_SIGN = { KGS: 'сом', KZT: '₸', USD: '$' };
 
+// Валюта цен конкретного товара (Product.currency) — переключается в редакторе.
+// Отсюда берётся подпись везде, где показываются price/priceWholesale/priceDealer/priceCost.
+const signOf = product => CURRENCY_SIGN[product?.currency] || CURRENCY_SIGN.KGS;
+
+// «12 500 сом». Пустую цену показываем прочерком — так же, как в админке.
+const fmtMoney = (value, product) => {
+  const n = Number(value || 0);
+  return n > 0 ? `${n.toLocaleString('ru')} ${signOf(product)}` : '—';
+};
+
 const BASE_KEYS = Object.keys(BASES);
 
 // Страны учёта. Остатки разных стран не складываются: Q-top — это отдельный
@@ -284,5 +294,5 @@ module.exports = {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
   normSku, normNameLoose,
   COUNTRIES, basesOfCountry, STOCK_SUM_BASES,
-  PRICE_TYPES, PRICE_TYPE_KEYS, isPriceType, currencyOf, CURRENCY_SIGN,
+  PRICE_TYPES, PRICE_TYPE_KEYS, isPriceType, currencyOf, CURRENCY_SIGN, signOf, fmtMoney,
 };

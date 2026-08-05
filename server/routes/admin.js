@@ -37,6 +37,10 @@ const {
 } = require('../lib/stockBases');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock, ADMIN_ROLES } = require('../middleware/auth');
 
+// Себестоимость — цифра только для владельца: её не показывают в карточке товара,
+// не отдают в журнале цен и не дают править никому другому.
+const isOwner = u => u?.role === 'owner';
+
 // Остаток пересёк буферный запас сверху вниз → нужен алерт
 const crossedBuffer = (oldStock, newStock, bufferStock) =>
   bufferStock > 0 && newStock < bufferStock && oldStock >= bufferStock;
@@ -423,6 +427,11 @@ router.patch('/products/:id', editor, async (req, res) => {
   try {
     const old = await Product.findById(req.params.id);
     if (!old) return res.status(404).json({ error: 'Не найден' });
+
+    // Поле себестоимости скрыто у всех, кроме владельца, — значит и менять его
+    // они не могут: молча оставляем прежнее значение, чтобы сохранение формы
+    // с пустым (скрытым) полем не обнулило цифру.
+    if (!isOwner(req.user)) delete req.body.priceCost;
 
     // Detect changed fields
     const changes = [];
@@ -2481,6 +2490,9 @@ router.get('/price-log', editor, async (req, res) => {
     const { priceType, source, page = 1, limit = 50, dateFrom, dateTo, search } = req.query;
     const filter = {};
     if (priceType) filter.priceType = priceType;
+    // Себестоимость видит только владелец — остальным её строки не отдаём вовсе,
+    // иначе цифра утекает из журнала, даже если в карточке товара она спрятана.
+    if (!isOwner(req.user)) filter.priceType = priceType === 'cost' ? '__none__' : { $ne: 'cost' };
     if (source)    filter.source    = source;
     if (search)    filter.productName = { $regex: search, $options: 'i' };
     if (dateFrom || dateTo) {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock, adminGetProduct } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
+import { signOf } from '../../utils/price';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -271,7 +272,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     { label: 'Розничная',     value: product.price },
     { label: 'Оптовая',       value: product.priceWholesale },
     { label: 'Дилерская',     value: product.priceDealer },
-    { label: 'Себестоимость', value: product.priceCost },
+    // Себестоимость — только владельцу
+    ...(user?.role === 'owner' ? [{ label: 'Себестоимость', value: product.priceCost }] : []),
   ].filter(p => p.value > 0);
 
   const statusMeta = PRODUCT_STATUS_META[product.productStatus];
@@ -702,7 +704,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     {prices.map(p => (
                       <div key={p.label} style={{ background: '#f8f8f8', borderRadius: 8, padding: '8px 12px' }}>
                         <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>{p.label}</div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: '#111' }}>{p.value.toLocaleString('ru')} сом</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#111' }}>{p.value.toLocaleString('ru')} {signOf(localProduct)}</div>
                       </div>
                     ))}
                   </div>
@@ -925,7 +927,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>
-                              {p.price?.toLocaleString('ru')} сом
+                              {p.price?.toLocaleString('ru')} {signOf(p)}
                             </div>
                             {needed > 1 && (
                               <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
@@ -941,7 +943,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 12, color: hasMissing ? '#dc2626' : '#16a34a', fontWeight: 600 }}>Итого</span>
                       <span style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
-                        {localProduct.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} сом
+                        {localProduct.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} {signOf(localProduct)}
                       </span>
                     </div>
                   )}

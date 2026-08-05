@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
+import { signOf } from '../../utils/price';
 import * as pdfjsLib from 'pdfjs-dist';
 import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
@@ -87,7 +88,7 @@ function ProductAlertList({ products, navigate }) {
             {p.fullName || p.name}
           </span>
           <span style={{ color: 'var(--slate)', fontSize: 12, flexShrink: 0 }}>
-            {p.stock} шт. · {(p.price || 0).toLocaleString('ru')} сом
+            {p.stock} шт. · {(p.price || 0).toLocaleString('ru')} {signOf(p)}
           </span>
           <span style={{ fontSize: 11, color: 'var(--slate)', flexShrink: 0 }}>→</span>
         </div>

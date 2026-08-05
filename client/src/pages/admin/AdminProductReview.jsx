@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { cloudinaryOpt } from '../../utils/drive';
+import { signOf } from '../../utils/price';
 import {
   adminGetMySets,
   adminGetAllSetProducts,
@@ -225,7 +226,7 @@ export default function AdminProductReview() {
     // Добавляем предложенную цену в комментарий если указана
     let finalComment = comment.trim();
     if (suggestedPrice && comment.includes('Высокая цена')) {
-      finalComment = finalComment.replace('Высокая цена', `Высокая цена (предл. ${suggestedPrice} сом)`);
+      finalComment = finalComment.replace('Высокая цена', `Высокая цена (предл. ${suggestedPrice} ${signOf(currentProduct)})`);
     }
     await doSubmit(pendingStatus, finalComment, suggestionPhotos);
     setSuggestedPrice('');
@@ -842,7 +843,7 @@ export default function AdminProductReview() {
                         fontFamily: 'inherit',
                       }}
                     />
-                    <span style={{ fontSize: 12, color: '#888' }}>сом</span>
+                    <span style={{ fontSize: 12, color: '#888' }}>{signOf(currentProduct)}</span>
                   </div>
                 )}
 

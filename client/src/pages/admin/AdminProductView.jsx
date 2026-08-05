@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { CATEGORIES } from '../../config/categorySpecs';
 import { cloudinaryOpt } from '../../utils/drive';
 import { CRM_STAGES } from './AdminProductForm';
+import { signOf } from '../../utils/price';
 
 const PRODUCT_STATUS_META = {
   for_sale:       { label: 'В продаже',           color: '#2d7a3a' },
@@ -356,10 +357,12 @@ export default function AdminProductView() {
           <div>
             <Label>Цены</Label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-              <PriceCard label="Розничная" value={product.price} />
-              <PriceCard label="Оптовая"   value={product.priceWholesale} />
-              <PriceCard label="Дилерская" value={product.priceDealer} />
-              <PriceCard label="Себестоимость" value={product.priceCost} />
+              <PriceCard label="Розничная" value={product.price} product={product} />
+              <PriceCard label="Оптовая"   value={product.priceWholesale} product={product} />
+              <PriceCard label="Дилерская" value={product.priceDealer} product={product} />
+              {user?.role === 'owner' && (
+                <PriceCard label="Себестоимость" value={product.priceCost} product={product} />
+              )}
             </div>
           </div>
 
@@ -488,12 +491,12 @@ function Row({ label, value }) {
   );
 }
 
-function PriceCard({ label, value }) {
+function PriceCard({ label, value, product }) {
   if (!value && value !== 0) return null;
   return (
     <div style={{ background: '#f7f6f3', borderRadius: 8, padding: '10px 14px' }}>
       <div style={{ fontSize: 11, color: 'var(--slate)', fontWeight: 600, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 800 }}>{Number(value).toLocaleString('ru')} сом</div>
+      <div style={{ fontSize: 16, fontWeight: 800 }}>{Number(value).toLocaleString('ru')} {signOf(product)}</div>
     </div>
   );
 }

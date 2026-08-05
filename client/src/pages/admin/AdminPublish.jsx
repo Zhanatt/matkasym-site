@@ -7,6 +7,7 @@ import {
 } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
 import { POST_TYPES, platformMeta } from '../../config/socialPlatforms';
+import { signOf } from '../../utils/price';
 
 // Куда товар уже уходил: иконка площадки и сколько раз. Нужно, чтобы не отправить
 // один и тот же товар дважды — в поиске это видно до выбора.
@@ -282,7 +283,7 @@ export default function AdminPublish() {
               <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{product.fullName || product.name}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, color: '#7d96a0' }}>
-                  {product.priceUndefined || !product.price ? 'Цена по запросу' : `${fmtPrice(product.price)} сом`}
+                  {product.priceUndefined || !product.price ? 'Цена по запросу' : `${fmtPrice(product.price)} ${signOf(product)}`}
                 </span>
                 <PublishedBadges stat={pubStats[product._id]} />
               </div>
@@ -301,7 +302,7 @@ export default function AdminPublish() {
                     style={{ display: 'block', width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: '1px solid #f4f4f4' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{p.fullName || p.name}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                      <span style={{ fontSize: 11, color: '#aaa' }}>{p.priceUndefined || !p.price ? 'Цена по запросу' : `${fmtPrice(p.price)} сом`}</span>
+                      <span style={{ fontSize: 11, color: '#aaa' }}>{p.priceUndefined || !p.price ? 'Цена по запросу' : `${fmtPrice(p.price)} ${signOf(p)}`}</span>
                       <PublishedBadges stat={pubStats[p._id]} size={10} />
                     </div>
                   </button>

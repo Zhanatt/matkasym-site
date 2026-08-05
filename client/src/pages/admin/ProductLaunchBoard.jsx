@@ -248,9 +248,10 @@ export default function ProductLaunchBoard({ onCountChange }) {
 
       {picker && createPortal(
         <NewLaunchForm
+          mode={picker}
           onClose={() => setPicker(false)}
           onCreate={async (data) => {
-            await adminCreateProductLaunch(data);
+            await adminCreateProductLaunch({ ...data, stage: picker === 'proposed' ? 'proposed' : undefined });
             setPicker(false);
             load();
           }}
@@ -1069,7 +1070,10 @@ function OutcomeBlock({ launch: l, canEdit, busy, onSave, onOrdered }) {
 }
 
 // ── Новый товар на тест: то, что Зайнагуль нашла в интернете ─────────────────
-function NewLaunchForm({ onClose, onCreate }) {
+// mode: 'content' — контент-менеджер заводит товар на тест;
+//       'proposed' — менеджер предлагает товар, карточка уходит на рассмотрение.
+function NewLaunchForm({ onClose, onCreate, mode = 'content' }) {
+  const proposing = mode === 'proposed';
   const [name, setName] = useState('');
   const [photos, setPhotos] = useState([]);
   const [sourceUrl, setSourceUrl] = useState('');
@@ -1105,7 +1109,7 @@ function NewLaunchForm({ onClose, onCreate }) {
         <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 540, maxHeight: '92vh',
           overflow: 'auto', padding: 22, pointerEvents: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>🧪 Новый товар на тест</div>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>{proposing ? '💡 Предложить товар' : '🧪 Новый товар на тест'}</div>
             <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 9, background: '#f5f5f5',
               border: 'none', fontSize: 16, cursor: 'pointer' }}>✕</button>
           </div>
@@ -1139,9 +1143,10 @@ function NewLaunchForm({ onClose, onCreate }) {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <div style={labelStyle}>Описание</div>
+            <div style={labelStyle}>{proposing ? 'Почему стоит попробовать' : 'Описание'}</div>
             <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4}
-              placeholder="Что за товар, чем хорош, для кого…" style={{ ...inputStyle, resize: 'vertical' }} />
+              placeholder={proposing ? 'Кто спрашивает, как часто, за сколько готовы брать…' : 'Что за товар, чем хорош, для кого…'}
+              style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
 
           {error && <div style={{ color: '#c00', fontSize: 13, marginBottom: 12 }}>{error}</div>}
@@ -1152,8 +1157,8 @@ function NewLaunchForm({ onClose, onCreate }) {
                 background: '#f1f5f9', border: 'none', borderRadius: 12, cursor: 'pointer' }}>Отмена</button>
             <button onClick={submit} disabled={saving || uploading}
               style={{ flex: 1, padding: '13px', fontSize: 15, fontWeight: 700, color: '#fff',
-                background: saving ? '#9aa5b1' : '#DC1E24', border: 'none', borderRadius: 12, cursor: 'pointer' }}>
-              {saving ? 'Создаю…' : 'На доску теста'}
+                background: saving ? '#9aa5b1' : (proposing ? '#db2777' : '#DC1E24'), border: 'none', borderRadius: 12, cursor: 'pointer' }}>
+              {saving ? 'Отправляю…' : (proposing ? 'Отправить на рассмотрение' : 'На доску теста')}
             </button>
           </div>
         </div>

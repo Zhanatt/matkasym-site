@@ -1,4 +1,5 @@
 import { cloudinaryOpt } from '../../utils/drive';
+import { signOf } from '../../utils/price';
 import { SupplierBadge, StatusBadge, ProductImageBadges } from '../../components/ProductBadges';
 
 const NO_PHOTO = '/logos/no-photo.png';
@@ -67,7 +68,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500 }}>{priceLabel}</div>
           <div style={{ fontSize: 13, fontWeight: 800, color: accent }}>
-            {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+            {price > 0 ? `${price.toLocaleString('ru')} ${signOf(product)}` : '—'}
           </div>
         </div>
         <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5, flexShrink: 0,
@@ -112,7 +113,7 @@ export default function AdminProductCard({ product, priceMode = 'retail', accent
               <>
                 <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: accent, lineHeight: 1.2 }}>
-                  {price > 0 ? `${price.toLocaleString('ru')} сом` : '—'}
+                  {price > 0 ? `${price.toLocaleString('ru')} ${signOf(product)}` : '—'}
                 </div>
               </>
             )}
