@@ -28,6 +28,7 @@ const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = requir
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const {
   PL_STAGES, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage, notifyRework,
+  notifyAssigned,
 } = require('../lib/productLaunch');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
@@ -4532,6 +4533,14 @@ const numOrNull = (v) => {
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
 };
 
+// GET /api/admin/product-launches/designers — кого можно назначить исполнителем
+router.get('/product-launches/designers', async (req, res) => {
+  try {
+    const designers = await User.find({ role: 'designer' }).select('name email').sort({ name: 1 }).lean();
+    res.json({ designers });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/admin/product-launches/count — бейдж (незавершённые)
 router.get('/product-launches/count', async (req, res) => {
   try {
@@ -4561,20 +4570,25 @@ router.get('/product-launches', async (req, res) => {
 
 // POST /api/admin/product-launches — завести товар, найденный в интернете.
 // Каталожной карточки у него ещё нет: только название и то, что собрала Зайнагуль.
+//
+// Два входа на доску:
+//   контент-менеджер → сразу «Контент», он же ведёт товар дальше;
+//   любой другой сотрудник → «Предложено менеджерами» — заявка на рассмотрение.
+// Менеджер не может закинуть товар мимо рассмотрения, поэтому этап ему не выбирают.
 router.post('/product-launches', async (req, res) => {
   try {
-    if (!isContentManager(req.user)) {
-      return res.status(403).json({ error: 'Новый товар на тест заводит контент-менеджер' });
-    }
     const { name, photos, sourceUrl, description } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Укажите название товара' });
+
+    const contentMgr = isContentManager(req.user);
+    const stage = contentMgr && req.body.stage !== 'proposed' ? 'content' : 'proposed';
 
     const photoList = Array.isArray(photos) ? photos.filter(Boolean) : [];
     const launch = await ProductLaunch.create({
       number: await nextNumber(),
       name:   name.trim(),
       image:  photoList[0] || '',
-      stage:  'content',
+      stage,
       content: {
         photos:       photoList,
         sourceUrl:    String(sourceUrl || '').trim(),
@@ -4587,7 +4601,7 @@ router.post('/product-launches', async (req, res) => {
       createdByName: req.user.name || '',
     });
 
-    await notifyStage(launch, 'content');
+    await notifyStage(launch, stage);
     res.status(201).json(launch);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -4711,6 +4725,7 @@ router.patch('/product-launches/:id', async (req, res) => {
     const contentMgr = isContentManager(req.user);
     const designer   = isDesignerUser(req.user);
     const ads        = isAdsManager(req.user);
+    let assignedTo   = null;
 
     if (name !== undefined) {
       if (!contentMgr) return res.status(403).json({ error: 'Название меняет контент-менеджер' });
@@ -4770,9 +4785,17 @@ router.patch('/product-launches/:id', async (req, res) => {
           }
         } else if (isValidId(design.assignee)) {
           if (!contentMgr) return res.status(403).json({ error: 'Назначает исполнителя контент-менеджер' });
-          const u = await User.findById(design.assignee).select('name');
-          launch.design.assignee     = design.assignee;
-          launch.design.assigneeName = u?.name || '';
+          const u = await User.findById(design.assignee).select('name role');
+          if (!u) return res.status(404).json({ error: 'Пользователь не найден' });
+          if (u.role !== 'designer') return res.status(400).json({ error: 'Исполнителем может быть только дизайнер' });
+          launch.design.assignee     = u._id;
+          launch.design.assigneeName = u.name || '';
+          assignedTo = u._id;
+          // Контент собран — карточка сразу уходит в работу к назначенному
+          const c = launch.content || {};
+          if (launch.stage === 'content' && c.photos?.length && c.sourceUrl && c.description) {
+            launch.stage = 'design';
+          }
         } else {
           if (!contentMgr) return res.status(403).json({ error: 'Снять исполнителя может контент-менеджер' });
           launch.design.assignee = null;
@@ -4859,8 +4882,9 @@ router.patch('/product-launches/:id', async (req, res) => {
     }
 
     await launch.save();
+    if (assignedTo)   await notifyAssigned(launch, assignedTo);
     if (rework)       await notifyRework(launch);
-    else if (movedTo) await notifyStage(launch, movedTo);
+    else if (movedTo && !assignedTo) await notifyStage(launch, movedTo);
 
     const populated = await ProductLaunch.findById(launch._id)
       .populate('product', 'name fullName sku images stock price productStatus brand set')

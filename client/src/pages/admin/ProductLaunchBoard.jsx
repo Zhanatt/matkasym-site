@@ -7,6 +7,7 @@ import {
   adminDeleteProductLaunch,
   adminCreateLaunchOrderRequest,
   adminCreateLaunchProduct,
+  adminGetLaunchDesigners,
   adminGetProducts,
 } from '../../api';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +19,8 @@ const NO_PHOTO = '/logos/no-photo.png';
 
 // Этапы запуска товара. Порядок = движение слева направо.
 const STAGES = [
+  { key: 'proposed',  label: 'Предложено',      icon: '💡', dot: '#db2777', bg: '#fdf2f8', line: '#fbcfe8',
+    hint: 'Менеджеры скидывают товары, которые спрашивают клиенты' },
   { key: 'content',   label: 'Контент',         icon: '📸', dot: '#DC1E24', bg: '#fef2f2', line: '#fecaca',
     hint: 'Зайнагуль: фото, ссылка на источник, описание' },
   { key: 'design',    label: 'Дизайн',          icon: '🎨', dot: '#7c3aed', bg: '#faf5ff', line: '#e9d5ff',
@@ -122,10 +125,10 @@ export default function ProductLaunchBoard({ onCountChange }) {
         background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
         padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#475569',
       }}>
-        🧪 <b>Тестовая продажа — первый этап.</b> Зайнагуль находит товар в интернете и собирает контент →
-        дизайнеры делают карточку и креативы → согласовываем макеты → выходит пост, продаём по фото → на выбранные товары
-        запускаем таргет → собираем заявки клиентов. Есть спрос — из карточки создаётся
-        <b>заявка на заказ</b> первой партии.
+        🧪 <b>Тестовая продажа — первый этап.</b> Менеджеры предлагают товары, которые спрашивают клиенты →
+        Зайнагуль берёт их в работу и собирает контент → дизайнеры делают карточку и креативы → согласовываем макеты →
+        выходит пост, продаём по фото → на выбранные товары запускаем таргет → собираем заявки клиентов.
+        Есть спрос — из карточки создаётся <b>заявка на заказ</b> первой партии.
       </div>
 
       {/* Шкала этапов */}
@@ -148,12 +151,20 @@ export default function ProductLaunchBoard({ onCountChange }) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        {isContentMgr && (
-          <button onClick={() => setPicker(true)}
+        {isContentMgr ? (
+          <button onClick={() => setPicker('content')}
             style={{ flex: '1 1 220px', padding: '14px', fontSize: 15, fontWeight: 700, color: '#fff',
               background: 'linear-gradient(135deg, #DC1E24 0%, #b3161b 100%)', border: 'none',
               borderRadius: 12, cursor: 'pointer', boxShadow: '0 6px 18px rgba(220,30,36,.22)' }}>
             ＋ Новый товар на тест
+          </button>
+        ) : (
+          // Менеджеру доступен только вход через «Предложено» — дальше решает тот, кто ведёт доску
+          <button onClick={() => setPicker('proposed')}
+            style={{ flex: '1 1 220px', padding: '14px', fontSize: 15, fontWeight: 700, color: '#fff',
+              background: 'linear-gradient(135deg, #db2777 0%, #a81a5c 100%)', border: 'none',
+              borderRadius: 12, cursor: 'pointer', boxShadow: '0 6px 18px rgba(219,39,119,.22)' }}>
+            💡 Предложить товар
           </button>
         )}
         <button onClick={() => setShowDone(v => !v)}
@@ -551,6 +562,23 @@ function DesignBlock({ launch: l, canEdit, isDesigner, isContentMgr, busy, onSav
   const [uploading, setUploading] = useState(false);
   const [linking, setLinking] = useState(false);
   const [adding, setAdding]   = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [designers, setDesigners] = useState([]);
+  const [pick, setPick]       = useState('');
+
+  // Список дизайнеров тянем только когда реально назначают
+  useEffect(() => {
+    if (!picking || designers.length) return;
+    adminGetLaunchDesigners()
+      .then(r => setDesigners(r.data.designers || []))
+      .catch(() => setDesigners([]));
+  }, [picking, designers.length]);
+
+  const assign = async () => {
+    if (!pick) return;
+    await onSave({ design: { assignee: pick } }, 'assign');
+    setPicking(false); setPick('');
+  };
 
   // Дизайнер заводит карточку товара прямо отсюда: имя, фото и описание берутся из теста,
   // остальное (цена, сет, характеристики) дозаполняется в самой карточке.
@@ -586,6 +614,34 @@ function DesignBlock({ launch: l, canEdit, isDesigner, isContentMgr, busy, onSav
         <span style={{ fontSize: 13, color: '#5b6572' }}>
           Исполнитель: <b style={{ color: '#111' }}>{l.design?.assigneeName || '—'}</b>
         </span>
+        {/* Назначить дизайнера может тот, кто ведёт доску; дизайнер берёт карточку сам */}
+        {isContentMgr && !picking && (
+          <button onClick={() => setPicking(true)} disabled={!!busy}
+            style={{ padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#7c3aed', background: '#fff',
+              border: '1.5px solid #e9d5ff', borderRadius: 8, cursor: 'pointer' }}>
+            {l.design?.assignee ? 'Сменить' : 'Назначить'}
+          </button>
+        )}
+        {isContentMgr && picking && (
+          <>
+            <select autoFocus value={pick} onChange={e => setPick(e.target.value)}
+              style={{ ...inputStyle, width: 'auto', minWidth: 170, padding: '7px 10px', fontSize: 13, cursor: 'pointer' }}>
+              <option value="">{designers.length ? 'Выберите дизайнера…' : 'Загрузка…'}</option>
+              {designers.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
+            </select>
+            <button onClick={assign} disabled={!!busy || !pick}
+              style={{ padding: '7px 12px', fontSize: 12.5, fontWeight: 700, color: '#fff',
+                background: pick ? '#7c3aed' : '#cbd5e1', border: 'none', borderRadius: 8,
+                cursor: pick ? 'pointer' : 'default' }}>
+              Назначить
+            </button>
+            <button onClick={() => { setPicking(false); setPick(''); }} disabled={!!busy}
+              style={{ padding: '7px 10px', fontSize: 12.5, fontWeight: 700, color: '#555',
+                background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+              Отмена
+            </button>
+          </>
+        )}
         {isDesigner && (
           <button onClick={() => onSave({ design: { assignee: 'me' } }, 'assign')} disabled={!!busy}
             title="Карточка сразу перейдёт на этап «Дизайн»"

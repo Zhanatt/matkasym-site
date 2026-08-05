@@ -5,8 +5,9 @@ const { sendTelegramMessage } = require('./telegram');
 
 const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
 
-const PL_STAGES = ['content', 'design', 'review', 'published', 'target', 'feedback', 'done'];
+const PL_STAGES = ['proposed', 'content', 'design', 'review', 'published', 'target', 'feedback', 'done'];
 const PL_STAGE_LABEL = {
+  proposed:  'Предложено менеджерами',
   content:   'Контент',
   design:    'Дизайн',
   review:    'Согласование',
@@ -40,6 +41,13 @@ async function recipientsForStage(stage) {
 }
 
 const STAGE_TEXT = {
+  // Предложение от менеджера — уходит тем, кто ведёт доску: решить, брать в работу или нет
+  proposed:  l => `💡 <b>Менеджер предложил товар</b> №${l.number}\n${l.name}\n\n` +
+                  (l.createdByName ? `Предложил: ${l.createdByName}\n` : '') +
+                  (l.content?.sourceUrl ? `Источник: ${l.content.sourceUrl}\n` : '') +
+                  (l.content?.description ? `Почему: ${l.content.description}\n` : '') +
+                  (l.content?.photos?.length ? `Фото: ${l.content.photos.length} шт.\n` : '') +
+                  `\nПосмотрите и возьмите в работу — или уберите с доски.`,
   content:   l => `🧪 <b>Новый товар на тест</b> №${l.number}\n${l.name}\n\nЭтап: <b>Контент</b> — нужны фото, ссылка на источник и описание.`,
   design:    l => `🎨 <b>Товар готов к дизайну</b> №${l.number}\n${l.name}\n\n` +
                   (l.content?.sourceUrl ? `Источник: ${l.content.sourceUrl}\n` : '') +
@@ -83,6 +91,22 @@ async function notifyRework(launch) {
   }
 }
 
+// Назначили исполнителя — говорим об этом лично ему
+async function notifyAssigned(launch, userId) {
+  try {
+    const u = await User.findOne({ _id: userId, telegramChatId: { $nin: ['', null] } })
+      .select('telegramChatId').lean();
+    if (!u) return;
+    const text = `🎨 <b>Вам назначили дизайн</b> №${launch.number}\n${launch.name}\n\n` +
+      (launch.content?.sourceUrl ? `Источник: ${launch.content.sourceUrl}\n` : '') +
+      (launch.content?.description ? `Описание: ${launch.content.description}\n` : '') +
+      `Фото: ${launch.content?.photos?.length || 0} шт.\n\n${SITE_URL}/admin/pending-receive`;
+    await sendTelegramMessage(u.telegramChatId, text);
+  } catch (e) {
+    console.error('[product-launch] telegram assign notify failed:', e.message);
+  }
+}
+
 async function notifyStage(launch, stage) {
   try {
     const build = STAGE_TEXT[stage];
@@ -96,4 +120,4 @@ async function notifyStage(launch, stage) {
   }
 }
 
-module.exports = { PL_STAGES, PL_STAGE_LABEL, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage, notifyRework };
+module.exports = { PL_STAGES, PL_STAGE_LABEL, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage, notifyRework, notifyAssigned };
