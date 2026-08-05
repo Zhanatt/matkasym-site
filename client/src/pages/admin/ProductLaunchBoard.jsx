@@ -327,12 +327,17 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
 
       {(l.stage === 'target' || l.stage === 'feedback' || l.stage === 'done') && (
         <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-          {METRICS.map(m => (
-            <div key={m.key} style={{ textAlign: 'center', background: '#f8fafc', borderRadius: 8, padding: '5px 2px' }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{num(l.result?.[m.key])}</div>
-              <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{m.icon}</div>
-            </div>
-          ))}
+          {METRICS.map(m => {
+            const rows = l.results || [];
+            const has = rows.some(r => r[m.key] !== null && r[m.key] !== undefined);
+            const sum = rows.reduce((acc, r) => acc + (r[m.key] || 0), 0);
+            return (
+              <div key={m.key} style={{ textAlign: 'center', background: '#f8fafc', borderRadius: 8, padding: '5px 2px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{has ? sum : '—'}</div>
+                <div style={{ fontSize: 9.5, color: '#94a3b8' }}>{m.icon}</div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -948,35 +953,123 @@ function TargetBlock({ launch: l, canEdit, busy, onSave }) {
 }
 
 function ResultBlock({ launch: l, canEdit, busy, onSave }) {
-  const init = () => Object.fromEntries(METRICS.map(m => [m.key, l.result?.[m.key] ?? '']));
-  const [vals, setVals] = useState(init);
+  const rows = l.results || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [vals, setVals] = useState({});
+  const [dayNote, setDayNote] = useState('');
   const [note, setNote] = useState(l.result?.note || '');
 
-  useEffect(() => { setVals(init()); setNote(l.result?.note || ''); }, [l._id, JSON.stringify(l.result)]);
+  useEffect(() => { setNote(l.result?.note || ''); }, [l._id, l.result?.note]);
 
-  const dirty = METRICS.some(m => String(vals[m.key] ?? '') !== String(l.result?.[m.key] ?? ''))
-    || note !== (l.result?.note || '');
+  // Выбрали дату, по которой замер уже есть — показываем его для правки
+  useEffect(() => {
+    const row = rows.find(r => String(r.date).slice(0, 10) === date);
+    setVals(Object.fromEntries(METRICS.map(m => [m.key, row?.[m.key] ?? ''])));
+    setDayNote(row?.note || '');
+  }, [date, JSON.stringify(rows)]);
+
+  const totals = METRICS.map(m => ({
+    ...m,
+    sum: rows.reduce((acc, r) => acc + (r[m.key] || 0), 0),
+    has: rows.some(r => r[m.key] !== null && r[m.key] !== undefined),
+  }));
+
+  const editing = rows.some(r => String(r.date).slice(0, 10) === date);
+  const dirtyNote = note !== (l.result?.note || '');
+
+  const saveDay = () => {
+    if (!date) { alert('Выберите дату'); return; }
+    if (METRICS.every(m => String(vals[m.key] ?? '') === '') && !dayNote.trim()) {
+      alert('Заполните хотя бы одно поле');
+      return;
+    }
+    onSave({ dayResult: { date, ...vals, note: dayNote } }, 'day');
+  };
+
+  const removeDay = (d) => {
+    if (!window.confirm(`Удалить результат за ${fmtDay(d)}?`)) return;
+    onSave({ removeResultDate: String(d).slice(0, 10) }, 'day');
+  };
 
   return (
     <Section title="📊 Результат поста" accent="#15803d" bg="#f0fdf4" line="#bbf7d0">
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 12 }}>
-        {METRICS.map(m => (
-          <div key={m.key}>
-            <div style={{ ...labelStyle, fontSize: 11.5 }}>{m.icon} {m.label}</div>
-            {canEdit ? (
-              <input inputMode="numeric" value={vals[m.key]}
-                onChange={e => setVals(v => ({ ...v, [m.key]: e.target.value.replace(/[^\d]/g, '') }))}
-                placeholder="—" style={{ ...inputStyle, textAlign: 'center', fontSize: 18, fontWeight: 800, padding: '8px' }} />
-            ) : (
-              <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 800, color: '#111',
-                background: '#fff', borderRadius: 10, padding: '8px' }}>{num(l.result?.[m.key])}</div>
-            )}
+      {/* Итого по всем дням */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, marginBottom: 14 }}>
+        {totals.map(m => (
+          <div key={m.key} style={{ background: '#fff', borderRadius: 10, padding: '8px 6px', textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>{m.icon} {m.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#111' }}>{m.has ? m.sum : '—'}</div>
           </div>
         ))}
       </div>
 
+      {/* Замеры по дням */}
+      {rows.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+          {rows.map(r => (
+            <div key={String(r.date)} style={{ display: 'flex', alignItems: 'center', gap: 8,
+              background: '#fff', border: '1px solid #dcfce7', borderRadius: 10, padding: '8px 10px' }}>
+              <button onClick={() => setDate(String(r.date).slice(0, 10))}
+                title="Показать для правки"
+                style={{ flex: '0 0 auto', fontSize: 12.5, fontWeight: 800, color: '#15803d', background: 'transparent',
+                  border: 'none', cursor: 'pointer', padding: 0 }}>
+                {fmtDay(r.date)}
+              </button>
+              <div style={{ flex: 1, display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 12.5, color: '#475569' }}>
+                {METRICS.map(m => (
+                  <span key={m.key}>{m.icon} <b style={{ color: '#111' }}>{num(r[m.key])}</b></span>
+                ))}
+              </div>
+              {r.note && <span style={{ fontSize: 11.5, color: '#94a3b8', flex: '1 1 100%' }}>💬 {r.note}</span>}
+              {canEdit && (
+                <button onClick={() => removeDay(r.date)} disabled={!!busy} title="Удалить замер"
+                  style={{ flex: '0 0 auto', width: 24, height: 24, borderRadius: 7, border: 'none',
+                    background: '#fdecea', color: '#c0392b', fontSize: 12, cursor: 'pointer' }}>✕</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Ввод за конкретный день */}
+      {canEdit && (
+        <div style={{ background: '#fff', border: '1px solid #bbf7d0', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#374151' }}>Результат за день</span>
+            <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)}
+              style={{ ...inputStyle, width: 'auto', padding: '7px 10px', fontSize: 13 }} />
+            {editing && <span style={{ fontSize: 11.5, color: '#15803d' }}>замер за этот день уже есть — правим</span>}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, marginBottom: 10 }}>
+            {METRICS.map(m => (
+              <div key={m.key}>
+                <div style={{ ...labelStyle, fontSize: 11.5 }}>{m.icon} {m.label}</div>
+                <input inputMode="numeric" value={vals[m.key] ?? ''}
+                  onChange={e => setVals(v => ({ ...v, [m.key]: e.target.value.replace(/[^\d]/g, '') }))}
+                  placeholder="—" style={{ ...inputStyle, textAlign: 'center', fontSize: 17, fontWeight: 800, padding: '8px' }} />
+              </div>
+            ))}
+          </div>
+
+          <input value={dayNote} onChange={e => setDayNote(e.target.value)}
+            placeholder="Заметка за день (необязательно)" style={{ ...inputStyle, marginBottom: 10 }} />
+
+          <button onClick={saveDay} disabled={!!busy}
+            style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, color: '#fff',
+              background: '#22c55e', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+            {busy === 'day' ? 'Сохраняю…' : editing ? 'Обновить за ' + fmtDay(date) : 'Сохранить за ' + fmtDay(date)}
+          </button>
+        </div>
+      )}
+
+      {!canEdit && rows.length === 0 && (
+        <div style={{ fontSize: 13, color: '#9aa5b1', marginBottom: 12 }}>Замеров пока нет.</div>
+      )}
+
       <div style={{ marginBottom: canEdit ? 12 : 0 }}>
-        <div style={labelStyle}>Вывод</div>
+        <div style={labelStyle}>Общий вывод</div>
         {canEdit ? (
           <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
             placeholder="Что спрашивали, брать ли партию…" style={{ ...inputStyle, resize: 'vertical' }} />
@@ -985,11 +1078,11 @@ function ResultBlock({ launch: l, canEdit, busy, onSave }) {
         )}
       </div>
 
-      {canEdit && dirty && (
-        <button onClick={() => onSave({ result: { ...vals, note } }, 'result')} disabled={!!busy}
+      {canEdit && dirtyNote && (
+        <button onClick={() => onSave({ result: { note } }, 'result')} disabled={!!busy}
           style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, color: '#fff',
-            background: '#22c55e', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
-          {busy === 'result' ? 'Сохраняю…' : 'Сохранить результат'}
+            background: '#15803d', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+          {busy === 'result' ? 'Сохраняю…' : 'Сохранить вывод'}
         </button>
       )}
 

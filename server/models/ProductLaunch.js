@@ -74,12 +74,20 @@ const productLaunchSchema = new mongoose.Schema({
     byName:    { type: String, default: '' },              // кто отправил в таргет
   },
 
-  // Итог поста и рекламы — цифры вносит тот, кто ведёт доску, или таргетолог
+  // Замеры по дням: пост и реклама дают отклик не разом, поэтому считаем по датам.
+  // Одна запись — итог одного дня; на день приходится не больше одной строки.
+  results: [{
+    date:      { type: Date, required: true },
+    inquiries: { type: Number, default: null },  // новые обращения
+    reactions: { type: Number, default: null },
+    comments:  { type: Number, default: null },
+    requests:  { type: Number, default: null },  // заявки от клиентов — из них и растёт заказ партии
+    note:      { type: String, default: '', trim: true },
+    byName:    { type: String, default: '' },
+  }],
+
+  // Общий вывод по тесту — вносит тот, кто ведёт доску, или таргетолог
   result: {
-    inquiries:     { type: Number, default: null },  // новые обращения
-    reactions:     { type: Number, default: null },
-    comments:      { type: Number, default: null },
-    requests:      { type: Number, default: null },  // заявки от клиентов — из них и растёт заказ партии
     note:          { type: String, default: '', trim: true },
     updatedByName: { type: String, default: '' },
     updatedAt:     { type: Date },

@@ -4538,6 +4538,16 @@ const sanitizeLinks = (list) => (Array.isArray(list) ? list : [])
   .map(l => ({ platform: String(l?.platform || '').trim(), url: String(l?.url || '').trim() }))
   .filter(l => l.platform || l.url);
 
+// День замера: одна строка на дату, время отбрасываем. Без даты замер не принимаем —
+// иначе цифры незаметно упадут на сегодня.
+const dayStart = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (isNaN(d)) return null;
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+};
+const sameDay = (a, b) => a && b && new Date(a).toISOString().slice(0, 10) === new Date(b).toISOString().slice(0, 10);
+
 // Пустое значение метрики = «ещё не считали», а не ноль
 const numOrNull = (v) => {
   if (v === '' || v === null || v === undefined) return null;
@@ -4677,10 +4687,11 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
     if (launch.request) return res.status(409).json({ error: 'Заявка по этому товару уже создана' });
 
     const qty = Number(req.body?.quantity);
+    const totalRequests = (launch.results || []).reduce((sum, r) => sum + (r.requests || 0), 0);
     const photoList = launch.content?.photos?.length ? launch.content.photos : (launch.image ? [launch.image] : []);
     const noteParts = [
       `Тестовая продажа №${launch.number}`,
-      launch.result?.requests ? `заявок от клиентов: ${launch.result.requests}` : '',
+      totalRequests ? `заявок от клиентов: ${totalRequests}` : '',
       launch.content?.sourceUrl ? `источник: ${launch.content.sourceUrl}` : '',
       String(req.body?.note || '').trim(),
     ].filter(Boolean);
@@ -4712,7 +4723,7 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
         .select('telegramChatId').lean();
       const caption = `🛒 Новая заявка №${request.number} · по итогам тестовой продажи\n` +
         `Товар: ${request.name}\n` +
-        (launch.result?.requests ? `Заявок от клиентов: ${launch.result.requests}\n` : '') +
+        (totalRequests ? `Заявок от клиентов: ${totalRequests}\n` : '') +
         (request.quantity ? `Количество: ${request.quantity} шт\n` : '') +
         `От: ${request.createdByName || ''}`;
       for (const u of recipients) {
@@ -4733,7 +4744,10 @@ router.patch('/product-launches/:id', async (req, res) => {
     const launch = await ProductLaunch.findById(req.params.id);
     if (!launch) return res.status(404).json({ error: 'Карточка не найдена' });
 
-    const { content, design, review, publish, target, result, stage, name, product, outcome } = req.body;
+    const {
+      content, design, review, publish, target, result, dayResult, removeResultDate,
+      stage, name, product, outcome,
+    } = req.body;
     const contentMgr = isContentManager(req.user);
     const designer   = isDesignerUser(req.user);
     const ads        = isAdsManager(req.user);
@@ -4843,12 +4857,33 @@ router.patch('/product-launches/:id', async (req, res) => {
       }
     }
 
-    // ── Результат поста ── его же заполняет таргетолог по итогам рекламы
+    // ── Замер за день ── вносит тот, кто ведёт доску, или таргетолог
+    if (dayResult !== undefined) {
+      if (!contentMgr && !ads) return res.status(403).json({ error: 'Результат вносит контент-менеджер или таргетолог' });
+      const date = dayStart(dayResult.date);
+      if (!date) return res.status(400).json({ error: 'Укажите дату замера' });
+
+      const row = launch.results.find(r => sameDay(r.date, date));
+      const target = row || launch.results.create({ date });
+      for (const key of ['inquiries', 'reactions', 'comments', 'requests']) {
+        if (dayResult[key] !== undefined) target[key] = numOrNull(dayResult[key]);
+      }
+      if (dayResult.note !== undefined) target.note = String(dayResult.note).trim();
+      target.byName = req.user.name || '';
+      if (!row) launch.results.push(target);
+      launch.results.sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    // ── Удалить замер за день ──
+    if (removeResultDate !== undefined) {
+      if (!contentMgr && !ads) return res.status(403).json({ error: 'Нет доступа' });
+      const date = dayStart(removeResultDate);
+      launch.results = launch.results.filter(r => !sameDay(r.date, date));
+    }
+
+    // ── Общий вывод по тесту ──
     if (result !== undefined) {
       if (!contentMgr && !ads) return res.status(403).json({ error: 'Результат вносит контент-менеджер или таргетолог' });
-      for (const key of ['inquiries', 'reactions', 'comments', 'requests']) {
-        if (result[key] !== undefined) launch.result[key] = numOrNull(result[key]);
-      }
       if (result.note !== undefined) launch.result.note = String(result.note).trim();
       launch.result.updatedByName = req.user.name || '';
       launch.result.updatedAt = new Date();
