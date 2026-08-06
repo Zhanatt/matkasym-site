@@ -81,7 +81,6 @@ const productLaunchSchema = new mongoose.Schema({
     inquiries: { type: Number, default: null },  // новые обращения
     reactions: { type: Number, default: null },
     comments:  { type: Number, default: null },
-    requests:  { type: Number, default: null },  // заявки от клиентов — из них и растёт заказ партии
     note:      { type: String, default: '', trim: true },
     byName:    { type: String, default: '' },
   }],

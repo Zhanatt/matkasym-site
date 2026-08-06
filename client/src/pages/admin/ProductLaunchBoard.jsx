@@ -43,7 +43,6 @@ const METRICS = [
   { key: 'inquiries', label: 'Новые обращения', icon: '💬' },
   { key: 'reactions', label: 'Реакции',         icon: '❤️' },
   { key: 'comments',  label: 'Комментарии',     icon: '🗨' },
-  { key: 'requests',  label: 'Заявки клиентов', icon: '🛒' },
 ];
 
 const fmtDay = d => d ? new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
@@ -326,7 +325,7 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
       )}
 
       {(l.stage === 'target' || l.stage === 'feedback' || l.stage === 'done') && (
-        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: `repeat(${METRICS.length}, 1fr)`, gap: 6 }}>
           {METRICS.map(m => {
             const rows = l.results || [];
             const has = rows.some(r => r[m.key] !== null && r[m.key] !== undefined);
@@ -952,120 +951,56 @@ function TargetBlock({ launch: l, canEdit, busy, onSave }) {
   );
 }
 
+// Результат по дням: карточка на каждый день, «＋» добавляет следующий
 function ResultBlock({ launch: l, canEdit, busy, onSave }) {
   const rows = l.results || [];
   const today = new Date().toISOString().slice(0, 10);
-  const [date, setDate] = useState(today);
-  const [vals, setVals] = useState({});
-  const [dayNote, setDayNote] = useState('');
+  const [drafts, setDrafts] = useState([]);   // новые дни, ещё не сохранённые
   const [note, setNote] = useState(l.result?.note || '');
 
   useEffect(() => { setNote(l.result?.note || ''); }, [l._id, l.result?.note]);
-
-  // Выбрали дату, по которой замер уже есть — показываем его для правки
+  // Сохранённый день перестаёт быть черновиком
   useEffect(() => {
-    const row = rows.find(r => String(r.date).slice(0, 10) === date);
-    setVals(Object.fromEntries(METRICS.map(m => [m.key, row?.[m.key] ?? ''])));
-    setDayNote(row?.note || '');
-  }, [date, JSON.stringify(rows)]);
+    setDrafts(ds => ds.filter(d => !rows.some(r => String(r.date).slice(0, 10) === d.date)));
+  }, [JSON.stringify(rows.map(r => r.date))]);
 
-  const totals = METRICS.map(m => ({
-    ...m,
-    sum: rows.reduce((acc, r) => acc + (r[m.key] || 0), 0),
-    has: rows.some(r => r[m.key] !== null && r[m.key] !== undefined),
-  }));
-
-  const editing = rows.some(r => String(r.date).slice(0, 10) === date);
-  const dirtyNote = note !== (l.result?.note || '');
-
-  const saveDay = () => {
-    if (!date) { alert('Выберите дату'); return; }
-    if (METRICS.every(m => String(vals[m.key] ?? '') === '') && !dayNote.trim()) {
-      alert('Заполните хотя бы одно поле');
-      return;
+  const usedDates = new Set([...rows.map(r => String(r.date).slice(0, 10)), ...drafts.map(d => d.date)]);
+  const freeDate = () => {
+    const d = new Date();
+    for (let i = 0; i < 60; i++) {
+      const iso = new Date(d.getTime() - i * 86400000).toISOString().slice(0, 10);
+      if (!usedDates.has(iso)) return iso;
     }
-    onSave({ dayResult: { date, ...vals, note: dayNote } }, 'day');
+    return today;
   };
 
-  const removeDay = (d) => {
-    if (!window.confirm(`Удалить результат за ${fmtDay(d)}?`)) return;
-    onSave({ removeResultDate: String(d).slice(0, 10) }, 'day');
-  };
+  const addDraft = () => setDrafts(ds => [...ds, { key: Date.now(), date: freeDate() }]);
+  const dirtyNote = note !== (l.result?.note || '');
 
   return (
     <Section title="📊 Результат поста" accent="#15803d" bg="#f0fdf4" line="#bbf7d0">
-      {/* Итого по всем дням */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, marginBottom: 14 }}>
-        {totals.map(m => (
-          <div key={m.key} style={{ background: '#fff', borderRadius: 10, padding: '8px 6px', textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>{m.icon} {m.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#111' }}>{m.has ? m.sum : '—'}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Замеры по дням */}
-      {rows.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-          {rows.map(r => (
-            <div key={String(r.date)} style={{ display: 'flex', alignItems: 'center', gap: 8,
-              background: '#fff', border: '1px solid #dcfce7', borderRadius: 10, padding: '8px 10px' }}>
-              <button onClick={() => setDate(String(r.date).slice(0, 10))}
-                title="Показать для правки"
-                style={{ flex: '0 0 auto', fontSize: 12.5, fontWeight: 800, color: '#15803d', background: 'transparent',
-                  border: 'none', cursor: 'pointer', padding: 0 }}>
-                {fmtDay(r.date)}
-              </button>
-              <div style={{ flex: 1, display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 12.5, color: '#475569' }}>
-                {METRICS.map(m => (
-                  <span key={m.key}>{m.icon} <b style={{ color: '#111' }}>{num(r[m.key])}</b></span>
-                ))}
-              </div>
-              {r.note && <span style={{ fontSize: 11.5, color: '#94a3b8', flex: '1 1 100%' }}>💬 {r.note}</span>}
-              {canEdit && (
-                <button onClick={() => removeDay(r.date)} disabled={!!busy} title="Удалить замер"
-                  style={{ flex: '0 0 auto', width: 24, height: 24, borderRadius: 7, border: 'none',
-                    background: '#fdecea', color: '#c0392b', fontSize: 12, cursor: 'pointer' }}>✕</button>
-              )}
-            </div>
-          ))}
+      {rows.length === 0 && drafts.length === 0 && (
+        <div style={{ fontSize: 13, color: '#9aa5b1', marginBottom: 12 }}>
+          {canEdit ? 'Замеров пока нет — добавьте первый день.' : 'Замеров пока нет.'}
         </div>
       )}
 
-      {/* Ввод за конкретный день */}
+      {rows.map(r => (
+        <DayCard key={String(r.date)} row={r} canEdit={canEdit} busy={busy} onSave={onSave} />
+      ))}
+
+      {drafts.map(d => (
+        <DayCard key={d.key} draftDate={d.date} canEdit={canEdit} busy={busy} onSave={onSave}
+          onCancel={() => setDrafts(ds => ds.filter(x => x.key !== d.key))} />
+      ))}
+
       {canEdit && (
-        <div style={{ background: '#fff', border: '1px solid #bbf7d0', borderRadius: 12, padding: 12, marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#374151' }}>Результат за день</span>
-            <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)}
-              style={{ ...inputStyle, width: 'auto', padding: '7px 10px', fontSize: 13 }} />
-            {editing && <span style={{ fontSize: 11.5, color: '#15803d' }}>замер за этот день уже есть — правим</span>}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, marginBottom: 10 }}>
-            {METRICS.map(m => (
-              <div key={m.key}>
-                <div style={{ ...labelStyle, fontSize: 11.5 }}>{m.icon} {m.label}</div>
-                <input inputMode="numeric" value={vals[m.key] ?? ''}
-                  onChange={e => setVals(v => ({ ...v, [m.key]: e.target.value.replace(/[^\d]/g, '') }))}
-                  placeholder="—" style={{ ...inputStyle, textAlign: 'center', fontSize: 17, fontWeight: 800, padding: '8px' }} />
-              </div>
-            ))}
-          </div>
-
-          <input value={dayNote} onChange={e => setDayNote(e.target.value)}
-            placeholder="Заметка за день (необязательно)" style={{ ...inputStyle, marginBottom: 10 }} />
-
-          <button onClick={saveDay} disabled={!!busy}
-            style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, color: '#fff',
-              background: '#22c55e', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
-            {busy === 'day' ? 'Сохраняю…' : editing ? 'Обновить за ' + fmtDay(date) : 'Сохранить за ' + fmtDay(date)}
-          </button>
-        </div>
-      )}
-
-      {!canEdit && rows.length === 0 && (
-        <div style={{ fontSize: 13, color: '#9aa5b1', marginBottom: 12 }}>Замеров пока нет.</div>
+        <button onClick={addDraft} disabled={!!busy}
+          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, color: '#15803d',
+            background: '#fff', border: '1.5px dashed #86efac', borderRadius: 10, cursor: 'pointer',
+            marginBottom: 14 }}>
+          ＋ Ещё день
+        </button>
       )}
 
       <div style={{ marginBottom: canEdit ? 12 : 0 }}>
@@ -1092,6 +1027,100 @@ function ResultBlock({ launch: l, canEdit, busy, onSave }) {
         </div>
       )}
     </Section>
+  );
+}
+
+// Один день: дата, три показателя, заметка
+function DayCard({ row, draftDate, canEdit, busy, onSave, onCancel }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(row ? String(row.date).slice(0, 10) : draftDate || today);
+  const [vals, setVals] = useState(() => Object.fromEntries(METRICS.map(m => [m.key, row?.[m.key] ?? ''])));
+  const [note, setNote] = useState(row?.note || '');
+
+  useEffect(() => {
+    if (!row) return;
+    setDate(String(row.date).slice(0, 10));
+    setVals(Object.fromEntries(METRICS.map(m => [m.key, row[m.key] ?? ''])));
+    setNote(row.note || '');
+  }, [JSON.stringify(row)]);
+
+  const dirty = !row
+    || date !== String(row.date).slice(0, 10)
+    || note !== (row.note || '')
+    || METRICS.some(m => String(vals[m.key] ?? '') !== String(row[m.key] ?? ''));
+
+  const save = () => {
+    if (!date) { alert('Выберите дату'); return; }
+    if (METRICS.every(m => String(vals[m.key] ?? '') === '') && !note.trim()) {
+      alert('Заполните хотя бы одно поле');
+      return;
+    }
+    onSave({ dayResult: { date, ...vals, note } }, 'day');
+  };
+
+  const remove = () => {
+    if (!window.confirm(`Удалить результат за ${fmtDay(row.date)}?`)) return;
+    onSave({ removeResultDate: String(row.date).slice(0, 10) }, 'day');
+  };
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #bbf7d0', borderRadius: 12, padding: 12, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#374151' }}>Результат за день</span>
+        {canEdit ? (
+          <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)}
+            style={{ ...inputStyle, width: 'auto', padding: '7px 10px', fontSize: 13 }} />
+        ) : (
+          <b style={{ fontSize: 13 }}>{fmtDay(date)}</b>
+        )}
+        <span style={{ flex: 1 }} />
+        {canEdit && row && (
+          <button onClick={remove} disabled={!!busy} title="Удалить день"
+            style={{ width: 26, height: 26, borderRadius: 8, border: 'none', background: '#fdecea',
+              color: '#c0392b', fontSize: 13, cursor: 'pointer' }}>✕</button>
+        )}
+        {canEdit && !row && onCancel && (
+          <button onClick={onCancel} disabled={!!busy} title="Убрать"
+            style={{ width: 26, height: 26, borderRadius: 8, border: 'none', background: '#f1f5f9',
+              color: '#64748b', fontSize: 13, cursor: 'pointer' }}>✕</button>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 10 }}>
+        {METRICS.map(m => (
+          <div key={m.key}>
+            <div style={{ ...labelStyle, fontSize: 11.5 }}>{m.icon} {m.label}</div>
+            {canEdit ? (
+              <input inputMode="numeric" value={vals[m.key] ?? ''}
+                onChange={e => setVals(v => ({ ...v, [m.key]: e.target.value.replace(/[^\d]/g, '') }))}
+                placeholder="—" style={{ ...inputStyle, textAlign: 'center', fontSize: 17, fontWeight: 800, padding: '8px' }} />
+            ) : (
+              <div style={{ textAlign: 'center', fontSize: 18, fontWeight: 800, color: '#111',
+                background: '#f8fafc', borderRadius: 10, padding: '8px' }}>{num(row?.[m.key])}</div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {canEdit ? (
+        <input value={note} onChange={e => setNote(e.target.value)}
+          placeholder="Заметка за день (необязательно)" style={{ ...inputStyle, marginBottom: dirty ? 10 : 0 }} />
+      ) : note ? (
+        <div style={{ fontSize: 12.5, color: '#64748b' }}>💬 {note}</div>
+      ) : null}
+
+      {canEdit && dirty && (
+        <button onClick={save} disabled={!!busy}
+          style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 700, color: '#fff',
+            background: '#22c55e', border: 'none', borderRadius: 10, cursor: 'pointer' }}>
+          {busy === 'day' ? 'Сохраняю…' : `Сохранить за ${fmtDay(date)}`}
+        </button>
+      )}
+
+      {row?.byName && !dirty && (
+        <div style={{ fontSize: 11, color: '#9aa5b1', marginTop: 8 }}>👤 {row.byName}</div>
+      )}
+    </div>
   );
 }
 

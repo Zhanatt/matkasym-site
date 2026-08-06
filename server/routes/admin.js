@@ -4687,11 +4687,11 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
     if (launch.request) return res.status(409).json({ error: 'Заявка по этому товару уже создана' });
 
     const qty = Number(req.body?.quantity);
-    const totalRequests = (launch.results || []).reduce((sum, r) => sum + (r.requests || 0), 0);
+    const totalInquiries = (launch.results || []).reduce((sum, r) => sum + (r.inquiries || 0), 0);
     const photoList = launch.content?.photos?.length ? launch.content.photos : (launch.image ? [launch.image] : []);
     const noteParts = [
       `Тестовая продажа №${launch.number}`,
-      totalRequests ? `заявок от клиентов: ${totalRequests}` : '',
+      totalInquiries ? `обращений за тест: ${totalInquiries}` : '',
       launch.content?.sourceUrl ? `источник: ${launch.content.sourceUrl}` : '',
       String(req.body?.note || '').trim(),
     ].filter(Boolean);
@@ -4723,7 +4723,7 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
         .select('telegramChatId').lean();
       const caption = `🛒 Новая заявка №${request.number} · по итогам тестовой продажи\n` +
         `Товар: ${request.name}\n` +
-        (totalRequests ? `Заявок от клиентов: ${totalRequests}\n` : '') +
+        (totalInquiries ? `Обращений за тест: ${totalInquiries}\n` : '') +
         (request.quantity ? `Количество: ${request.quantity} шт\n` : '') +
         `От: ${request.createdByName || ''}`;
       for (const u of recipients) {
@@ -4865,7 +4865,7 @@ router.patch('/product-launches/:id', async (req, res) => {
 
       const row = launch.results.find(r => sameDay(r.date, date));
       const target = row || launch.results.create({ date });
-      for (const key of ['inquiries', 'reactions', 'comments', 'requests']) {
+      for (const key of ['inquiries', 'reactions', 'comments']) {
         if (dayResult[key] !== undefined) target[key] = numOrNull(dayResult[key]);
       }
       if (dayResult.note !== undefined) target.note = String(dayResult.note).trim();
