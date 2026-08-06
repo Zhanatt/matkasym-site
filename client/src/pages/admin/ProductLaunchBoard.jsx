@@ -279,7 +279,10 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
         <img src={cloudinaryOpt(img, 160)} alt="" loading="lazy" onError={e => { e.target.src = NO_PHOTO; }}
           style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', background: '#f1f5f9', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10.5, color: '#b0b8c1' }}>№{l.number}</div>
+          <div style={{ fontSize: 10.5, color: '#b0b8c1' }}>
+            №{l.number}
+            {l.fromRequestNumber ? <span style={{ marginLeft: 6 }}>· из заявки №{l.fromRequestNumber}</span> : null}
+          </div>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: '#111', margin: '2px 0 3px' }}>
             {l.name || l.productName}
           </div>
@@ -389,7 +392,11 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
               onError={e => { e.target.src = NO_PHOTO; }}
               style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', background: '#f1f5f9' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11.5, color: '#b0b8c1' }}>Тест №{l.number}</div>
+              <div style={{ fontSize: 11.5, color: '#b0b8c1' }}>
+                Тест №{l.number}
+                {l.fromRequestNumber ? <span> · предложен заявкой №{l.fromRequestNumber}</span> : null}
+                {l.createdByName ? <span> · {l.createdByName}</span> : null}
+              </div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#111', margin: '2px 0 4px' }}>
                 {l.name || l.productName}
               </div>

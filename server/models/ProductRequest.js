@@ -50,6 +50,9 @@ const productRequestSchema = new mongoose.Schema({
   deliveryDate:  { type: Date,   default: null },   // когда товар будет
   purchaseNote:  { type: String, default: '', trim: true },
 
+  // Заявка переехала на доску тестовой продажи (этап «Предложено») — в закупке её больше нет
+  movedToLaunch: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductLaunch', default: null },
+
   doneBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   doneByName: { type: String, default: '' },
   doneAt:     { type: Date },

@@ -4412,7 +4412,7 @@ function sanitizeSuppliers(list) {
 // GET /api/admin/product-requests/count — бейдж (не завершённые). Доступно всем в админке
 router.get('/product-requests/count', async (req, res) => {
   try {
-    const activeCount = await ProductRequest.countDocuments({ status: { $ne: 'done' } });
+    const activeCount = await ProductRequest.countDocuments({ status: { $ne: 'done' }, movedToLaunch: null });
     res.json({ activeCount });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4421,7 +4421,7 @@ router.get('/product-requests/count', async (req, res) => {
 router.get('/product-requests', async (req, res) => {
   try {
     const { status, type } = req.query;
-    const filter = {};
+    const filter = { movedToLaunch: null };   // переехавшие в тестовую продажу здесь не нужны
     if (status) filter.status = status;
     if (type)   filter.type   = type;
 
@@ -4431,7 +4431,7 @@ router.get('/product-requests', async (req, res) => {
         .populate('doneBy', 'name')
         .sort({ createdAt: -1 })
         .limit(500),
-      ProductRequest.countDocuments({ status: { $ne: 'done' } }),
+      ProductRequest.countDocuments({ status: { $ne: 'done' }, movedToLaunch: null }),
     ]);
     res.json({ requests, activeCount });
   } catch (e) { res.status(500).json({ error: e.message }); }

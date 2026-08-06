@@ -25,6 +25,10 @@ const productLaunchSchema = new mongoose.Schema({
   // Заявка на заказ первой партии, созданная из этой карточки
   request: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductRequest' },
 
+  // Заявка менеджера, из которой выросло предложение (обратная связь с доской закупки)
+  fromRequest:       { type: mongoose.Schema.Types.ObjectId, ref: 'ProductRequest' },
+  fromRequestNumber: { type: Number },
+
   stage: { type: String, enum: ['proposed', 'content', 'design', 'review', 'published', 'target', 'feedback', 'done'], default: 'content' },
 
   // Чем кончилась тестовая продажа: заказали первую партию или спроса не нашлось
