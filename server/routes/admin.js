@@ -4825,9 +4825,9 @@ router.patch('/product-launches/:id', async (req, res) => {
           launch.design.assignee     = req.user._id;
           launch.design.assigneeName = req.user.name || '';
           if (launch.stage === 'content') {
-            const c = launch.content || {};
-            if (!c.photos?.length || !c.sourceUrl || !c.description) {
-              return res.status(400).json({ error: 'Контент ещё не собран: нужны фото, ссылка на источник и описание' });
+            // Дизайнеру нужны материалы; ссылку и описание Зайнагуль дописывает по ходу
+            if (!launch.content?.photos?.length) {
+              return res.status(400).json({ error: 'Нет фото — с чем работать дизайнеру?' });
             }
             launch.stage = 'design';
           }
@@ -4839,9 +4839,8 @@ router.patch('/product-launches/:id', async (req, res) => {
           launch.design.assignee     = u._id;
           launch.design.assigneeName = u.name || '';
           assignedTo = u._id;
-          // Контент собран — карточка сразу уходит в работу к назначенному
-          const c = launch.content || {};
-          if (launch.stage === 'content' && c.photos?.length && c.sourceUrl && c.description) {
+          // Есть материалы — карточка сразу уходит в работу к назначенному
+          if (launch.stage === 'content' && launch.content?.photos?.length) {
             launch.stage = 'design';
           }
         } else {
@@ -4919,13 +4918,10 @@ router.patch('/product-launches/:id', async (req, res) => {
       if (!canMoveLaunch(req.user, launch.stage, stage)) {
         return res.status(403).json({ error: 'Этап двигает контент-менеджер' });
       }
-      // Дизайнерам нужны все три поля — иначе им не с чем работать
+      // Без фото дизайнеру работать не с чем; ссылка и описание могут дозаполниться позже
       const goingForward = PL_STAGES.indexOf(stage) > PL_STAGES.indexOf(launch.stage);
-      if (stage === 'design' && goingForward) {
-        const c = launch.content || {};
-        if (!c.photos?.length || !c.sourceUrl || !c.description) {
-          return res.status(400).json({ error: 'Для передачи в дизайн нужны фото, ссылка на источник и описание' });
-        }
+      if (stage === 'design' && goingForward && !launch.content?.photos?.length) {
+        return res.status(400).json({ error: 'Для передачи в дизайн нужны хотя бы фото' });
       }
       if (stage === 'target' && goingForward) {
         launch.target.byName = req.user.name || '';

@@ -160,6 +160,12 @@ export default function ProductLaunchBoard({ onCountChange }) {
     catch (e) { alert(e?.response?.data?.error || 'Не удалось перенести карточку'); }
   };
 
+  // Дизайнер забирает карточку с «Контента»: становится исполнителем, карточка едет в «Дизайн»
+  const take = async (launch) => {
+    try { await patch(launch, { design: { assignee: 'me' } }); }
+    catch (e) { alert(e?.response?.data?.error || 'Не удалось взять карточку'); }
+  };
+
   const remove = async (id) => {
     if (!window.confirm('Убрать товар с доски тестовых продаж?')) return;
     try {
@@ -264,9 +270,10 @@ export default function ProductLaunchBoard({ onCountChange }) {
                     <LaunchCard
                       key={l._id} launch={l} col={col}
                       canMove={isContentMgr || (isDesigner && l.stage === 'design') || (isAds && l.stage === 'target')}
-
+                      canTake={isDesigner && l.stage === 'content'}
                       onOpen={() => setDetail(l)}
                       onMove={(stage) => move(l, stage)}
+                      onTake={() => take(l)}
                     />
                   ))}
                 </div>
@@ -314,7 +321,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
 }
 
 // ── Карточка на доске ────────────────────────────────────────────────────────
-function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
+function LaunchCard({ launch: l, col, canMove, canTake, onOpen, onMove, onTake }) {
   const i = idxOf(l.stage);
   const prev = i > 0 ? ALL_STAGES[i - 1] : null;
   const next = i < ALL_STAGES.length - 1 ? ALL_STAGES[i + 1] : null;
@@ -397,6 +404,15 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
         </div>
       )}
 
+      {canTake && (
+        <button onClick={e => { e.stopPropagation(); onTake(); }}
+          title="Взять в работу: карточка уйдёт в «Дизайн», исполнителем станете вы"
+          style={{ width: '100%', marginTop: 10, padding: '9px', fontSize: 13, fontWeight: 700, color: '#fff',
+            background: '#7c3aed', border: 'none', borderRadius: 9, cursor: 'pointer' }}>
+          🎨 Беру в работу
+        </button>
+      )}
+
       {canMove && (prev || next) && (
         <div style={{ display: 'flex', gap: 6, marginTop: 10, justifyContent: 'flex-end' }}>
           {prev && (
@@ -462,6 +478,15 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
             <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 10, background: '#f5f5f5',
               border: 'none', fontSize: 17, cursor: 'pointer', flexShrink: 0 }}>✕</button>
           </div>
+
+          {/* Дизайнер забирает карточку прямо с «Контента» */}
+          {isDesigner && l.stage === 'content' && (
+            <button onClick={() => save({ design: { assignee: 'me' } }, 'take')} disabled={!!busy}
+              style={{ width: '100%', padding: '12px', fontSize: 14.5, fontWeight: 700, color: '#fff',
+                background: '#7c3aed', border: 'none', borderRadius: 10, cursor: 'pointer', marginBottom: 18 }}>
+              {busy === 'take' ? 'Беру…' : '🎨 Беру в работу'}
+            </button>
+          )}
 
           {/* Перенос по этапам */}
           {canMove && (
