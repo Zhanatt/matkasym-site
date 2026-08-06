@@ -23,6 +23,16 @@ const isDesignerUser   = u => u?.role === 'designer';
 // Таргетолог получает задачу на рекламу и заполняет её результат
 const isAdsManager     = u => !!u?.canRunAds;
 
+// Товары IKEA идут отдельным потоком (свой заказ, своя логистика), поэтому на доске
+// их узнают по логотипу. Пока карточки в каталоге нет, зацепиться можно только за
+// название и ссылку на источник; в остальных случаях поставщика ставят руками.
+const IKEA_HINT = /(^|[^a-zа-яё])(ikea|икеа|икея)([^a-zа-яё]|$)/i;
+
+function detectSupplier({ name = '', sourceUrl = '' } = {}) {
+  if (IKEA_HINT.test(`${name} ${sourceUrl}`) || /(^|\/\/|\.)ikea\.[a-z]/i.test(sourceUrl)) return 'IKEA';
+  return '';
+}
+
 // Сквозная нумерация карточек — по ней товар зовут в переписке, пока у него нет артикула
 async function nextNumber() {
   const last = await ProductLaunch.findOne().sort({ number: -1 }).select('number');
@@ -120,4 +130,4 @@ async function notifyStage(launch, stage) {
   }
 }
 
-module.exports = { PL_STAGES, PL_STAGE_LABEL, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage, notifyRework, notifyAssigned };
+module.exports = { PL_STAGES, PL_STAGE_LABEL, isContentManager, isDesignerUser, isAdsManager, nextNumber, detectSupplier, notifyStage, notifyRework, notifyAssigned };

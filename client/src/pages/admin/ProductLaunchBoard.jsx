@@ -54,6 +54,22 @@ const BITRIX_OUTCOME = [
 ];
 const DAY_FIELDS = [...METRICS, BITRIX, ...BITRIX_OUTCOME];
 
+// Откуда товар. У теста поставщик указан на самой карточке, а если товар уже завели
+// в каталоге — берём из карточки товара, она первична.
+const supplierOf = l => (l?.product?.supplier?.company || l?.supplier || '').trim();
+const isIkea = l => supplierOf(l).toUpperCase() === 'IKEA';
+
+// Логотип источника в углу фото — как в каталоге. Пока помечаем только IKEA:
+// это отдельный поток закупа, и его карточки нужно отличать с одного взгляда.
+function SupplierMark({ launch, size = 14 }) {
+  if (!isIkea(launch)) return null;
+  return (
+    <img src="/logos/ikea.svg" alt="IKEA" title="Товар IKEA"
+      style={{ position: 'absolute', left: 3, bottom: 3, height: size, borderRadius: 3,
+        background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.25)' }} />
+  );
+}
+
 const fmtDay = d => d ? new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
 const num = v => (v === null || v === undefined || v === '') ? '—' : v;
 
@@ -337,8 +353,11 @@ function LaunchCard({ launch: l, col, canMove, canTake, onOpen, onMove, onTake }
       onMouseOut={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = col.line; }}>
 
       <div style={{ display: 'flex', gap: 12 }}>
-        <img src={cloudinaryOpt(img, 160)} alt="" loading="lazy" onError={e => { e.target.src = NO_PHOTO; }}
-          style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', background: '#f1f5f9', flexShrink: 0 }} />
+        <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
+          <img src={cloudinaryOpt(img, 160)} alt="" loading="lazy" onError={e => { e.target.src = NO_PHOTO; }}
+            style={{ width: '100%', height: '100%', borderRadius: 10, objectFit: 'cover', background: '#f1f5f9' }} />
+          <SupplierMark launch={l} />
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10.5, color: '#b0b8c1' }}>
             №{l.number}
@@ -431,6 +450,50 @@ function LaunchCard({ launch: l, col, canMove, canTake, onOpen, onMove, onTake }
   );
 }
 
+// ── Источник товара ──────────────────────────────────────────────────────────
+// Название и ссылку присылают как есть, поэтому IKEA сама себя опознаёт не всегда —
+// отмечаем вручную одной кнопкой. Когда товар уже заведён в каталоге, поставщик
+// приходит оттуда и правится в карточке товара, а не здесь.
+function SupplierPicker({ launch: l, canEdit, busy, onSave }) {
+  const fromProduct = (l.product?.supplier?.company || '').trim();
+  const chip = (text, extra = {}) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
+      padding: '3px 10px', borderRadius: 20, ...extra }}>{text}</span>
+  );
+
+  if (fromProduct) {
+    return chip(
+      <>
+        {fromProduct.toUpperCase() === 'IKEA'
+          ? <img src="/logos/ikea.svg" alt="IKEA" style={{ height: 13, borderRadius: 2 }} />
+          : <span>📦 {fromProduct}</span>}
+        <span style={{ color: '#94a3b8', fontWeight: 600 }}>из карточки товара</span>
+      </>,
+      { background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569' },
+    );
+  }
+
+  if (!canEdit) {
+    return isIkea(l)
+      ? chip(<img src="/logos/ikea.svg" alt="IKEA" style={{ height: 13, borderRadius: 2 }} />,
+          { background: '#eaf3fb', border: '1px solid #cfe2f3' })
+      : null;
+  }
+
+  const on = isIkea(l);
+  return (
+    <button onClick={() => onSave({ supplier: on ? '' : 'IKEA' }, 'supplier')} disabled={!!busy}
+      title={on ? 'Убрать отметку IKEA' : 'Отметить как товар IKEA'}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700,
+        padding: '3px 10px', borderRadius: 20, cursor: 'pointer',
+        background: on ? '#eaf3fb' : '#fff', color: on ? '#0058A3' : '#94a3b8',
+        border: `1.5px solid ${on ? '#0058A3' : '#e2e8f0'}` }}>
+      <img src="/logos/ikea.svg" alt="" style={{ height: 12, borderRadius: 2, opacity: on ? 1 : 0.45 }} />
+      {on ? 'IKEA' : 'не IKEA'}
+    </button>
+  );
+}
+
 // ── Карточка целиком: контент, дизайн, публикация, результат ─────────────────
 function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onPatch, onDelete, onOrdered, onCreateProduct }) {
   const st = ST[l.stage] || ST.content;
@@ -458,9 +521,12 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
           overflow: 'auto', padding: 22, pointerEvents: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 16 }}>
-            <img src={cloudinaryOpt(l.image || l.product?.images?.[0] || NO_PHOTO, 200)} alt=""
-              onError={e => { e.target.src = NO_PHOTO; }}
-              style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', background: '#f1f5f9' }} />
+            <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+              <img src={cloudinaryOpt(l.image || l.product?.images?.[0] || NO_PHOTO, 200)} alt=""
+                onError={e => { e.target.src = NO_PHOTO; }}
+                style={{ width: '100%', height: '100%', borderRadius: 12, objectFit: 'cover', background: '#f1f5f9' }} />
+              <SupplierMark launch={l} size={16} />
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11.5, color: '#b0b8c1' }}>
                 Тест №{l.number}
@@ -470,10 +536,13 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
               <div style={{ fontSize: 18, fontWeight: 800, color: '#111', margin: '2px 0 4px' }}>
                 {l.name || l.productName}
               </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#334155', background: st.bg,
-                border: `1px solid ${st.line}`, padding: '3px 10px', borderRadius: 20 }}>
-                {st.icon} {st.label}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#334155', background: st.bg,
+                  border: `1px solid ${st.line}`, padding: '3px 10px', borderRadius: 20 }}>
+                  {st.icon} {st.label}
+                </span>
+                <SupplierPicker launch={l} canEdit={isContentMgr || isDesigner} busy={busy} onSave={save} />
+              </div>
             </div>
             <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 10, background: '#f5f5f5',
               border: 'none', fontSize: 17, cursor: 'pointer', flexShrink: 0 }}>✕</button>
@@ -1318,6 +1387,7 @@ function NewLaunchForm({ onClose, onCreate, mode = 'content' }) {
   const [photos, setPhotos] = useState([]);
   const [sourceUrl, setSourceUrl] = useState('');
   const [description, setDescription] = useState('');
+  const [ikea, setIkea] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -1337,7 +1407,7 @@ function NewLaunchForm({ onClose, onCreate, mode = 'content' }) {
   const submit = async () => {
     if (!name.trim()) return setError('Укажите название товара');
     setSaving(true); setError('');
-    try { await onCreate({ name, photos, sourceUrl, description }); }
+    try { await onCreate({ name, photos, sourceUrl, description, supplier: ikea ? 'IKEA' : '' }); }
     catch (e) { setError(e?.response?.data?.error || 'Не удалось создать'); setSaving(false); }
   };
 
@@ -1385,6 +1455,14 @@ function NewLaunchForm({ onClose, onCreate, mode = 'content' }) {
             <div style={labelStyle}>Ссылка на источник</div>
             <input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://…" style={inputStyle} />
           </div>
+
+          {/* Товары IKEA закупаются отдельно — отметка сразу видна на доске логотипом */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14, cursor: 'pointer' }}>
+            <input type="checkbox" checked={ikea} onChange={e => setIkea(e.target.checked)}
+              style={{ width: 17, height: 17, accentColor: '#0058A3', cursor: 'pointer' }} />
+            <img src="/logos/ikea.svg" alt="" style={{ height: 14, borderRadius: 2, opacity: ikea ? 1 : 0.5 }} />
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: ikea ? '#0058A3' : '#64748b' }}>Товар из IKEA</span>
+          </label>
 
           <div style={{ marginBottom: 16 }}>
             <div style={labelStyle}>{proposing ? 'Почему стоит попробовать' : 'Описание'}</div>

@@ -17,6 +17,11 @@ const productLaunchSchema = new mongoose.Schema({
   name:  { type: String, required: true, trim: true },  // название, под которым товар ведут до каталога
   image: { type: String, default: '' },                 // превью (первое фото)
 
+  // Откуда товар: IKEA, Temu, Pinduoduo… Карточки каталога ещё нет, а видеть источник
+  // на доске нужно сразу — поэтому поставщик живёт на самом тесте. Когда товар
+  // привязывают к каталогу, поле подхватывается из product.supplier.company.
+  supplier: { type: String, default: '', trim: true },
+
   // Товар из каталога — появляется, когда дизайнеры завели карточку
   product:     { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
   productName: { type: String, default: '' },

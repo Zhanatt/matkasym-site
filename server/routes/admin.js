@@ -27,8 +27,8 @@ const cloudinary   = require('../lib/cloudinary');
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const {
-  PL_STAGES, isContentManager, isDesignerUser, isAdsManager, nextNumber, notifyStage, notifyRework,
-  notifyAssigned,
+  PL_STAGES, isContentManager, isDesignerUser, isAdsManager, nextNumber, detectSupplier,
+  notifyStage, notifyRework, notifyAssigned,
 } = require('../lib/productLaunch');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
@@ -4594,7 +4594,7 @@ router.get('/product-launches', async (req, res) => {
 
     const [launches, activeCount] = await Promise.all([
       ProductLaunch.find(filter)
-        .populate('product', 'name fullName sku images stock price productStatus brand set')
+        .populate('product', 'name fullName sku images stock price productStatus brand set isSupplied supplier')
         .populate('design.assignee', 'name')
         .populate('request', 'number status')
         .sort({ createdAt: -1 })
@@ -4614,7 +4614,7 @@ router.get('/product-launches', async (req, res) => {
 // Менеджер не может закинуть товар мимо рассмотрения, поэтому этап ему не выбирают.
 router.post('/product-launches', async (req, res) => {
   try {
-    const { name, photos, sourceUrl, description } = req.body;
+    const { name, photos, sourceUrl, description, supplier } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Укажите название товара' });
 
     // Тот, кто ведёт доску, может завести карточку сразу на нужном этапе (плюсик в колонке).
@@ -4629,6 +4629,8 @@ router.post('/product-launches', async (req, res) => {
       name:   name.trim(),
       image:  photoList[0] || '',
       stage,
+      // Кто заводит товар — знает, откуда он; если не указали, пробуем понять по названию и ссылке
+      supplier: String(supplier || '').trim() || detectSupplier({ name, sourceUrl }),
       content: {
         photos:       photoList,
         sourceUrl:    String(sourceUrl || '').trim(),
@@ -4666,6 +4668,7 @@ router.post('/product-launches/:id/product', async (req, res) => {
       priceUndefined: true,          // цену узнаем у поставщика на этапе заявки
       productStatus:  'test_sale',
       isSupplied:     true,          // товар не наш, найден у стороннего продавца
+      supplier:       launch.supplier ? { company: launch.supplier } : undefined,
       description:    launch.content?.description || '',
       images:         launch.content?.photos?.length ? [...launch.content.photos] : [],
     });
@@ -4687,7 +4690,7 @@ router.post('/product-launches/:id/product', async (req, res) => {
     await launch.save();
 
     const populated = await ProductLaunch.findById(launch._id)
-      .populate('product', 'name fullName sku images stock price productStatus brand set')
+      .populate('product', 'name fullName sku images stock price productStatus brand set isSupplied supplier')
       .populate('design.assignee', 'name')
       .populate('request', 'number status');
     res.status(201).json({ launch: populated, product });
@@ -4768,7 +4771,7 @@ router.patch('/product-launches/:id', async (req, res) => {
 
     const {
       content, design, review, publish, target, result, dayResult, removeResultDate,
-      stage, name, product, outcome,
+      stage, name, product, outcome, supplier,
     } = req.body;
     const contentMgr = isContentManager(req.user);
     const designer   = isDesignerUser(req.user);
@@ -4781,16 +4784,24 @@ router.patch('/product-launches/:id', async (req, res) => {
       launch.name = String(name).trim();
     }
 
+    // Поставщик (IKEA, Temu…) — по нему на доске рисуют логотип источника
+    if (supplier !== undefined) {
+      if (!contentMgr && !designer) return res.status(403).json({ error: 'Нет доступа' });
+      launch.supplier = String(supplier || '').trim();
+    }
+
     // Дизайнеры завели карточку в каталоге — привязываем её к тестовой продаже
     if (product !== undefined) {
       if (!contentMgr && !designer) return res.status(403).json({ error: 'Нет доступа' });
       if (isValidId(product)) {
-        const p = await Product.findById(product).select('name fullName sku images');
+        const p = await Product.findById(product).select('name fullName sku images supplier');
         if (!p) return res.status(404).json({ error: 'Товар не найден' });
         launch.product     = p._id;
         launch.productName = p.fullName || p.name || '';
         launch.sku         = p.sku || '';
         if (!launch.image) launch.image = p.images?.[0] || '';
+        // У карточки в каталоге поставщик уже выяснен — тест берёт его оттуда
+        if (p.supplier?.company) launch.supplier = p.supplier.company;
       } else {
         launch.product = null;
         launch.productName = '';
@@ -4952,7 +4963,7 @@ router.patch('/product-launches/:id', async (req, res) => {
     else if (movedTo && !assignedTo) await notifyStage(launch, movedTo);
 
     const populated = await ProductLaunch.findById(launch._id)
-      .populate('product', 'name fullName sku images stock price productStatus brand set')
+      .populate('product', 'name fullName sku images stock price productStatus brand set isSupplied supplier')
       .populate('design.assignee', 'name')
       .populate('request', 'number status');
     res.json(populated);
