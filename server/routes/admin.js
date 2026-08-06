@@ -4705,11 +4705,14 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
     if (launch.request) return res.status(409).json({ error: 'Заявка по этому товару уже создана' });
 
     const qty = Number(req.body?.quantity);
-    const totalInquiries = (launch.results || []).reduce((sum, r) => sum + (r.inquiries || 0), 0);
+    const sumBy = (key) => (launch.results || []).reduce((sum, r) => sum + (r[key] || 0), 0);
+    const totalInquiries = sumBy('inquiries');
+    const totalOrdered   = sumBy('ordered');
     const photoList = launch.content?.photos?.length ? launch.content.photos : (launch.image ? [launch.image] : []);
     const noteParts = [
       `Тестовая продажа №${launch.number}`,
-      totalInquiries ? `обращений за тест: ${totalInquiries}` : '',
+      totalInquiries ? `переходов по ссылке: ${totalInquiries}` : '',
+      totalOrdered ? `заказали: ${totalOrdered}` : '',
       launch.content?.sourceUrl ? `источник: ${launch.content.sourceUrl}` : '',
       String(req.body?.note || '').trim(),
     ].filter(Boolean);
@@ -4741,7 +4744,8 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
         .select('telegramChatId').lean();
       const caption = `🛒 Новая заявка №${request.number} · по итогам тестовой продажи\n` +
         `Товар: ${request.name}\n` +
-        (totalInquiries ? `Обращений за тест: ${totalInquiries}\n` : '') +
+        (totalInquiries ? `Переходов по ссылке: ${totalInquiries}\n` : '') +
+        (totalOrdered ? `Заказали: ${totalOrdered}\n` : '') +
         (request.quantity ? `Количество: ${request.quantity} шт\n` : '') +
         `От: ${request.createdByName || ''}`;
       for (const u of recipients) {
@@ -4883,7 +4887,7 @@ router.patch('/product-launches/:id', async (req, res) => {
 
       const row = launch.results.find(r => sameDay(r.date, date));
       const target = row || launch.results.create({ date });
-      for (const key of ['inquiries', 'reactions', 'comments']) {
+      for (const key of ['inquiries', 'reactions', 'comments', 'bitrix', 'ordered', 'refused']) {
         if (dayResult[key] !== undefined) target[key] = numOrNull(dayResult[key]);
       }
       if (dayResult.note !== undefined) target.note = String(dayResult.note).trim();

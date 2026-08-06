@@ -82,9 +82,13 @@ const productLaunchSchema = new mongoose.Schema({
   // Одна запись — итог одного дня; на день приходится не больше одной строки.
   results: [{
     date:      { type: Date, required: true },
-    inquiries: { type: Number, default: null },  // новые обращения
+    inquiries: { type: Number, default: null },  // перешли по ссылке
     reactions: { type: Number, default: null },
     comments:  { type: Number, default: null },
+    // Что дошло до Битрикса и чем закончилось
+    bitrix:    { type: Number, default: null },  // обратились в Битрикс
+    ordered:   { type: Number, default: null },  // из них заказали
+    refused:   { type: Number, default: null },  // из них отказались
     note:      { type: String, default: '', trim: true },
     byName:    { type: String, default: '' },
   }],

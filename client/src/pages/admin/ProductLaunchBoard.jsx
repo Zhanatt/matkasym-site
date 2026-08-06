@@ -41,10 +41,18 @@ const ST = Object.fromEntries(ALL_STAGES.map(s => [s.key, s]));
 const idxOf = k => ALL_STAGES.findIndex(s => s.key === k);
 
 const METRICS = [
-  { key: 'inquiries', label: 'Новые обращения', icon: '💬' },
-  { key: 'reactions', label: 'Реакции',         icon: '❤️' },
-  { key: 'comments',  label: 'Комментарии',     icon: '🗨' },
+  { key: 'inquiries', label: 'Перешли по ссылке', icon: '🔗' },
+  { key: 'reactions', label: 'Реакции',           icon: '❤️' },
+  { key: 'comments',  label: 'Комментарии',       icon: '🗨' },
 ];
+
+// Что дошло до Битрикса: сколько обратились и чем это кончилось
+const BITRIX = { key: 'bitrix', label: 'Обратились в Битрикс', icon: '📇' };
+const BITRIX_OUTCOME = [
+  { key: 'ordered', label: 'Заказали',   icon: '✅' },
+  { key: 'refused', label: 'Отказались', icon: '❌' },
+];
+const DAY_FIELDS = [...METRICS, BITRIX, ...BITRIX_OUTCOME];
 
 const fmtDay = d => d ? new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
 const num = v => (v === null || v === undefined || v === '') ? '—' : v;
@@ -374,8 +382,8 @@ function LaunchCard({ launch: l, col, canMove, onOpen, onMove }) {
       )}
 
       {(l.stage === 'target' || l.stage === 'feedback' || l.stage === 'done') && (
-        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: `repeat(${METRICS.length}, 1fr)`, gap: 6 }}>
-          {METRICS.map(m => {
+        <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: `repeat(${METRICS.length + 1}, 1fr)`, gap: 6 }}>
+          {[...METRICS, BITRIX_OUTCOME[0]].map(m => {
             const rows = l.results || [];
             const has = rows.some(r => r[m.key] !== null && r[m.key] !== undefined);
             const sum = rows.reduce((acc, r) => acc + (r[m.key] || 0), 0);
@@ -1087,24 +1095,24 @@ function ResultBlock({ launch: l, canEdit, busy, onSave }) {
 function DayCard({ row, draftDate, canEdit, busy, onSave, onCancel }) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(row ? String(row.date).slice(0, 10) : draftDate || today);
-  const [vals, setVals] = useState(() => Object.fromEntries(METRICS.map(m => [m.key, row?.[m.key] ?? ''])));
+  const [vals, setVals] = useState(() => Object.fromEntries(DAY_FIELDS.map(m => [m.key, row?.[m.key] ?? ''])));
   const [note, setNote] = useState(row?.note || '');
 
   useEffect(() => {
     if (!row) return;
     setDate(String(row.date).slice(0, 10));
-    setVals(Object.fromEntries(METRICS.map(m => [m.key, row[m.key] ?? ''])));
+    setVals(Object.fromEntries(DAY_FIELDS.map(m => [m.key, row[m.key] ?? ''])));
     setNote(row.note || '');
   }, [JSON.stringify(row)]);
 
   const dirty = !row
     || date !== String(row.date).slice(0, 10)
     || note !== (row.note || '')
-    || METRICS.some(m => String(vals[m.key] ?? '') !== String(row[m.key] ?? ''));
+    || DAY_FIELDS.some(m => String(vals[m.key] ?? '') !== String(row[m.key] ?? ''));
 
   const save = () => {
     if (!date) { alert('Выберите дату'); return; }
-    if (METRICS.every(m => String(vals[m.key] ?? '') === '') && !note.trim()) {
+    if (DAY_FIELDS.every(m => String(vals[m.key] ?? '') === '') && !note.trim()) {
       alert('Заполните хотя бы одно поле');
       return;
     }
@@ -1153,6 +1161,38 @@ function DayCard({ row, draftDate, canEdit, busy, onSave, onCancel }) {
             )}
           </div>
         ))}
+      </div>
+
+      {/* Обратились в Битрикс, и что из этого вышло */}
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 10, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ ...labelStyle, fontSize: 11.5, marginBottom: 0, flex: '1 1 120px' }}>{BITRIX.icon} {BITRIX.label}</div>
+          {canEdit ? (
+            <input inputMode="numeric" value={vals[BITRIX.key] ?? ''}
+              onChange={e => setVals(v => ({ ...v, [BITRIX.key]: e.target.value.replace(/[^\d]/g, '') }))}
+              placeholder="—" style={{ ...inputStyle, width: 90, textAlign: 'center', fontSize: 17, fontWeight: 800, padding: '7px' }} />
+          ) : (
+            <div style={{ width: 90, textAlign: 'center', fontSize: 17, fontWeight: 800, color: '#111',
+              background: '#fff', borderRadius: 10, padding: '7px' }}>{num(row?.[BITRIX.key])}</div>
+          )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10,
+          marginTop: 10, paddingLeft: 12, borderLeft: '2px solid #e2e8f0' }}>
+          {BITRIX_OUTCOME.map(m => (
+            <div key={m.key}>
+              <div style={{ ...labelStyle, fontSize: 11.5 }}>{m.icon} {m.label}</div>
+              {canEdit ? (
+                <input inputMode="numeric" value={vals[m.key] ?? ''}
+                  onChange={e => setVals(v => ({ ...v, [m.key]: e.target.value.replace(/[^\d]/g, '') }))}
+                  placeholder="—" style={{ ...inputStyle, textAlign: 'center', fontSize: 16, fontWeight: 800, padding: '7px' }} />
+              ) : (
+                <div style={{ textAlign: 'center', fontSize: 16, fontWeight: 800, color: '#111',
+                  background: '#fff', borderRadius: 10, padding: '7px' }}>{num(row?.[m.key])}</div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {canEdit ? (
