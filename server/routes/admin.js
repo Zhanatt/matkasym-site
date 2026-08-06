@@ -4602,8 +4602,11 @@ router.post('/product-launches', async (req, res) => {
     const { name, photos, sourceUrl, description } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Укажите название товара' });
 
+    // Тот, кто ведёт доску, может завести карточку сразу на нужном этапе (плюсик в колонке).
+    // Менеджеру этап не выбирают — его товар всегда идёт на рассмотрение.
     const contentMgr = isContentManager(req.user);
-    const stage = contentMgr && req.body.stage !== 'proposed' ? 'content' : 'proposed';
+    const asked = String(req.body.stage || '');
+    const stage = contentMgr ? (PL_STAGES.includes(asked) ? asked : 'content') : 'proposed';
 
     const photoList = Array.isArray(photos) ? photos.filter(Boolean) : [];
     const launch = await ProductLaunch.create({

@@ -175,14 +175,6 @@ export default function ProductLaunchBoard({ onCountChange }) {
 
       {loading ? (
         <div style={{ color: '#aaa', textAlign: 'center', padding: 40 }}>Загрузка…</div>
-      ) : items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 50, background: '#f9f9f9', borderRadius: 16, color: '#888' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🧪</div>
-          <div style={{ fontSize: 15 }}>Нет товаров на тесте</div>
-          <div style={{ fontSize: 13, color: '#aaa', marginTop: 6 }}>
-            Нашли товар в интернете — заведите его здесь, с этого начинается процесс
-          </div>
-        </div>
       ) : (
         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', overflowX: 'auto', paddingBottom: 12 }}>
           {columns.map(col => {
@@ -198,6 +190,13 @@ export default function ProductLaunchBoard({ onCountChange }) {
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: col.dot, borderRadius: 20, padding: '1px 8px' }}>
                     {colItems.length}
                   </span>
+                  <span style={{ flex: 1 }} />
+                  {/* Завести товар сразу в этой колонке */}
+                  {(isContentMgr || col.key === 'proposed') && col.key !== 'done' && (
+                    <button onClick={() => setPicker(col.key)} title={`Добавить в «${col.label}»`}
+                      style={{ width: 24, height: 24, borderRadius: 8, border: 'none', background: col.dot,
+                        color: '#fff', fontSize: 15, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>＋</button>
+                  )}
                 </div>
                 <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 10, padding: '0 2px' }}>{col.hint}</div>
 
@@ -250,7 +249,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
           mode={picker}
           onClose={() => setPicker(false)}
           onCreate={async (data) => {
-            await adminCreateProductLaunch({ ...data, stage: picker === 'proposed' ? 'proposed' : undefined });
+            await adminCreateProductLaunch({ ...data, stage: picker });
             setPicker(false);
             load();
           }}
@@ -1238,7 +1237,11 @@ function NewLaunchForm({ onClose, onCreate, mode = 'content' }) {
         <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 540, maxHeight: '92vh',
           overflow: 'auto', padding: 22, pointerEvents: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>{proposing ? '💡 Предложить товар' : '🧪 Новый товар на тест'}</div>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>
+              {proposing ? '💡 Предложить товар'
+                : mode === 'content' ? '🧪 Новый товар на тест'
+                : `${ST[mode]?.icon || ''} Новый товар — этап «${ST[mode]?.label || mode}»`}
+            </div>
             <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 9, background: '#f5f5f5',
               border: 'none', fontSize: 16, cursor: 'pointer' }}>✕</button>
           </div>
@@ -1287,7 +1290,10 @@ function NewLaunchForm({ onClose, onCreate, mode = 'content' }) {
             <button onClick={submit} disabled={saving || uploading}
               style={{ flex: 1, padding: '13px', fontSize: 15, fontWeight: 700, color: '#fff',
                 background: saving ? '#9aa5b1' : (proposing ? '#db2777' : '#DC1E24'), border: 'none', borderRadius: 12, cursor: 'pointer' }}>
-              {saving ? 'Отправляю…' : (proposing ? 'Отправить на рассмотрение' : 'На доску теста')}
+              {saving ? 'Отправляю…'
+                : proposing ? 'Отправить на рассмотрение'
+                : mode === 'content' ? 'На доску теста'
+                : `Добавить в «${ST[mode]?.label || mode}»`}
             </button>
           </div>
         </div>
