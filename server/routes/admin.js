@@ -4571,6 +4571,21 @@ router.get('/product-launches/count', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/admin/product-launches/rev — «отпечаток» состояния доски.
+// Доску открывают несколько человек сразу, и этап двигают по очереди: чтобы чужие
+// изменения появлялись сами, клиент часто дёргает этот роут и перезагружает доску
+// целиком, только когда отпечаток изменился: два запроса по индексам вместо 300 карточек.
+// В отпечаток входит и количество — иначе удаление карточки осталось бы незамеченным.
+router.get('/product-launches/rev', async (req, res) => {
+  try {
+    const [[last], count] = await Promise.all([
+      ProductLaunch.find().sort({ updatedAt: -1 }).limit(1).select('updatedAt').lean(),
+      ProductLaunch.countDocuments(),
+    ]);
+    res.json({ rev: `${last?.updatedAt ? new Date(last.updatedAt).getTime() : 0}-${count}` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/admin/product-launches — доска целиком (видна всем в админке)
 router.get('/product-launches', async (req, res) => {
   try {

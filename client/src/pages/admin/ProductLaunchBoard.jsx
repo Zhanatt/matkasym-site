@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   adminGetProductLaunches,
+  adminGetProductLaunchRev,
   adminCreateProductLaunch,
   adminUpdateProductLaunch,
   adminDeleteProductLaunch,
@@ -77,19 +78,65 @@ export default function ProductLaunchBoard({ onCountChange }) {
   const [showDone, setShowDone] = useState(false);
   const [picker, setPicker]   = useState(false);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    adminGetProductLaunches()
+  // silent — фоновое обновление: без спиннера, доска просто перерисовывается
+  const load = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
+    return adminGetProductLaunches()
       .then(r => {
         const list = r.data.launches || [];
         setItems(list);
         onCountChange?.(r.data.activeCount ?? list.filter(x => x.stage !== 'done').length);
       })
-      .catch(() => { setItems([]); onCountChange?.(0); })
-      .finally(() => setLoading(false));
+      .catch(() => { if (!silent) { setItems([]); onCountChange?.(0); } })
+      .finally(() => { if (!silent) setLoading(false); });
   }, [onCountChange]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ── Живая доска ────────────────────────────────────────────────────────────
+  // Доску одновременно ведут несколько человек и передают карточки друг другу,
+  // поэтому чужой перенос этапа должен появляться сам, без F5. Раз в 7 секунд
+  // спрашиваем дешёвый «отпечаток» состояния и перечитываем доску, только когда
+  // он изменился, — тянуть все карточки каждые семь секунд ни к чему.
+  const revRef     = useRef(null);   // последний известный отпечаток
+  const detailRef  = useRef(null);   // открыта ли карточка прямо сейчас
+  const pendingRef = useRef(false);  // доска изменилась, пока карточка открыта
+  detailRef.current = detail;
+
+  useEffect(() => {
+    let stopped = false;
+
+    const tick = async () => {
+      if (document.hidden) return;   // вкладка в фоне — сервер не дёргаем
+      try {
+        const { data } = await adminGetProductLaunchRev();
+        if (stopped || !data?.rev || data.rev === revRef.current) return;
+        const firstCheck = revRef.current === null;
+        revRef.current = data.rev;
+        if (firstCheck) return;      // это просто первый замер, доска уже свежая
+        // Пока открыта карточка, обновление откладываем: перерисовка сбросила бы
+        // текст, который человек в этот момент печатает в её полях.
+        if (detailRef.current) pendingRef.current = true;
+        else load(true);
+      } catch { /* сеть моргнула — попробуем на следующем тике */ }
+    };
+
+    tick();
+    const timer = setInterval(tick, 7000);
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [load]);
+
+  // Карточку закрыли — догоняем то, что накопилось, пока она была открыта
+  const closeDetail = useCallback(() => {
+    setDetail(null);
+    if (pendingRef.current) { pendingRef.current = false; load(true); }
+  }, [load]);
 
   // Обновление карточки: держим открытую модалку в синхроне с сервером
   const patch = async (launch, data) => {
@@ -227,7 +274,7 @@ export default function ProductLaunchBoard({ onCountChange }) {
           isContentMgr={isContentMgr}
           isDesigner={isDesigner}
           isAds={isAds}
-          onClose={() => setDetail(null)}
+          onClose={closeDetail}
           onPatch={(data) => patch(detail, data)}
           onDelete={() => remove(detail._id)}
           onCreateProduct={async () => {

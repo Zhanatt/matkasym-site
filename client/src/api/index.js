@@ -98,6 +98,8 @@ export const adminDeleteTechRequest   = (id)       => api.delete(`/admin/tech-re
 // Тестовая продажа нового товара: контент → дизайн → пост → заявки клиентов → заказ партии
 export const adminGetProductLaunches    = (params)   => api.get('/admin/product-launches', { params });
 export const adminGetProductLaunchCount = ()         => api.get('/admin/product-launches/count');
+// Дешёвый «отпечаток» доски — по нему видно, что кто-то её изменил (см. ProductLaunchBoard)
+export const adminGetProductLaunchRev   = ()         => api.get('/admin/product-launches/rev');
 export const adminCreateProductLaunch   = (data)     => api.post('/admin/product-launches', data);
 export const adminUpdateProductLaunch   = (id, data) => api.patch(`/admin/product-launches/${id}`, data);
 export const adminDeleteProductLaunch   = (id)       => api.delete(`/admin/product-launches/${id}`);
