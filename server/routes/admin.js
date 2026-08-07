@@ -28,7 +28,7 @@ const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = requir
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const {
   PL_STAGES, isContentManager, isDesignerUser, isAdsManager, nextNumber, detectSupplier,
-  notifyStage, notifyRework, notifyAssigned,
+  isCatalogProduct, findCatalogMatch, notifyStage, notifyRework, notifyAssigned,
 } = require('../lib/productLaunch');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
@@ -4601,7 +4601,35 @@ router.get('/product-launches', async (req, res) => {
         .limit(300),
       ProductLaunch.countDocuments({ stage: { $ne: 'done' } }),
     ]);
-    res.json({ launches, activeCount });
+
+    // Карточкам без каталожного товара ищем пару в каталоге: менеджеры предлагают то,
+    // что у нас уже есть, и на доске это должно быть видно сразу — вместе с «привязать».
+    // Карточка, заведённая под сам тест (test_sale), каталогом не считается.
+    const orphans = launches.filter(l => !isCatalogProduct(l.product));
+    let withMatch = launches;
+    if (orphans.length) {
+      const products = await Product.find({ productStatus: { $nin: ['test_sale', 'planned', 'in_development'] } })
+        .select('name fullName sku images supplier stock productStatus').lean();
+      const matches = new Map();
+      for (const l of orphans) {
+        const m = findCatalogMatch(l, products);
+        if (m) matches.set(String(l._id), {
+          _id:   m.product._id,
+          name:  m.product.fullName || m.product.name,
+          sku:   m.product.sku || '',
+          image: m.product.images?.[0] || '',
+          stock: m.product.stock,
+          score: Number(m.score.toFixed(2)),
+          exact: m.exact,
+        });
+      }
+      withMatch = launches.map(l => {
+        const hit = matches.get(String(l._id));
+        return hit ? { ...l.toObject(), catalogMatch: hit } : l;
+      });
+    }
+
+    res.json({ launches: withMatch, activeCount });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -4699,6 +4727,10 @@ router.post('/product-launches/:id/product', async (req, res) => {
 
 // POST /api/admin/product-launches/:id/order-request — спрос подтвердился:
 // заводим заявку на заказ первой партии и закрываем тестовую продажу.
+//
+// Если карточка выросла из заявки менеджера (fromRequest), новую не плодим, а
+// возвращаем исходную в инбокс закупки: у неё свой номер, автор и количество —
+// закупщик ждёт именно её.
 router.post('/product-launches/:id/order-request', async (req, res) => {
   try {
     if (!isContentManager(req.user)) return res.status(403).json({ error: 'Нет доступа' });
@@ -4708,6 +4740,7 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
     if (launch.request) return res.status(409).json({ error: 'Заявка по этому товару уже создана' });
 
     const qty = Number(req.body?.quantity);
+    const qtyVal = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : null;
     const sumBy = (key) => (launch.results || []).reduce((sum, r) => sum + (r[key] || 0), 0);
     const totalInquiries = sumBy('inquiries');
     const totalOrdered   = sumBy('ordered');
@@ -4720,21 +4753,43 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
       String(req.body?.note || '').trim(),
     ].filter(Boolean);
 
-    const last = await ProductRequest.findOne().sort({ number: -1 }).select('number');
-    const request = await ProductRequest.create({
-      number:        (last?.number || 0) + 1,
-      createdBy:     req.user._id,
-      createdByName: req.user.name || '',
-      type:          'new',
-      product:       launch.product || undefined,
-      sku:           launch.sku || '',
-      photo:         photoList[0] || '',
-      photos:        photoList,
-      name:          launch.productName || launch.name,
-      quantity:      Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : null,
-      note:          noteParts.join(' · '),
-      status:        'new',
-    });
+    // «Заказ с каталога» — только если товар и правда каталожный: карточка под сам
+    // тест (test_sale) заявку типом не меняет, это по-прежнему новинка.
+    const linked = launch.product
+      ? await Product.findById(launch.product).select('productStatus').lean()
+      : null;
+    const fromCatalog = isCatalogProduct(linked);
+
+    const origin = launch.fromRequest ? await ProductRequest.findById(launch.fromRequest) : null;
+    let request;
+
+    if (origin) {
+      origin.movedToLaunch = null;                       // снова видна в «Заявках на заказ»
+      if (launch.product && !origin.product) origin.product = launch.product;
+      if (launch.sku && !origin.sku)         origin.sku     = launch.sku;
+      if (fromCatalog && origin.type === 'new') origin.type = 'catalog';
+      if (qtyVal) origin.quantity = qtyVal;
+      origin.note = [origin.note, noteParts.join(' · ')].filter(Boolean).join(' · ');
+      await origin.save();
+      request = origin;
+    } else {
+      const last = await ProductRequest.findOne().sort({ number: -1 }).select('number');
+      request = await ProductRequest.create({
+        number:        (last?.number || 0) + 1,
+        createdBy:     req.user._id,
+        createdByName: req.user.name || '',
+        // товар уже в каталоге — это заказ с каталога, а не заявка на новинку
+        type:          fromCatalog ? 'catalog' : 'new',
+        product:       launch.product || undefined,
+        sku:           launch.sku || '',
+        photo:         photoList[0] || '',
+        photos:        photoList,
+        name:          launch.productName || launch.name,
+        quantity:      qtyVal,
+        note:          noteParts.join(' · '),
+        status:        'new',
+      });
+    }
 
     launch.request = request._id;
     launch.outcome = 'ordered';
@@ -4745,7 +4800,7 @@ router.post('/product-launches/:id/order-request', async (req, res) => {
     try {
       const recipients = await User.find({ $or: [{ canOrderProducts: true }, { role: 'purchaser' }] })
         .select('telegramChatId').lean();
-      const caption = `🛒 Новая заявка №${request.number} · по итогам тестовой продажи\n` +
+      const caption = `🛒 Заявка №${request.number} · ${origin ? 'вернулась в закуп' : 'по итогам тестовой продажи'}\n` +
         `Товар: ${request.name}\n` +
         (totalInquiries ? `Переходов по ссылке: ${totalInquiries}\n` : '') +
         (totalOrdered ? `Заказали: ${totalOrdered}\n` : '') +

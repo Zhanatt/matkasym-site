@@ -194,6 +194,41 @@ export default function ProductLaunchBoard({ onCountChange }) {
   const doneItems = useMemo(() => items.filter(x => x.stage === 'done'), [items]);
   const columns = showDone ? ALL_STAGES : STAGES;
 
+  // Товар из каталога, попавший в «Предложено»: тестировать его нечего — он уже наш,
+  // менеджер просит его заказать. Такие карточки собираем отдельно и уводим в закуп.
+  const inCatalog = useMemo(
+    () => items.filter(needsOrder).sort((a, b) => (b.number || 0) - (a.number || 0)),
+    [items]);
+  const maybeInCatalog = useMemo(
+    () => items.filter(l => l.stage !== 'done' && catalogHint(l)),
+    [items]);
+
+  // Заявку создаём из карточки: если она выросла из заявки менеджера, вернётся именно та
+  const toOrder = async (launch) => {
+    const title = launch.productName || launch.name;
+    if (!window.confirm(`«${title}» уже есть в каталоге.\nОтправить в «Заявки на заказ»?`)) return;
+    try {
+      const r = await adminCreateLaunchOrderRequest(launch._id, {});
+      await load();
+      alert(`Заявка №${r.data.request.number} — во вкладке «Заявки на заказ».`);
+    } catch (e) { alert(e?.response?.data?.error || 'Не удалось создать заявку'); }
+  };
+
+  // Разбор накопившегося: по одной, чтобы номера заявок шли по порядку
+  const [bulk, setBulk] = useState(false);
+  const orderAll = async () => {
+    if (!window.confirm(`Отправить в «Заявки на заказ» все карточки, товар которых уже есть в каталоге (${inCatalog.length} шт.)?`)) return;
+    setBulk(true);
+    let ok = 0; const failed = [];
+    for (const l of inCatalog) {
+      try { await adminCreateLaunchOrderRequest(l._id, {}); ok++; }
+      catch (e) { failed.push(`№${l.number}: ${e?.response?.data?.error || 'ошибка'}`); }
+    }
+    setBulk(false);
+    await load();
+    alert(`Отправлено заявок: ${ok}${failed.length ? `\nНе получилось:\n${failed.join('\n')}` : ''}`);
+  };
+
   return (
     <div>
       {/* Пояснение процесса */}
@@ -206,6 +241,66 @@ export default function ProductLaunchBoard({ onCountChange }) {
         выходит пост, продаём по фото → на выбранные товары запускаем таргет → собираем заявки клиентов.
         Есть спрос — из карточки создаётся <b>заявка на заказ</b> первой партии.
       </div>
+
+      {/* Сверка с каталогом: что из предложенного у нас уже есть */}
+      {(inCatalog.length > 0 || maybeInCatalog.length > 0) && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12,
+          padding: '12px 16px', marginBottom: 16 }}>
+          {inCatalog.length > 0 && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                <b style={{ fontSize: 13.5, color: '#14532d' }}>
+                  ✓ Уже есть в нашем каталоге — {inCatalog.length} шт.
+                </b>
+                <span style={{ fontSize: 12.5, color: '#3f6212' }}>
+                  Этим товарам тестовая продажа не нужна: их место — «Заявки на заказ».
+                </span>
+                <span style={{ flex: 1 }} />
+                {isContentMgr && (
+                  <button onClick={orderAll} disabled={bulk}
+                    style={{ padding: '7px 14px', fontSize: 12.5, fontWeight: 700, color: '#fff',
+                      background: bulk ? '#86efac' : '#16a34a', border: 'none', borderRadius: 9,
+                      cursor: bulk ? 'default' : 'pointer' }}>
+                    {bulk ? 'Отправляю…' : `🛒 Отправить все (${inCatalog.length})`}
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {inCatalog.map(l => (
+                  <button key={l._id} onClick={() => setDetail(l)}
+                    title="Открыть карточку"
+                    style={{ fontSize: 11.5, padding: '3px 9px', borderRadius: 20, cursor: 'pointer',
+                      background: '#fff', border: '1px solid #bbf7d0', color: '#166534', fontWeight: 600 }}>
+                    №{l.number} {l.productName || l.name}
+                    {(l.sku || l.product?.sku) && <span style={{ color: '#94a3b8' }}> · {l.sku || l.product.sku}</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {maybeInCatalog.length > 0 && (
+            <div style={{ marginTop: inCatalog.length ? 12 : 0, paddingTop: inCatalog.length ? 10 : 0,
+              borderTop: inCatalog.length ? '1px dashed #bbf7d0' : 'none' }}>
+              <b style={{ fontSize: 13.5, color: '#92400e' }}>
+                ≈ Похоже, есть в каталоге — {maybeInCatalog.length} шт.
+              </b>
+              <span style={{ fontSize: 12.5, color: '#b45309', marginLeft: 8 }}>
+                Совпало название или артикул — откройте карточку и привяжите товар.
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {maybeInCatalog.map(l => (
+                  <button key={l._id} onClick={() => setDetail(l)} title="Открыть карточку"
+                    style={{ fontSize: 11.5, padding: '3px 9px', borderRadius: 20, cursor: 'pointer',
+                      background: '#fff', border: '1px solid #fde68a', color: '#92400e', fontWeight: 600 }}>
+                    №{l.number} {l.name} → {l.catalogMatch.sku || l.catalogMatch.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Шкала этапов */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -287,9 +382,11 @@ export default function ProductLaunchBoard({ onCountChange }) {
                       key={l._id} launch={l} col={col}
                       canMove={isContentMgr || (isDesigner && l.stage === 'design') || (isAds && l.stage === 'target')}
                       canTake={isDesigner && l.stage === 'content'}
+                      canOrder={isContentMgr && needsOrder(l)}
                       onOpen={() => setDetail(l)}
                       onMove={(stage) => move(l, stage)}
                       onTake={() => take(l)}
+                      onOrder={() => toOrder(l)}
                     />
                   ))}
                 </div>
@@ -336,8 +433,45 @@ export default function ProductLaunchBoard({ onCountChange }) {
   );
 }
 
+// Товар уже в каталоге — тестовая продажа ему не нужна, ему место в заявках на заказ.
+// Карточка, заведённая под сам тест (test_sale) или под будущий товар, каталогом не
+// считается: она создаётся здесь же, на доске, и заказывать по ней нечего.
+const NOT_IN_CATALOG = ['test_sale', 'planned', 'in_development'];
+const isInCatalog = l => !!l?.product && !NOT_IN_CATALOG.includes(l.product?.productStatus);
+// Предложение менеджера по товару, который у нас уже есть: заявку по нему ещё не завели
+const needsOrder = l => l?.stage === 'proposed' && isInCatalog(l) && !l?.request;
+// Каталожного товара у карточки нет, но сервер нашёл похожий по названию/артикулу
+const catalogHint = l => (!isInCatalog(l) && l?.catalogMatch) ? l.catalogMatch : null;
+
+// Метка «есть в каталоге» — одинаково выглядит на карточке доски и в сводке над ней
+function CatalogMark({ launch: l, compact = false }) {
+  const hint = catalogHint(l);
+  if (!isInCatalog(l) && !hint) return null;
+
+  const inCat = isInCatalog(l);
+  const text = inCat
+    ? `✓ Уже есть в каталоге${l.sku || l.product?.sku ? ` · ${l.sku || l.product.sku}` : ''}`
+    : `≈ Похоже, есть в каталоге: ${hint.name}${hint.sku ? ` · ${hint.sku}` : ''}`;
+
+  return (
+    <div style={{ marginTop: compact ? 0 : 8 }}>
+      <span title={inCat ? 'Товар заведён в каталоге — его не тестируют, а заказывают'
+                         : 'Совпадение по названию — откройте карточку и привяжите товар'}
+        style={{
+          display: 'inline-block', maxWidth: '100%', fontSize: 11, fontWeight: 700,
+          padding: '3px 8px', borderRadius: 20, lineHeight: 1.35,
+          background: inCat ? '#f0fdf4' : '#fffbeb',
+          color:      inCat ? '#15803d' : '#b45309',
+          border: `1px solid ${inCat ? '#bbf7d0' : '#fde68a'}`,
+        }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
 // ── Карточка на доске ────────────────────────────────────────────────────────
-function LaunchCard({ launch: l, col, canMove, canTake, onOpen, onMove, onTake }) {
+function LaunchCard({ launch: l, col, canMove, canTake, canOrder, onOpen, onMove, onTake, onOrder }) {
   const i = idxOf(l.stage);
   const prev = i > 0 ? ALL_STAGES[i - 1] : null;
   const next = i < ALL_STAGES.length - 1 ? ALL_STAGES[i + 1] : null;
@@ -371,6 +505,9 @@ function LaunchCard({ launch: l, col, canMove, canTake, onOpen, onMove, onTake }
           </div>
         </div>
       </div>
+
+      {/* Есть ли товар у нас — видно прямо на доске, не открывая карточку */}
+      <CatalogMark launch={l} />
 
       {/* Этап «Контент» — видно, чего ещё не хватает */}
       {l.stage === 'content' && (
@@ -421,6 +558,15 @@ function LaunchCard({ launch: l, col, canMove, canTake, onOpen, onMove, onTake }
             );
           })}
         </div>
+      )}
+
+      {canOrder && (
+        <button onClick={e => { e.stopPropagation(); onOrder(); }}
+          title="Товар уже в каталоге — тест не нужен, заявка уйдёт закупщику"
+          style={{ width: '100%', marginTop: 10, padding: '9px', fontSize: 13, fontWeight: 700, color: '#fff',
+            background: '#16a34a', border: 'none', borderRadius: 9, cursor: 'pointer' }}>
+          🛒 В заявки на заказ
+        </button>
       )}
 
       {canTake && (
@@ -585,6 +731,12 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
             </div>
           )}
 
+          {/* До «Дизайна» карточку каталога привязывать негде, а сверка нужна именно
+              здесь: предложение менеджера часто про товар, который у нас уже есть */}
+          {!reached('design') && (
+            <CatalogBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} onOrdered={onOrdered} />
+          )}
+
           <ContentBlock launch={l} canEdit={isContentMgr} busy={busy} onSave={save} />
           {reached('design') && (
             <DesignBlock  launch={l} canEdit={isContentMgr || isDesigner} isDesigner={isDesigner}
@@ -608,6 +760,79 @@ function LaunchDetail({ launch: l, isContentMgr, isDesigner, isAds, onClose, onP
         </div>
       </div>
     </>
+  );
+}
+
+// Сверка с каталогом на ранних этапах: привязать товар и, если он у нас уже есть,
+// увести карточку в закуп, не гоняя её через тестовую продажу.
+function CatalogBlock({ launch: l, canEdit, busy, onSave, onOrdered }) {
+  const [linking, setLinking] = useState(false);
+  const [ordering, setOrdering] = useState(false);
+  const hint = catalogHint(l);
+  const inCat = isInCatalog(l);
+
+  const order = async () => {
+    if (!window.confirm(`«${l.productName || l.name}» уже есть в каталоге.\nОтправить в «Заявки на заказ»?`)) return;
+    setOrdering(true);
+    try { await onOrdered(null); }
+    catch (e) { alert(e?.response?.data?.error || 'Не удалось создать заявку'); }
+    finally { setOrdering(false); }
+  };
+
+  return (
+    <Section title="Товар в каталоге" accent={inCat ? '#15803d' : '#64748b'}
+      bg={inCat ? '#f0fdf4' : '#f8fafc'} line={inCat ? '#bbf7d0' : '#e2e8f0'}>
+
+      <div style={{ fontSize: 13.5, color: '#334155', marginBottom: 10 }}>
+        {inCat
+          ? <>Карточка есть: <b>{l.productName}</b>{l.sku ? <span style={{ color: '#94a3b8' }}> · {l.sku}</span> : null}</>
+          : l.product
+          ? <>Привязана карточка самого теста — <b>{l.productName}</b>{l.sku ? <span style={{ color: '#94a3b8' }}> · {l.sku}</span> : null}
+              . В каталоге такого товара ещё нет{hint ? ', но похож на:' : '.'}
+              {hint ? <> <b>{hint.name}</b>{hint.sku ? <span style={{ color: '#94a3b8' }}> · {hint.sku}</span> : null}</> : null}</>
+          : hint
+            ? <>Похоже, это <b>{hint.name}</b>{hint.sku ? <span style={{ color: '#94a3b8' }}> · {hint.sku}</span> : null}
+                {hint.exact ? ' (совпал артикул)' : ' (совпало название)'} — проверьте и привяжите.</>
+            : 'Товара с таким названием в каталоге не нашли — это новинка, ведём через тестовую продажу.'}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {canEdit && hint && (
+          <button onClick={() => onSave({ product: hint._id }, 'link')} disabled={!!busy}
+            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#fff', background: '#16a34a',
+              border: 'none', borderRadius: 9, cursor: 'pointer' }}>
+            ✓ Привязать {hint.sku || 'найденный товар'}
+          </button>
+        )}
+        {canEdit && (
+          <button onClick={() => setLinking(true)} disabled={!!busy}
+            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#334155', background: '#fff',
+              border: '1.5px solid #e2e8f0', borderRadius: 9, cursor: 'pointer' }}>
+            {inCat ? 'Заменить товар' : 'Выбрать из каталога'}
+          </button>
+        )}
+        {canEdit && inCat && !l.request && (
+          <button onClick={order} disabled={!!busy || ordering}
+            title="Товар уже наш — тест не нужен, заявка уйдёт закупщику"
+            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#fff', background: '#16a34a',
+              border: 'none', borderRadius: 9, cursor: 'pointer' }}>
+            {ordering ? 'Отправляю…' : '🛒 В заявки на заказ'}
+          </button>
+        )}
+        {l.product && (
+          <a href={`/admin/products/${l.product?._id || l.product}`} target="_blank" rel="noreferrer"
+            style={{ alignSelf: 'center', fontSize: 12.5, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}>
+            Открыть карточку ↗
+          </a>
+        )}
+      </div>
+
+      {linking && createPortal(
+        <ProductPicker
+          onClose={() => setLinking(false)}
+          onPick={async (p) => { await onSave({ product: p._id }, 'link'); setLinking(false); }}
+        />, document.body)}
+    </Section>
   );
 }
 
