@@ -8,7 +8,7 @@ const Product = require('../models/Product');
 const Supplier = require('../models/Supplier');
 
 // Production MongoDB URI
-const MONGO_URI = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym';
+const MONGO_URI = require('../lib/atlas');
 
 // Курс юаня к сому
 const CNY_TO_KGS = 12.5;

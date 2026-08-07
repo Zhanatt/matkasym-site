@@ -14,7 +14,7 @@ const path = require('path');
 const cloudinary = require('./lib/cloudinary');
 
 // MongoDB Atlas URI
-const MONGO_URI = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym';
+const MONGO_URI = require('./lib/atlas');
 
 // Input directory (готовые фото после ChatGPT)
 const INPUT_DIR = path.join(__dirname, '../output/shaar-lifestyle');

@@ -13,7 +13,7 @@ const {
   BorderStyle, ShadingType, TableLayoutType,
 } = require('docx');
 
-const MONGO_URI = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym?appName=M0';
+const MONGO_URI = require('./lib/atlas');
 const OUT_PATH  = path.join('/Users/zhanat/Desktop', 'low_sellers.docx');
 
 const StockLog = require('./models/StockLog');

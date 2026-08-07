@@ -9,6 +9,7 @@ client/dist/
 # Environment
 .env
 server/.env
+server/.env.atlas
 
 # OS
 .DS_Store

@@ -14,7 +14,7 @@ const Product    = require('./models/Product');
 const fs         = require('fs');
 const path       = require('path');
 
-const MONGO_URI     = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym?appName=M0';
+const MONGO_URI     = require('./lib/atlas');
 const JSON_FILE     = '/tmp/product_images.json';
 const IMG_DIR       = '/tmp/product_images';
 const EXECUTE       = process.argv.includes('--execute');

@@ -8,14 +8,16 @@ const cloudinary = require('cloudinary').v2;
 const fs = require('fs');
 const path = require('path');
 const Product = require('../models/Product');
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 // Конфигурация
-const MONGO_URI = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym';
+const MONGO_URI = require('../lib/atlas');
 
+// Ключи Cloudinary — только из окружения (server/.env), в репозиторий не пишем
 cloudinary.config({
-  cloud_name: 'dnbg21ef8',
-  api_key: '517988148957995',
-  api_secret: '80b7xJz8J_kRnDXJbhU3bxEfIMA'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 // Папка с фотографиями

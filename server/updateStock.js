@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
 const Product  = require('./models/Product');
 const fs       = require('fs');
 
-const MONGO_URI = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym?appName=M0';
+const MONGO_URI = require('./lib/atlas');
 const EXECUTE   = process.argv.includes('--execute');
 
 function norm(s = '') {

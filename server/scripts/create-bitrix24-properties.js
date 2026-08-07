@@ -12,7 +12,7 @@ const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const bitrix = require('../utils/bitrix24');
 
-const MONGO_URI = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym';
+const MONGO_URI = require('../lib/atlas');
 const SKIPPED_STATUSES = ['liquidation', 'discontinued'];
 
 // Из нескольких написаний одной характеристики берём то, что чаще встречается,

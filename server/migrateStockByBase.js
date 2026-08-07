@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const Product  = require('./models/Product');
 
 const MONGO_URI = process.env.MONGO_URI ||
-  'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym?appName=M0';
+  require('./lib/atlas');
 
 const APPLY = process.argv.includes('--apply');
 

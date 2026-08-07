@@ -22,7 +22,7 @@ const mongoose = require('mongoose');
 
 const OUT = process.argv[2] || path.join(os.homedir(), 'matkasym-photos-backup');
 const MONGO = process.env.MONGODB_ATLAS_URI
-  || 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym';
+  || require('../lib/atlas');
 
 const BRAND_DIRS = { 'matkasym-home': 'MATKASYM HOME', 'matkasym-shaar': 'MATKASYM SHAAR' };
 

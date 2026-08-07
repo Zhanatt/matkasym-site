@@ -13,7 +13,7 @@ const fs = require('fs');
 const cloudinary = require('./lib/cloudinary');
 const Product = require('./models/Product');
 
-const MONGO_URI = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym';
+const MONGO_URI = require('./lib/atlas');
 
 const MANIFEST_PATH = process.argv[2];
 const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8'));

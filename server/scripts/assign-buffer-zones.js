@@ -5,7 +5,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym?appName=M0';
+const MONGO_URI = process.env.MONGO_URI || require('../lib/atlas');
 
 // Санира ведёт HOME с обоих своих аккаунтов
 const ZONE_BY_EMAIL = {

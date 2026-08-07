@@ -4,7 +4,7 @@ const cloudinary = require('./lib/cloudinary');
 const Product    = require('./models/Product');
 const path       = require('path');
 
-const MONGO_URI  = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym?appName=M0';
+const MONGO_URI  = require('./lib/atlas');
 const IMAGE_PATH = path.resolve('/Users/zhanat/Desktop/фото для продакт матрикс/ЩЭ.png');
 
 async function main() {

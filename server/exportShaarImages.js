@@ -15,7 +15,7 @@ const https = require('https');
 const http = require('http');
 
 // MongoDB Atlas URI
-const MONGO_URI = 'mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym';
+const MONGO_URI = require('./lib/atlas');
 
 // Output directory
 const OUTPUT_DIR = path.join(__dirname, '../output/shaar-images');

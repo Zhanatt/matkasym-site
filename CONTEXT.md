@@ -41,47 +41,33 @@ matkasym-site/
 └── package.json (root) — build + start скрипты для Render
 ```
 
-## Credentials (локальные / сервер)
+## Доступы
 
-### MongoDB Atlas
-- URI: `mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym?appName=M0`
-- Пользователь БД: `zhanat_db_user` / `oDaCJQeuD2mjTpGp`
-- IP Whitelist: 0.0.0.0/0 (открыт для всех)
+**Паролей и ключей в репозитории нет и быть не должно** — он публичный на GitHub.
+Всё живёт в переменных окружения; здесь только список имён.
 
-### Cloudinary
-- Cloud name: `dnbg21ef8`
-- API Key: `517988148957995`
-- API Secret: `80b7xJz8J_kRnDXJbhU3bxEfIMA`
-- Папка: `matkasym/`
+### Где что лежит
+- **Прод:** переменные окружения сервиса на Render (Dashboard → Environment).
+- **Локально:** `server/.env` — смотрит на `mongodb://localhost:27017/matkasym`, это НЕ боевая база.
+- **Разовые скрипты по боевой базе:** `server/.env.atlas` со строкой `ATLAS_URI=…`
+  (в `.gitignore`). Читается модулем `server/lib/atlas.js` — отдельная переменная,
+  чтобы случайно не уехать в localhost и наоборот.
 
-### Gmail (для email)
-- User: `zhanattool@gmail.com`
-- App Password: `awsbxdmzetppvuac` (добавлен в Render env)
-
-### Admin аккаунт (Продакт матрица)
-- Email: `zhanattool@gmail.com`
-- Пароль: `Matkasym123`
-
-### Render env vars (должны быть установлены)
+### Какие переменные нужны на Render
 ```
-MONGO_URI=mongodb+srv://zhanat_db_user:oDaCJQeuD2mjTpGp@m0.fkbeejx.mongodb.net/matkasym?appName=M0
-JWT_SECRET=matkasym_super_secret_key_2026
-GMAIL_USER=zhanattool@gmail.com
-GMAIL_APP_PASSWORD=awsbxdmzetppvuac
+MONGO_URI            строка подключения к Atlas (Atlas → Database → Connect)
+JWT_SECRET           подпись токенов
+GMAIL_USER           почта для отправки
+GMAIL_APP_PASSWORD   пароль приложения Gmail
+CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
+CATALOG_API_KEY      ключ для каталог-бота
 NODE_ENV=production
 SITE_URL=https://matkasym-site.onrender.com
 ```
 
-### Локальный .env (server/.env)
-```
-PORT=5001
-MONGO_URI=mongodb://localhost:27017/matkasym
-JWT_SECRET=matkasym_super_secret_key_2026
-CLIENT_URL=http://localhost:5173
-CLOUDINARY_CLOUD_NAME=dnbg21ef8
-CLOUDINARY_API_KEY=517988148957995
-CLOUDINARY_API_SECRET=80b7xJz8J_kRnDXJbhU3bxEfIMA
-```
+### MongoDB Atlas
+- Кластер `m0.fkbeejx.mongodb.net`, база `matkasym`, пользователь `zhanat_db_user`.
+- IP Whitelist: `0.0.0.0/0` — открыт для всех, поэтому пароль и есть вся защита.
 
 ## Модель Product (ключевые поля)
 ```js
@@ -129,7 +115,7 @@ GET  /api/admin/products/facets — зависимые фильтры (brand→s
 - [x] 4 типа цен: Себестоимость / Оптовая / Дилерская / Розничная
 
 ## Что ещё не сделано / возможные следующие шаги
-- [ ] Добавить Gmail App Password в Render env (awsbxdmzetppvuac) → проверить отправку писем
+- [ ] Добавить Gmail App Password в Render env → проверить отправку писем
 - [ ] Наполнить цены для 60 товаров (сейчас у многих price=0)
 - [ ] Настроить оплату (если нужно)
 
