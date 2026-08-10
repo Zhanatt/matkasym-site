@@ -29,18 +29,20 @@ const CTA = {
   default:  'Заказать просто — напишите нам 👇',
 };
 
-// Порог «мало»: сначала буферный запас из 1С (это собственное определение
-// бизнеса, когда товар считается заканчивающимся), иначе 3 штуки.
-const LOW_STOCK_FALLBACK = 3;
-
+// «Осталось мало» — только у тестовой продажи. Пробную партию везут маленькой
+// и специально распродают быстро, там срочность настоящая.
+//
+// У каталожного товара этой строки нет НИКОГДА, независимо от остатка. Раньше
+// порогом брался буферный запас из 1С — но это внутренняя цифра снабжения
+// («ниже неё дозаказываем у поставщика»), а не «покупателю пора спешить».
+// У вешалки INFINITY буфер 50 при остатке 44 — клиенту сообщалось, что товар
+// заканчивается, хотя его почти полсотни. Под это правило попадал любой ходовой
+// товар: чем лучше продаётся, тем выше буфер, тем чаще ложная срочность.
 function ctaLine(p) {
-  if (p.oldPrice > 0 && p.price > 0 && p.oldPrice > p.price) return CTA.discount;
+  if (p.productStatus === 'test_sale') return CTA.low;
 
-  const stock = Number(p.stock) || 0;
-  if (stock > 0) {
-    const threshold = Number(p.bufferStock) > 0 ? Number(p.bufferStock) : LOW_STOCK_FALLBACK;
-    return stock <= threshold ? CTA.low : CTA.inStock;
-  }
+  if (p.oldPrice > 0 && p.price > 0 && p.oldPrice > p.price) return CTA.discount;
+  if ((Number(p.stock) || 0) > 0) return CTA.inStock;
 
   if (p.isOnOrder || p.inTransit) return CTA.onOrder;
   return CTA.default;
