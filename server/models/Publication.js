@@ -20,6 +20,12 @@ const targetSchema = new mongoose.Schema({
 // Публикация = один контент, разосланный по нескольким площадкам.
 // Текст и картинки фиксируются здесь снимком: правки товара задним числом пост не меняют.
 const publicationSchema = new mongoose.Schema({
+  // Сквозной номер публикации — чтобы на неё можно было сослаться словами
+  // («сняли пост №142»), а не длинным ObjectId. Выдаёт Counter.next('publication').
+  // sparse: у публикаций, созданных до появления номеров, поля может не быть,
+  // и обычный unique-индекс считал бы их все дублями по null.
+  number:      { type: Number, unique: true, sparse: true },
+
   kind:        { type: String, enum: ['product', 'custom'], default: 'product' },
   product:     { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
   productName: { type: String, default: '' },

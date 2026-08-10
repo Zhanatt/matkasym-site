@@ -7,6 +7,7 @@ const { protect, editor } = require('../middleware/auth');
 const { SocialAccount, TelegramChat } = require('../models/SocialAccount');
 const PublishFlow  = require('../models/PublishFlow');
 const Publication  = require('../models/Publication');
+const Counter      = require('../models/Counter');
 const Product      = require('../models/Product');
 const { buildProductText, captionFor, runPublication, unpublishPublication, PLATFORM_LABELS } = require('../lib/socialPublish');
 
@@ -348,6 +349,7 @@ router.post('/publications', async (req, res) => {
     if (!pubTargets.length) return res.status(400).json({ message: 'Выбранные площадки не найдены' });
 
     const pub = await Publication.create({
+      number:      await Counter.next('publication'),
       kind,
       product:     product?._id,
       productName: product ? (product.fullName || product.name || '') : '',

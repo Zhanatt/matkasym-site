@@ -491,12 +491,19 @@ export default function AdminPublish() {
             <div style={{ ...CARD, padding: 18 }}>
               {result.scheduled ? (
                 <div style={{ fontSize: 13, color: '#1e7c3a' }}>
-                  🕓 Публикация запланирована на {new Date(result.publication.scheduledAt).toLocaleString('ru')}
+                  🕓 Публикация{result.publication?.number ? ` №${result.publication.number}` : ''} запланирована
+                  {' '}на {new Date(result.publication.scheduledAt).toLocaleString('ru')}
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
-                    Результат: {result.published || 0} опубликовано{result.failed ? `, ${result.failed} с ошибкой` : ''}
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {result.publication?.number && (
+                      <span style={{
+                        background: '#eef2f7', color: '#3463A3', borderRadius: 6,
+                        padding: '2px 8px', fontSize: 12, fontVariantNumeric: 'tabular-nums',
+                      }}>№{result.publication.number}</span>
+                    )}
+                    <span>Результат: {result.published || 0} опубликовано{result.failed ? `, ${result.failed} с ошибкой` : ''}</span>
                   </div>
                   {(result.publication?.targets || []).map((t, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6, flexWrap: 'wrap' }}>

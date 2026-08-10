@@ -98,8 +98,14 @@ export default function AdminPublishHistory() {
                 <img src={cloudinaryOpt(p.images[0], 200)} alt="" style={{ width: 62, height: 62, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
               )}
               <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>
-                  {p.productName || (p.kind === 'custom' ? 'Свободный пост' : 'Публикация')}
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  {p.number && (
+                    <span style={{
+                      background: '#eef2f7', color: '#3463A3', borderRadius: 6,
+                      padding: '2px 8px', fontSize: 12, fontVariantNumeric: 'tabular-nums',
+                    }}>№{p.number}</span>
+                  )}
+                  <span>{p.productName || (p.kind === 'custom' ? 'Свободный пост' : 'Публикация')}</span>
                 </div>
                 <div style={{ fontSize: 11, color: '#8b98a5', marginTop: 3 }}>
                   {new Date(p.createdAt).toLocaleString('ru')}
