@@ -11,6 +11,9 @@ client/dist/
 server/.env
 server/.env.atlas
 
+# Бэкапы документов перед правкой боевых данных — внутри лежат секреты площадок
+server/scripts/backup-social-*.json
+
 # OS
 .DS_Store
 Thumbs.db

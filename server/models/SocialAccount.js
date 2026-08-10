@@ -6,13 +6,14 @@ const mongoose = require('mongoose');
 // Секреты (Instagram access token) лежат здесь же в config — как и вебхук Битрикса
 // в utils/bitrix24.js. Наружу они не отдаются: toPublicJSON() маскирует их.
 const accountSchema = new mongoose.Schema({
-  platform: { type: String, enum: ['telegram', 'instagram', 'bitrix24', 'site'], required: true },
+  platform: { type: String, enum: ['telegram', 'instagram', 'facebook', 'bitrix24', 'site'], required: true },
   title:    { type: String, required: true },   // человеческое имя: «Группа HOME», «@matkasym.home»
   enabled:  { type: Boolean, default: true },
 
   // Платформенные настройки:
   //  telegram  — { chatId }                          (бот должен быть в группе/канале, с правом писать)
   //  instagram — { igUserId, accessToken, username }  (IG Business + долгоживущий токен)
+  //  facebook  — { pageId, accessToken, pageName }    (токен САМОЙ страницы, с pages_manage_posts)
   //  bitrix24  — { dest }                             (dest: 'UA' = вся компания, либо 'SG42' и т.п.)
   config: { type: mongoose.Schema.Types.Mixed, default: {} },
 

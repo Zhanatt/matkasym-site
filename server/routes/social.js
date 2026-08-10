@@ -22,7 +22,7 @@ router.get('/accounts', async (req, res) => {
 router.post('/accounts', async (req, res) => {
   try {
     const { platform, title, config, postTypes, captionTemplate, enabled } = req.body || {};
-    if (!['telegram', 'instagram', 'bitrix24', 'site'].includes(platform)) {
+    if (!['telegram', 'instagram', 'facebook', 'bitrix24', 'site'].includes(platform)) {
       return res.status(400).json({ message: 'Неизвестная платформа' });
     }
     if (!String(title || '').trim()) return res.status(400).json({ message: 'Укажите название площадки' });
@@ -75,20 +75,28 @@ router.delete('/accounts/:id', async (req, res) => {
 
 // Ошибки Meta приходят англоязычной простынёй, из которой не видно, что делать.
 // Переводим типовые случаи в инструкцию: почти всегда лечится перевыпуском токена.
-function igError(err = {}) {
+// Общая для Instagram и Facebook — API и ошибки у них одни и те же.
+const META_SCOPES = 'pages_show_list, pages_read_engagement, pages_manage_posts, '
+  + 'instagram_basic, instagram_content_publish';
+
+function metaError(err = {}) {
   const msg = String(err.message || '');
+  if (/pages_manage_posts/i.test(msg)) {
+    return 'У токена нет права публиковать на странице (pages_manage_posts). Перевыпустите токен '
+      + `в Graph API Explorer с разрешениями ${META_SCOPES} — и возьмите токен САМОЙ СТРАНИЦЫ `
+      + '(GET /me/accounts), а не пользователя.';
+  }
   if (/permission\(s\) must be granted|pages_show_list|pages_read_engagement/i.test(msg)) {
     return 'У токена нет прав на страницу. Перевыпустите его в Graph API Explorer с разрешениями '
-      + 'pages_show_list, pages_read_engagement, instagram_basic, instagram_content_publish — '
-      + 'и возьмите токен САМОЙ СТРАНИЦЫ (GET /me/accounts), а не пользователя.';
+      + `${META_SCOPES} — и возьмите токен САМОЙ СТРАНИЦЫ (GET /me/accounts), а не пользователя.`;
   }
   if (/expired|Session has expired/i.test(msg)) {
-    return 'Токен истёк. Выпустите новый долгоживущий токен страницы (60 дней) и вставьте его в «Изменить».';
+    return 'Токен истёк. Выпустите новый долгоживущий токен страницы и вставьте его в «Изменить».';
   }
   if (Number(err.code) === 190) {
     return `Токен недействителен: ${msg}`;
   }
-  return msg || 'Instagram API error';
+  return msg || 'Meta API error';
 }
 
 // POST /accounts/:id/check — проверка связи без публикации: доступен ли чат / жив ли токен.
@@ -113,8 +121,42 @@ router.post('/accounts/:id/check', async (req, res) => {
       const r = await fetch(`https://graph.facebook.com/v21.0/${igUserId}?fields=username,name&access_token=${encodeURIComponent(accessToken)}`);
       const d = await r.json();
       return res.json(d.error
-        ? { ok: false, error: igError(d.error) }
+        ? { ok: false, error: metaError(d.error) }
         : { ok: true, info: '@' + (d.username || d.name || igUserId) });
+    }
+
+    // Facebook: мало достучаться до страницы — надо убедиться, что токен ещё и
+    // писать умеет. Права видно только через debug_token, а не по ответу страницы,
+    // иначе «связь есть» показывалось бы вплоть до самой неудачной публикации.
+    if (acc.platform === 'facebook') {
+      const { pageId, accessToken } = acc.config || {};
+      if (!pageId || !accessToken) return res.json({ ok: false, error: 'Не заданы pageId / accessToken' });
+
+      const enc = encodeURIComponent(accessToken);
+      const r = await fetch(`https://graph.facebook.com/v21.0/${pageId}?fields=name,fan_count&access_token=${enc}`);
+      const d = await r.json();
+      if (d.error) return res.json({ ok: false, error: metaError(d.error) });
+
+      const dbg = await fetch(`https://graph.facebook.com/v21.0/debug_token?input_token=${enc}&access_token=${enc}`)
+        .then(x => x.json()).catch(() => ({}));
+      const info = dbg.data || {};
+
+      if (info.type && info.type !== 'PAGE') {
+        return res.json({ ok: false, error: 'Это токен пользователя, а не страницы. Возьмите access_token из GET /me/accounts.' });
+      }
+      if (Array.isArray(info.scopes) && !info.scopes.includes('pages_manage_posts')) {
+        return res.json({ ok: false, error: metaError({ message: 'pages_manage_posts' }) });
+      }
+
+      // expires_at: 0 = бессрочный. data_access_expires_at — отдельный срок:
+      // токен ещё жив, а доступ к данным Meta уже отключила.
+      const parts = [d.name || pageId];
+      if (d.fan_count) parts.push(`${Number(d.fan_count).toLocaleString('ru-RU')} подписчиков`);
+      parts.push(info.expires_at === 0 ? 'токен бессрочный' : 'токен со сроком');
+      if (info.data_access_expires_at) {
+        parts.push('доступ к данным до ' + new Date(info.data_access_expires_at * 1000).toLocaleDateString('ru-RU'));
+      }
+      return res.json({ ok: true, info: parts.join(' · ') });
     }
 
     // Сайт — своя же база, проверять связь не с кем. Показываем, скольким сотрудникам
@@ -128,9 +170,16 @@ router.post('/accounts/:id/check', async (req, res) => {
     }
 
     // Битрикс24 — вебхук общий с каталогом, проверяем, что он вообще отвечает.
-    const { call } = require('../utils/bitrix24');
-    const me = await call('profile', {});
-    return res.json({ ok: true, info: me?.NAME ? `${me.NAME} ${me.LAST_NAME || ''}`.trim() : 'вебхук отвечает' });
+    if (acc.platform === 'bitrix24') {
+      const { call } = require('../utils/bitrix24');
+      const me = await call('profile', {});
+      return res.json({ ok: true, info: me?.NAME ? `${me.NAME} ${me.LAST_NAME || ''}`.trim() : 'вебхук отвечает' });
+    }
+
+    // Раньше Битрикс стоял здесь без проверки платформы, как «всё остальное»,
+    // и новая площадка на ещё не обновлённом сервере получала зелёное «связь есть»
+    // с именем владельца битрикс-вебхука. Неизвестную платформу честно называем.
+    return res.json({ ok: false, error: `Проверка для «${acc.platform}» не реализована — обновите сервер` });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }

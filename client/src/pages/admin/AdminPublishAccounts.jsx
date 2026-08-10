@@ -144,6 +144,7 @@ export default function AdminPublishAccounts() {
                   {meta.label}
                   {a.platform === 'telegram' && a.config?.chatId  && ` · ${a.config.chatId}`}
                   {a.platform === 'instagram' && a.config?.igUserId && ` · ID ${a.config.igUserId}`}
+                  {a.platform === 'facebook'  && a.config?.pageId   && ` · стр. ${a.config.pageId}`}
                   {a.platform === 'bitrix24'  && ` · ${a.config?.dest || 'UA'}`}
                   {a.platform === 'instagram' && a.postTypes?.length > 0 &&
                     ` · ${a.postTypes.map(t => POST_TYPES[t]?.label || t).join(', ')}`}

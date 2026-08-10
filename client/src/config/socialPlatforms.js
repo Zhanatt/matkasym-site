@@ -22,6 +22,18 @@ export const PLATFORMS = {
       { key: 'accessToken', label: 'Access Token',       placeholder: 'EAAG...', required: true, secret: true },
     ],
   },
+  facebook: {
+    label: 'Facebook',
+    icon:  '👍',
+    color: '#1877F2',
+    hint:  'Страница Facebook. Нужен токен САМОЙ страницы (GET /me/accounts) с правом pages_manage_posts — '
+         + 'тот же, что и для Instagram, но с добавленным правом на публикацию. Историй у страниц через API нет.',
+    fields: [
+      { key: 'pageName',    label: 'Страница (для себя)', placeholder: 'Matkasym Home' },
+      { key: 'pageId',      label: 'Page ID',             placeholder: '489438164253110', required: true },
+      { key: 'accessToken', label: 'Access Token',        placeholder: 'EAAG...', required: true, secret: true },
+    ],
+  },
   site: {
     label: 'Сайт',
     icon:  '🌐',

@@ -11,6 +11,7 @@ const { signOf } = require('./stockBases');
 const PUBLISHERS = {
   telegram:  require('./publishers/telegram'),
   instagram: require('./publishers/instagram'),
+  facebook:  require('./publishers/facebook'),
   bitrix24:  require('./publishers/bitrix24'),
   site:      require('./publishers/site'),
 };
@@ -18,6 +19,7 @@ const PUBLISHERS = {
 const PLATFORM_LABELS = {
   telegram:  'Telegram',
   instagram: 'Instagram',
+  facebook:  'Facebook',
   bitrix24:  'Битрикс24',
   site:      'Сайт',
 };
