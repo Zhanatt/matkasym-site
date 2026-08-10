@@ -13,6 +13,9 @@ const { buildProductText, captionFor, runPublication, unpublishPublication, PLAT
 
 router.use(protect, editor);
 
+// Все даты в отчётах считаем по Бишкеку: сервер на Render в UTC, разница 6 часов.
+const TZ = 'Asia/Bishkek';
+
 // ===== Площадки =====
 
 router.get('/accounts', async (req, res) => {
@@ -271,6 +274,84 @@ router.get('/publish-stats', async (req, res) => {
     }
     res.json(byProduct);
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// GET /report?days=30 — кто сколько публикаций сделал, с разбивкой по дням.
+// Нужно, чтобы видеть выработку дизайнеров: журнал показывает последние 50 записей
+// подряд и на вопрос «сколько за неделю сделала Мадина» не отвечает.
+//
+// days=0 — за всё время.
+router.get('/report', async (req, res) => {
+  try {
+    const days = Math.min(Number(req.query.days) || 30, 365);
+    const match = {};
+    if (days > 0) {
+      const from = new Date();
+      from.setHours(0, 0, 0, 0);
+      from.setDate(from.getDate() - (days - 1));
+      match.createdAt = { $gte: from };
+    }
+
+    // Группируем по бишкекскому дню, а не по UTC: сервер на Render живёт в UTC,
+    // и публикация, сделанная вечером по Бишкеку, попадала бы в предыдущие сутки.
+    const rows = await Publication.aggregate([
+      { $match: match },
+      { $group: {
+        _id: {
+          day:  { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: TZ } },
+          user: '$createdBy',
+        },
+        publications: { $sum: 1 },
+        // Одна публикация = несколько постов: в Instagram, Facebook, Telegram.
+        // Считаем реально ушедшие, вместе со снятыми потом — работа была сделана.
+        posts: { $sum: { $size: { $filter: {
+          input: { $ifNull: ['$targets', []] },
+          cond:  { $in: ['$$this.status', ['published', 'deleted', 'needs_manual']] },
+        } } } },
+      } },
+      { $sort: { '_id.day': -1 } },
+    ]);
+
+    const User = require('../models/User');
+    const ids  = [...new Set(rows.map(r => String(r._id.user)).filter(x => x && x !== 'null'))];
+    const users = await User.find({ _id: { $in: ids } }).select('name role').lean();
+    const nameOf = Object.fromEntries(users.map(u => [String(u._id), u]));
+
+    const people = {};
+    const byDay  = {};
+
+    for (const r of rows) {
+      const uid = String(r._id.user || 'none');
+      const u   = nameOf[uid];
+
+      const p = people[uid] || (people[uid] = {
+        id: uid,
+        name: u?.name || 'без автора',
+        role: u?.role || '',
+        publications: 0,
+        posts: 0,
+      });
+      p.publications += r.publications;
+      p.posts        += r.posts;
+
+      const d = byDay[r._id.day] || (byDay[r._id.day] = { date: r._id.day, publications: 0, posts: 0, byPerson: {} });
+      d.publications += r.publications;
+      d.posts        += r.posts;
+      d.byPerson[uid] = (d.byPerson[uid] || 0) + r.publications;
+    }
+
+    res.json({
+      days,
+      people: Object.values(people).sort((a, b) => b.publications - a.publications),
+      byDay:  Object.values(byDay).sort((a, b) => b.date.localeCompare(a.date)),
+      totals: {
+        publications: Object.values(people).reduce((s, p) => s + p.publications, 0),
+        posts:        Object.values(people).reduce((s, p) => s + p.posts, 0),
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // Черновик текста по товару — тот же, что уходит в предпросмотр.

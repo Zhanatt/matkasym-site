@@ -232,6 +232,7 @@ export const socialGetFlowTargets  = (id)        => api.get(`/admin/social/flows
 export const socialGetDraft        = (productId, priceMode) => api.get(`/admin/social/draft/${productId}`, { params: priceMode ? { price: priceMode } : {} });
 // Сколько раз и куда товар уже публиковали — показывается в поиске товара
 export const socialGetPublishStats = ()          => api.get('/admin/social/publish-stats');
+export const socialGetReport       = (days)      => api.get('/admin/social/report', { params: { days } });
 export const socialPreview         = (data)      => api.post('/admin/social/preview', data);
 export const socialPublish         = (data)      => api.post('/admin/social/publications', data);
 export const socialGetPublications = (limit)     => api.get('/admin/social/publications', { params: { limit } });

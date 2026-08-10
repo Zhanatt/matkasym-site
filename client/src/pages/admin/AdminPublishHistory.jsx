@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { socialGetPublications, socialRetryPublication, socialUnpublish, socialDeletePublication } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
 import { platformMeta } from '../../config/socialPlatforms';
+import PublishReport from './PublishReport';
 
 const STATUS = {
   published:   { label: 'опубликовано',  color: '#1e7c3a', icon: '✅' },
@@ -82,6 +83,8 @@ export default function AdminPublishHistory() {
           background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#555',
         }}>Обновить</button>
       </div>
+
+      <PublishReport />
 
       {loading ? (
         <div style={{ fontSize: 13, color: '#aaa' }}>Загрузка...</div>
