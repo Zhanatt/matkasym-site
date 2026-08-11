@@ -482,8 +482,9 @@ export default function AdminPublish() {
               placeholder={kind === 'custom' ? 'Текст новости или объявления...' : ''}
               style={{ ...INP, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
             <div style={{ fontSize: 11, color: '#8b98a5', marginTop: 6, lineHeight: 1.5 }}>
-              Ссылка на WhatsApp уходит только в Telegram, Битрикс24 и на сайт. В Instagram и Facebook
-              вместо неё встанет строка «📲 Буюртма үчүн Direct / WhatsApp'ка жазыңыз» — ссылки там всё равно не кликаются.
+              Цена и ссылка на WhatsApp уходят только в Telegram, Битрикс24 и на сайт. В Instagram и Facebook
+              строка с ценой вырезается, а вместо ссылки встаёт «📲 Буюртма үчүн Direct / WhatsApp'ка жазыңыз»
+              — ссылки там всё равно не кликаются. Как это выглядит по каждой площадке, видно в предпросмотре.
             </div>
           </div>
 

@@ -228,27 +228,35 @@ function whatsappLink(p, lang = DEFAULT_LANG) {
   return `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(text)}`;
 }
 
-// Площадки, где ссылке в тексте делать нечего. В Instagram подпись вообще не
-// кликабельна, а Facebook под ссылкой в тексте рисует свою карточку-превью и
-// режет охват; вместо ссылки — короткая строка «напишите в Direct / WhatsApp».
-const NO_LINK_PLATFORMS = new Set(['instagram', 'facebook']);
+// Площадки, где заказ идёт только через личку: ни ссылки, ни цены в посте.
+// Ссылка в подписи Instagram не кликается вовсе, а Facebook под ссылкой рисует
+// свою карточку-превью и режет охват. Цену там не пишем сознательно: вопрос
+// «сколько стоит?» в Direct — это и есть начало разговора с покупателем.
+const DIRECT_ONLY_PLATFORMS = new Set(['instagram', 'facebook']);
 
 // Строка со ссылкой на WhatsApp — в готовом (в т.ч. отредактированном руками) тексте.
 const ORDER_LINK_LINE = /^[^\n]*<a\s+href="https:\/\/wa\.me\/[^"]*"[^>]*>[^<]*<\/a>[^\n]*$/gim;
 // Та же ссылка, вставленная в текст голым URL, без тега <a>.
 const BARE_WA_LINE    = /^[^\n]*https:\/\/wa\.me\/\S*[^\n]*$/gim;
+// Строка с ценой. Опознаём по 💰 — этот значок ставит priceLine и только он,
+// поэтому правило переживает и правку текста руками, и смену языка.
+const PRICE_LINE      = /^[^\n]*💰[^\n]*$/gm;
 
 // Текст под конкретную площадку: у Instagram и Facebook вырезаем ссылку на
-// WhatsApp и ставим на её место призыв. Функция идемпотентна — второй вызов
-// (на повторе публикации) ничего уже не меняет.
+// WhatsApp (вместо неё — призыв писать в Direct) и строку с ценой.
+// Функция идемпотентна — второй вызов (на повторе публикации) ничего не меняет.
 function adaptCaption(html, platform, lang) {
-  if (!NO_LINK_PLATFORMS.has(platform)) return String(html || '');
+  if (!DIRECT_ONLY_PLATFORMS.has(platform)) return String(html || '');
   const cta = phrases(lang || detectLang(html)).directCta;
   return String(html || '')
     .replace(ORDER_LINK_LINE, cta)
     .replace(BARE_WA_LINE, cta)
     // если ссылка встречалась дважды, двух одинаковых призывов подряд быть не должно
-    .replace(new RegExp(`(?:^${escapeRe(cta)}\\n)+(?=${escapeRe(cta)}$)`, 'gm'), '');
+    .replace(new RegExp(`(?:^${escapeRe(cta)}\\n)+(?=${escapeRe(cta)}$)`, 'gm'), '')
+    .replace(PRICE_LINE, '')
+    // от вырезанной цены остаётся пустая строка — иначе в посте зияет дыра
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function escapeRe(s) {
@@ -325,4 +333,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, NO_LINK_PLATFORMS, esc, ORDER_WHATSAPP };
+module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP };
