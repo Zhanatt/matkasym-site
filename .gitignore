@@ -11,9 +11,9 @@ client/dist/
 server/.env
 server/.env.atlas
 
-# Бэкапы документов перед правкой боевых данных — внутри лежат секреты площадок
-server/scripts/backup-social-*.json
-server/scripts/backup-user-*.json
+# Бэкапы документов перед правкой боевых данных: внутри секреты площадок,
+# себестоимость и остатки — в публичный репозиторий им нельзя
+server/scripts/backup-*.json
 
 # OS
 .DS_Store
