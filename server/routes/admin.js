@@ -261,6 +261,15 @@ router.get('/stats', async (req, res) => {
 
 // ── Products ─────────────────────────────────────
 
+// Поиск строится регуляркой, а введённый текст — это ТЕКСТ, а не шаблон.
+// Без экранирования «Полка "Bakcha 3" (черная)» превращается в группу захвата:
+// шаблон ищет «3 черная» без скобок и не находит товар, у которого они есть.
+// Скобки и точки есть у 35% названий каталога, так что мимо шли не единицы.
+// Отдельно это ещё и падение: одна открывающая скобка — невалидная регулярка и 500.
+function searchRe(s) {
+  return new RegExp(String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+}
+
 router.get('/products', async (req, res) => {
   try {
     const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country } = req.query;
@@ -274,11 +283,10 @@ router.get('/products', async (req, res) => {
       filter.pendingReceive = { $ne: true };
     }
     if (inTransit === 'true') filter.inTransit = true;
-    if (search) filter.$or = [
-      { name: new RegExp(search, 'i') },
-      { fullName: new RegExp(search, 'i') },
-      { sku: new RegExp(search, 'i') },
-    ];
+    if (search) {
+      const re = searchRe(search);
+      filter.$or = [{ name: re }, { fullName: re }, { sku: re }];
+    }
     if (brand)         filter.brand         = brand;
     if (set)           filter.set           = set;
     if (set === 'zhashyl-omur') console.log('[DEBUG] zhashyl-omur query, filter:', filter);
@@ -341,11 +349,10 @@ router.get('/products/facets', async (req, res) => {
     if (brand)    base.brand    = brand;
     if (set)      base.set      = set;
     if (category) base.category = category;
-    if (search)   base.$or = [
-      { name: new RegExp(search, 'i') },
-      { fullName: new RegExp(search, 'i') },
-      { sku: new RegExp(search, 'i') },
-    ];
+    if (search) {
+      const re = searchRe(search);
+      base.$or = [{ name: re }, { fullName: re }, { sku: re }];
+    }
     const filterForSets = { ...base }; delete filterForSets.set;
     const filterForCats = { ...base }; delete filterForCats.category;
     const [sets, categories, productCount, stockStats] = await Promise.all([
