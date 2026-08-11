@@ -139,15 +139,21 @@ router.get('/search', apiKey, async (req, res) => {
     const q = (req.query.q || '').trim();
     if (!q) return res.status(400).json({ error: 'Укажите параметр q' });
 
+    // Запрос экранируем: это текст, а не шаблон. Скобки в «Полка "Bakcha 3"
+    // (черная)» иначе читаются как группа захвата, и товар не находится —
+    // спецсимволы есть у трети названий каталога. Кривой ввод вроде «(»
+    // без экранирования делал регулярку невалидной и роут падал в 500.
+    const rx = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     const products = await Product.find({
       productStatus: { $in: ['for_sale', 'improvement', 'in_development'] },
       $or: [
-        { name:        { $regex: q, $options: 'i' } },
-        { fullName:    { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } },
-        { tags:        { $regex: q, $options: 'i' } },
-        { category:    { $regex: q, $options: 'i' } },
-        { set:         { $regex: q, $options: 'i' } },
+        { name:        { $regex: rx, $options: 'i' } },
+        { fullName:    { $regex: rx, $options: 'i' } },
+        { description: { $regex: rx, $options: 'i' } },
+        { tags:        { $regex: rx, $options: 'i' } },
+        { category:    { $regex: rx, $options: 'i' } },
+        { set:         { $regex: rx, $options: 'i' } },
       ],
     })
       .select('-driveImages -images -__v')
