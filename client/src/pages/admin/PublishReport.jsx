@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { socialGetReport } from '../../api';
 
-// Кто сколько публикаций сделал, с разбивкой по дням.
+// Кто сколько публикаций сделал и что за ним закреплено.
 // Журнал показывает записи сплошным списком и на вопрос «сколько за неделю
 // сделала Мадина» не отвечает — этот блок отвечает.
 
 const PERIODS = [
-  { days: 7,   label: 'Неделя' },
-  { days: 30,  label: 'Месяц' },
-  { days: 0,   label: 'Всё время' },
+  { days: 7,  label: 'Неделя' },
+  { days: 30, label: 'Месяц' },
+  { days: 0,  label: 'Всё время' },
 ];
 
 const ROLE = { designer: 'дизайнер', owner: 'владелец', editor: 'редактор', viewer: 'сотрудник' };
@@ -18,9 +18,17 @@ const ROLE = { designer: 'дизайнер', owner: 'владелец', editor: 
 // показала бы предыдущий день.
 function dayLabel(iso) {
   const [y, m, d] = iso.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  const wd = dt.toLocaleDateString('ru-RU', { weekday: 'short' });
-  return `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}, ${wd}`;
+  const wd = new Date(y, m - 1, d).toLocaleDateString('ru-RU', { weekday: 'short' });
+  return `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')} · ${wd}`;
+}
+
+// 1 публикация / 2 публикации / 5 публикаций
+function plural(n, one, few, many) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
 }
 
 export default function PublishReport() {
@@ -39,16 +47,25 @@ export default function PublishReport() {
 
   const people = data?.people || [];
   const byDay  = data?.byDay  || [];
-  const max    = Math.max(1, ...people.map(p => p.publications));
+  const maxPub = Math.max(1, ...people.map(p => p.publications));
+  const maxDay = Math.max(1, ...byDay.map(d => d.publications));
 
   const th = {
-    padding: '8px 10px', fontSize: 11, color: '#8b98a5', fontWeight: 700,
+    padding: '9px 10px', fontSize: 11, color: '#8b98a5', fontWeight: 700,
     textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1.5px solid #eef0f3',
   };
   const td = {
-    padding: '7px 10px', fontSize: 12, textAlign: 'right',
+    padding: '10px', fontSize: 13, textAlign: 'right',
     fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid #f4f6f8',
   };
+
+  const tile = (value, label, hint) => (
+    <div style={{ flex: '1 1 120px', background: '#f7f9fb', borderRadius: 10, padding: '12px 14px' }}>
+      <div style={{ fontSize: 24, fontWeight: 800, color: '#111', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 12, color: '#5c6873', marginTop: 3 }}>{label}</div>
+      {hint && <div style={{ fontSize: 10, color: '#aab3bd', marginTop: 2 }}>{hint}</div>}
+    </div>
+  );
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 1px 6px rgba(0,0,0,.07)', marginBottom: 18 }}>
@@ -78,98 +95,98 @@ export default function PublishReport() {
         <div style={{ fontSize: 13, color: '#999', marginTop: 14 }}>За этот период публикаций не было.</div>
       ) : (
         <>
-          <div style={{ fontSize: 12, color: '#8b98a5', margin: '10px 0 16px' }}>
-            <b style={{ color: '#111', fontSize: 14 }}>{data.totals.publications}</b> публикаций
-            {' · '}{data.totals.posts} постов на площадках
-            {' · '}{people.length} {people.length === 1 ? 'сотрудник' : 'сотрудников'}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '16px 0 22px' }}>
+            {tile(data.totals.publications, 'публикаций', days ? `за ${days} дн.` : 'за всё время')}
+            {tile(data.totals.posts, 'постов на площадках', 'одна публикация = несколько постов')}
+            {tile(byDay.length, plural(byDay.length, 'день с публикациями', 'дня с публикациями', 'дней с публикациями'))}
           </div>
 
-          {/* Кто сколько — полоски нагляднее колонки цифр */}
-          {people.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 7 }}>
-              <div style={{ width: 110, fontSize: 12, fontWeight: 700, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {p.name}
-              </div>
-              <div style={{ width: 66, fontSize: 10, color: '#aab3bd' }}>{ROLE[p.role] || p.role}</div>
-              <div style={{ flex: 1, minWidth: 60, background: '#f2f4f7', borderRadius: 5, height: 14, overflow: 'hidden' }}>
-                <div style={{ width: `${(p.publications / max) * 100}%`, height: '100%', background: '#3463A3', borderRadius: 5 }} />
-              </div>
-              <div style={{ width: 34, fontSize: 12, fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                {p.publications}
-              </div>
-            </div>
-          ))}
+          {/* Одна таблица: и выработка, и зона ответственности. Разносить их
+              по двум спискам значило заставлять сверять цифры глазами. */}
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#111', marginBottom: 2 }}>Кто сколько сделал</div>
+          <div style={{ fontSize: 11, color: '#aab3bd', marginBottom: 8 }}>
+            Публикации — за выбранный период. Сеты и товары — закреплённые сейчас.
+          </div>
 
-          {/* Сеты и товары — не выработка за период, а текущая зона ответственности */}
-          {!!(data.designers || []).length && (
-            <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#111', margin: '22px 0 2px' }}>
-                Дизайнеры: зона ответственности
-              </div>
-              <div style={{ fontSize: 11, color: '#aab3bd', marginBottom: 8 }}>
-                Сеты и товары — закреплённые сейчас, независимо от выбранного периода
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 380 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ ...th, textAlign: 'left' }}>Дизайнер</th>
-                      <th style={th}>Сетов</th>
-                      <th style={th}>Товаров</th>
-                      <th style={th}>Публикаций</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.designers.map(d => (
-                      <tr key={d.id}>
-                        <td style={{ ...td, textAlign: 'left', fontWeight: 700, color: '#111' }}>
-                          {d.name}
-                          {!d.sets && <span style={{ fontWeight: 400, color: '#c0392b', fontSize: 11 }}> · сеты не закреплены</span>}
-                        </td>
-                        <td style={td}>{d.sets || '—'}</td>
-                        <td style={{ ...td, fontWeight: 700 }}>{d.products || '—'}</td>
-                        <td style={{ ...td, color: d.publications ? '#3463A3' : '#dde2e7' }}>{d.publications || '—'}</td>
-                      </tr>
-                    ))}
-                    <tr>
-                      <td style={{ ...td, textAlign: 'left', color: '#8b98a5' }}>Итого</td>
-                      <td style={{ ...td, color: '#8b98a5' }}>{data.designers.reduce((s, d) => s + d.sets, 0)}</td>
-                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>{data.designers.reduce((s, d) => s + d.products, 0)}</td>
-                      <td style={{ ...td, color: '#8b98a5' }}>{data.designers.reduce((s, d) => s + d.publications, 0)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#111', margin: '22px 0 6px' }}>По дням</div>
-
-          {/* Таблица шире экрана на телефоне — пусть скроллится сама, а не тянет страницу */}
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 380 }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 420 }}>
               <thead>
                 <tr>
-                  <th style={{ ...th, textAlign: 'left' }}>Дата</th>
-                  {people.map(p => <th key={p.id} style={th}>{p.name}</th>)}
-                  <th style={{ ...th, color: '#3463A3' }}>Итого</th>
+                  <th style={{ ...th, textAlign: 'left' }}>Сотрудник</th>
+                  <th style={{ ...th, textAlign: 'left', width: '38%' }}>Публикаций</th>
+                  <th style={th}>Сетов</th>
+                  <th style={th}>Товаров</th>
                 </tr>
               </thead>
               <tbody>
-                {byDay.map(d => (
-                  <tr key={d.date}>
-                    <td style={{ ...td, textAlign: 'left', color: '#555', whiteSpace: 'nowrap' }}>{dayLabel(d.date)}</td>
-                    {people.map(p => (
-                      <td key={p.id} style={{ ...td, color: d.byPerson[p.id] ? '#111' : '#dde2e7' }}>
-                        {d.byPerson[p.id] || '—'}
-                      </td>
-                    ))}
-                    <td style={{ ...td, fontWeight: 700, color: '#3463A3' }}>{d.publications}</td>
+                {people.map(p => (
+                  <tr key={p.id}>
+                    <td style={{ ...td, textAlign: 'left' }}>
+                      <div style={{ fontWeight: 700, color: '#111' }}>{p.name}</div>
+                      <div style={{ fontSize: 10, color: '#aab3bd' }}>{ROLE[p.role] || p.role}</div>
+                    </td>
+                    <td style={{ ...td, textAlign: 'left' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 40, background: '#f2f4f7', borderRadius: 5, height: 14, overflow: 'hidden' }}>
+                          <div style={{ width: `${(p.publications / maxPub) * 100}%`, height: '100%', background: '#3463A3', borderRadius: 5 }} />
+                        </div>
+                        <b style={{ width: 26, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{p.publications}</b>
+                      </div>
+                    </td>
+                    <td style={{ ...td, color: p.sets ? '#111' : '#dde2e7' }}>{p.sets || '—'}</td>
+                    <td style={{ ...td, color: p.products ? '#111' : '#dde2e7', fontWeight: p.products ? 700 : 400 }}>
+                      {p.products ? p.products.toLocaleString('ru-RU') : '—'}
+                    </td>
                   </tr>
                 ))}
+                <tr>
+                  <td style={{ ...td, textAlign: 'left', color: '#8b98a5', fontWeight: 700 }}>Итого</td>
+                  <td style={{ ...td, textAlign: 'left', color: '#8b98a5', fontWeight: 700, paddingLeft: 10 }}>
+                    {people.reduce((s, p) => s + p.publications, 0)}
+                  </td>
+                  <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>{people.reduce((s, p) => s + p.sets, 0)}</td>
+                  <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>
+                    {people.reduce((s, p) => s + p.products, 0).toLocaleString('ru-RU')}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
+
+          {/* По дням — списком, а не матрицей «дата × сотрудник»: в матрице
+              на шесть человек почти все клетки пустые, и читать её невозможно. */}
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#111', margin: '24px 0 10px' }}>По дням</div>
+
+          {byDay.map(d => {
+            const who = people
+              .filter(p => d.byPerson[p.id])
+              .sort((a, b) => d.byPerson[b.id] - d.byPerson[a.id]);
+            return (
+              <div key={d.date} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
+                <div style={{ width: 78, fontSize: 12, color: '#5c6873', fontWeight: 600, flexShrink: 0, paddingTop: 2 }}>
+                  {dayLabel(d.date)}
+                </div>
+                <div style={{ width: 44, flexShrink: 0, paddingTop: 2 }}>
+                  <div style={{ background: '#f2f4f7', borderRadius: 4, height: 12, overflow: 'hidden' }}>
+                    <div style={{ width: `${(d.publications / maxDay) * 100}%`, height: '100%', background: '#8fb0dd' }} />
+                  </div>
+                </div>
+                <b style={{ width: 24, fontSize: 12, textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {d.publications}
+                </b>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  {who.map(p => (
+                    <span key={p.id} style={{
+                      background: '#f2f4f7', borderRadius: 6, padding: '1px 7px',
+                      fontSize: 11, color: '#5c6873', whiteSpace: 'nowrap',
+                    }}>
+                      {p.name} <b style={{ color: '#111' }}>{d.byPerson[p.id]}</b>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </>
       )}
     </div>

@@ -13,6 +13,7 @@ server/.env.atlas
 
 # Бэкапы документов перед правкой боевых данных — внутри лежат секреты площадок
 server/scripts/backup-social-*.json
+server/scripts/backup-user-*.json
 
 # OS
 .DS_Store

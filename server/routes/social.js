@@ -368,19 +368,30 @@ router.get('/report', async (req, res) => {
       if (!byUser[uid]) byUser[uid] = { id: uid, name: u.name, sets: new Set(), brands: new Set(), products: 0 };
     }
 
-    const designers = Object.values(byUser).map(d => ({
-      id:       d.id,
-      name:     d.name,
-      sets:     d.sets.size,
-      brands:   [...d.brands],
-      products: d.products,
-      publications: people[d.id]?.publications || 0,
-    })).sort((a, b) => b.products - a.products);
+    // Одна строка на человека: и выработка, и зона ответственности. Раньше это
+    // были два списка, и публикации в них дублировались — читателю приходилось
+    // сверять две таблицы глазами.
+    const roleOf = Object.fromEntries(designerUsers.map(u => [String(u._id), 'designer']));
+
+    for (const [uid, d] of Object.entries(byUser)) {
+      const p = people[uid] || (people[uid] = {
+        id: uid, name: d.name, role: 'designer', publications: 0, posts: 0,
+      });
+      p.sets     = d.sets.size;
+      p.products = d.products;
+      p.brands   = [...d.brands];
+    }
+    for (const p of Object.values(people)) {
+      p.sets     = p.sets     || 0;
+      p.products = p.products || 0;
+      p.role     = p.role || roleOf[p.id] || '';
+    }
 
     res.json({
       days,
-      designers,
-      people: Object.values(people).sort((a, b) => b.publications - a.publications),
+      // Сначала те, кто публиковал в этом периоде, потом остальные — по зоне.
+      people: Object.values(people).sort((a, b) =>
+        b.publications - a.publications || b.products - a.products),
       byDay:  Object.values(byDay).sort((a, b) => b.date.localeCompare(a.date)),
       totals: {
         publications: Object.values(people).reduce((s, p) => s + p.publications, 0),
