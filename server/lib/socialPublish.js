@@ -60,7 +60,7 @@ function captionFor({ nodeTemplate, account, product, text, lang }) {
   const tpl = nodeTemplate || account?.captionTemplate || '';
   const l   = lang || detectLang(text);
   const out = tpl.trim() ? renderTemplate(tpl, templateContext(product, text, l)) : (text || '');
-  return adaptCaption(out, account?.platform, l);
+  return adaptCaption(out, account?.platform, l, product);
 }
 
 // Автотекст для товара — общий черновик, который потом можно править руками.

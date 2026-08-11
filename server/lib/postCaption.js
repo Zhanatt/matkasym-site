@@ -10,6 +10,8 @@ const { signOf } = require('./stockBases');
 const { phrases, normLang, translateSpecKey, translateSpecValue, detectLang, DEFAULT_LANG } = require('./postLang');
 // Словарь названий товаров + название, вписанное руками в карточку.
 const { translateName, manualName } = require('./postNames');
+// Тематические хэштеги для Instagram и Facebook.
+const { hashtagsFor } = require('./postTags');
 
 // Номер WhatsApp для приёма заказов, только цифры в международном формате.
 const ORDER_WHATSAPP = (process.env.WHATSAPP_ORDER_PHONE || '996500001652').replace(/\D/g, '');
@@ -242,13 +244,18 @@ const BARE_WA_LINE    = /^[^\n]*https:\/\/wa\.me\/\S*[^\n]*$/gim;
 // поэтому правило переживает и правку текста руками, и смену языка.
 const PRICE_LINE      = /^[^\n]*💰[^\n]*$/gm;
 
+// Текст уже заканчивается хэштегами — своих не добавляем: либо это наши с
+// прошлого прогона (функция вызывается дважды), либо человек написал свои.
+const ENDS_WITH_TAGS = /(^|\n)\s*#[^\s#]+(\s+#[^\s#]+)*\s*$/;
+
 // Текст под конкретную площадку: у Instagram и Facebook вырезаем ссылку на
-// WhatsApp (вместо неё — призыв писать в Direct) и строку с ценой.
+// WhatsApp (вместо неё — призыв писать в Direct) и строку с ценой, а в конец
+// дописываем тематические хэштеги.
 // Функция идемпотентна — второй вызов (на повторе публикации) ничего не меняет.
-function adaptCaption(html, platform, lang) {
+function adaptCaption(html, platform, lang, product) {
   if (!DIRECT_ONLY_PLATFORMS.has(platform)) return String(html || '');
   const cta = phrases(lang || detectLang(html)).directCta;
-  return String(html || '')
+  const out = String(html || '')
     .replace(ORDER_LINK_LINE, cta)
     .replace(BARE_WA_LINE, cta)
     // если ссылка встречалась дважды, двух одинаковых призывов подряд быть не должно
@@ -257,6 +264,10 @@ function adaptCaption(html, platform, lang) {
     // от вырезанной цены остаётся пустая строка — иначе в посте зияет дыра
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+  if (ENDS_WITH_TAGS.test(out)) return out;
+  const tags = hashtagsFor(product, lang || detectLang(out));
+  return tags ? `${out}\n\n${tags}` : out;
 }
 
 function escapeRe(s) {

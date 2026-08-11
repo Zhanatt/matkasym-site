@@ -48,16 +48,16 @@ async function waitReady(containerId, accessToken, tries = 12) {
   throw new Error('Instagram слишком долго обрабатывает картинку');
 }
 
-async function publish({ account, caption: rawCaption, images, postType = 'feed' }) {
+async function publish({ account, caption: rawCaption, images, postType = 'feed', publication }) {
   const { igUserId, accessToken } = account?.config || {};
   if (!igUserId || !accessToken) return { ok: false, error: 'Не заданы igUserId / accessToken' };
   if (!images.length) return { ok: false, error: 'Instagram не принимает пост без картинки' };
 
   // Instagram не понимает разметку: HTML ушёл бы в подпись буквально,
   // а wa.me-ссылка — простынёй URL-кодированного текста (и всё равно не кликается).
-  // adaptCaption убирает ссылку и ставит призыв писать в Direct / WhatsApp —
-  // страховка на случай публикации, созданной до этого правила.
-  const caption = htmlToPlain(adaptCaption(rawCaption, 'instagram'));
+  // adaptCaption убирает ссылку и цену, ставит призыв писать в Direct / WhatsApp
+  // и дописывает хэштеги — страховка для публикаций, созданных до этих правил.
+  const caption = htmlToPlain(adaptCaption(rawCaption, 'instagram', null, publication?.product));
 
   try {
     let containerId;

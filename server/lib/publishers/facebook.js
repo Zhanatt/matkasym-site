@@ -44,7 +44,7 @@ async function graph(path, params, method = 'POST') {
   return d;
 }
 
-async function publish({ account, caption: rawCaption, images = [], postType = 'feed' }) {
+async function publish({ account, caption: rawCaption, images = [], postType = 'feed', publication }) {
   const { pageId, accessToken } = account?.config || {};
   if (!pageId || !accessToken) return { ok: false, error: 'Не заданы pageId / accessToken' };
 
@@ -55,9 +55,9 @@ async function publish({ account, caption: rawCaption, images = [], postType = '
   }
 
   // Facebook не рендерит HTML: разметка ушла бы в текст буквально.
-  // adaptCaption — страховка: ссылку на WhatsApp меняет на призыв «напишите в
-  // Direct / WhatsApp» даже у публикаций, созданных до этого правила.
-  const message = htmlToPlain(adaptCaption(rawCaption, 'facebook'));
+  // adaptCaption — страховка: убирает ссылку на WhatsApp и цену, ставит призыв
+  // писать в Direct и хэштеги даже у публикаций, созданных до этих правил.
+  const message = htmlToPlain(adaptCaption(rawCaption, 'facebook', null, publication?.product));
   if (!message.trim() && !images.length) {
     return { ok: false, error: 'Пустой пост: нет ни текста, ни картинки' };
   }
