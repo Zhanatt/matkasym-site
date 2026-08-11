@@ -340,8 +340,46 @@ router.get('/report', async (req, res) => {
       d.byPerson[uid] = (d.byPerson[uid] || 0) + r.publications;
     }
 
+    // Сеты и товары, закреплённые за дизайнерами. Это не про период: сколько
+    // сетов ведёт человек — состояние на сегодня, а не выработка за неделю.
+    // Считаем товары по каждой карточке отдельно, с её брендом: один и тот же
+    // slug сета встречается и в HOME, и в SHAAR, и без фильтра по бренду
+    // товары чужого бренда попали бы в зачёт.
+    const Frontman = require('../models/Frontman');
+    const cards = await Frontman.find({ kind: 'designer' }).sort({ order: 1 }).lean();
+
+    const byUser = {};
+    for (const c of cards) {
+      if (!c.userId) continue;                     // карточка без привязки к учётке
+      const uid = String(c.userId);
+      const d = byUser[uid] || (byUser[uid] = { id: uid, name: c.name, sets: new Set(), brands: new Set(), products: 0 });
+      (c.sets || []).forEach(s => d.sets.add(s));
+      if (c.brand) d.brands.add(c.brand);
+      if ((c.sets || []).length) {
+        d.products += await Product.countDocuments({ set: { $in: c.sets }, brand: c.brand });
+      }
+    }
+
+    // Дизайнер без карточки сетов — тоже дизайнер, показываем с нулями,
+    // иначе «сетов ни у кого нет» не отличить от «человека забыли завести».
+    const designerUsers = await User.find({ role: 'designer' }).select('name').lean();
+    for (const u of designerUsers) {
+      const uid = String(u._id);
+      if (!byUser[uid]) byUser[uid] = { id: uid, name: u.name, sets: new Set(), brands: new Set(), products: 0 };
+    }
+
+    const designers = Object.values(byUser).map(d => ({
+      id:       d.id,
+      name:     d.name,
+      sets:     d.sets.size,
+      brands:   [...d.brands],
+      products: d.products,
+      publications: people[d.id]?.publications || 0,
+    })).sort((a, b) => b.products - a.products);
+
     res.json({
       days,
+      designers,
       people: Object.values(people).sort((a, b) => b.publications - a.publications),
       byDay:  Object.values(byDay).sort((a, b) => b.date.localeCompare(a.date)),
       totals: {

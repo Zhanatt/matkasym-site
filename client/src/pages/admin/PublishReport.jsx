@@ -100,7 +100,50 @@ export default function PublishReport() {
             </div>
           ))}
 
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#111', margin: '20px 0 6px' }}>По дням</div>
+          {/* Сеты и товары — не выработка за период, а текущая зона ответственности */}
+          {!!(data.designers || []).length && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#111', margin: '22px 0 2px' }}>
+                Дизайнеры: зона ответственности
+              </div>
+              <div style={{ fontSize: 11, color: '#aab3bd', marginBottom: 8 }}>
+                Сеты и товары — закреплённые сейчас, независимо от выбранного периода
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 380 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...th, textAlign: 'left' }}>Дизайнер</th>
+                      <th style={th}>Сетов</th>
+                      <th style={th}>Товаров</th>
+                      <th style={th}>Публикаций</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.designers.map(d => (
+                      <tr key={d.id}>
+                        <td style={{ ...td, textAlign: 'left', fontWeight: 700, color: '#111' }}>
+                          {d.name}
+                          {!d.sets && <span style={{ fontWeight: 400, color: '#c0392b', fontSize: 11 }}> · сеты не закреплены</span>}
+                        </td>
+                        <td style={td}>{d.sets || '—'}</td>
+                        <td style={{ ...td, fontWeight: 700 }}>{d.products || '—'}</td>
+                        <td style={{ ...td, color: d.publications ? '#3463A3' : '#dde2e7' }}>{d.publications || '—'}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td style={{ ...td, textAlign: 'left', color: '#8b98a5' }}>Итого</td>
+                      <td style={{ ...td, color: '#8b98a5' }}>{data.designers.reduce((s, d) => s + d.sets, 0)}</td>
+                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>{data.designers.reduce((s, d) => s + d.products, 0)}</td>
+                      <td style={{ ...td, color: '#8b98a5' }}>{data.designers.reduce((s, d) => s + d.publications, 0)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#111', margin: '22px 0 6px' }}>По дням</div>
 
           {/* Таблица шире экрана на телефоне — пусть скроллится сама, а не тянет страницу */}
           <div style={{ overflowX: 'auto' }}>
