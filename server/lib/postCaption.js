@@ -8,6 +8,8 @@
 const { signOf } = require('./stockBases');
 // Язык поста: по умолчанию кыргызский, казахский — переключателем в /admin/publish.
 const { phrases, normLang, translateSpecKey, translateSpecValue, detectLang, DEFAULT_LANG } = require('./postLang');
+// Словарь названий товаров + название, вписанное руками в карточку.
+const { translateName, manualName } = require('./postNames');
 
 // Номер WhatsApp для приёма заказов, только цифры в международном формате.
 const ORDER_WHATSAPP = (process.env.WHATSAPP_ORDER_PHONE || '996500001652').replace(/\D/g, '');
@@ -208,14 +210,20 @@ function withTypePrefix(title, category) {
   return `${prefix} ${title}`;
 }
 
-function postTitle(p) {
+// Заголовок поста. Порядок такой: вписанное руками название из карточки →
+// словарь типов товара → русское название как есть. Вписанное руками всегда
+// главнее: словарь знает частые типы, а не весь каталог.
+function postTitle(p, lang = 'ru') {
+  const manual = manualName(p, lang);
+  if (manual) return manual;
   const { title } = extractNameParams(p.fullName || p.name || '');
-  return withTypePrefix(title || String(p.name || '').trim(), p.category);
+  const ru = withTypePrefix(title || String(p.name || '').trim(), p.category);
+  return translateName(ru, lang);
 }
 
 // Ссылка «Заказать товар» — открывает WhatsApp с готовым текстом заказа.
 function whatsappLink(p, lang = DEFAULT_LANG) {
-  const title = postTitle(p);
+  const title = postTitle(p, lang);
   const text  = `${phrases(lang).orderText}: ${title}\n\n${TRAFFIC_TAG}`;
   return `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(text)}`;
 }
@@ -268,8 +276,10 @@ function buildCaption(p, opts = {}) {
   const lang = normLang(opts.lang);
   const t = phrases(lang);
 
-  const { title: rawTitle, params } = extractNameParams(p.fullName || p.name || '');
-  const title = esc(withTypePrefix(rawTitle || String(p.name || '').trim(), p.category));
+  // Параметры вытаскиваем из РУССКОГО названия (IP, цепи, габариты зашиты в
+  // номенклатуру 1С), а в заголовок ставим переведённое название.
+  const { params } = extractNameParams(p.fullName || p.name || '');
+  const title = esc(postTitle(p, lang));
   const set   = setLabel(p.set);
   const desc  = withDescription ? String(p.description || '').trim() : '';
 

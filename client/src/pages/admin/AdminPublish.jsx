@@ -4,6 +4,7 @@ import {
   adminGetProducts, adminUploadImage,
   socialGetAccounts, socialGetFlows, socialGetFlowTargets,
   socialGetDraft, socialPreview, socialPublish, socialGetPublishStats,
+  socialSaveProductName,
 } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
 import { POST_TYPES, platformMeta } from '../../config/socialPlatforms';
@@ -68,6 +69,11 @@ export default function AdminPublish() {
   const [text,     setText]     = useState('');
   const [priceMode, setPriceMode] = useState('retail');  // retail | wholesale
   const [lang,     setLang]     = useState('ky');        // ky | kk
+  // Заголовок поста: что подставил словарь, что вписано руками в карточку.
+  const [titleAuto,   setTitleAuto]   = useState('');
+  const [titleInput,  setTitleInput]  = useState('');
+  const [titleSaved,  setTitleSaved]  = useState('');    // последнее сохранённое в карточку
+  const [savingTitle, setSavingTitle] = useState(false);
   const [textDirty, setTextDirty] = useState(false);     // текст правили руками
   const [uploading, setUploading] = useState(false);
 
@@ -138,14 +144,24 @@ export default function AdminPublish() {
       setPicked(imgs.slice(0, MAX_IMAGES).map((_, i) => i));
       setText(r.data.text || '');
       setTextDirty(false);
+      applyTitle(r.data);
     } catch (e) {
       setError(e.response?.data?.message || 'Не удалось загрузить товар');
     }
   };
 
+  // Заголовок из ответа сервера: что показывать в поле и с чем сравнивать,
+  // чтобы понять, правил ли пользователь название.
+  const applyTitle = (d) => {
+    setTitleAuto(d.titleAuto || '');
+    setTitleSaved(d.titleManual || '');
+    setTitleInput(d.title || '');
+  };
+
   const reset = () => {
     setProduct(null); setImages([]); setPicked([]); setText('');
     setError(''); setResult(null); setPreviews([]); setTextDirty(false);
+    setTitleAuto(''); setTitleInput(''); setTitleSaved('');
   };
 
   // Смена цены перегенерирует весь текст: подменять одну строку регуляркой
@@ -157,9 +173,9 @@ export default function AdminPublish() {
     await regenerate({ priceMode: mode });
   };
 
-  // Перевод поста: текст собирается заново на выбранном языке.
-  // Название товара и описание приходят из карточки по-русски — переводятся
-  // шаблонные строки и типовые характеристики (server/lib/postLang.js).
+  // Перевод поста: текст собирается заново на выбранном языке. Название берётся
+  // из карточки (если вписано руками) или из словаря типов товара, описание
+  // остаётся русским — машинного перевода в проекте нет.
   const changeLang = async (next) => {
     if (next === lang) return;
     if (textDirty && !window.confirm('Текст правили вручную — при смене языка он будет перегенерирован. Продолжить?')) return;
@@ -174,9 +190,26 @@ export default function AdminPublish() {
       setText(r.data.text || '');
       setTextDirty(false);
       setPreviews([]);
+      applyTitle(r.data);
     } catch {
       setError('Не удалось перегенерировать текст');
     }
+  };
+
+  // Название на выбранном языке сохраняется в карточку товара: словарь знает
+  // частые типы товара, а не весь каталог, и правку нет смысла делать заново
+  // при каждом посте. Пустое поле — вернуться к словарю.
+  const saveTitle = async () => {
+    if (!product) return;
+    setSavingTitle(true); setError('');
+    try {
+      const value = titleInput.trim() === titleAuto.trim() ? '' : titleInput.trim();
+      await socialSaveProductName(product._id, lang, value);
+      await regenerate();
+    } catch (e) {
+      setError(e.response?.data?.message || 'Не удалось сохранить название');
+    }
+    setSavingTitle(false);
   };
 
   const togglePick = (i) => {
@@ -415,6 +448,36 @@ export default function AdminPublish() {
                 </div>
               )}
             </div>
+
+            {/* Название на языке поста. Словарь знает частые типы товара, но не
+                весь каталог: то, что он не осилил, правится здесь один раз и
+                остаётся в карточке товара — следующий пост возьмёт готовое. */}
+            {kind === 'product' && product && (
+              <div style={{ background: '#f7f9fb', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#5c6873', whiteSpace: 'nowrap' }}>
+                    Название {lang === 'kk' ? 'по-казахски' : 'по-кыргызски'}
+                  </span>
+                  <input value={titleInput} onChange={e => setTitleInput(e.target.value)}
+                    placeholder={titleAuto}
+                    style={{ ...INP, flex: '1 1 220px', width: 'auto', padding: '7px 11px', fontSize: 13, background: '#fff' }} />
+                  <button onClick={saveTitle} disabled={savingTitle || titleInput.trim() === (titleSaved || titleAuto).trim()}
+                    style={{
+                      padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, border: 'none',
+                      background: savingTitle || titleInput.trim() === (titleSaved || titleAuto).trim() ? '#dde2e7' : '#111',
+                      color: '#fff', cursor: savingTitle ? 'wait' : 'pointer', whiteSpace: 'nowrap',
+                    }}>
+                    {savingTitle ? '...' : 'Сохранить в карточку'}
+                  </button>
+                </div>
+                <div style={{ fontSize: 10, color: '#aab3bd', marginTop: 5, lineHeight: 1.5 }}>
+                  {titleSaved
+                    ? <>Вписано в карточку товара. Очистите поле и сохраните — вернётся вариант словаря: «{titleAuto}».</>
+                    : <>Собрано словарем из русского названия. Поправьте — сохранится в карточку и подставится в следующие посты.</>}
+                </div>
+              </div>
+            )}
+
             <textarea value={text} onChange={e => { setText(e.target.value); setTextDirty(true); setPreviews([]); }} rows={8}
               placeholder={kind === 'custom' ? 'Текст новости или объявления...' : ''}
               style={{ ...INP, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />

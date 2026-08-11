@@ -11,6 +11,8 @@ const Counter      = require('../models/Counter');
 const Product      = require('../models/Product');
 const { buildProductText, captionFor, runPublication, unpublishPublication, PLATFORM_LABELS } = require('../lib/socialPublish');
 const { normLang } = require('../lib/postLang');
+const { postTitle } = require('../lib/postCaption');
+const { manualName } = require('../lib/postNames');
 
 router.use(protect, editor);
 
@@ -415,6 +417,12 @@ router.get('/draft/:productId', async (req, res) => {
   res.json({
     lang,
     text: buildProductText(p, { priceMode, lang }),
+    // Заголовок отдаём отдельно: в форме его можно поправить и сохранить в карточку.
+    // titleAuto — что даёт словарь, titleManual — что вписано руками (если вписано).
+    title:       postTitle(p, lang),
+    titleAuto:   postTitle({ ...p, nameKy: '', nameKk: '' }, lang),
+    titleManual: manualName(p, lang),
+    titleRu:     postTitle(p, 'ru'),
     images: [
       ...(p.images || []).filter(u => u && u.startsWith('http')),
       ...(p.driveImages || []).filter(Boolean).map(id => `https://drive.google.com/thumbnail?id=${id}&sz=w1200`),
@@ -424,6 +432,28 @@ router.get('/draft/:productId', async (req, res) => {
       price: p.price, priceWholesale: p.priceWholesale, priceUndefined: p.priceUndefined,
     },
   });
+});
+
+// PUT /product-name/:productId — название товара на кыргызском/казахском.
+// Живёт здесь, а не в редакторе товара: правят его те, кто пишет посты, и правят
+// ровно в тот момент, когда увидели кривой заголовок в форме публикации.
+router.put('/product-name/:productId', async (req, res) => {
+  try {
+    const lang  = normLang(req.body?.lang);
+    const field = lang === 'kk' ? 'nameKk' : lang === 'ky' ? 'nameKy' : '';
+    if (!field) return res.status(400).json({ message: 'Название хранится только для кыргызского и казахского' });
+
+    const value = String(req.body?.value || '').trim().slice(0, 200);
+    const p = await Product.findByIdAndUpdate(
+      req.params.productId, { $set: { [field]: value } }, { new: true },
+    ).lean();
+    if (!p) return res.status(404).json({ message: 'Товар не найден' });
+
+    // Пустое значение = «вернуть словарь», поэтому отдаём заголовок как он теперь есть.
+    res.json({ ok: true, lang, title: postTitle(p, lang), titleManual: manualName(p, lang) });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // POST /preview — как будет выглядеть текст на каждой выбранной площадке.

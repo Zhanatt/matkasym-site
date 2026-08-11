@@ -66,6 +66,12 @@ const productSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   tags:        [{ type: String }],
 
+  // Название для постов на кыргызском и казахском. Пусто — генератор переводит
+  // русское название словарём (lib/postNames.js); вписанное здесь всегда важнее.
+  // Заполняется прямо в форме публикации: поправил один раз — осталось в карточке.
+  nameKy: { type: String, default: '' },
+  nameKk: { type: String, default: '' },
+
   // Media — Google Drive file IDs only (URLs built in frontend)
   driveImages: [{ type: String }],  // Google Drive file IDs
   images:      [{ type: String }],  // fallback static URLs
