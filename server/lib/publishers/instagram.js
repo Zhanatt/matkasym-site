@@ -5,7 +5,7 @@
 // публичным и отдавать jpeg. Cloudinary подходит, приватные Drive-ссылки — нет.
 //
 // account.config = { igUserId, accessToken, username }
-const { htmlToPlain } = require('../postCaption');
+const { htmlToPlain, adaptCaption } = require('../postCaption');
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -54,8 +54,10 @@ async function publish({ account, caption: rawCaption, images, postType = 'feed'
   if (!images.length) return { ok: false, error: 'Instagram не принимает пост без картинки' };
 
   // Instagram не понимает разметку: HTML ушёл бы в подпись буквально,
-  // а wa.me-ссылка — простынёй URL-кодированного текста. Отдаём чистый текст.
-  const caption = htmlToPlain(rawCaption);
+  // а wa.me-ссылка — простынёй URL-кодированного текста (и всё равно не кликается).
+  // adaptCaption убирает ссылку и ставит призыв писать в Direct / WhatsApp —
+  // страховка на случай публикации, созданной до этого правила.
+  const caption = htmlToPlain(adaptCaption(rawCaption, 'instagram'));
 
   try {
     let containerId;

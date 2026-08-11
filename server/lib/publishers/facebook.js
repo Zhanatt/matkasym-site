@@ -14,7 +14,7 @@
 // account.config = { pageId, accessToken, pageName }
 // Токен — ТОКЕНА СТРАНИЦЫ (GET /me/accounts), с правом pages_manage_posts:
 // пользовательский токен Meta не пропустит, а без pages_manage_posts вернёт (#200).
-const { htmlToPlain } = require('../postCaption');
+const { htmlToPlain, adaptCaption } = require('../postCaption');
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -55,7 +55,9 @@ async function publish({ account, caption: rawCaption, images = [], postType = '
   }
 
   // Facebook не рендерит HTML: разметка ушла бы в текст буквально.
-  const message = htmlToPlain(rawCaption);
+  // adaptCaption — страховка: ссылку на WhatsApp меняет на призыв «напишите в
+  // Direct / WhatsApp» даже у публикаций, созданных до этого правила.
+  const message = htmlToPlain(adaptCaption(rawCaption, 'facebook'));
   if (!message.trim() && !images.length) {
     return { ok: false, error: 'Пустой пост: нет ни текста, ни картинки' };
   }

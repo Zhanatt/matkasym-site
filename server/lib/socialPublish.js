@@ -5,7 +5,8 @@
 // упавшие площадки (retry) — уже опубликованное не дублируется.
 const Publication   = require('../models/Publication');
 const { SocialAccount } = require('../models/SocialAccount');
-const { buildCaption } = require('./postCaption');
+const { buildCaption, adaptCaption } = require('./postCaption');
+const { phrases, detectLang } = require('./postLang');
 const { signOf } = require('./stockBases');
 
 const PUBLISHERS = {
@@ -29,14 +30,14 @@ function fmtPrice(n) {
 }
 
 // Значения плейсхолдеров для шаблона площадки.
-function templateContext(product, text) {
+function templateContext(product, text, lang) {
   const p = product || {};
   const specs = (p.specs || []).filter(s => s && s.key && s.value)
     .map(s => `• ${s.key}: ${s.value}`).join('\n');
   return {
     name:     p.fullName || p.name || '',
     fullName: p.fullName || p.name || '',
-    price:    p.priceUndefined || !p.price ? 'по запросу' : `${fmtPrice(p.price)} ${signOf(p)}`,
+    price:    p.priceUndefined || !p.price ? phrases(lang).priceOnRequest : `${fmtPrice(p.price)} ${signOf(p)}`,
     sku:      p.sku || '',
     specs,
     set:      p.set || '',
@@ -52,10 +53,14 @@ function renderTemplate(template, ctx) {
 }
 
 // Текст для конкретной площадки: свой шаблон узла → свой шаблон аккаунта → общий текст.
-function captionFor({ nodeTemplate, account, product, text }) {
+// Готовый текст ещё прогоняется через adaptCaption: в Instagram и Facebook вместо
+// ссылки на WhatsApp уходит призыв «напишите в Direct / WhatsApp».
+// Язык берём с формы, а если его не передали — определяем по самому тексту.
+function captionFor({ nodeTemplate, account, product, text, lang }) {
   const tpl = nodeTemplate || account?.captionTemplate || '';
-  if (!tpl.trim()) return text || '';
-  return renderTemplate(tpl, templateContext(product, text));
+  const l   = lang || detectLang(text);
+  const out = tpl.trim() ? renderTemplate(tpl, templateContext(product, text, l)) : (text || '');
+  return adaptCaption(out, account?.platform, l);
 }
 
 // Автотекст для товара — общий черновик, который потом можно править руками.

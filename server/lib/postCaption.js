@@ -6,6 +6,8 @@
 
 // Валюта подписи берётся у товара (Product.currency): сом или тенге.
 const { signOf } = require('./stockBases');
+// Язык поста: по умолчанию кыргызский, казахский — переключателем в /admin/publish.
+const { phrases, normLang, translateSpecKey, translateSpecValue, detectLang, DEFAULT_LANG } = require('./postLang');
 
 // Номер WhatsApp для приёма заказов, только цифры в международном формате.
 const ORDER_WHATSAPP = (process.env.WHATSAPP_ORDER_PHONE || '996500001652').replace(/\D/g, '');
@@ -21,13 +23,7 @@ const TRAFFIC_TAG = '#tg_matrix';
 // «успейте, осталось мало» под товаром, которого на складе 500 штук, читатель
 // раскусит с первого раза, и дальше он не поверит ни одному посту.
 // «Осталось мало» без числа — намеренно: точный остаток это внутренняя цифра.
-const CTA = {
-  discount: '🔥 Выгодная цена — успейте купить',
-  low:      '⚡ Осталось мало — успейте заказать',
-  inStock:  '✅ В наличии — успейте заказать',
-  onOrder:  '📦 Под заказ — напишите, уточним сроки',
-  default:  'Заказать просто — напишите нам 👇',
-};
+// Тексты фраз по языкам — в lib/postLang.js.
 
 // «Осталось мало» — только у тестовой продажи. Пробную партию везут маленькой
 // и специально распродают быстро, там срочность настоящая.
@@ -38,7 +34,8 @@ const CTA = {
 // У вешалки INFINITY буфер 50 при остатке 44 — клиенту сообщалось, что товар
 // заканчивается, хотя его почти полсотни. Под это правило попадал любой ходовой
 // товар: чем лучше продаётся, тем выше буфер, тем чаще ложная срочность.
-function ctaLine(p) {
+function ctaLine(p, lang = DEFAULT_LANG) {
+  const CTA = phrases(lang).cta;
   if (p.productStatus === 'test_sale') return CTA.low;
 
   if (p.oldPrice > 0 && p.price > 0 && p.oldPrice > p.price) return CTA.discount;
@@ -217,10 +214,37 @@ function postTitle(p) {
 }
 
 // Ссылка «Заказать товар» — открывает WhatsApp с готовым текстом заказа.
-function whatsappLink(p) {
+function whatsappLink(p, lang = DEFAULT_LANG) {
   const title = postTitle(p);
-  const text  = `Хочу заказать: ${title}\n\n${TRAFFIC_TAG}`;
+  const text  = `${phrases(lang).orderText}: ${title}\n\n${TRAFFIC_TAG}`;
   return `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(text)}`;
+}
+
+// Площадки, где ссылке в тексте делать нечего. В Instagram подпись вообще не
+// кликабельна, а Facebook под ссылкой в тексте рисует свою карточку-превью и
+// режет охват; вместо ссылки — короткая строка «напишите в Direct / WhatsApp».
+const NO_LINK_PLATFORMS = new Set(['instagram', 'facebook']);
+
+// Строка со ссылкой на WhatsApp — в готовом (в т.ч. отредактированном руками) тексте.
+const ORDER_LINK_LINE = /^[^\n]*<a\s+href="https:\/\/wa\.me\/[^"]*"[^>]*>[^<]*<\/a>[^\n]*$/gim;
+// Та же ссылка, вставленная в текст голым URL, без тега <a>.
+const BARE_WA_LINE    = /^[^\n]*https:\/\/wa\.me\/\S*[^\n]*$/gim;
+
+// Текст под конкретную площадку: у Instagram и Facebook вырезаем ссылку на
+// WhatsApp и ставим на её место призыв. Функция идемпотентна — второй вызов
+// (на повторе публикации) ничего уже не меняет.
+function adaptCaption(html, platform, lang) {
+  if (!NO_LINK_PLATFORMS.has(platform)) return String(html || '');
+  const cta = phrases(lang || detectLang(html)).directCta;
+  return String(html || '')
+    .replace(ORDER_LINK_LINE, cta)
+    .replace(BARE_WA_LINE, cta)
+    // если ссылка встречалась дважды, двух одинаковых призывов подряд быть не должно
+    .replace(new RegExp(`(?:^${escapeRe(cta)}\\n)+(?=${escapeRe(cta)}$)`, 'gm'), '');
+}
+
+function escapeRe(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // Черновик поста. Структура: заголовок → сет → описание → характеристики →
@@ -228,11 +252,12 @@ function whatsappLink(p) {
 // поэтому текст корректен и для товара без specs и без description.
 // Какая цена уходит в пост. Оптовая — для постов на партнёров/дилеров,
 // розничная — для витрины. Дефолт розничный: канал читают покупатели.
-function priceLine(p, mode) {
+function priceLine(p, mode, lang = DEFAULT_LANG) {
+  const t = phrases(lang);
   const wholesale = mode === 'wholesale';
   const value = wholesale ? p.priceWholesale : p.price;
-  const label = wholesale ? 'Оптовая цена' : 'Цена';
-  if (p.priceUndefined || !value) return '💰 Цена по запросу';
+  const label = wholesale ? t.priceWholesale : t.price;
+  if (p.priceUndefined || !value) return `💰 ${t.priceOnRequest}`;
   return `💰 ${label}: <b>${fmtPrice(value)} ${signOf(p)}</b>`;
 }
 
@@ -240,6 +265,8 @@ function buildCaption(p, opts = {}) {
   if (!p) return '';
   const withDescription = opts.withDescription !== false;
   const priceMode = opts.priceMode === 'wholesale' ? 'wholesale' : 'retail';
+  const lang = normLang(opts.lang);
+  const t = phrases(lang);
 
   const { title: rawTitle, params } = extractNameParams(p.fullName || p.name || '');
   const title = esc(withTypePrefix(rawTitle || String(p.name || '').trim(), p.category));
@@ -255,7 +282,7 @@ function buildCaption(p, opts = {}) {
   const build = (descLimit, specLimit) => {
     const lines = [];
     lines.push(`🆕 <b>${title}</b>`);
-    if (set) lines.push(`📦 Сет: <b>${esc(set)}</b>`);
+    if (set) lines.push(`📦 ${t.set}: <b>${esc(set)}</b>`);
 
     if (desc && descLimit > 0) {
       const short = desc.length > descLimit ? desc.slice(0, descLimit).replace(/\s+\S*$/, '') + '…' : desc;
@@ -265,12 +292,16 @@ function buildCaption(p, opts = {}) {
     const shown = specs.slice(0, specLimit);
     if (shown.length) {
       lines.push('');
-      shown.forEach(s => lines.push(`• ${esc(s.key)}: ${esc(String(s.value).trim())}`));
+      // Ключи и типовые значения характеристик переводим; всё остальное
+      // (числа, модели, размеры) уходит как есть — см. lib/postLang.js.
+      shown.forEach(s => lines.push(
+        `• ${esc(translateSpecKey(s.key, lang))}: ${esc(translateSpecValue(s.value, lang))}`
+      ));
     }
 
-    lines.push('', priceLine(p, priceMode));
+    lines.push('', priceLine(p, priceMode, lang));
 
-    lines.push('', ctaLine(p), `📲 <a href="${whatsappLink(p)}">Заказать товар в WhatsApp</a>`);
+    lines.push('', ctaLine(p, lang), `📲 <a href="${whatsappLink(p, lang)}">${esc(t.orderLink)}</a>`);
 
     return lines.join('\n');
   };
@@ -284,4 +315,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, esc, ORDER_WHATSAPP };
+module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, NO_LINK_PLATFORMS, esc, ORDER_WHATSAPP };

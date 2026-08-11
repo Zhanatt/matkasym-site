@@ -10,6 +10,7 @@ const Publication  = require('../models/Publication');
 const Counter      = require('../models/Counter');
 const Product      = require('../models/Product');
 const { buildProductText, captionFor, runPublication, unpublishPublication, PLATFORM_LABELS } = require('../lib/socialPublish');
+const { normLang } = require('../lib/postLang');
 
 router.use(protect, editor);
 
@@ -409,8 +410,11 @@ router.get('/draft/:productId', async (req, res) => {
   if (!p) return res.status(404).json({ message: 'Товар не найден' });
   // ?price=wholesale — пост на партнёров/дилеров вместо витрины.
   const priceMode = req.query.price === 'wholesale' ? 'wholesale' : 'retail';
+  // ?lang=kk — тот же пост по-казахски; по умолчанию кыргызский.
+  const lang = normLang(req.query.lang);
   res.json({
-    text: buildProductText(p, { priceMode }),
+    lang,
+    text: buildProductText(p, { priceMode, lang }),
     images: [
       ...(p.images || []).filter(u => u && u.startsWith('http')),
       ...(p.driveImages || []).filter(Boolean).map(id => `https://drive.google.com/thumbnail?id=${id}&sz=w1200`),
@@ -425,7 +429,7 @@ router.get('/draft/:productId', async (req, res) => {
 // POST /preview — как будет выглядеть текст на каждой выбранной площадке.
 router.post('/preview', async (req, res) => {
   try {
-    const { productId, text, targets } = req.body || {};
+    const { productId, text, targets, lang } = req.body || {};
     const product = productId ? await Product.findById(productId).lean() : null;
     const accounts = await SocialAccount.find({ _id: { $in: (targets || []).map(t => t.accountId) } });
     const byId = Object.fromEntries(accounts.map(a => [String(a._id), a]));
@@ -438,7 +442,7 @@ router.post('/preview', async (req, res) => {
           title:     account?.title || '—',
           platform:  account?.platform || '',
           postType:  t.postType || 'feed',
-          caption:   captionFor({ nodeTemplate: t.captionTemplate, account, product, text }),
+          caption:   captionFor({ nodeTemplate: t.captionTemplate, account, product, text, lang }),
         };
       }),
     });
@@ -452,7 +456,7 @@ router.post('/preview', async (req, res) => {
 //         targets: [{ accountId, postType, captionTemplate, delayMinutes }] }
 router.post('/publications', async (req, res) => {
   try {
-    const { kind = 'product', productId, text, images, flowId, targets, scheduledAt } = req.body || {};
+    const { kind = 'product', productId, text, images, flowId, targets, scheduledAt, lang } = req.body || {};
     if (!Array.isArray(targets) || !targets.length) {
       return res.status(400).json({ message: 'Не выбрана ни одна площадка' });
     }
@@ -470,7 +474,7 @@ router.post('/publications', async (req, res) => {
         platform: account?.platform || '',
         title:    account?.title || '',
         postType: t.postType || 'feed',
-        caption:  captionFor({ nodeTemplate: t.captionTemplate, account, product, text }),
+        caption:  captionFor({ nodeTemplate: t.captionTemplate, account, product, text, lang }),
         dueAt:    new Date(base.getTime() + (Number(t.delayMinutes) || 0) * 60 * 1000),
         status:   'pending',
       };

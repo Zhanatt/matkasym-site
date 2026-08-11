@@ -45,6 +45,10 @@ const MAX_IMAGES = 10;
 
 const fmtPrice = (n) => Number(n || 0).toLocaleString('ru-RU');
 
+// Язык поста. Кыргызский — основной: на нём говорит канал и Instagram.
+// Казахский нужен для казахстанского направления, переключается кнопкой.
+const LANGS = [['ky', '🇰🇬 Кыргызча'], ['kk', '🇰🇿 Қазақша']];
+
 // Грубое HTML→текст для предпросмотра: разметку площадки рендерят сами.
 const stripHtml = (s) => String(s || '').replace(/<\/?[bi]>/g, '').replace(/&amp;/g, '&');
 
@@ -63,6 +67,7 @@ export default function AdminPublish() {
   const [picked,   setPicked]   = useState([]);     // выбранные индексы (порядок = порядок в карусели)
   const [text,     setText]     = useState('');
   const [priceMode, setPriceMode] = useState('retail');  // retail | wholesale
+  const [lang,     setLang]     = useState('ky');        // ky | kk
   const [textDirty, setTextDirty] = useState(false);     // текст правили руками
   const [uploading, setUploading] = useState(false);
 
@@ -124,7 +129,7 @@ export default function AdminPublish() {
   const selectProduct = async (p) => {
     setProductQ(''); setFound([]); setError(''); setResult(null);
     try {
-      const r = await socialGetDraft(p._id, priceMode);
+      const r = await socialGetDraft(p._id, priceMode, lang);
       setProduct({ ...p, ...(r.data.product || {}) });
       const imgs = r.data.images || [];
       setImages(imgs);
@@ -149,9 +154,23 @@ export default function AdminPublish() {
     if (mode === priceMode) return;
     if (textDirty && !window.confirm('Текст правили вручную — при смене цены он будет перегенерирован. Продолжить?')) return;
     setPriceMode(mode);
+    await regenerate({ priceMode: mode });
+  };
+
+  // Перевод поста: текст собирается заново на выбранном языке.
+  // Название товара и описание приходят из карточки по-русски — переводятся
+  // шаблонные строки и типовые характеристики (server/lib/postLang.js).
+  const changeLang = async (next) => {
+    if (next === lang) return;
+    if (textDirty && !window.confirm('Текст правили вручную — при смене языка он будет перегенерирован. Продолжить?')) return;
+    setLang(next);
+    await regenerate({ lang: next });
+  };
+
+  const regenerate = async (over = {}) => {
     if (!product) return;
     try {
-      const r = await socialGetDraft(product._id, mode);
+      const r = await socialGetDraft(product._id, over.priceMode || priceMode, over.lang || lang);
       setText(r.data.text || '');
       setTextDirty(false);
       setPreviews([]);
@@ -211,7 +230,7 @@ export default function AdminPublish() {
   const loadPreview = async () => {
     setError('');
     try {
-      const r = await socialPreview({ productId: product?._id, text, targets: targetList() });
+      const r = await socialPreview({ productId: product?._id, text, targets: targetList(), lang });
       setPreviews(r.data.previews || []);
     } catch (e) {
       setError(e.response?.data?.message || 'Не удалось построить предпросмотр');
@@ -229,6 +248,7 @@ export default function AdminPublish() {
         kind,
         productId: kind === 'product' ? product?._id : undefined,
         text: text.trim(),
+        lang,
         images: picked.map(i => images[i]).filter(Boolean),
         flowId: flowId || undefined,
         targets: list,
@@ -367,7 +387,17 @@ export default function AdminPublish() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
               <label style={{ ...L, margin: 0 }}>Текст <span style={{ color: '#bbb', fontWeight: 400 }}>(поддерживает &lt;b&gt;; для Битрикс24 переводится в его разметку)</span></label>
               {kind === 'product' && product && (
-                <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                  {LANGS.map(([code, label]) => (
+                    <button key={code} onClick={() => changeLang(code)}
+                      title={code === 'kk' ? 'Перевести пост на казахский' : 'Пост на кыргызском'}
+                      style={{
+                        padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        border: lang === code ? '2px solid #111' : '1.5px solid #e0e0e0',
+                        background: lang === code ? '#f4f5f7' : '#fff', color: '#111',
+                      }}>{label}</button>
+                  ))}
+                  <span style={{ width: 1, background: '#e6e8eb', margin: '2px 4px' }} />
                   {[['retail', '🏷 Розничная'], ['wholesale', '📦 Оптовая']].map(([m, label]) => {
                     const missing = m === 'wholesale' && !product.priceWholesale;
                     return (
@@ -388,6 +418,10 @@ export default function AdminPublish() {
             <textarea value={text} onChange={e => { setText(e.target.value); setTextDirty(true); setPreviews([]); }} rows={8}
               placeholder={kind === 'custom' ? 'Текст новости или объявления...' : ''}
               style={{ ...INP, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
+            <div style={{ fontSize: 11, color: '#8b98a5', marginTop: 6, lineHeight: 1.5 }}>
+              Ссылка на WhatsApp уходит только в Telegram, Битрикс24 и на сайт. В Instagram и Facebook
+              вместо неё встанет строка «📲 Буюртма үчүн Direct / WhatsApp'ка жазыңыз» — ссылки там всё равно не кликаются.
+            </div>
           </div>
 
           {/* 3. Куда */}
