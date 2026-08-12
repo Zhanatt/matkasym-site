@@ -153,10 +153,14 @@ export default function AdminPublishHistory() {
               })}
             </div>
 
+            {/* Ошибки — красным, а замечания по вышедшему посту (ушло одно фото вместо
+                альбома) — оранжевым: пост на месте, но проверить его стоит. */}
             {(p.targets || []).some(t => t.error) && (
-              <div style={{ marginTop: 10, fontSize: 11, color: '#c0392b' }}>
+              <div style={{ marginTop: 10, fontSize: 11 }}>
                 {(p.targets || []).filter(t => t.error).map((t, i) => (
-                  <div key={i}>{t.title}: {t.error}</div>
+                  <div key={i} style={{ color: t.status === 'published' ? '#b26a00' : '#c0392b' }}>
+                    {t.status === 'published' ? '⚠️ ' : ''}{t.title}: {t.error}
+                  </div>
                 ))}
               </div>
             )}

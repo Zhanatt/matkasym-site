@@ -1,20 +1,32 @@
 // Публикация в Telegram-группу / канал. Бот — тот же (TELEGRAM_BOT_TOKEN),
 // адрес берётся из настроек площадки (config.chatId), а не из env: групп может быть несколько.
-const { publishToChat, tgImage } = require('../telegram');
+const { publishToChat, tgImage, clampCaption } = require('../telegram');
 
 const TOKEN = () => process.env.TELEGRAM_BOT_TOKEN;
 
-// Telegram режет подпись к фото на 1024 символах, обычное сообщение — на 4096.
-const CAPTION_LIMIT = 1024;
+// Ответы Bot API читают не программисты, а контентщики — переводим на человеческий.
+function explain(desc) {
+  const d = String(desc || '');
+  if (/can't parse entities|can't find end tag/i.test(d)) {
+    return 'поломана разметка в тексте поста (непарный тег) — обычно так бывает, '
+         + 'когда при ручной правке задели ссылку «Заказать в WhatsApp»; сгенерируйте текст заново';
+  }
+  if (/wrong type of the web page content|failed to get HTTP URL content|WEBPAGE_(CURL|MEDIA)_EMPTY/i.test(d)) {
+    return `Telegram не смог скачать картинку (${d}) — возможно, фото удалено из Cloudinary`;
+  }
+  return d;
+}
 
 // Несколько картинок — альбомом (sendMediaGroup). Подпись кладётся на первую,
-// иначе Telegram покажет альбом без текста.
+// иначе Telegram покажет альбом без текста. Лимит подписи (1024) Telegram считает
+// по ВИДИМОМУ тексту — обрезаем через clampCaption, а не срезом по сырому HTML:
+// срез попадал внутрь href кнопки заказа, альбом падал, и пост уходил одной фоткой.
 async function sendAlbum(chatId, images, caption) {
   const media = images.slice(0, 10).map((url, i) => ({
     type: 'photo',
     // Ужатая версия: исходные PNG по 5–6 МБ Telegram по URL не принимает
     media: tgImage(url),
-    ...(i === 0 ? { caption: caption.slice(0, CAPTION_LIMIT), parse_mode: 'HTML' } : {}),
+    ...(i === 0 ? { caption: clampCaption(caption), parse_mode: 'HTML' } : {}),
   }));
   const r = await fetch(`https://api.telegram.org/bot${TOKEN()}/sendMediaGroup`, {
     method: 'POST',
@@ -34,16 +46,27 @@ async function publish({ account, caption, images }) {
   const chatId = account?.config?.chatId;
   if (!chatId) return { ok: false, error: 'Не указан chat_id группы' };
 
+  let albumError = '';
   if (images.length > 1) {
     const album = await sendAlbum(chatId, images, caption);
     if (album.ok) return album;
     // Альбом мог не пройти из-за недоступной для Telegram картинки —
     // тогда отправляем одну обложку байтами (publishToChat умеет это сам).
+    albumError = explain(album.error) || 'неизвестная ошибка';
+    console.error(`[Telegram] альбом из ${images.length} фото не прошёл:`, album.error);
   }
 
   const res = await publishToChat({ chatId, photoUrl: images[0] || null, caption });
-  if (!res.ok) return { ok: false, error: res.error };
-  return { ok: true, externalId: res.data?.result?.message_id ? String(res.data.result.message_id) : '' };
+  if (!res.ok) return { ok: false, error: explain(res.error) };
+  return {
+    ok: true,
+    externalId: res.data?.result?.message_id ? String(res.data.result.message_id) : '',
+    // Пост ушёл, но не тем, чем задумывали. Молчать об этом нельзя: зелёная галочка
+    // «опубликовано» полгода прятала потерю фотографий.
+    warning: albumError
+      ? `альбом из ${images.length} фото не прошёл (${albumError}) — ушло только одно фото`
+      : '',
+  };
 }
 
 // Удаление поста. Бот может удалить своё сообщение только в течение 48 часов —
@@ -76,4 +99,4 @@ async function unpublish({ account, externalId }) {
   };
 }
 
-module.exports = { publish, unpublish, CAPTION_LIMIT };
+module.exports = { publish, unpublish };

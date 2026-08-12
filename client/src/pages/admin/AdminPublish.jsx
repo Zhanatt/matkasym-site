@@ -63,8 +63,6 @@ const stripHtml = (s) => String(s || '').replace(/<\/?[bi]>/g, '').replace(/&amp
 export default function AdminPublish() {
   const navigate = useNavigate();
 
-  const [kind, setKind] = useState('product');     // product | custom
-
   const [productQ, setProductQ] = useState('');
   const [found,    setFound]    = useState([]);
   const [searching, setSearching] = useState(false);
@@ -298,8 +296,8 @@ export default function AdminPublish() {
     setSending(true); setError(''); setResult(null);
     try {
       const r = await socialPublish({
-        kind,
-        productId: kind === 'product' ? product?._id : undefined,
+        kind: 'product',           // свободных постов на этой странице нет — публикуем только товары
+        productId: product?._id,
         text: text.trim(),
         lang,
         images: picked.map(i => images[i]).filter(Boolean),
@@ -319,7 +317,7 @@ export default function AdminPublish() {
   };
 
   const selectedImages = picked.map(i => images[i]).filter(Boolean);
-  const canPublish = Object.keys(targets).length > 0 && text.trim() && (kind === 'custom' || product);
+  const canPublish = Object.keys(targets).length > 0 && text.trim() && product;
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '28px 0 60px' }}>
@@ -341,17 +339,8 @@ export default function AdminPublish() {
       {/* 1. Что публикуем */}
       <div style={CARD}>
         <label style={L}>Что публикуем</label>
-        <div style={{ display: 'flex', gap: 8, marginBottom: kind === 'product' ? 20 : 0 }}>
-          {[['product', '📦 Товар'], ['custom', '✍️ Свободный пост']].map(([k, label]) => (
-            <button key={k} onClick={() => { setKind(k); reset(); }} style={{
-              padding: '9px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              border: kind === k ? '2px solid #111' : '1.5px solid #e0e0e0',
-              background: kind === k ? '#f4f5f7' : '#fff', color: '#111',
-            }}>{label}</button>
-          ))}
-        </div>
 
-        {kind === 'product' && (product ? (
+        {product ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f7f8fa', border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '10px 14px' }}>
             {images[0] && <img src={cloudinaryOpt(images[0], 300)} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -385,10 +374,10 @@ export default function AdminPublish() {
               </div>
             )}
           </div>
-        ))}
+        )}
       </div>
 
-      {(kind === 'custom' || product) && (
+      {product && (
         <>
           {/* 2. Контент */}
           <div style={CARD}>
@@ -441,7 +430,7 @@ export default function AdminPublish() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
               <label style={{ ...L, margin: 0 }}>Текст <span style={{ color: '#bbb', fontWeight: 400 }}>(поддерживает &lt;b&gt;; для Битрикс24 переводится в его разметку)</span></label>
-              {kind === 'product' && product && (
+              {product && (
                 <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
                   {LANGS.map(([code, label]) => (
                     <button key={code} onClick={() => changeLang(code)}
@@ -474,7 +463,7 @@ export default function AdminPublish() {
             {/* Название на языке поста. Словарь знает частые типы товара, но не
                 весь каталог: то, что он не осилил, правится здесь один раз и
                 остаётся в карточке товара — следующий пост возьмёт готовое. */}
-            {kind === 'product' && product && (
+            {product && (
               <div style={{ background: '#f7f9fb', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#5c6873', whiteSpace: 'nowrap' }}>
@@ -501,7 +490,6 @@ export default function AdminPublish() {
             )}
 
             <textarea value={text} onChange={e => { setText(e.target.value); setTextDirty(true); setPreviews([]); }} rows={8}
-              placeholder={kind === 'custom' ? 'Текст новости или объявления...' : ''}
               style={{ ...INP, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
             <div style={{ fontSize: 11, color: '#8b98a5', marginTop: 6, lineHeight: 1.5 }}>
               Цена и ссылка на WhatsApp уходят только в Telegram, Битрикс24 и на сайт. В Instagram и Facebook
@@ -642,6 +630,8 @@ export default function AdminPublish() {
                       {t.status === 'pending'   && <span style={{ color: '#8a6d00' }}>🕓 по расписанию</span>}
                       {t.status === 'skipped'   && <span style={{ color: '#888' }}>пропущено — {t.error}</span>}
                       {t.status === 'failed'    && <span style={{ color: '#c0392b' }}>❌ {t.error}</span>}
+                      {/* Опубликовано, но не так, как задумывали (например, вместо альбома ушло одно фото) */}
+                      {t.status === 'published' && t.error && <span style={{ color: '#b26a00' }}>⚠️ {t.error}</span>}
                       {t.externalUrl && <a href={t.externalUrl} target="_blank" rel="noreferrer" style={{ color: '#3463A3' }}>открыть</a>}
                     </div>
                   ))}

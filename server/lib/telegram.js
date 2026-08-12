@@ -54,15 +54,53 @@ async function sendTelegramMessage(chatId, text, options = {}) {
 // Обрезка подписи под лимит Telegram без разрыва HTML-тега:
 // слепой slice мог разрезать <a href="..."> посередине и уронить парсинг.
 // Лимит считается по видимому тексту (Telegram: «after entities parsing»),
-// поэтому режем только реально длинные подписи.
+// поэтому режем только реально длинные подписи — и режем тоже по видимому тексту,
+// иначе кнопка заказа съедала бы половину поста: её href — это 700 символов
+// процентного кодирования, которых в подписи не видно.
+const TG_CAPTION_LIMIT = 1024;
+
+// Парные теги, которые Telegram понимает в HTML-режиме. Всё остальное он и так
+// не примет, поэтому в балансировке не участвует.
+const TG_PAIRED = new Set([
+  'b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del',
+  'a', 'code', 'pre', 'span', 'tg-spoiler', 'blockquote',
+]);
+
 function clampCaption(caption) {
   const s = String(caption || '');
-  const visible = s.replace(/<[^>]+>/g, '').length;
-  if (visible <= 1024) return s;
-  let cut = s.slice(0, 1024);
-  const lastOpen = cut.lastIndexOf('<');
-  if (lastOpen > cut.lastIndexOf('>')) cut = cut.slice(0, lastOpen);
-  return cut.replace(/<a\s[^>]*>(?![\s\S]*<\/a>)/, '');
+  const TAG = /<[^>]+>/g;
+  if (s.replace(TAG, '').length <= TG_CAPTION_LIMIT) return s;
+
+  // Идём по строке кусками «текст → тег»: текст считаем в лимит, теги пропускаем
+  // бесплатно и запоминаем в стеке, чтобы закрыть всё открытое после обрезки.
+  const open = [];
+  let out = '', visible = 0, i = 0, m;
+  const track = (tag) => {
+    const t = tag.match(/^<(\/?)([a-z][a-z0-9-]*)/i);
+    if (!t) return;
+    const name = t[2].toLowerCase();
+    if (!TG_PAIRED.has(name)) return;
+    if (t[1]) {
+      const at = open.lastIndexOf(name);
+      if (at !== -1) open.splice(at, 1);
+    } else if (!/\/>$/.test(tag)) {
+      open.push(name);
+    }
+  };
+  const close = (text) => text + open.reverse().map(t => `</${t}>`).join('');
+
+  while ((m = TAG.exec(s))) {
+    const chunk = s.slice(i, m.index);
+    const take  = Math.min(chunk.length, TG_CAPTION_LIMIT - visible);
+    out += chunk.slice(0, take);
+    visible += take;
+    if (visible >= TG_CAPTION_LIMIT) return close(out);
+    out += m[0];
+    track(m[0]);
+    i = m.index + m[0].length;
+  }
+  out += s.slice(i, i + (TG_CAPTION_LIMIT - visible));
+  return close(out);
 }
 
 // Telegram не принимает фото больше 5 МБ по URL, а исходники товаров лежат в Cloudinary
@@ -289,4 +327,4 @@ async function sendBufferStockAlerts(alerts) {
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage };
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage, clampCaption };

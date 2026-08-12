@@ -97,7 +97,9 @@ async function publishTarget(pub, target) {
   return {
     ...target.toObject(),
     status:      result.ok ? 'published' : 'failed',
-    error:       result.ok ? '' : (result.error || 'Неизвестная ошибка'),
+    // Успех бывает неполным: Telegram мог не осилить альбом и уйти одной фоткой.
+    // Такое пишем в error и при status: 'published' — журнал показывает эту строку.
+    error:       result.ok ? (result.warning || '') : (result.error || 'Неизвестная ошибка'),
     externalId:  result.externalId || '',
     externalUrl: result.externalUrl || '',
     publishedAt: result.ok ? new Date() : undefined,
@@ -125,7 +127,16 @@ async function runPublication(pubId, { onlyFailed = false } = {}) {
     pub.targets[i].status = 'publishing';
     await pub.save();
 
-    const updated = await publishTarget(pub, pub.targets[i]);
+    // Площадки независимы: сорвавшаяся сеть до Telegram не должна ронять весь запрос
+    // 500-й ошибкой. Раньше исключение выносило роут наружу, таргет навсегда оставался
+    // в publishing, а человек шёл публиковать заново — и получал второй пост.
+    let updated;
+    try {
+      updated = await publishTarget(pub, pub.targets[i]);
+    } catch (e) {
+      console.error(`[socialPublish] ${pub.targets[i].platform} упал:`, e.message);
+      updated = { ...pub.targets[i].toObject(), status: 'failed', error: e.message || 'Сбой при отправке' };
+    }
     pub.targets[i] = updated;
     await pub.save();
   }
@@ -197,12 +208,43 @@ async function unpublishPublication(pubId) {
 
 let running = false;
 
+// Сколько ждём отправку, прежде чем считать её оборванной. Самая долгая площадка —
+// карусель Instagram: до 10 картинок с ожиданием обработки, минуты три в худшем случае.
+const STUCK_MS = 10 * 60 * 1000;
+
+// Подъём застрявших. Если процесс умер посреди отправки (деплой, перезапуск Render,
+// обрыв сети), таргет остаётся в publishing навсегда: тик ищет только pending,
+// «повторить» — только failed. Признаём такую отправку оборванной, но НЕ повторяем сами:
+// пост мог всё-таки выйти, решать человеку.
+async function releaseStuck() {
+  const stuck = await Publication.find({
+    updatedAt: { $lt: new Date(Date.now() - STUCK_MS) },
+    targets:   { $elemMatch: { status: 'publishing' } },
+  }).limit(20);
+
+  for (const pub of stuck) {
+    pub.targets.forEach(t => {
+      if (t.status !== 'publishing') return;
+      t.status = 'failed';
+      t.error  = 'Отправка оборвалась (перезапуск сервера или сбой сети). '
+               + 'Проверьте площадку перед повтором — пост мог всё-таки выйти.';
+    });
+    const unfinished = pub.targets.some(t => ['pending', 'publishing'].includes(t.status));
+    pub.status = unfinished ? 'running' : 'done';
+    if (!unfinished && !pub.finishedAt) pub.finishedAt = new Date();
+    await pub.save();
+    console.warn(`[socialPublish] публикация №${pub.number} висела в publishing — помечена как упавшая`);
+  }
+  return stuck.length;
+}
+
 // Тик планировщика: публикует всё, чей срок наступил (отложенные посты и задержки узлов).
 // Дёргается таймером в index.js и внешним cron-пингом — на Render free сервис засыпает.
 async function tickPublications() {
   if (running) return { skipped: 'busy' };
   running = true;
   try {
+    await releaseStuck();
     const now = new Date();
     const due = await Publication.find({
       status: { $in: ['pending', 'running'] },
