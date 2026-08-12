@@ -50,6 +50,13 @@ const fmtPrice = (n) => Number(n || 0).toLocaleString('ru-RU');
 // Казахский нужен для казахстанского направления, переключается кнопкой.
 const LANGS = [['ky', '🇰🇬 Кыргызча'], ['kk', '🇰🇿 Қазақша']];
 
+// Текущий момент в формате datetime-local — ставим полем min, чтобы в календаре
+// нельзя было выбрать уже прошедшее время.
+const localNow = () => {
+  const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 16);
+};
+
 // Грубое HTML→текст для предпросмотра: разметку площадки рендерят сами.
 const stripHtml = (s) => String(s || '').replace(/<\/?[bi]>/g, '').replace(/&amp;/g, '&');
 
@@ -90,6 +97,7 @@ export default function AdminPublish() {
 
   const debounce   = useRef(null);
   const fileInput  = useRef(null);
+  const schedInput = useRef(null);   // нужен, чтобы поймать недовведённую дату (см. publish)
 
   // Статистика публикаций грузится один раз: список короткий, а в поиске нужна мгновенно
   useEffect(() => {
@@ -275,6 +283,18 @@ export default function AdminPublish() {
     if (!list.length)     { setError('Не выбрана ни одна площадка'); return; }
     if (!text.trim())     { setError('Пустой текст поста'); return; }
 
+    // Недовведённая дата в datetime-local (вписан день, но не время) — это ПУСТОЕ
+    // значение: браузер показывает «12.08.2026 --:--», а value остаётся ''. Молча
+    // опубликовать сразу в этом случае нельзя — человек ждёт отложку.
+    if (!scheduledAt && schedInput.current?.validity?.badInput) {
+      setError('Дата отложенной публикации введена не полностью — укажите и дату, и время (или нажмите «Сразу»).');
+      return;
+    }
+    if (scheduledAt && new Date(scheduledAt).getTime() <= Date.now()) {
+      setError('Время отложенной публикации уже прошло — выберите будущее время.');
+      return;
+    }
+
     setSending(true); setError(''); setResult(null);
     try {
       const r = await socialPublish({
@@ -285,7 +305,9 @@ export default function AdminPublish() {
         images: picked.map(i => images[i]).filter(Boolean),
         flowId: flowId || undefined,
         targets: list,
-        scheduledAt: scheduledAt || undefined,
+        // Отправляем момент времени, а не «голую» строку: сервер на Render живёт в UTC
+        // и «20:00» без зоны понял бы как 20:00 UTC — пост ушёл бы на 6 часов позже.
+        scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
       });
       setResult(r.data);
       // Счётчики «где уже публиковали» должны сразу учесть этот пост
@@ -540,10 +562,18 @@ export default function AdminPublish() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#666' }}>Отложить до</label>
-              <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
+              <input ref={schedInput} type="datetime-local" min={localNow()}
+                value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
                 style={{ padding: '8px 12px', borderRadius: 9, border: '1.5px solid #e0e0e0', fontSize: 13 }} />
-              {scheduledAt && (
-                <button onClick={() => setScheduledAt('')} style={{ ...navBtn, padding: '6px 12px' }}>Сразу</button>
+              {scheduledAt ? (
+                <>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#1e7c3a' }}>
+                    🕓 уйдёт {new Date(scheduledAt).toLocaleString('ru')}
+                  </span>
+                  <button onClick={() => setScheduledAt('')} style={{ ...navBtn, padding: '6px 12px' }}>Сразу</button>
+                </>
+              ) : (
+                <span style={{ fontSize: 12, color: '#8b98a5' }}>пусто — пост уйдёт сразу</span>
               )}
             </div>
           </div>

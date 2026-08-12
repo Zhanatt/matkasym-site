@@ -19,6 +19,18 @@ router.use(protect, editor);
 // Все даты в отчётах считаем по Бишкеку: сервер на Render в UTC, разница 6 часов.
 const TZ = 'Asia/Bishkek';
 
+// Время отложенной публикации. Новый фронт шлёт ISO с зоной, но старая вкладка
+// могла остаться открытой и прислать «голое» значение datetime-local
+// («2026-08-12T20:00») — Node на Render прочитал бы его как UTC и сдвинул пост
+// на 6 часов вперёд. Такое значение трактуем как бишкекское время (UTC+6, DST в
+// Кыргызстане нет). Вернёт null, если строки нет; Invalid Date — если мусор.
+function parseScheduledAt(value) {
+  const s = String(value || '').trim();
+  if (!s) return null;
+  const naive = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(s);
+  return new Date(naive ? `${s}+06:00` : s);
+}
+
 // ===== Площадки =====
 
 router.get('/accounts', async (req, res) => {
@@ -496,7 +508,12 @@ router.post('/publications', async (req, res) => {
     const accounts = await SocialAccount.find({ _id: { $in: targets.map(t => t.accountId) } });
     const byId = Object.fromEntries(accounts.map(a => [String(a._id), a]));
 
-    const base = scheduledAt ? new Date(scheduledAt) : new Date();
+    const when = parseScheduledAt(scheduledAt);
+    if (when && isNaN(when.getTime())) {
+      return res.status(400).json({ message: 'Не понял время отложенной публикации' });
+    }
+
+    const base = when || new Date();
     const pubTargets = targets.map(t => {
       const account = byId[String(t.accountId)];
       return {
@@ -521,12 +538,12 @@ router.post('/publications', async (req, res) => {
       images:      (images || []).filter(Boolean),
       flow:        flowId || undefined,
       targets:     pubTargets,
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+      scheduledAt: when || undefined,
       createdBy:   req.user._id,
     });
 
     // Отложенное уходит по тику планировщика, немедленное публикуем прямо сейчас.
-    if (scheduledAt && new Date(scheduledAt) > new Date()) {
+    if (when && when > new Date()) {
       return res.json({ publication: pub, scheduled: true });
     }
     const result = await runPublication(pub._id);
