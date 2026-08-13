@@ -17,10 +17,12 @@
 // legacyField — поле товара, куда цена Make-in пишется дополнительно: на неё завязан
 // весь остальной сайт, и сотрудникам показывается именно она.
 // c1Pattern — как тип цены называется в 1С («Типы цен номенклатуры»).
-// «Оптовая» матчится строго: рядом живёт «Оптовая цена с учётом НДС», это другая цена.
+// К названию типа 1С дописывает валюту («Оптовая KGS», «Дилерская KGS»), поэтому
+// матчим по началу. «Оптовая» — с оговоркой: рядом живёт «Оптовая цена с учётом НДС»,
+// это другая цена, её отсекаем негативным lookahead.
 const PRICE_TYPES = {
   retail:    { key: 'retail',    label: 'Розничные цены',  legacyField: 'price',          c1Pattern: /^розничная/i },
-  wholesale: { key: 'wholesale', label: 'Оптовые цены',    legacyField: 'priceWholesale', c1Pattern: /^оптовая$/i },
+  wholesale: { key: 'wholesale', label: 'Оптовые цены',    legacyField: 'priceWholesale', c1Pattern: /^оптовая(?!.*ндс)/i },
   dealer:    { key: 'dealer',    label: 'Дилерские цены',  legacyField: 'priceDealer',    c1Pattern: /^дилерская/i },
   cost:      { key: 'cost',      label: 'Закупочные цены', legacyField: 'priceCost',      c1Pattern: /^закупочная/i },
   export:    { key: 'export',    label: 'Экспорт прайс лист', currency: 'USD',            c1Pattern: /экспорт/i },
