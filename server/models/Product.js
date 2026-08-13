@@ -42,8 +42,8 @@ const productSchema = new mongoose.Schema({
   currency:          { type: String, enum: ['KGS', 'KZT'], default: 'KGS' },
 
   // Прайс каждой базы 1С отдельно. Набор цен у баз разный (см. server/lib/stockBases.js):
-  // у Matkasym нет розничной, зато есть экспортный прайс в USD — по нему у него
-  // закупается Matkasym KZ. Валюта зависит от базы и типа цены (currencyOf).
+  // у Matkasym есть экспортный прайс в USD — по нему у него закупается
+  // Matkasym KZ. Валюта зависит от базы и типа цены (currencyOf).
   pricesByBase: {
     makein:   { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
     matkasym: { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },

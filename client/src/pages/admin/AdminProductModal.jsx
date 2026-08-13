@@ -11,7 +11,7 @@ const NO_PHOTO = '/logos/no-photo.png';
 // Прайсы баз 1С (зеркалит server/lib/stockBases.js). Набор цен у баз разный.
 const PRICE_BASES = [
   { key: 'makein',   label: 'Make-in',     priceTypes: ['retail', 'wholesale', 'dealer', 'cost'] },
-  { key: 'matkasym', label: 'Matkasym',    priceTypes: ['dealer', 'wholesale', 'cost', 'export'] },
+  { key: 'matkasym', label: 'Matkasym',    priceTypes: ['retail', 'dealer', 'wholesale', 'cost', 'export'] },
   { key: 'qtop',     label: 'Matkasym KZ', priceTypes: ['retail', 'wholesale', 'cost'], kz: true },
 ];
 const PRICE_LABEL = { retail: 'розн.', wholesale: 'опт.', dealer: 'дилер.', cost: 'закуп.', export: 'экспорт' };
@@ -563,9 +563,9 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 })()}
               </div>
 
-              {/* Прайс каждой базы отдельно. Набор цен у баз разный: у Matkasym нет
-                  розничной, зато есть экспортный прайс в долларах — по нему закупается
-                  Matkasym KZ, а сам он продаёт в Казахстане в тенге. */}
+              {/* Прайс каждой базы отдельно. Набор цен у баз разный: у Matkasym есть
+                  экспортный прайс в долларах — по нему закупается Matkasym KZ,
+                  а сам он продаёт в Казахстане в тенге. */}
               {localProduct.pricesByBase && (() => {
                 const visibleBases = country === 'KZ'
                   ? PRICE_BASES.filter(b => b.kz)

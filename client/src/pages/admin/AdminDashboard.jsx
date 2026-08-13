@@ -10,11 +10,11 @@ import { useAuth } from '../../context/AuthContext';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 // Базы 1С и их прайсы (зеркалит server/lib/stockBases.js).
-// Набор цен у баз разный: у Matkasym нет розничной — он продаёт дилерам и оптовикам,
-// а в Казахстан отгружает по экспортному прайсу в долларах.
+// Набор цен у баз разный: в Казахстан Matkasym отгружает по экспортному
+// прайсу в долларах, у остальных баз экспортного прайса нет.
 const STOCK_BASES = [
   { key: 'makein',   label: 'Make-in',     priceTypes: ['retail', 'wholesale', 'dealer', 'cost'] },
-  { key: 'matkasym', label: 'Matkasym',    priceTypes: ['dealer', 'wholesale', 'cost', 'export'] },
+  { key: 'matkasym', label: 'Matkasym',    priceTypes: ['retail', 'dealer', 'wholesale', 'cost', 'export'] },
   { key: 'qtop',     label: 'Matkasym KZ', priceTypes: ['retail', 'wholesale', 'cost'] },
 ];
 
