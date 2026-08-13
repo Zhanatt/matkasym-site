@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   adminGetProducts, adminUploadImage,
@@ -60,6 +61,16 @@ const localNow = () => {
 // Грубое HTML→текст для предпросмотра: разметку площадки рендерят сами.
 const stripHtml = (s) => String(s || '').replace(/<\/?[bi]>/g, '').replace(/&amp;/g, '&');
 
+// «12 минут назад» — в вопросе о повторной публикации важно не время суток,
+// а насколько давно это было: полчаса назад — почти наверняка та же попытка.
+const ago = (date) => {
+  const min = Math.max(0, Math.round((Date.now() - new Date(date).getTime()) / 60000));
+  if (min < 1)  return 'только что';
+  if (min < 60) return `${min} мин. назад`;
+  const h = Math.floor(min / 60);
+  return `${h} ч. ${min % 60} мин. назад`;
+};
+
 export default function AdminPublish() {
   const navigate = useNavigate();
 
@@ -92,6 +103,7 @@ export default function AdminPublish() {
   const [sending,  setSending]  = useState(false);
   const [result,   setResult]   = useState(null);
   const [error,    setError]    = useState('');
+  const [dup,      setDup]      = useState(null);   // ответ сервера «пост уже выходил»
 
   const debounce   = useRef(null);
   const fileInput  = useRef(null);
@@ -165,7 +177,7 @@ export default function AdminPublish() {
   };
 
   const reset = () => {
-    setProduct(null); setImages([]); setPicked([]); setText('');
+    setProduct(null); setImages([]); setPicked([]); setText(''); setDup(null);
     setError(''); setResult(null); setPreviews([]); setTextDirty(false);
     setTitleAuto(''); setTitleInput(''); setTitleSaved('');
   };
@@ -276,8 +288,11 @@ export default function AdminPublish() {
     }
   };
 
-  const publish = async () => {
-    const list = targetList();
+  // opts.only  — публиковать не во все отмеченные площадки, а только в эти
+  //              (например, туда, где пост ещё не выходил, или где он упал).
+  // opts.force — сервер уже спросил про повтор, человек ответил «всё равно».
+  const publish = async (opts = {}) => {
+    const list = targetList().filter(t => !opts.only || opts.only.includes(t.accountId));
     if (!list.length)     { setError('Не выбрана ни одна площадка'); return; }
     if (!text.trim())     { setError('Пустой текст поста'); return; }
 
@@ -293,7 +308,7 @@ export default function AdminPublish() {
       return;
     }
 
-    setSending(true); setError(''); setResult(null);
+    setSending(true); setError(''); setResult(null); setDup(null);
     try {
       const r = await socialPublish({
         kind: 'product',           // свободных постов на этой странице нет — публикуем только товары
@@ -303,6 +318,7 @@ export default function AdminPublish() {
         images: picked.map(i => images[i]).filter(Boolean),
         flowId: flowId || undefined,
         targets: list,
+        force: opts.force || undefined,
         // Отправляем момент времени, а не «голую» строку: сервер на Render живёт в UTC
         // и «20:00» без зоны понял бы как 20:00 UTC — пост ушёл бы на 6 часов позже.
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
@@ -311,13 +327,27 @@ export default function AdminPublish() {
       // Счётчики «где уже публиковали» должны сразу учесть этот пост
       socialGetPublishStats().then(x => setPubStats(x.data || {})).catch(() => {});
     } catch (e) {
-      setError(e.response?.data?.message || 'Ошибка публикации');
+      // 409 — не ошибка, а вопрос: часть площадок этот пост уже получила.
+      const dupInfo = e.response?.status === 409 ? e.response.data?.duplicate : null;
+      if (dupInfo) setDup(dupInfo);
+      else setError(e.response?.data?.message || 'Ошибка публикации');
     }
     setSending(false);
   };
 
   const selectedImages = picked.map(i => images[i]).filter(Boolean);
   const canPublish = Object.keys(targets).length > 0 && text.trim() && product;
+
+  // Площадки, куда пост в последней попытке не ушёл, — для кнопки «повторить только их».
+  // Отфильтровываем снятые галочкой: набор площадок могли поменять уже после отправки.
+  const failedAccountIds = (result?.publication?.targets || [])
+    .filter(t => t.status === 'failed')
+    .map(t => String(t.account))
+    .filter(id => targets[id]);
+
+  // Для вопроса о повторе: где поста ещё НЕ было — туда обычно и нужно дослать.
+  const dupIds   = new Set((dup?.targets || []).map(t => t.accountId));
+  const freshIds = Object.keys(targets).filter(id => !dupIds.has(id));
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '28px 0 60px' }}>
@@ -635,6 +665,21 @@ export default function AdminPublish() {
                       {t.externalUrl && <a href={t.externalUrl} target="_blank" rel="noreferrer" style={{ color: '#3463A3' }}>открыть</a>}
                     </div>
                   ))}
+
+                  {/* Главная кнопка после неудачи: отправить ТОЛЬКО туда, где упало.
+                      Раньше в этом месте люди шли публиковать всё заново — и площадки,
+                      где пост уже вышел, получали вторую копию. Текст и фото берутся
+                      текущие, так что перед повтором их можно поправить. */}
+                  {failedAccountIds.length > 0 && (
+                    <button onClick={() => publish({ force: true, only: failedAccountIds })} disabled={sending}
+                      style={{
+                        marginTop: 10, padding: '9px 16px', borderRadius: 9, border: 'none',
+                        background: sending ? '#bbb' : '#111', color: '#fff', fontSize: 13, fontWeight: 700,
+                        cursor: sending ? 'default' : 'pointer',
+                      }}>
+                      ↻ Отправить только в упавшие ({failedAccountIds.length})
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -642,7 +687,7 @@ export default function AdminPublish() {
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <button onClick={reset} style={{ ...navBtn, padding: '11px 22px', fontSize: 14 }}>Сбросить</button>
-            <button onClick={publish} disabled={sending || !canPublish} style={{
+            <button onClick={() => publish()} disabled={sending || !canPublish} style={{
               padding: '12px 30px', borderRadius: 10, border: 'none',
               background: sending || !canPublish ? '#bbb' : '#111', color: '#fff', fontSize: 14, fontWeight: 700,
               cursor: sending || !canPublish ? 'default' : 'pointer',
@@ -651,6 +696,68 @@ export default function AdminPublish() {
             </button>
           </div>
         </>
+      )}
+
+      {/* Пост уже выходил на части площадок. Не запрещаем — спрашиваем: плановый
+          перепост через день это норма, а вот второй пост через полчаса почти всегда
+          означает «упал Instagram, отправлю-ка всё заново». Рисуем порталом в body:
+          position: fixed ловится любым предком с transform (см. Admin.css). */}
+      {dup && createPortal(
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setDup(null); }}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', padding: 20,
+          }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 24, width: 520, maxWidth: '95vw',
+            maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,.2)',
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>⚠️ Этот пост уже выходил</div>
+            <div style={{ fontSize: 13, color: '#5c6873', marginBottom: 14, lineHeight: 1.5 }}>
+              За последние {dup.windowHours} ч. товар уже публиковали. Если отправить всё заново,
+              там появится вторая копия.
+            </div>
+
+            {(dup.targets || []).map((t, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+                background: '#f7f8fa', borderRadius: 9, padding: '9px 12px', marginBottom: 6, flexWrap: 'wrap',
+              }}>
+                <span>{platformMeta(t.platform).icon}</span>
+                <b>{t.title}</b>
+                <span style={{ color: '#5c6873' }}>{ago(t.publishedAt)}</span>
+                {t.number ? <span style={{ color: '#8b98a5', fontSize: 11 }}>№{t.number}</span> : null}
+                {t.externalUrl && (
+                  <a href={t.externalUrl} target="_blank" rel="noreferrer"
+                    style={{ color: '#3463A3', marginLeft: 'auto' }}>посмотреть</a>
+                )}
+              </div>
+            ))}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 18 }}>
+              {freshIds.length > 0 && (
+                <button onClick={() => publish({ force: true, only: freshIds })} disabled={sending}
+                  style={{
+                    padding: '12px 18px', borderRadius: 10, border: 'none', background: '#111',
+                    color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  }}>
+                  Отправить только туда, где ещё не было ({freshIds.length})
+                </button>
+              )}
+              <button onClick={() => publish({ force: true })} disabled={sending}
+                style={{ ...navBtn, padding: '11px 18px', fontSize: 13 }}>
+                Всё равно опубликовать везде ({Object.keys(targets).length})
+              </button>
+              <button onClick={() => setDup(null)}
+                style={{ ...navBtn, padding: '11px 18px', fontSize: 13, border: 'none' }}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

@@ -206,6 +206,51 @@ async function unpublishPublication(pubId) {
   };
 }
 
+// Сколько времени считаем повторную отправку того же товара случайной.
+// Плановый перепост через день-два — нормальная работа, а вот второй пост через
+// полчаса почти всегда означает: упал Instagram, человек поправил и отправил всё
+// заново — а Telegram, где пост уже вышел, получил вторую копию.
+const DUPLICATE_WINDOW_MS = 6 * 60 * 60 * 1000;
+
+// Куда из выбранных площадок этот же пост уже уходил за последние 6 часов.
+// Снятые публикации (status: 'deleted') не в счёт: их сняли как раз для того,
+// чтобы опубликовать заново. Возвращает по одной — самой свежей — записи на площадку.
+// before — точка отсчёта, по умолчанию «сейчас»; задаётся явно, чтобы правило
+// можно было прогнать по журналу задним числом и проверить на реальных дублях.
+async function recentlyPublished({ productId, text, accountIds, before }) {
+  const ids = (accountIds || []).map(String).filter(id => /^[a-f0-9]{24}$/i.test(id));
+  if (!ids.length) return [];
+
+  const scope = productId
+    ? { product: productId }
+    : { kind: 'custom', text: String(text || '').trim() };
+
+  const to = before ? new Date(before) : new Date();
+  const pubs = await Publication.find({
+    ...scope,
+    createdAt: { $gte: new Date(to.getTime() - DUPLICATE_WINDOW_MS), $lt: to },
+    targets:   { $elemMatch: { status: 'published', account: { $in: ids } } },
+  }).sort({ createdAt: -1 }).lean();
+
+  const wanted = new Set(ids);
+  const seen   = new Map();
+  for (const p of pubs) {
+    for (const t of p.targets || []) {
+      const id = String(t.account);
+      if (t.status !== 'published' || !wanted.has(id) || seen.has(id)) continue;
+      seen.set(id, {
+        accountId:   id,
+        platform:    t.platform,
+        title:       t.title,
+        publishedAt: t.publishedAt || p.createdAt,
+        externalUrl: t.externalUrl || '',
+        number:      p.number,
+      });
+    }
+  }
+  return [...seen.values()];
+}
+
 let running = false;
 
 // Сколько ждём отправку, прежде чем считать её оборванной. Самая долгая площадка —
@@ -264,6 +309,8 @@ async function tickPublications() {
 
 module.exports = {
   PLATFORM_LABELS,
+  DUPLICATE_WINDOW_MS,
+  recentlyPublished,
   buildProductText,
   renderTemplate,
   templateContext,

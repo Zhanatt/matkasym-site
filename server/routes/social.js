@@ -9,7 +9,8 @@ const PublishFlow  = require('../models/PublishFlow');
 const Publication  = require('../models/Publication');
 const Counter      = require('../models/Counter');
 const Product      = require('../models/Product');
-const { buildProductText, captionFor, runPublication, unpublishPublication, PLATFORM_LABELS } = require('../lib/socialPublish');
+const { buildProductText, captionFor, runPublication, unpublishPublication,
+        recentlyPublished, DUPLICATE_WINDOW_MS, PLATFORM_LABELS } = require('../lib/socialPublish');
 const { normLang } = require('../lib/postLang');
 const { postTitle } = require('../lib/postCaption');
 const { manualName } = require('../lib/postNames');
@@ -494,11 +495,11 @@ router.post('/preview', async (req, res) => {
 });
 
 // POST /publications — создать публикацию и разослать (или запланировать).
-// body: { kind, productId, text, images, flowId, scheduledAt,
+// body: { kind, productId, text, images, flowId, scheduledAt, force,
 //         targets: [{ accountId, postType, captionTemplate, delayMinutes }] }
 router.post('/publications', async (req, res) => {
   try {
-    const { kind = 'product', productId, text, images, flowId, targets, scheduledAt, lang } = req.body || {};
+    const { kind = 'product', productId, text, images, flowId, targets, scheduledAt, lang, force } = req.body || {};
     if (!Array.isArray(targets) || !targets.length) {
       return res.status(400).json({ message: 'Не выбрана ни одна площадка' });
     }
@@ -528,6 +529,22 @@ router.post('/publications', async (req, res) => {
     }).filter(t => t.platform); // площадка могла быть удалена, пока форма была открыта
 
     if (!pubTargets.length) return res.status(400).json({ message: 'Выбранные площадки не найдены' });
+
+    // Спрашиваем, а не запрещаем: решение за человеком, но вслепую он его больше
+    // не принимает. С force публикуем как просили.
+    if (!force) {
+      const already = await recentlyPublished({
+        productId:  product?._id,
+        text,
+        accountIds: pubTargets.map(t => t.account),
+      });
+      if (already.length) {
+        return res.status(409).json({
+          message: 'Этот пост уже выходил на части площадок',
+          duplicate: { targets: already, windowHours: DUPLICATE_WINDOW_MS / 3600000 },
+        });
+      }
+    }
 
     const pub = await Publication.create({
       number:      await Counter.next('publication'),
