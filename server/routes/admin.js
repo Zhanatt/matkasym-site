@@ -2066,7 +2066,12 @@ router.post('/confirm-nomenclature', editor, async (req, res) => {
 // ── UPLOAD PRICE LIST ────────────────────────────────────────────────────────
 // POST /api/admin/upload-prices?base=makein|matkasym|qtop&type=retail|wholesale|dealer|cost|export
 // У каждой базы свой прайс: пишем в pricesByBase[base][type]. Цены Make-in дополнительно
-// дублируются в price/priceWholesale/... — на них завязан остальной сайт.
+// дублируются в price/priceWholesale/... — на них завязан остальной сайт: карточки,
+// каталог, PDF, посты и буферный запас читают старое поле, а не pricesByBase.
+// Та же логика для товара, которого в Make-in нет (шкафы Matkasym Shaar и т.п.):
+// иначе его цена видна только в блоке «Прайсы по базам». Товар, который есть в обеих
+// базах, старым полем не трогаем — там должна остаться цена Make-in, а прайс Q-top
+// не трогает старое поле никогда: он в тенге, а витрина читает его как сомы.
 router.post('/upload-prices', editor, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
 
@@ -2079,8 +2084,13 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
   }
 
   const path  = `pricesByBase.${baseKey}.${type}`;
-  // Цена Make-in — та, что видят сотрудники: дублируем в старое поле товара
-  const field = baseKey === 'makein' ? PRICE_TYPES[type].legacyField : null;
+  // Старое поле товара под этот тип цены (у экспортного прайса его нет)
+  const field = PRICE_TYPES[type].legacyField || null;
+  // Продажная цена — та, что показывается на витрине; закупочную флаг не касается
+  const isSalePrice = ['retail', 'wholesale', 'dealer'].includes(type);
+  // В старом поле цена без валюты, а витрина считает её сомовой: прайс Q-top —
+  // казахстанский, в тенге, его дублировать туда нельзя.
+  const dupLegacy = BASES[baseKey].country === 'KG';
 
   try {
     const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -2102,7 +2112,7 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
       ({ priceMap } = parsePriceRows(rows, type, normName));
     }
 
-    const products = await Product.find({}, `_id fullName name sku pricesByBase ${field || ''}`);
+    const products = await Product.find({}, `_id fullName name sku pricesByBase inBase priceUndefined ${field || ''}`);
     let matched = 0, skipped = 0;
     const ops = [];
     const priceLogDocs = [];
@@ -2112,7 +2122,12 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
       if (newPrice === undefined) { skipped++; continue; }
       const oldPrice = Number(p.pricesByBase?.[baseKey]?.[type]) || 0;
       const set      = { [path]: newPrice };
-      if (field) set[field] = newPrice;
+      if (field && dupLegacy && (baseKey === 'makein' || !p.inBase?.makein)) {
+        set[field] = newPrice;
+        // Флаг ставили, пока цены не было (импорт привозных: «узнаем у поставщика») —
+        // цена пришла, значит он устарел, иначе карточка так и пишет «не определена»
+        if (isSalePrice && newPrice > 0 && p.priceUndefined) set.priceUndefined = false;
+      }
       ops.push({ updateOne: { filter: { _id: p._id }, update: { $set: set } } });
       if (newPrice !== oldPrice) {
         priceLogDocs.push({
