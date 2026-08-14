@@ -18,6 +18,16 @@ const LINE_COLORS = [
   '#E91E63','#00BCD4','#8BC34A','#FF5722','#607D8B','#795548','#673AB7',
 ];
 
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const h = () => setMob(window.innerWidth < 640);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return mob;
+}
+
 const money = n => (n || 0).toLocaleString('ru-RU');
 const fmtDate = d => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -55,6 +65,7 @@ const BRAND_BADGE = {
 };
 
 export default function AdminAgentSales() {
+  const mob = useIsMobile();
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -555,7 +566,10 @@ export default function AdminAgentSales() {
       ) : view === 'products' ? (
         /* ── По товарам ── плоский список позиций: сколько штук и на какую сумму */
         (() => {
-          const PRODGRID = '26px 1fr 104px 84px 108px 52px';
+          // На телефоне шесть колонок не помещаются: фикс-ширины съедали название
+          // до одной буквы. Убираем «Сет» и «%» в подписи под названием.
+          const PRODGRID = mob ? '20px minmax(0, 1fr) 40px 86px' : '26px minmax(0, 1fr) 104px 84px 108px 52px';
+          const pad = mob ? '9px 10px' : '9px 16px';
           const sortHead = (key, label, align = 'right') => (
             <span
               onClick={() => setProdSort(key)}
@@ -567,40 +581,51 @@ export default function AdminAgentSales() {
           );
           return (
             <div style={{ border: '1px solid #eee', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: '9px 16px', background: '#f7f8fa', borderBottom: '1px solid #eee', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#888' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: pad, background: '#f7f8fa', borderBottom: '1px solid #eee', fontSize: mob ? 10 : 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#888' }}>
                 <span>#</span>
                 {sortHead('name', 'Товар', 'left')}
-                <span>Сет</span>
-                {sortHead('qty', 'Продано, шт')}
-                {sortHead('sum', `Сумма, ${cur}`)}
-                <span style={{ textAlign: 'right' }}>% ∑</span>
+                {!mob && <span>Сет</span>}
+                {sortHead('qty', mob ? 'Шт' : 'Продано, шт')}
+                {sortHead('sum', mob ? cur : `Сумма, ${cur}`)}
+                {!mob && <span style={{ textAlign: 'right' }}>% ∑</span>}
               </div>
 
               {productRows.map((p, i) => {
                 const pctSum = prodTotalSum > 0 ? Math.round(p.sum / prodTotalSum * 100) : 0;
                 const ret = isReturn(p);
                 return (
-                  <div key={p.productName} style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: '9px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center' }}>
+                  <div key={p.productName} style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: pad, borderBottom: '1px solid #f5f5f5', fontSize: mob ? 12.5 : 13, alignItems: 'center' }}>
                     <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
-                    <span style={{ color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }} title={p.productName}>
-                      {p.productName}
-                      {ret && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px' }}>возврат</span>}
-                    </span>
-                    <span style={{ fontSize: 11.5, color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{setLabel(p.set)}</span>
+                    <div style={{ minWidth: 0, paddingRight: 8 }}>
+                      <span
+                        style={mob
+                          ? { color: '#333', display: 'block', overflowWrap: 'anywhere', lineHeight: 1.3 }
+                          : { color: '#333', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={p.productName}
+                      >
+                        {p.productName}
+                        {ret && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px' }}>возврат</span>}
+                      </span>
+                      {mob && <span style={{ display: 'block', fontSize: 10.5, color: '#aaa', marginTop: 2 }}>{setLabel(p.set)}</span>}
+                    </div>
+                    {!mob && <span style={{ fontSize: 11.5, color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{setLabel(p.set)}</span>}
                     <span style={{ textAlign: 'right', fontWeight: 700, color: p.qty < 0 ? '#c0392b' : '#1e7e34' }}>{money(p.qty)}</span>
-                    <span style={{ textAlign: 'right', fontWeight: 600, color: p.sum < 0 ? '#c0392b' : '#111' }}>{sumFmt(p.sum)}</span>
-                    <span style={{ textAlign: 'right', fontSize: 11.5, color: '#aaa' }}>{pctSum}%</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontWeight: 600, color: p.sum < 0 ? '#c0392b' : '#111' }}>{sumFmt(p.sum)}</span>
+                      {mob && <div style={{ fontSize: 10.5, color: '#bbb' }}>{pctSum}%</div>}
+                    </div>
+                    {!mob && <span style={{ textAlign: 'right', fontSize: 11.5, color: '#aaa' }}>{pctSum}%</span>}
                   </div>
                 );
               })}
 
-              <div style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: '11px 16px', background: '#f7f8fa', fontSize: 13 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: PRODGRID, padding: mob ? '11px 10px' : '11px 16px', background: '#f7f8fa', fontSize: mob ? 12 : 13 }}>
                 <span />
                 <span style={{ fontWeight: 700, color: '#111' }}>Итого · {productRows.length} поз.</span>
-                <span />
-                <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(prodTotalQty)} шт</span>
+                {!mob && <span />}
+                <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(prodTotalQty)}{mob ? '' : ' шт'}</span>
                 <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{sumFmt(prodTotalSum)}</span>
-                <span />
+                {!mob && <span />}
               </div>
             </div>
           );
@@ -608,15 +633,17 @@ export default function AdminAgentSales() {
       ) : (
         /* ── По сетам ── товары по сетам, строка раскрывается в список товаров */
         (() => {
-          const SETGRID = '28px 1fr 84px 78px 96px 108px';
+          // Мобильный разрез: «% от итога» и «Позиций» уходят под название сета
+          const SETGRID = mob ? '20px minmax(0, 1fr) 44px 86px' : '28px minmax(0, 1fr) 84px 78px 96px 108px';
+          const pad = mob ? '9px 10px' : '9px 16px';
           return (
         <div style={{ border: '1px solid #eee', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: SETGRID, padding: '9px 16px', background: '#f7f8fa', borderBottom: '1px solid #eee', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: SETGRID, padding: pad, background: '#f7f8fa', borderBottom: '1px solid #eee', fontSize: mob ? 10 : 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
             <span>#</span><span>Сет</span>
-            <span style={{ textAlign: 'right' }}>% от итога</span>
-            <span style={{ textAlign: 'right' }}>Позиций</span>
-            <span style={{ textAlign: 'right' }}>Продано, шт</span>
-            <span style={{ textAlign: 'right' }}>Сумма, {cur}</span>
+            {!mob && <span style={{ textAlign: 'right' }}>% от итога</span>}
+            {!mob && <span style={{ textAlign: 'right' }}>Позиций</span>}
+            <span style={{ textAlign: 'right' }}>{mob ? 'Шт' : 'Продано, шт'}</span>
+            <span style={{ textAlign: 'right' }}>{mob ? cur : `Сумма, ${cur}`}</span>
           </div>
           {data.sets.map((s, i) => {
             const pct = data.grandQty > 0 ? Math.round(s.qty / data.grandQty * 100) : 0;
@@ -628,32 +655,44 @@ export default function AdminAgentSales() {
               <div key={key}>
                 <div
                   onClick={() => setExpandedSet(p => ({ ...p, [key]: !p[key] }))}
-                  style={{ display: 'grid', gridTemplateColumns: SETGRID, padding: '10px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13, alignItems: 'center', cursor: 'pointer', background: isOpen ? '#f7fbff' : 'transparent' }}
+                  style={{ display: 'grid', gridTemplateColumns: SETGRID, padding: mob ? '10px' : '10px 16px', borderBottom: '1px solid #f5f5f5', fontSize: mob ? 12.5 : 13, alignItems: 'center', cursor: 'pointer', background: isOpen ? '#f7fbff' : 'transparent' }}
                   onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = '#fafafa'; }}
                   onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'transparent'; }}
                 >
                   <span style={{ fontSize: 11, color: '#ccc', fontWeight: 600 }}>{i + 1}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                    <span style={{ fontSize: 11, color: '#bbb', width: 10, flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                    <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{setLabel(s.set)}</span>
-                    {setReturns > 0 && (
-                      <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap' }}>↩ {setReturns} возвр.</span>
+                  <div style={{ minWidth: 0, paddingRight: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: mob ? 6 : 8, minWidth: 0 }}>
+                      <span style={{ fontSize: 11, color: '#bbb', width: 10, flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                      <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{setLabel(s.set)}</span>
+                      {setReturns > 0 && (
+                        <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: '#c0392b', background: '#fdecec', borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap' }}>↩ {setReturns}{mob ? '' : ' возвр.'}</span>
+                      )}
+                    </div>
+                    {mob && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, paddingLeft: 26 }}>
+                        <div style={{ flex: 1, height: 3, background: '#f0f0f0', borderRadius: 2, minWidth: 0 }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
+                        </div>
+                        <span style={{ fontSize: 10.5, color: '#aaa', whiteSpace: 'nowrap' }}>{pct}% · {s.positions} поз.</span>
+                      </div>
                     )}
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: 11, color: '#aaa' }}>{pct}%</span>
-                    <div style={{ height: 3, background: '#f0f0f0', borderRadius: 2, marginTop: 3 }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
+                  {!mob && (
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: 11, color: '#aaa' }}>{pct}%</span>
+                      <div style={{ height: 3, background: '#f0f0f0', borderRadius: 2, marginTop: 3 }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
+                      </div>
                     </div>
-                  </div>
-                  <span style={{ textAlign: 'right', fontWeight: 600, color: '#555' }}>{s.positions}</span>
-                  <span style={{ textAlign: 'right', fontWeight: 700, color: s.qty < 0 ? '#c0392b' : '#1e7e34' }}>{money(s.qty)} шт</span>
+                  )}
+                  {!mob && <span style={{ textAlign: 'right', fontWeight: 600, color: '#555' }}>{s.positions}</span>}
+                  <span style={{ textAlign: 'right', fontWeight: 700, color: s.qty < 0 ? '#c0392b' : '#1e7e34' }}>{money(s.qty)}{mob ? '' : ' шт'}</span>
                   <span style={{ textAlign: 'right', fontWeight: 600, color: '#111' }}>{sumFmt(s.sum)}</span>
                 </div>
 
                 {isOpen && (
-                  <div style={{ background: '#fafafa', padding: '4px 16px 12px 44px', borderBottom: '1px solid #f0f0f0' }}>
+                  <div style={{ background: '#fafafa', padding: mob ? '4px 10px 12px 20px' : '4px 16px 12px 44px', borderBottom: '1px solid #f0f0f0' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                       <thead>
                         <tr style={{ color: '#aaa', textAlign: 'left' }}>
@@ -680,10 +719,12 @@ export default function AdminAgentSales() {
               </div>
             );
           })}
-          <div style={{ display: 'grid', gridTemplateColumns: SETGRID, padding: '11px 16px', background: '#f7f8fa', fontSize: 13 }}>
-            <span /><span style={{ fontWeight: 700, color: '#111' }}>Итого</span><span />
-            <span style={{ textAlign: 'right', fontWeight: 800, color: '#555' }}>{data.sets.reduce((n, s) => n + s.positions, 0)}</span>
-            <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(data.grandQty)} шт</span>
+          <div style={{ display: 'grid', gridTemplateColumns: SETGRID, padding: mob ? '11px 10px' : '11px 16px', background: '#f7f8fa', fontSize: mob ? 12 : 13 }}>
+            <span />
+            <span style={{ fontWeight: 700, color: '#111' }}>Итого{mob ? ` · ${data.sets.reduce((n, s) => n + s.positions, 0)} поз.` : ''}</span>
+            {!mob && <span />}
+            {!mob && <span style={{ textAlign: 'right', fontWeight: 800, color: '#555' }}>{data.sets.reduce((n, s) => n + s.positions, 0)}</span>}
+            <span style={{ textAlign: 'right', fontWeight: 800, color: '#1e7e34' }}>{money(data.grandQty)}{mob ? '' : ' шт'}</span>
             <span style={{ textAlign: 'right', fontWeight: 800, color: '#111' }}>{sumFmt(data.grandSum)}</span>
           </div>
         </div>
