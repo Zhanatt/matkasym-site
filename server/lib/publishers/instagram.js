@@ -12,12 +12,18 @@ const GRAPH = 'https://graph.facebook.com/v21.0';
 // Instagram принимает только определённые пропорции (пост 4:5…1.91:1, история 9:16)
 // и падает на всём остальном. Cloudinary умеет дорисовать поля прямо в URL —
 // дешевле подогнать картинку здесь, чем ловить «Media aspect ratio not supported».
+// Ещё две мелочи, на которых Meta молча падает с «could not be fetched from this URI»:
+// q_auto отдаёт progressive jpeg (Instagram принимает только baseline — отсюда
+// fl_progressive:none), а f_jpg меняет формат, но НЕ расширение в ссылке — Meta
+// получала image/jpeg по адресу с .png и спотыкалась.
 function fitForInstagram(url, postType) {
   if (!url.includes('res.cloudinary.com') || !url.includes('/image/upload/')) return url;
   const t = postType === 'story'
-    ? 'f_jpg,q_auto,c_pad,b_auto,ar_9:16,w_1080'
-    : 'f_jpg,q_auto,c_pad,b_auto,ar_4:5,w_1080';
-  return url.replace('/image/upload/', `/image/upload/${t}/`);
+    ? 'f_jpg,fl_progressive:none,q_auto,c_pad,b_auto,ar_9:16,w_1080'
+    : 'f_jpg,fl_progressive:none,q_auto,c_pad,b_auto,ar_4:5,w_1080';
+  return url
+    .replace('/image/upload/', `/image/upload/${t}/`)
+    .replace(/\.(png|webp|avif)$/i, '.jpg');
 }
 
 async function graph(path, params, method = 'POST') {
