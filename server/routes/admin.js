@@ -97,6 +97,23 @@ router.get('/shop-diag', async (req, res) => {
   } catch (e) {
     out.getMe = { error: e.message };
   }
+
+  // ?chat=<id> — пробное сообщение. Главная причина «клиенту ничего не пришло» —
+  // Telegram не даёт боту писать тому, кто не нажимал у него «Начать», и говорит
+  // об этом только в ответе на sendMessage.
+  if (req.query.chat) {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: String(req.query.chat), text: 'Проверка связи от магазина MATKASYM 🛍' }),
+      });
+      const d = await r.json();
+      out.probe = d.ok ? { ok: true } : { ok: false, error: d.description, code: d.error_code };
+    } catch (e) {
+      out.probe = { ok: false, error: e.message };
+    }
+  }
   res.json(out);
 });
 
