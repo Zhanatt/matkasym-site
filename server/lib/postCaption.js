@@ -13,8 +13,19 @@ const { translateName, manualName } = require('./postNames');
 // Тематические хэштеги для Instagram и Facebook.
 const { hashtagsFor } = require('./postTags');
 
-// Номер WhatsApp для приёма заказов, только цифры в международном формате.
-const ORDER_WHATSAPP = (process.env.WHATSAPP_ORDER_PHONE || '996500001652').replace(/\D/g, '');
+// Номера WhatsApp для приёма заказов, только цифры в международном формате.
+// У SHAAR свой отдел продаж: заказ на его товар, ушедший на общий номер,
+// до нужных людей не доходит. Остальные бренды (home, kyzmat) — общий номер.
+const digitsOnly = v => String(v || '').replace(/\D/g, '');
+
+const ORDER_WHATSAPP       = digitsOnly(process.env.WHATSAPP_ORDER_PHONE || '996500001652');
+const ORDER_WHATSAPP_SHAAR = digitsOnly(process.env.WHATSAPP_ORDER_PHONE_SHAAR || '996501111726');
+
+// Номер по бренду товара. Бренд может не прийти вовсе (пост «без товара»,
+// свободный текст) — тогда общий номер, как было до разделения.
+function orderPhone(p) {
+  return p?.brand === 'matkasym-shaar' ? ORDER_WHATSAPP_SHAAR : ORDER_WHATSAPP;
+}
 
 // Метка источника в первом сообщении клиента: по ней в WhatsApp видно,
 // что лид пришёл с поста, а не откуда-то ещё.
@@ -227,7 +238,7 @@ function postTitle(p, lang = 'ru') {
 function whatsappLink(p, lang = DEFAULT_LANG) {
   const title = postTitle(p, lang);
   const text  = `${phrases(lang).orderText}: ${title}\n\n${TRAFFIC_TAG}`;
-  return `https://wa.me/${ORDER_WHATSAPP}?text=${encodeURIComponent(text)}`;
+  return `https://wa.me/${orderPhone(p)}?text=${encodeURIComponent(text)}`;
 }
 
 // Площадки, где заказ идёт только через личку: ни ссылки, ни цены в посте.
@@ -344,4 +355,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP };
+module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, orderPhone };
