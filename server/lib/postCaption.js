@@ -28,8 +28,15 @@ function orderPhone(p) {
 }
 
 // Метка источника в первом сообщении клиента: по ней в WhatsApp видно,
-// что лид пришёл с поста, а не откуда-то ещё.
-const TRAFFIC_TAG = '#tg_matrix';
+// что лид пришёл с поста, а не откуда-то ещё, и с какой именно площадки.
+const TRAFFIC_TAGS = {
+  telegram:  '#tg_matrix',
+  instagram: '#inst_matrix',
+  facebook:  '#fb_matrix',
+};
+const TRAFFIC_TAG = TRAFFIC_TAGS.telegram;   // площадка по умолчанию — канал
+
+const trafficTag = platform => TRAFFIC_TAGS[platform] || TRAFFIC_TAG;
 
 // Короткий призыв к действию перед ссылкой на WhatsApp — одна строка,
 // в ленте канала длинный текст дочитывают редко.
@@ -234,11 +241,14 @@ function postTitle(p, lang = 'ru') {
   return translateName(ru, lang);
 }
 
+// Текст первого сообщения клиента в WhatsApp: что заказывает + метка площадки.
+function orderMessage(p, lang = DEFAULT_LANG, platform) {
+  return `${phrases(lang).orderText}: ${postTitle(p, lang)}\n\n${trafficTag(platform)}`;
+}
+
 // Ссылка «Заказать товар» — открывает WhatsApp с готовым текстом заказа.
-function whatsappLink(p, lang = DEFAULT_LANG) {
-  const title = postTitle(p, lang);
-  const text  = `${phrases(lang).orderText}: ${title}\n\n${TRAFFIC_TAG}`;
-  return `https://wa.me/${orderPhone(p)}?text=${encodeURIComponent(text)}`;
+function whatsappLink(p, lang = DEFAULT_LANG, platform) {
+  return `https://wa.me/${orderPhone(p)}?text=${encodeURIComponent(orderMessage(p, lang, platform))}`;
 }
 
 // Площадки, где заказ идёт только через личку: ни ссылки, ни цены в посте.
@@ -355,4 +365,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, orderPhone };
+module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, orderPhone, orderMessage, TRAFFIC_TAGS };

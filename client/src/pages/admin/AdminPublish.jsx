@@ -37,6 +37,47 @@ function PublishedBadges({ stat, size = 11 }) {
   );
 }
 
+// Короткая ссылка на заказ для стикера-ссылки в истории Instagram.
+//
+// Прямую wa.me туда вставить нельзя: Instagram отвечает «ссылка слишком
+// длинная». Кыргызский текст заказа в URL кодируется по 6 символов на букву
+// и раздувает ссылку до ~270 символов. Здесь наружу идёт /w/:sku, а полный
+// текст собирает редирект на сервере уже после клика.
+//
+// ?s=inst — метка источника: в WhatsApp видно, что лид пришёл из истории,
+// а не из канала.
+function StoryLink({ product, lang }) {
+  const [copied, setCopied] = useState(false);
+  if (!product?.sku) return null;
+
+  const url = `${window.location.origin}/w/${encodeURIComponent(product.sku)}?s=inst`
+    + (lang && lang !== 'ky' ? `&lang=${lang}` : '');
+
+  const copy = () => {
+    navigator.clipboard.writeText(url)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
+      .catch(() => {});
+  };
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap',
+      background: '#fdf0f7', border: '1.5px solid #C1358433', borderRadius: 10, padding: '9px 14px',
+    }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: '#C13584' }}>📸 Ссылка для истории</span>
+      <code style={{
+        flex: 1, minWidth: 160, fontSize: 12, color: '#555',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{url}</code>
+      <button onClick={copy} style={{
+        padding: '6px 14px', borderRadius: 8, border: '1.5px solid #C1358455',
+        background: copied ? '#C13584' : '#fff', color: copied ? '#fff' : '#C13584',
+        fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+      }}>{copied ? '✓ Скопировано' : 'Скопировать'}</button>
+    </div>
+  );
+}
+
 const CARD = { background: '#fff', borderRadius: 14, padding: 24, boxShadow: '0 1px 6px rgba(0,0,0,.07)', marginBottom: 16 };
 const L    = { fontSize: 12, fontWeight: 700, color: '#666', display: 'block', marginBottom: 8 };
 const INP  = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e0e0e0', fontSize: 14, outline: 'none', boxSizing: 'border-box' };
@@ -371,6 +412,7 @@ export default function AdminPublish() {
         <label style={L}>Что публикуем</label>
 
         {product ? (
+          <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f7f8fa', border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '10px 14px' }}>
             {images[0] && <img src={cloudinaryOpt(images[0], 300)} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -384,6 +426,8 @@ export default function AdminPublish() {
             </div>
             <button onClick={reset} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 20 }}>×</button>
           </div>
+          <StoryLink product={product} lang={lang} />
+          </>
         ) : (
           <div style={{ position: 'relative' }}>
             <input value={productQ} onChange={e => setProductQ(e.target.value)}

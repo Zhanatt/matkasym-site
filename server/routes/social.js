@@ -443,6 +443,9 @@ router.get('/draft/:productId', async (req, res) => {
     product: {
       _id: p._id, name: p.name, fullName: p.fullName,
       price: p.price, priceWholesale: p.priceWholesale, priceUndefined: p.priceUndefined,
+      // sku — для короткой ссылки /w/:sku в историях, brand — чтобы в форме
+      // было видно, на какой номер WhatsApp уйдёт заказ.
+      sku: p.sku, brand: p.brand,
     },
   });
 });

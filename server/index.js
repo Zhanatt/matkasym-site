@@ -28,6 +28,11 @@ app.use('/api/catalog',  require('./routes/catalog'));  // AI-bot context API
 app.use('/api/shop',     require('./routes/shop'));     // Telegram Mini App — магазин в канале
 app.use('/api/admin/social', require('./routes/social')); // автопубликации по площадкам
 
+// Короткая ссылка на заказ для стикера-ссылки в историях Instagram.
+// Не под /api: чем короче путь, тем лучше — длинный URL стикер не принимает.
+// Обязательно ДО отдачи React-сборки, иначе /w/* съест SPA-фолбэк.
+app.use('/w', require('./routes/wa'));
+
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'OK', time: new Date() }));
 
