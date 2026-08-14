@@ -8,6 +8,8 @@
  *
  * Сухой прогон:  node scripts/sync-bitrix24-all.js --dry
  * Боевой запуск: node scripts/sync-bitrix24-all.js --apply
+ *
+ * Можно ограничиться одним сетом: --set=bekem-fasad (можно перечислить через запятую).
  */
 
 require('dotenv').config();
@@ -94,14 +96,26 @@ async function run() {
     process.exit(1);
   }
 
+  const setArg = process.argv.find((a) => a.startsWith('--set='));
+  const onlySets = setArg ? setArg.slice(6).split(',').map((s) => s.trim()).filter(Boolean) : null;
+
   await mongoose.connect(MONGO_URI);
 
-  const products = await Product.find({
+  const filter = {
     productStatus: { $nin: SKIPPED_STATUSES },
     brand: { $in: Object.keys(BRAND_SECTION) },
-  }).lean();
+  };
+  if (onlySets) {
+    filter.set = { $in: onlySets };
+    console.log(`Только сеты: ${onlySets.join(', ')}\n`);
+  }
 
-  const skipped = await Product.countDocuments({ productStatus: { $in: SKIPPED_STATUSES } });
+  const products = await Product.find(filter).lean();
+
+  const skipped = await Product.countDocuments({
+    ...(onlySets ? { set: { $in: onlySets } } : {}),
+    productStatus: { $in: SKIPPED_STATUSES },
+  });
 
   console.log(`Товаров к выгрузке: ${products.length}`);
   console.log(`Пропущено (ликвидация / снят с производства): ${skipped}\n`);

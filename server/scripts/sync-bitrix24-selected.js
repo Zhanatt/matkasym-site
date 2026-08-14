@@ -28,6 +28,9 @@ const SET_NAMES = {
   'korkom-aiym': 'Korkom Aiym',
   'zhashyl-omur': 'Zhashyl Omur',
   'uydo-ishtoo': 'Uydo Ishtoo',
+  'dayar-tutuk': 'Dayar Tutuk',
+  'poly-fabrikat': 'Poly Fabrikat',
+  'onuguu-set': 'Onuguu Set',
 };
 
 const BRAND_SECTION = {
