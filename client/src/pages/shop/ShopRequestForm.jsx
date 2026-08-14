@@ -43,7 +43,10 @@ export default function ShopRequestForm() {
       setDone(true);
     } catch (e) {
       haptic('error');
-      setError(e.response?.data?.error || 'Заявка не отправилась. Попробуйте ещё раз');
+      const d = e.response?.data || {};
+      // Код причины показываем рядом с текстом: по скриншоту от покупателя сразу видно,
+      // что чинить — настройку сервера, устаревшую сессию или подпись.
+      setError((d.error || 'Заявка не отправилась. Попробуйте ещё раз') + (d.code ? ` (${d.code})` : ''));
     } finally {
       setSending(false);
     }

@@ -123,7 +123,18 @@ function rateLimited(userId) {
 router.post('/requests', tgAuth, async (req, res) => {
   const tgUser = req.tgUser;
   if (!tgUser) {
-    return res.status(401).json({ error: 'Откройте магазин через Telegram — так мы поймём, кому отвечать' });
+    // Код причины уходит клиенту специально: «не отправляется» без него — гадание.
+    // Тексты разные, потому что чинится это по-разному: no_bot_token — настройка сервера,
+    // expired — достаточно переоткрыть приложение.
+    const TEXT = {
+      no_bot_token: 'Магазин не настроен: на сервере нет токена бота. Напишите нам, мы починим',
+      expired:      'Сессия устарела — закройте и откройте магазин заново',
+      bad_hash:     'Не удалось подтвердить, что заявка из Telegram. Закройте и откройте магазин заново',
+    };
+    return res.status(401).json({
+      error: TEXT[req.tgReason] || 'Откройте магазин через Telegram — так мы поймём, кому отвечать',
+      code:  req.tgReason || 'no_init_data',
+    });
   }
   if (rateLimited(tgUser.id)) {
     return res.status(429).json({ error: 'Слишком много заявок подряд. Менеджер уже видит предыдущие — подождите, пожалуйста' });
