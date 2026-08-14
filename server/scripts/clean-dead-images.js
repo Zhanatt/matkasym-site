@@ -21,6 +21,15 @@ const MONGO_URI = require('../lib/atlas');
 const APPLY = process.argv.includes('--apply');
 const ALL = process.argv.includes('--all');
 
+// --sku=MKS-C34 — чинить один товар. Полный скан находит и те товары, у которых
+// битая ссылка единственная: удалять её вслепую нельзя, товар останется без фото
+// вовсе. Когда упала конкретная публикация, чиним только её товар.
+// --safe — не трогать товары, у которых битое фото единственное (см. ниже).
+const SAFE = process.argv.includes('--safe');
+
+const SKU_ARG = process.argv.find((a) => a.startsWith('--sku='));
+const ONLY_SKUS = SKU_ARG ? SKU_ARG.slice(6).split(',').map((s) => s.trim()).filter(Boolean) : null;
+
 // Известные покойники из публикации №188. При --all список не нужен.
 const KNOWN_DEAD = ['o9tj29xcjwv6iswuu4pe', 'luo7yqjrzk3hwftfroq2'];
 
@@ -51,17 +60,20 @@ async function checkAll(urls) {
   await mongoose.connect(MONGO_URI);
   const Products = mongoose.connection.db.collection('products');
 
-  const query = ALL
-    ? { images: { $exists: true, $ne: [] } }
-    : { images: { $regex: KNOWN_DEAD.join('|') } };
+  const query = ONLY_SKUS
+    ? { sku: { $in: ONLY_SKUS }, images: { $exists: true, $ne: [] } }
+    : ALL
+      ? { images: { $exists: true, $ne: [] } }
+      : { images: { $regex: KNOWN_DEAD.join('|') } };
 
   const docs = await Products.find(query).project({ name: 1, fullName: 1, sku: 1, images: 1 }).toArray();
-  console.log(`Товаров к проверке: ${docs.length}${ALL ? ' (полный скан)' : ''}`);
+  console.log(`Товаров к проверке: ${docs.length}` +
+    (ONLY_SKUS ? ` (артикулы: ${ONLY_SKUS.join(', ')})` : ALL ? ' (полный скан)' : ''));
   if (!docs.length) { await mongoose.disconnect(); return; }
 
   const candidates = new Set();
   docs.forEach((d) => (d.images || []).forEach((u) => {
-    if (ALL || KNOWN_DEAD.some((k) => u.includes(k))) candidates.add(u);
+    if (ALL || ONLY_SKUS || KNOWN_DEAD.some((k) => u.includes(k))) candidates.add(u);
   }));
   console.log(`Ссылок к проверке: ${candidates.size}`);
 
@@ -69,15 +81,26 @@ async function checkAll(urls) {
   console.log(`Из них битых (404): ${dead.size}`);
   dead.forEach((u) => console.log('   ' + u));
 
-  const affected = docs
+  const all = docs
     .map((d) => ({ doc: d, next: (d.images || []).filter((u) => !dead.has(u)) }))
     .filter(({ doc, next }) => next.length !== (doc.images || []).length);
+
+  // --safe: не трогаем товары, у которых битая ссылка единственная. Убрать её —
+  // значит оставить товар вовсе без картинки: на витрине это хуже, чем битая
+  // ссылка, и чинится не удалением, а перезаливкой фото.
+  const affected = SAFE ? all.filter(({ next }) => next.length > 0) : all;
+  const skipped  = SAFE ? all.filter(({ next }) => !next.length) : [];
 
   console.log(`\nЗатронуто товаров: ${affected.length}`);
   affected.forEach(({ doc, next }) => {
     console.log(`  ${doc.sku || '-'} | ${doc.fullName || doc.name}: ${doc.images.length} → ${next.length} фото`);
     if (!next.length) console.log('     ВНИМАНИЕ: у товара не останется ни одного фото');
   });
+
+  if (skipped.length) {
+    console.log(`\nПропущено (осталось бы 0 фото, нужен перезалив): ${skipped.length}`);
+    skipped.forEach(({ doc }) => console.log(`  ${doc.sku || '-'} | ${doc.fullName || doc.name}`));
+  }
 
   if (!affected.length) { await mongoose.disconnect(); return; }
 
