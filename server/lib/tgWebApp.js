@@ -23,27 +23,34 @@ const MAX_AGE_SEC = 24 * 60 * 60;
  */
 function checkInitData(initData, token = process.env.TELEGRAM_BOT_TOKEN) {
   if (!initData) return { reason: 'no_init_data' };
-  if (!token)    return { reason: 'no_bot_token' };
+  // Токен в переменную окружения копируют руками — перевод строки в конце
+  // ломает HMAC молча, а выглядит это как «подпись не сходится».
+  token = String(token || '').trim();
+  if (!token) return { reason: 'no_bot_token' };
 
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
   if (!hash) return { reason: 'no_hash' };
   params.delete('hash');
-  // signature появляется у сторонних Mini App (third-party validation) и в подпись бота не входит
-  params.delete('signature');
-
-  const dataCheckString = [...params.entries()]
-    .map(([k, v]) => `${k}=${v}`)
-    .sort()
-    .join('\n');
 
   const secret = crypto.createHmac('sha256', 'WebAppData').update(token).digest();
-  const calc   = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
+  const signed = fields => {
+    const dcs = fields.map(([k, v]) => `${k}=${v}`).sort().join('\n');
+    return crypto.createHmac('sha256', secret).update(dcs).digest('hex');
+  };
+  const eq = calc => {
+    const a = Buffer.from(calc, 'hex');
+    const b = Buffer.from(hash, 'hex');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  };
 
-  // Сравнение постоянного времени: длины могут не совпасть, если hash подрезали
-  const a = Buffer.from(calc, 'hex');
-  const b = Buffer.from(hash, 'hex');
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return { reason: 'bad_hash' };
+  // Начиная с Bot API 8.0 Telegram кладёт в initData ещё и signature — подпись Ed25519
+  // для проверки без токена бота. Входит ли она в сам hash, клиенты решают по-разному,
+  // поэтому пробуем оба набора полей: подделать любой из них без токена всё равно нельзя.
+  const all = [...params.entries()];
+  if (!eq(signed(all)) && !eq(signed(all.filter(([k]) => k !== 'signature')))) {
+    return { reason: 'bad_hash' };
+  }
 
   const authDate = Number(params.get('auth_date') || 0);
   if (!authDate || (Date.now() / 1000 - authDate) > MAX_AGE_SEC) return { reason: 'expired' };

@@ -72,6 +72,34 @@ const FIELD_LABELS = {
 // Объявлен ДО router.use(protect, ...): у скрипта нет JWT, он авторизуется по x-api-key.
 const SYNC_KEY = process.env.SYNC_API_KEY || 'matkasym-sync-2026';
 
+// GET /api/admin/shop-diag — чей токен лежит в TELEGRAM_BOT_TOKEN.
+// Тоже до protect и по x-api-key: нужен ровно в ситуации, когда Telegram-магазин
+// никого не пускает («подпись не сходится»), и главный вопрос — тот ли это бот,
+// под которым заведено мини-приложение. Сам токен наружу не отдаём.
+router.get('/shop-diag', async (req, res) => {
+  if ((req.headers['x-api-key'] || req.query.key) !== SYNC_KEY) {
+    return res.status(401).json({ error: 'Неверный API ключ' });
+  }
+  const raw   = process.env.TELEGRAM_BOT_TOKEN || '';
+  const token = raw.trim();
+  const out = {
+    hasToken:      !!token,
+    tokenTrimmed:  raw !== token,          // лишние пробелы/перевод строки в переменной
+    tokenBotId:    token.split(':')[0] || '',
+    usernameEnv:   process.env.TELEGRAM_BOT_USERNAME || '',
+    shopApp:       process.env.TELEGRAM_SHOP_APP || 'shop',
+    bitrix:        { category: process.env.BITRIX_SHOP_CATEGORY_ID || '49', stage: process.env.BITRIX_SHOP_STAGE_ID || 'C49:NEW' },
+  };
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const d = await r.json();
+    out.getMe = d.ok ? { id: d.result.id, username: d.result.username } : { error: d.description };
+  } catch (e) {
+    out.getMe = { error: e.message };
+  }
+  res.json(out);
+});
+
 
 // Каталог страны: KZ — только товары, заведённые в казахстанской базе (Q-top).
 // Для KG фильтра нет: там кроме 1С есть привозные товары и IKEA, их отсекать нельзя.
