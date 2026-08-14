@@ -72,3 +72,21 @@ export const showAlert = msg => {
 };
 
 export const closeApp = () => tg()?.close();
+
+/**
+ * Открыть ссылку ВНЕ Telegram — системным браузером.
+ *
+ * Обычная ссылка внутри мессенджера открывается его встроенным браузером, а тот
+ * не умеет передавать адрес установленному приложению: платёжная ссылка MBank
+ * упирается в страницу «установите приложение». openLink отдаёт адрес системе,
+ * и телефон сам открывает банк.
+ */
+export const openExternal = url => {
+  const app = tg();
+  if (app?.openLink) app.openLink(url);
+  else window.open(url, '_blank', 'noopener');
+};
+
+// Параметр из ссылки t.me/<бот>/<приложение>?startapp=… — по нему понимаем,
+// что клиента прислали сюда из сообщения бота именно оплачивать.
+export const startParam = () => tg()?.initDataUnsafe?.start_param || '';

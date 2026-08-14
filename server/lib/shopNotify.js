@@ -29,15 +29,30 @@ const money = n => `${Number(n || 0).toLocaleString('ru')} сом`;
 const payUrl = () => (process.env.MBANK_PAY_URL || '').trim();
 
 /**
+ * Номер получателя из платёжной ссылки — запасной путь оплаты.
+ * В коде MBank он лежит в блоке получателя тегом 10: «1012» + 12 цифр.
+ */
+const payPhone = () => {
+  const m = payUrl().match(/1012(\d{12})/);
+  if (!m) return '';
+  const d = m[1];
+  return `+${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6, 9)} ${d.slice(9)}`;
+};
+
+/**
  * Кнопки под сообщением клиенту. «Оплатить» показываем только когда товар
  * подтверждён: предлагать оплату до ответа менеджера нельзя — товара может не быть.
+ *
+ * Ведём не прямо в MBank, а в наше приложение: ссылку из сообщения Telegram
+ * открывает своим встроенным браузером, а тот не умеет передать адрес банковскому
+ * приложению — клиент упирается в страницу «установите MBank». В Mini App у нас есть
+ * openLink, который отдаёт ссылку системе, и банк открывается нормально.
  */
 function keyboardFor(request, status) {
   const rows = [];
-  const pay = payUrl();
-  if (status === 'in_stock' && pay) {
+  if (status === 'in_stock' && payUrl()) {
     const sum = Number(request.snapshot?.price || 0) * (request.qty || 1);
-    rows.push([{ text: `💳 Оплатить ${money(sum)}`, url: pay }]);
+    rows.push([{ text: `💳 Оплатить ${money(sum)}`, url: `${APP_LINK()}?startapp=pay` }]);
   }
   rows.push([{ text: '🛍 Открыть магазин', url: APP_LINK() }]);
   return rows;
@@ -140,4 +155,4 @@ async function notifyRestocked(stockLogDocs = []) {
   return sent;
 }
 
-module.exports = { notifyRequestAccepted, notifyManagerNewRequest, notifyRestocked, APP_LINK, payUrl, keyboardFor };
+module.exports = { notifyRequestAccepted, notifyManagerNewRequest, notifyRestocked, APP_LINK, payUrl, payPhone, keyboardFor };

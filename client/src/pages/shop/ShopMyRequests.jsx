@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { shopMyRequests } from './shopApi';
-import { setBackButton } from './useTelegram';
+import { setBackButton, openExternal, haptic } from './useTelegram';
 import { money, STATUS_LABELS, NO_PHOTO } from './shopUtils';
 
 const dateFmt = d => new Date(d).toLocaleDateString('ru', { day: 'numeric', month: 'long' });
@@ -10,11 +10,12 @@ export default function ShopMyRequests() {
   const navigate = useNavigate();
   const [items, setItems] = useState(null);
   const [payUrl, setPayUrl] = useState('');
+  const [payPhone, setPayPhone] = useState('');
 
   useEffect(() => setBackButton(() => navigate('/shop')), [navigate]);
   useEffect(() => {
     shopMyRequests()
-      .then(d => { setItems(d.items); setPayUrl(d.payUrl || ''); })
+      .then(d => { setItems(d.items); setPayUrl(d.payUrl || ''); setPayPhone(d.payPhone || ''); })
       .catch(() => setItems([]));
   }, []);
 
@@ -61,9 +62,21 @@ export default function ShopMyRequests() {
                   а не только в сообщении бота: сообщение может не дойти, а в приложение
                   клиент заходит сам. */}
               {r.status === 'in_stock' && payUrl && (
-                <a className="shop-pay" href={payUrl} target="_blank" rel="noreferrer">
-                  💳 Оплатить {(Number(r.snapshot.price) * r.qty).toLocaleString('ru')} сом
-                </a>
+                <>
+                  <button
+                    className="shop-pay"
+                    onClick={() => { haptic('medium'); openExternal(payUrl); }}
+                  >
+                    💳 Оплатить {(Number(r.snapshot.price) * r.qty).toLocaleString('ru')} сом
+                  </button>
+                  {/* Запасной путь: если банк всё-таки не открылся, клиент переведёт вручную */}
+                  {payPhone && (
+                    <div className="shop-req__meta">
+                      Если MBank не открылся — переведите {(Number(r.snapshot.price) * r.qty).toLocaleString('ru')} сом
+                      на {payPhone}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

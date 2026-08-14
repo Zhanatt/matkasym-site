@@ -1,6 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
-import { initTelegram } from './useTelegram';
+import { initTelegram, startParam } from './useTelegram';
 import ShopCatalog from './ShopCatalog';
 import ShopProduct from './ShopProduct';
 import ShopRequestForm from './ShopRequestForm';
@@ -16,7 +16,14 @@ import './Shop.css';
  * сделкой в Битрикс24, дальше с ним говорит менеджер.
  */
 export default function ShopApp() {
-  useEffect(() => { initTelegram(); }, []);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    initTelegram();
+    // Из сообщения «товар есть в наличии» клиент приходит по ссылке ?startapp=pay —
+    // ему нужна не витрина, а его заявка с кнопкой оплаты.
+    if (startParam().startsWith('pay')) navigate('/shop/my', { replace: true });
+  }, [navigate]);
 
   return (
     <div className="shop">
