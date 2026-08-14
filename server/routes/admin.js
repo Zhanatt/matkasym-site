@@ -747,7 +747,9 @@ router.get('/users/:id/activity', viewer, async (req, res) => {
 
 // GET /admin/telegram-link — ссылка для привязки Telegram
 router.get('/telegram-link', async (req, res) => {
-  const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'MatkasymBot';
+  // Запасное имя — реального бота компании: со старым «MatkasymBot» ссылка вела в никуда,
+  // если переменную окружения забыли задать.
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'productmatrixmatkasym_bot';
   const link = `https://t.me/${botUsername}?start=${req.user._id}`;
   res.json({ link, connected: !!req.user.telegramChatId });
 });

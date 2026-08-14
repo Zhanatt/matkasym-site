@@ -9,11 +9,14 @@
 const { sendTelegramMessage } = require('./telegram');
 
 const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
-// Ссылка на сам Mini App: t.me/<бот>/<короткое имя приложения из BotFather>
+// Ссылка на сам Mini App: t.me/<бот>/<короткое имя приложения из BotFather>.
+// Бот у компании один и тот же везде, поэтому имя стоит значением по умолчанию:
+// без переменной окружения ссылка вела бы в браузер, мимо Telegram.
+const BOT = 'productmatrixmatkasym_bot';
 const APP_LINK = () => {
-  const bot = process.env.TELEGRAM_BOT_USERNAME;
+  const bot = (process.env.TELEGRAM_BOT_USERNAME || BOT).replace('@', '');
   const app = process.env.TELEGRAM_SHOP_APP || 'shop';
-  return bot ? `https://t.me/${bot.replace('@', '')}/${app}` : `${SITE_URL}/shop`;
+  return `https://t.me/${bot}/${app}`;
 };
 
 const money = n => `${Number(n || 0).toLocaleString('ru')} сом`;
