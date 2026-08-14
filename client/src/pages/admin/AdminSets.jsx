@@ -177,6 +177,11 @@ function useIsMobile() {
 
 // ── BrandSection ──────────────────────────────────────────────────────────────
 
+// Приведение к виду, в котором сравниваем при поиске: регистр и «ё» мешать не должны
+function normSearch(str) {
+  return String(str || '').toLowerCase().replace(/ё/g, 'е');
+}
+
 function slugify(name) {
   return name.trim().toLowerCase()
     .replace(/[^\w\s-]/g, '')
@@ -708,20 +713,36 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       .catch(() => setLoading(false));
   }, [brandKey, setSlug, country, fetchParams && JSON.stringify(fetchParams)]);
 
+  // Поиск внутри сета: позиций бывает под сотню и больше, глазами не найти.
+  // Ищем по названию, артикулу, цвету, размерам и категории; если слов несколько —
+  // совпасть должны все, в любом порядке («люк 600» находит «Люк потолочный 600×600»).
+  const [query, setQuery] = useState('');
+  const words = useMemo(() => normSearch(query).split(/\s+/).filter(Boolean), [query]);
+
+  // Всё, что показываем: без деталей комплектов и с учётом поиска.
+  // От этого списка считаются и группы, и счётчики, и PDF — что на экране, то и в выгрузке.
+  const shownProducts = useMemo(() => {
+    const base = products.filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part');
+    if (!words.length) return base;
+    return base.filter(p => {
+      const hay = normSearch([p.name, p.fullName, p.sku, p.supplier?.sku, p.color, p.dimensions, p.category]
+        .filter(Boolean).join(' '));
+      return words.every(w => hay.includes(w));
+    });
+  }, [products, words]);
+
   const models = useMemo(() => {
     const grouped = {};
-    products
-      .filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part') // скрываем детали комплектов
-      .forEach(p => {
-        if (!grouped[p.name]) grouped[p.name] = [];
-        grouped[p.name].push(p);
-      });
+    shownProducts.forEach(p => {
+      if (!grouped[p.name]) grouped[p.name] = [];
+      grouped[p.name].push(p);
+    });
     return Object.entries(grouped);
-  }, [products]);
+  }, [shownProducts]);
 
   // Счётчик: в наличии / нет в наличии — позиции (модели) и количество (штук на складе)
   const stockSummary = useMemo(() => {
-    const shown = products.filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part');
+    const shown = shownProducts;
     let inUnits = 0, outUnits = 0;
     shown.forEach(p => {
       if (isProductAvailable(p, country)) inUnits += stockOf(p, country);
@@ -730,7 +751,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     const inMod  = models.filter(([, v]) => v.some(x => isProductAvailable(x, country))).length;
     const outMod = models.length - inMod;
     return { inMod, outMod, inUnits, outUnits };
-  }, [products, models]);
+  }, [shownProducts, models]);
 
   const renderStockStats = (fontSize) => (
     <div style={{ fontSize, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -904,7 +925,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
             {/* PDF button on desktop */}
             {!isMobile && (
-              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
+              <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
             )}
           </div>
 
@@ -919,11 +940,49 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               gap: 12,
             }}>
               {!loading && renderStockStats(11)}
-              <AdminPdfButton products={products} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
+              <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
             </div>
           )}
 
-          {/* PDF button on desktop - inline in header row */}
+          {/* Поиск по этому сету — отдельной строкой, чтобы не тесниться в шапке */}
+          {!loading && (
+            <div style={{
+              padding: isMobile ? '8px 12px' : '10px 20px',
+              borderTop: '1px solid #f0f0f0',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{ position: 'relative', flex: 1, maxWidth: isMobile ? 'none' : 420 }}>
+                <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 13, color: '#9aa5b1', pointerEvents: 'none' }}>🔍</span>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') setQuery(''); }}
+                  placeholder={`Поиск в «${titleOverride || toTitle(setSlug)}» — название, артикул, размер`}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: isMobile ? '8px 30px 8px 32px' : '7px 30px 7px 32px',
+                    borderRadius: 9, border: '1.5px solid #e5e7eb', outline: 'none',
+                    fontSize: isMobile ? 13 : 13.5, fontFamily: 'inherit', background: '#fff',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = accent; }}
+                  onBlur={e => { e.target.style.borderColor = '#e5e7eb'; }}
+                />
+                {query && (
+                  <button onClick={() => setQuery('')} title="Очистить (Esc)"
+                    style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                      width: 20, height: 20, borderRadius: 6, border: 'none', background: '#eef1f4',
+                      color: '#64748b', fontSize: 12, lineHeight: 1, cursor: 'pointer' }}>✕</button>
+                )}
+              </div>
+              {query && (
+                <span style={{ fontSize: 12, color: models.length ? '#5b6572' : '#c0392b', whiteSpace: 'nowrap' }}>
+                  {models.length ? `Найдено: ${models.length} поз.` : 'Ничего не найдено'}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Product grid — scrollable */}
@@ -938,7 +997,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
           {loading ? (
             <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
           ) : models.length === 0 ? (
-            <div style={{ color: '#bbb', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Нет товаров</div>
+            <div style={{ textAlign: 'center', paddingTop: 60, color: '#bbb', fontSize: 14 }}>
+              {query ? (
+                <>
+                  <div>По запросу «{query}» в этом сете ничего нет.</div>
+                  <button onClick={() => setQuery('')}
+                    style={{ marginTop: 12, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#fff',
+                      background: accent, border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+                    Показать все товары
+                  </button>
+                </>
+              ) : 'Нет товаров'}
+            </div>
           ) : viewMode === 'list' && accordionGroups ? (
             /* Animated Accordion for tubes (dayar-tutuk) */
             <>
