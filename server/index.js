@@ -25,6 +25,7 @@ app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/orders',   require('./routes/orders'));
 app.use('/api/catalog',  require('./routes/catalog'));  // AI-bot context API
+app.use('/api/shop',     require('./routes/shop'));     // Telegram Mini App — магазин в канале
 app.use('/api/admin/social', require('./routes/social')); // автопубликации по площадкам
 
 // Health check
@@ -95,6 +96,16 @@ app.post('/api/telegram-webhook', async (req, res) => {
           await sendTelegramMessage(chatId, `✅ Telegram привязан к аккаунту <b>${user.name}</b>!\n\nТеперь ты будешь получать уведомления о новостях сюда.`);
         }
       }
+    } else if (/^\/start\b/.test(text) && message.chat?.type === 'private') {
+      // Покупатель из канала. Диалог с ботом нужен не ради приветствия: без него
+      // Telegram не даст написать первым, и уведомление «товар снова в наличии» не дойдёт.
+      const { sendTelegramMessage } = require('./lib/telegram');
+      const { APP_LINK } = require('./lib/shopNotify');
+      await sendTelegramMessage(chatId,
+        '👋 Это бот MATKASYM — товары для дома.\n\n' +
+        'Откройте магазин, выберите товар и нажмите «Уточнить наличие»: менеджер проверит остаток ' +
+        'и свяжется с вами. Если товара не будет — сообщим сюда, как только он появится на складе.',
+        { reply_markup: { inline_keyboard: [[{ text: '🛍 Открыть магазин', url: APP_LINK() }]] } });
     }
 
     res.sendStatus(200);

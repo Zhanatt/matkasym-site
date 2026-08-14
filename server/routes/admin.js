@@ -4996,4 +4996,41 @@ router.get('/video-schedule/report/:frontmanId', protect, viewer, async (req, re
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── ЗАЯВКИ ИЗ TELEGRAM-МАГАЗИНА ──────────────────────────────────────────────
+// Ведёт их менеджер в Битриксе — здесь копия: видно, что заявка вообще дошла,
+// какая у неё сделка и ждёт ли клиент уведомления о поступлении.
+router.get('/shop-requests', viewer, async (req, res) => {
+  try {
+    const ShopRequest = require('../models/ShopRequest');
+    const query = {};
+    if (req.query.status) query.status = String(req.query.status);
+
+    const items = await ShopRequest.find(query)
+      .sort({ createdAt: -1 })
+      .limit(Math.min(300, Number(req.query.limit) || 100))
+      .populate('product', 'name fullName sku stock price images driveImages')
+      .lean();
+
+    // Счётчики для вкладок статусов
+    const counts = Object.fromEntries(
+      (await ShopRequest.aggregate([{ $group: { _id: '$status', n: { $sum: 1 } } }]))
+        .map(r => [r._id, r.n]),
+    );
+    res.json({ items, counts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.patch('/shop-requests/:id', editor, async (req, res) => {
+  try {
+    const ShopRequest = require('../models/ShopRequest');
+    const patch = {};
+    if (req.body.status) patch.status = req.body.status;
+    if (req.body.notifyOnRestock !== undefined) patch.notifyOnRestock = !!req.body.notifyOnRestock;
+
+    const doc = await ShopRequest.findByIdAndUpdate(req.params.id, { $set: patch }, { new: true });
+    if (!doc) return res.status(404).json({ error: 'Заявка не найдена' });
+    res.json(doc);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;

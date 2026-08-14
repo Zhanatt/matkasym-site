@@ -281,6 +281,12 @@ async function applyStockUpload(buffer, baseKey, user) {
 
   if (bufferAlerts.length) sendBufferStockAlerts(bufferAlerts).catch(e => console.error('[BufferAlert]', e.message));
 
+  // Клиенты Telegram-магазина, которые просили сообщить о поступлении: ищем в логах
+  // переходы 0 → есть остаток. Делаем это здесь, а не в отдельном обходе базы,
+  // потому что только тут известно, каким был остаток ДО выгрузки.
+  require('./shopNotify').notifyRestocked(stockLogDocs)
+    .catch(e => console.error('[shopNotify]', e.message));
+
   // Upload Excel to Cloudinary for source link, then save logs
   let excelSourceUrl = '';
   try {

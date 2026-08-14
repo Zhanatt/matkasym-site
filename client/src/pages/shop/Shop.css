@@ -1,0 +1,371 @@
+/**
+ * Telegram Mini App «Магазин MATKASYM».
+ *
+ * Цвета берём из темы Telegram (--tg-theme-*): у клиента может стоять любая, включая
+ * тёмную, и приложение должно выглядеть как часть мессенджера, а не как чужая страница.
+ * Фолбэки — на случай, когда страницу открыли в обычном браузере, где темы нет.
+ * Фирменный красный оставлен только акцентом: логотип, цена, кнопка — как в брендбуке.
+ */
+.shop {
+  --bg:      var(--tg-theme-bg-color, #ffffff);
+  --surface: var(--tg-theme-secondary-bg-color, #f4f4f6);
+  --text:    var(--tg-theme-text-color, #111111);
+  --hint:    var(--tg-theme-hint-color, #8a8f97);
+  --link:    var(--tg-theme-link-color, #2481cc);
+  --accent:  #e10523;
+  /* Разделители — полупрозрачным серым, а не оттенком темы: рассчитывать цвет
+     на лету (color-mix) умеет не всякий WebView, в котором открывают Telegram. */
+  --line:    rgba(128, 138, 151, .32);
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding-bottom: 96px;   /* место под MainButton Telegram */
+
+  /* Ширину задаём явно, иначе страница расползается шире экрана: #root — flex-элемент
+     body (styles/index.css), у него min-width: auto, и он растягивается по самому
+     «широкому» содержимому — ленте сетов и полю поиска. На телефоне это выглядит как
+     обрезанная справа вторая колонка товаров. */
+  width: 100vw;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ── Шапка ───────────────────────────────────────────────────────────────── */
+.shop-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.shop-head__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.shop-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  font-size: 17px;
+}
+.shop-brand span { color: var(--accent); }
+.shop-brand small {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--hint);
+}
+.shop-mine {
+  border: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.shop-search {
+  width: 100%;
+  border: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  outline: none;
+}
+.shop-search::placeholder { color: var(--hint); }
+
+/* Сеты — горизонтальной лентой: их два десятка, вертикальный список съел бы экран */
+.shop-chips {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 10px 0 2px;
+  scrollbar-width: none;
+}
+.shop-chips::-webkit-scrollbar { display: none; }
+.shop-chip {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 7px 13px;
+  border-radius: 18px;
+  cursor: pointer;
+}
+.shop-chip--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.shop-chip small { opacity: .6; margin-left: 5px; font-weight: 600; }
+
+/* ── Витрина ─────────────────────────────────────────────────────────────── */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 12px 14px;
+}
+@media (min-width: 560px) {
+  .shop-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;   /* иначе длинное название растягивает колонку сетки */
+  background: var(--surface);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.shop-card:active { transform: scale(.985); }
+.shop-card__photo {
+  position: relative;
+  aspect-ratio: 1;
+  background: #fff;
+}
+.shop-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.shop-card__body { padding: 8px 10px 11px; }
+.shop-card__name {
+  font-size: 12.5px;
+  line-height: 1.32;
+  font-weight: 600;
+  /* Две строки: названия длинные, а карточки в сетке должны стоять ровно */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 33px;
+  margin-bottom: 5px;
+}
+.shop-card__price {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.shop-card__stock {
+  font-size: 11px;
+  color: var(--hint);
+  margin-top: 2px;
+}
+
+.shop-badge {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  background: rgba(17,17,17,.72);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 7px;
+  backdrop-filter: blur(3px);
+}
+
+.shop-empty, .shop-loading {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--hint);
+  font-size: 14px;
+}
+.shop-more {
+  display: block;
+  margin: 4px auto 24px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 26px;
+  border-radius: 22px;
+  cursor: pointer;
+}
+
+/* ── Карточка товара ─────────────────────────────────────────────────────── */
+.shop-gallery {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  background: #fff;
+  scrollbar-width: none;
+}
+.shop-gallery::-webkit-scrollbar { display: none; }
+.shop-gallery img {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+.shop-dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 0 0;
+}
+.shop-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.shop-dot--on { background: var(--accent); }
+
+.shop-detail { padding: 14px 16px 0; }
+.shop-detail h1 {
+  font-size: 19px;
+  line-height: 1.28;
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+.shop-detail__price {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.shop-detail__meta {
+  font-size: 13px;
+  color: var(--hint);
+  margin-bottom: 14px;
+}
+.shop-specs {
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+}
+.shop-spec {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.shop-spec span:first-child { color: var(--hint); }
+.shop-spec span:last-child { text-align: right; font-weight: 600; }
+.shop-descr {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 14px 0 0;
+  white-space: pre-line;
+}
+
+/* ── Форма заявки ────────────────────────────────────────────────────────── */
+.shop-form { padding: 16px; display: flex; flex-direction: column; gap: 13px; }
+.shop-form h2 { font-size: 18px; font-weight: 800; margin: 0; }
+.shop-form__hint { font-size: 13.5px; color: var(--hint); line-height: 1.45; margin: -4px 0 0; }
+.shop-field { display: flex; flex-direction: column; gap: 6px; }
+.shop-field label { font-size: 12.5px; font-weight: 700; color: var(--hint); }
+.shop-field input,
+.shop-field textarea {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;   /* меньше 16px — iOS зумит страницу при фокусе */
+  font-family: inherit;
+  padding: 12px 13px;
+  border-radius: 11px;
+  outline: none;
+}
+.shop-field input:focus, .shop-field textarea:focus { border-color: var(--accent); }
+.shop-qty { display: flex; align-items: center; gap: 14px; }
+.shop-qty button {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.shop-qty span { font-size: 17px; font-weight: 700; min-width: 30px; text-align: center; }
+
+.shop-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13.5px;
+  line-height: 1.4;
+  background: var(--surface);
+  padding: 12px;
+  border-radius: 12px;
+}
+.shop-check input { width: 19px; height: 19px; accent-color: var(--accent); flex: 0 0 auto; }
+
+.shop-submit {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 15px;
+  border-radius: 13px;
+  cursor: pointer;
+}
+.shop-submit:disabled { opacity: .55; }
+.shop-error {
+  background: rgba(225, 5, 35, .12);
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 11px 13px;
+  border-radius: 11px;
+}
+
+/* ── Итог и «мои заявки» ─────────────────────────────────────────────────── */
+.shop-done {
+  padding: 56px 28px;
+  text-align: center;
+}
+.shop-done__icon { font-size: 46px; }
+.shop-done h2 { font-size: 20px; font-weight: 800; margin: 14px 0 8px; }
+.shop-done p { font-size: 14.5px; line-height: 1.5; color: var(--hint); margin: 0 0 22px; }
+
+.shop-list { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.shop-req {
+  display: flex;
+  gap: 11px;
+  background: var(--surface);
+  border-radius: 13px;
+  padding: 11px;
+}
+.shop-req img { width: 54px; height: 54px; border-radius: 9px; object-fit: contain; background: #fff; }
+.shop-req__name { font-size: 13.5px; font-weight: 700; line-height: 1.3; }
+.shop-req__meta { font-size: 12px; color: var(--hint); margin-top: 3px; }
+.shop-status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 7px;
+  margin-top: 5px;
+}
+.shop-status--new    { background: #fff4d6; color: #8a5b00; }
+.shop-status--in_stock { background: #e3f7e6; color: #1d6b2c; }
+.shop-status--out_of_stock { background: #ffe6e6; color: #a3141f; }
+.shop-status--done   { background: #e6eefc; color: #1d4ea3; }
+.shop-status--canceled { background: #eee; color: #666; }

@@ -18,6 +18,7 @@ const NAV_ALL = [
   { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','navigator','warehouse','designer'] },
   { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer','navigator','warehouse','designer'], badge: 'news' },
   { to: '/admin/publish',  label: 'Автопубликация',      icon: '🚀', roles: ['owner','editor','designer'] },
+  { to: '/admin/shop-requests', label: 'Заявки из Telegram', icon: '🛍', roles: ['owner','editor','viewer','navigator','designer'] },
   { to: '/admin/review',   label: 'Аудит товаров',       icon: '✅', roles: ['owner','editor','viewer','navigator','designer'] },
   { to: '/admin/review/results', label: 'Результаты аудита', icon: '📊', roles: ['owner','editor','designer'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer','designer'], badge: 'pending' },

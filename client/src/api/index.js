@@ -245,4 +245,9 @@ export const socialRetryPublication= (id)        => api.post(`/admin/social/publ
 export const socialUnpublish       = (id)        => api.post(`/admin/social/publications/${id}/unpublish`);
 export const socialDeletePublication=(id)        => api.delete(`/admin/social/publications/${id}`);
 
+// Заявки «Уточнить наличие» из Telegram-магазина. Ведёт их менеджер в Битриксе,
+// здесь — контроль: дошла ли заявка и создалась ли сделка.
+export const adminGetShopRequests   = (params)     => api.get('/admin/shop-requests', { params });
+export const adminUpdateShopRequest = (id, data)   => api.patch(`/admin/shop-requests/${id}`, data);
+
 export default api;
