@@ -146,6 +146,21 @@ const toNum = v => {
   return isNaN(n) ? 0 : n;
 };
 
+// Имя для сравнения: 1С и сайт по-разному ставят кавычки и пробелы.
+const normName = (s = '') =>
+  String(s).toLowerCase().replace(/[«»"""''`]/g, '').replace(/\s+/g, ' ').trim();
+
+// Остаток из ячейки выгрузки: на складе не может лежать минус или полтора.
+const toInt = v => {
+  if (v === undefined || v === null || v === '') return 0;
+  const n = Number(v);
+  return isNaN(n) ? 0 : Math.max(0, Math.floor(n));
+};
+
+// Остаток пересёк буферный запас сверху вниз → нужен алерт
+const crossedBuffer = (oldStock, newStock, bufferStock) =>
+  bufferStock > 0 && newStock < bufferStock && oldStock >= bufferStock;
+
 // Артикул для сравнения: регистр и разделители в базах пишут по-разному
 // («BBQ-R10», «bbq r10»), значимы только буквы и цифры.
 const normSku = s => String(s || '').toLowerCase().replace(/[^a-zа-я0-9]/gi, '');
@@ -295,7 +310,7 @@ function parsePriceRows(rows, priceType, normName) {
 
 module.exports = {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
-  normSku, normNameLoose,
+  normSku, normNameLoose, normName, toInt, crossedBuffer, detectColumns,
   COUNTRIES, basesOfCountry, STOCK_SUM_BASES,
   PRICE_TYPES, PRICE_TYPE_KEYS, isPriceType, currencyOf, CURRENCY_SIGN, signOf, fmtMoney,
 };

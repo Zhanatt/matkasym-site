@@ -43,7 +43,13 @@ app.get(['/api/cron/tick', '/api/telegram-queue/tick'], async (req, res) => {
   const expected = process.env.CRON_KEY || process.env.CATALOG_API_KEY;
   if (expected && req.query.key !== expected) return res.status(403).json({ message: 'forbidden' });
   const publications = await tickPublications(); // отложенные посты и задержки узлов схемы
-  res.json({ ok: true, publications });
+  // Напоминание владельцу, если выгрузку остатков сегодня так и не прислали
+  const { remindIfNoStockToday } = require('./lib/stockBot');
+  const stockReminder = await remindIfNoStockToday().catch(e => {
+    console.error('[stockBot] reminder failed:', e.message);
+    return null;
+  });
+  res.json({ ok: true, publications, stockReminder });
 });
 
 // Telegram bot webhook
@@ -68,6 +74,15 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     const chatId = message.chat?.id;
     const text = message.text || '';
+
+    // Выгрузка остатков из 1С файлом. Отвечаем Telegram'у сразу: загрузка идёт
+    // дольше таймаута вебхука, и он прислал бы тот же файл повторно.
+    if (message.document) {
+      res.sendStatus(200);
+      const { handleStockDocument } = require('./lib/stockBot');
+      handleStockDocument(message).catch(e => console.error('[stockBot]', e.message));
+      return;
+    }
 
     // /start userId — привязка аккаунта
     if (text.startsWith('/start ')) {

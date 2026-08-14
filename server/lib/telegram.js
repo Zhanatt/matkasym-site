@@ -327,4 +327,19 @@ async function sendBufferStockAlerts(alerts) {
   }
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage, clampCaption };
+// Файл, присланный боту, скачивается в два шага: getFile отдаёт путь внутри
+// хранилища бота, сам файл лежит на отдельном хосте. Лимит Telegram — 20 МБ,
+// выгрузка остатков весит сотни килобайт.
+async function downloadTelegramFile(fileId) {
+  if (!TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN не задан');
+
+  const meta = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`)
+    .then(r => r.json());
+  if (!meta.ok) throw new Error(`Telegram getFile: ${meta.description}`);
+
+  const res = await fetch(`https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${meta.result.file_path}`);
+  if (!res.ok) throw new Error(`Не удалось скачать файл: HTTP ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+module.exports = { sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage, clampCaption, downloadTelegramFile };
