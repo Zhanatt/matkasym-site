@@ -157,4 +157,7 @@ async function createShopDeal({ request, product, tgUser }) {
   }
 }
 
-module.exports = { createShopDeal, ensureContact, CATEGORY_ID, STAGE_ID };
+module.exports = {
+  createShopDeal, ensureContact, attachProduct, addTimelineComment, dealComments,
+  CATEGORY_ID, STAGE_ID,
+};

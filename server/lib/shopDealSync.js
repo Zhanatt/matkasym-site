@@ -20,17 +20,32 @@ const ShopRequest = require('../models/ShopRequest');
 const { sendTelegramMessage } = require('./telegram');
 const { APP_LINK } = require('./shopNotify');
 
+// Поле в карточке сделки: «Наличие для клиента» — список «Есть / Нет».
+// Отвечать им прямее, чем двигать сделку по стадиям: стадия про этап продажи,
+// а вопрос у покупателя ровно один — есть товар или нет.
+// Заводится скриптом scripts/create-shop-stock-field.js.
+const STOCK_FIELD = process.env.BITRIX_SHOP_STOCK_FIELD || 'UF_CRM_SHOP_STOCK';
+
+const IN_STOCK_TEXT = r => [
+  '✅ <b>Товар есть в наличии</b>',
+  '',
+  `🛍 ${r.snapshot.name} — ${r.qty} шт.`,
+  '',
+  'Менеджер свяжется с вами и подскажет, как оплатить переводом MBank.',
+].join('\n');
+
+const OUT_OF_STOCK_TEXT = r => [
+  '😔 <b>Приносим извинения</b>',
+  '',
+  `${r.snapshot.name} сейчас нет в наличии.`,
+  '',
+  r.notifyOnRestock
+    ? 'Мы сообщим вам сюда, как только товар снова появится на складе.'
+    : 'Загляните в магазин позже — ассортимент обновляется.',
+].join('\n');
+
 const STAGE_ACTIONS = {
-  'C49:FINAL_INVOICE': {
-    status: 'in_stock',
-    text: r => [
-      '✅ <b>Товар есть в наличии</b>',
-      '',
-      `🛍 ${r.snapshot.name} — ${r.qty} шт.`,
-      '',
-      'Менеджер готовит счёт: оплатить можно переводом MBank по реквизитам, которые он пришлёт.',
-    ].join('\n'),
-  },
+  'C49:FINAL_INVOICE': { status: 'in_stock', text: IN_STOCK_TEXT },
   'C49:WON': {
     status: 'done',
     text: r => [
@@ -41,19 +56,23 @@ const STAGE_ACTIONS = {
       'Будем рады видеть вас снова.',
     ].join('\n'),
   },
-  'C49:LOSE': {
-    status: 'out_of_stock',
-    text: r => [
-      '😔 <b>Приносим извинения</b>',
-      '',
-      `${r.snapshot.name} сейчас нет в наличии.`,
-      '',
-      r.notifyOnRestock
-        ? 'Мы сообщим вам сюда, как только товар снова появится на складе.'
-        : 'Загляните в магазин позже — ассортимент обновляется.',
-    ].join('\n'),
-  },
+  'C49:LOSE': { status: 'out_of_stock', text: OUT_OF_STOCK_TEXT },
 };
+
+// Значения списка «Наличие для клиента» приходят числовыми id — держим карту
+// id → текст. Поле заводится один раз, поэтому читаем его метаданные один раз за жизнь процесса.
+let stockItemsCache = null;
+async function stockFieldItems() {
+  if (stockItemsCache) return stockItemsCache;
+  try {
+    const fields = await call('crm.deal.userfield.list', { filter: { FIELD_NAME: STOCK_FIELD } });
+    stockItemsCache = new Map((fields?.[0]?.LIST || []).map(i => [String(i.ID), String(i.VALUE)]));
+  } catch (e) {
+    console.error('[shopDealSync] поле наличия не прочиталось:', e.message);
+    stockItemsCache = new Map();
+  }
+  return stockItemsCache;
+}
 
 /**
  * Один проход: сверяем стадии сделок по заявкам, которые ещё в работе.
@@ -69,21 +88,36 @@ async function syncShopDeals() {
   const byDeal = new Map(open.map(r => [String(r.bitrix.dealId), r]));
   const deals = await call('crm.deal.list', {
     filter: { ID: [...byDeal.keys()] },
-    select: ['ID', 'STAGE_ID'],
+    select: ['ID', 'STAGE_ID', STOCK_FIELD],
   });
+  const items = await stockFieldItems();
 
   let sent = 0;
   for (const deal of deals) {
     const req = byDeal.get(String(deal.ID));
-    const stage = String(deal.STAGE_ID || '');
-    if (!req || !stage || stage === req.bitrix.stage) continue;
+    if (!req) continue;
+
+    const stage  = String(deal.STAGE_ID || '');
+    const answer = String(deal[STOCK_FIELD] || '');
+    const stageChanged  = stage  && stage  !== req.bitrix.stage;
+    const answerChanged = answer && answer !== req.bitrix.stockAnswer;
+    if (!stageChanged && !answerChanged) continue;
 
     // У заявки, заведённой до появления этой синхронизации, стадии не записано —
     // такой первый проход только запоминает её: сообщать о том, что случилось раньше, поздно.
     const known = !!req.bitrix.stage;
-    req.bitrix.stage = stage;
+    req.bitrix.stage = stage || req.bitrix.stage;
 
-    const action = STAGE_ACTIONS[stage];
+    // Ответ полем главнее стадии: менеджер сказал прямо, есть товар или нет.
+    let action = null;
+    if (answerChanged) {
+      req.bitrix.stockAnswer = answer;
+      const text = items.get(answer) || '';
+      if (/нет/i.test(text))       action = { status: 'out_of_stock', text: OUT_OF_STOCK_TEXT };
+      else if (/есть/i.test(text)) action = { status: 'in_stock',     text: IN_STOCK_TEXT };
+    }
+    if (!action && stageChanged) action = STAGE_ACTIONS[stage] || null;
+
     if (action) {
       req.status = action.status;
       const chatId = req.customer?.tgUserId;
