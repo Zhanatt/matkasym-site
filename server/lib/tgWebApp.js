@@ -28,14 +28,24 @@ function checkInitData(initData, token = process.env.TELEGRAM_BOT_TOKEN) {
   token = String(token || '').trim();
   if (!token) return { reason: 'no_bot_token' };
 
-  const params = new URLSearchParams(initData);
-  const hash = params.get('hash');
+  // Разбираем сами, а не через URLSearchParams: тот декодирует «+» как пробел
+  // (правило форм), а Telegram кодирует строку через encodeURIComponent, где «+» —
+  // это именно плюс. Один такой символ в имени или в ссылке на аватар — и HMAC
+  // считается уже не от тех данных, что подписал Telegram.
+  const decode = s => { try { return decodeURIComponent(s); } catch (_) { return s; } };
+  const fields = initData.split('&').filter(Boolean).map(pair => {
+    const i = pair.indexOf('=');
+    return i < 0 ? [decode(pair), ''] : [decode(pair.slice(0, i)), decode(pair.slice(i + 1))];
+  });
+  const get = key => fields.find(([k]) => k === key)?.[1];
+
+  const hash = get('hash');
   if (!hash) return { reason: 'no_hash' };
-  params.delete('hash');
+  const params = new Map(fields.filter(([k]) => k !== 'hash'));
 
   const secret = crypto.createHmac('sha256', 'WebAppData').update(token).digest();
-  const signed = fields => {
-    const dcs = fields.map(([k, v]) => `${k}=${v}`).sort().join('\n');
+  const signed = list => {
+    const dcs = list.map(([k, v]) => `${k}=${v}`).sort().join('\n');
     return crypto.createHmac('sha256', secret).update(dcs).digest('hex');
   };
   const eq = calc => {
