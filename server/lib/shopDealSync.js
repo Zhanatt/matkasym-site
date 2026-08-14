@@ -18,7 +18,7 @@
 const { call } = require('../utils/bitrix24');
 const ShopRequest = require('../models/ShopRequest');
 const { sendTelegramMessage } = require('./telegram');
-const { APP_LINK } = require('./shopNotify');
+const { keyboardFor } = require('./shopNotify');
 
 // Поле в карточке сделки: «Наличие для клиента» — список «Есть / Нет».
 // Отвечать им прямее, чем двигать сделку по стадиям: стадия про этап продажи,
@@ -104,7 +104,10 @@ async function syncShopDeals() {
     if (!stageChanged && !answerChanged) continue;
 
     // У заявки, заведённой до появления этой синхронизации, стадии не записано —
-    // такой первый проход только запоминает её: сообщать о том, что случилось раньше, поздно.
+    // такой первый проход только запоминает её: пересказывать клиенту историю поздно.
+    // На ответ ПОЛЕМ это не распространяется: его менеджер только что поставил руками,
+    // и именно ради него клиент ждёт сообщения. Раньше guard глотал и его — если
+    // Render спал, первый проход совпадал с ответом, и клиент не получал ничего.
     const known = !!req.bitrix.stage;
     req.bitrix.stage = stage || req.bitrix.stage;
 
@@ -116,17 +119,21 @@ async function syncShopDeals() {
       if (/нет/i.test(text))       action = { status: 'out_of_stock', text: OUT_OF_STOCK_TEXT };
       else if (/есть/i.test(text)) action = { status: 'in_stock',     text: IN_STOCK_TEXT };
     }
+    const byAnswer = !!action;
     if (!action && stageChanged) action = STAGE_ACTIONS[stage] || null;
 
     if (action) {
       req.status = action.status;
       const chatId = req.customer?.tgUserId;
-      if (known && chatId && chatId !== 'dev') {
-        await sendTelegramMessage(chatId, action.text(req), {
+      if ((byAnswer || known) && chatId && chatId !== 'dev') {
+        const ok = await sendTelegramMessage(chatId, action.text(req), {
           disablePreview: true,
-          reply_markup: { inline_keyboard: [[{ text: '🛍 Открыть магазин', url: APP_LINK() }]] },
+          reply_markup: { inline_keyboard: keyboardFor(req, action.status) },
         });
-        sent++;
+        // Telegram не даёт боту писать тому, кто не нажимал «Начать». Молча терять
+        // это нельзя: менеджер должен знать, что клиенту придётся звонить.
+        if (ok) { sent++; req.notifyFailed = false; }
+        else    { req.notifyFailed = true; console.warn(`[shopDealSync] клиенту ${chatId} не доставлено`); }
       }
     }
     await req.save();

@@ -9,9 +9,14 @@ const dateFmt = d => new Date(d).toLocaleDateString('ru', { day: 'numeric', mont
 export default function ShopMyRequests() {
   const navigate = useNavigate();
   const [items, setItems] = useState(null);
+  const [payUrl, setPayUrl] = useState('');
 
   useEffect(() => setBackButton(() => navigate('/shop')), [navigate]);
-  useEffect(() => { shopMyRequests().then(d => setItems(d.items)).catch(() => setItems([])); }, []);
+  useEffect(() => {
+    shopMyRequests()
+      .then(d => { setItems(d.items); setPayUrl(d.payUrl || ''); })
+      .catch(() => setItems([]));
+  }, []);
 
   if (items === null) return <p className="shop-loading">Загружаем…</p>;
 
@@ -51,6 +56,14 @@ export default function ShopMyRequests() {
               </span>
               {r.status === 'out_of_stock' && r.notifyOnRestock && (
                 <div className="shop-req__meta">Сообщим, когда появится на складе</div>
+              )}
+              {/* Менеджер подтвердил наличие — можно платить. Кнопка живёт здесь,
+                  а не только в сообщении бота: сообщение может не дойти, а в приложение
+                  клиент заходит сам. */}
+              {r.status === 'in_stock' && payUrl && (
+                <a className="shop-pay" href={payUrl} target="_blank" rel="noreferrer">
+                  💳 Оплатить {(Number(r.snapshot.price) * r.qty).toLocaleString('ru')} сом
+                </a>
               )}
             </div>
           </div>

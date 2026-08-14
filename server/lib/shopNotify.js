@@ -21,6 +21,28 @@ const APP_LINK = () => {
 
 const money = n => `${Number(n || 0).toLocaleString('ru')} сом`;
 
+/**
+ * Ссылка на оплату в MBank (ссылка приёма перевода или QR-страница магазина).
+ * Задаётся переменной окружения MBANK_PAY_URL: реквизиты меняются без правки кода,
+ * а пока её нет — кнопки оплаты просто не будет, реквизиты пришлёт менеджер.
+ */
+const payUrl = () => (process.env.MBANK_PAY_URL || '').trim();
+
+/**
+ * Кнопки под сообщением клиенту. «Оплатить» показываем только когда товар
+ * подтверждён: предлагать оплату до ответа менеджера нельзя — товара может не быть.
+ */
+function keyboardFor(request, status) {
+  const rows = [];
+  const pay = payUrl();
+  if (status === 'in_stock' && pay) {
+    const sum = Number(request.snapshot?.price || 0) * (request.qty || 1);
+    rows.push([{ text: `💳 Оплатить ${money(sum)}`, url: pay }]);
+  }
+  rows.push([{ text: '🛍 Открыть магазин', url: APP_LINK() }]);
+  return rows;
+}
+
 // Куда падает копия заявки для дежурного менеджера. Не задан — обходимся Битриксом.
 const managerChat = () => process.env.SHOP_MANAGER_CHAT_ID || '';
 
@@ -118,4 +140,4 @@ async function notifyRestocked(stockLogDocs = []) {
   return sent;
 }
 
-module.exports = { notifyRequestAccepted, notifyManagerNewRequest, notifyRestocked, APP_LINK };
+module.exports = { notifyRequestAccepted, notifyManagerNewRequest, notifyRestocked, APP_LINK, payUrl, keyboardFor };

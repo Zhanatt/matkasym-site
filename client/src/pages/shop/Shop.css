@@ -364,6 +364,19 @@
   border-radius: 7px;
   margin-top: 5px;
 }
+/* Оплата — единственное действие в списке заявок, поэтому кнопкой, а не ссылкой */
+.shop-pay {
+  display: inline-block;
+  margin-top: 8px;
+  background: #1d9c4a;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 10px;
+  text-decoration: none;
+}
+
 .shop-status--new    { background: #fff4d6; color: #8a5b00; }
 .shop-status--in_stock { background: #e3f7e6; color: #1d6b2c; }
 .shop-status--out_of_stock { background: #ffe6e6; color: #a3141f; }

@@ -15,7 +15,7 @@ const Product = require('../models/Product');
 const ShopRequest = require('../models/ShopRequest');
 const { tgAuth } = require('../lib/tgWebApp');
 const { createShopDeal, STAGE_ID } = require('../lib/shopBitrix');
-const { notifyRequestAccepted, notifyManagerNewRequest } = require('../lib/shopNotify');
+const { notifyRequestAccepted, notifyManagerNewRequest, payUrl } = require('../lib/shopNotify');
 
 // Витрина: только то, что человек может купить сегодня.
 // Остаток — по Кыргызстану (Product.stock = Make-in + Matkasym), казахстанский склад
@@ -202,7 +202,9 @@ router.get('/requests/my', tgAuth, async (req, res) => {
       .limit(20)
       .select('snapshot qty status createdAt notifyOnRestock')
       .lean();
-    res.json({ items });
+    // Ссылку на оплату отдаём и сюда: сообщение в бот может не дойти (клиент не нажимал
+    // «Начать»), а приложение он открывает сам — кнопка должна быть и здесь.
+    res.json({ items, payUrl: payUrl() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

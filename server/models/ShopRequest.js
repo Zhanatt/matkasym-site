@@ -57,6 +57,10 @@ const shopRequestSchema = new mongoose.Schema({
     stockAnswer: { type: String, default: '' },
   },
 
+  // Сообщение клиенту не доставлено (он не нажимал «Начать» у бота) —
+  // менеджеру видно в админке, что отвечать придётся звонком.
+  notifyFailed: { type: Boolean, default: false },
+
   // «Сообщить, когда появится»: остаток пришёл нулевым или менеджер ответил «нет в наличии».
   // Уведомление уходит ботом при первой же выгрузке остатков, где товар снова > 0.
   notifyOnRestock: { type: Boolean, default: true },
