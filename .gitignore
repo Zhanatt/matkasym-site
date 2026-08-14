@@ -14,6 +14,7 @@ server/.env.atlas
 # Бэкапы документов перед правкой боевых данных: внутри секреты площадок,
 # себестоимость и остатки — в публичный репозиторий им нельзя
 server/scripts/backup-*.json
+server/scripts/backup/
 
 # OS
 .DS_Store
