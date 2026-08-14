@@ -70,7 +70,8 @@ export default function AdminShopRequests() {
         <div>
           <h1 className="admin-page-title">Заявки из Telegram</h1>
           <p style={{ color: 'var(--slate)', fontSize: 13, margin: '2px 0 0' }}>
-            «Уточнить наличие» из магазина в канале · сделки уходят в Битрикс24
+            «Уточнить наличие» из магазина в канале. Работает менеджер в Битриксе:
+            статус здесь меняется сам по стадии сделки, а клиент получает ответ в Telegram
           </p>
         </div>
       </div>

@@ -18,6 +18,7 @@ const STAGE_ID    = process.env.BITRIX_SHOP_STAGE_ID    || 'C49:NEW';
 // значимы только цифры, а у кыргызских номеров — последние 9.
 const phoneTail = phone => String(phone || '').replace(/\D/g, '').slice(-9);
 
+// Метод отдаёт МАССИВ ID ({ CONTACT: [38301] }), а не карточки контактов.
 async function findContactByPhone(phone) {
   const tail = phoneTail(phone);
   if (tail.length < 9) return null;
@@ -26,7 +27,8 @@ async function findContactByPhone(phone) {
     type:        'PHONE',
     values:      [tail],
   });
-  return res?.CONTACT?.[0] || null;
+  const id = res?.CONTACT?.[0];
+  return id ? String(id) : null;
 }
 
 async function createContact({ name, phone, tgUsername }) {
@@ -48,7 +50,7 @@ async function ensureContact({ name, phone, tgUsername }) {
   if (!phone) return null;
   try {
     const found = await findContactByPhone(phone);
-    if (found) return found.ID;
+    if (found) return found;
     return await createContact({ name, phone, tgUsername });
   } catch (e) {
     console.error('[shopBitrix] контакт не создан:', e.message);
@@ -56,19 +58,39 @@ async function ensureContact({ name, phone, tgUsername }) {
   }
 }
 
-// Товар из каталога Битрикса. Синхронизация каталога кладёт в XML_ID id товара сайта —
-// по нему сделка получает настоящую товарную позицию, а не только текст в комментарии.
-async function attachProduct(dealId, product, qty, price) {
+/**
+ * Товарная позиция сделки — из неё менеджер видит, ЧТО и СКОЛЬКО просят.
+ * Товар ищем в каталоге Битрикса по XML_ID (туда синхронизация кладёт id товара сайта),
+ * но синхронизирован не весь каталог, поэтому при промахе кладём свободную строку
+ * с названием и количеством: пустая вкладка «Товары» хуже, чем строка без привязки.
+ */
+async function attachProduct(dealId, product, qty, price, name) {
   try {
-    const bx = await getProductByXmlId(String(product._id));
-    if (!bx) return false;
-    await call('crm.deal.productrows.set', {
-      id: dealId,
-      rows: [{ PRODUCT_ID: bx.ID, PRICE: price, QUANTITY: qty }],
-    });
+    const bx = await getProductByXmlId(String(product._id)).catch(() => null);
+    const row = bx
+      ? { PRODUCT_ID: bx.ID, PRICE: price, QUANTITY: qty }
+      : { PRODUCT_NAME: name, PRICE: price, QUANTITY: qty };
+    await call('crm.deal.productrows.set', { id: dealId, rows: [row] });
     return true;
   } catch (e) {
     console.error('[shopBitrix] товарная позиция не добавлена:', e.message);
+    return false;
+  }
+}
+
+/**
+ * Дублируем заявку комментарием в ленту сделки.
+ * Поле COMMENTS видно, только если менеджер вывел его в карточку, а лента открыта
+ * всегда — и именно в ней менеджер ведёт переписку по сделке.
+ */
+async function addTimelineComment(dealId, text) {
+  try {
+    await call('crm.timeline.comment.add', {
+      fields: { ENTITY_ID: dealId, ENTITY_TYPE: 'deal', COMMENT: text },
+    });
+    return true;
+  } catch (e) {
+    console.error('[shopBitrix] комментарий в ленту не добавлен:', e.message);
     return false;
   }
 }
@@ -107,23 +129,28 @@ async function createShopDeal({ request, product, tgUser }) {
     });
 
     const price = Number(request.snapshot.price) || 0;
+    const comments = dealComments({ product, request, tgUser });
     const dealId = await call('crm.deal.add', {
       fields: {
-        TITLE:       `TG-магазин: ${request.snapshot.name}${request.qty > 1 ? ` × ${request.qty}` : ''}`,
+        // Количество — в заголовке: в списке сделок и на канбане видно только его
+        TITLE:       `TG-магазин: ${request.snapshot.name} × ${request.qty}`,
         CATEGORY_ID,
         STAGE_ID,
         OPPORTUNITY: price * (request.qty || 1),
         CURRENCY_ID: 'KGS',
-        COMMENTS:    dealComments({ product, request, tgUser }),
+        COMMENTS:    comments,
         ...(contactId ? { CONTACT_ID: contactId } : {}),
         OPENED:      'Y',
       },
       params: { REGISTER_SONET_EVENT: 'Y' },
     });
 
-    if (dealId && price > 0) await attachProduct(dealId, product, request.qty || 1, price);
+    if (dealId) {
+      await attachProduct(dealId, product, request.qty || 1, price, request.snapshot.name);
+      await addTimelineComment(dealId, comments);
+    }
 
-    return { dealId: String(dealId) };
+    return { dealId: String(dealId), contactId: contactId || '' };
   } catch (e) {
     console.error('[shopBitrix] сделка не создана:', e.message);
     return { error: e.message };

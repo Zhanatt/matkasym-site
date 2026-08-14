@@ -44,13 +44,20 @@ app.get(['/api/cron/tick', '/api/telegram-queue/tick'], async (req, res) => {
   const expected = process.env.CRON_KEY || process.env.CATALOG_API_KEY;
   if (expected && req.query.key !== expected) return res.status(403).json({ message: 'forbidden' });
   const publications = await tickPublications(); // отложенные посты и задержки узлов схемы
+  // Ответы менеджера по заявкам Telegram-магазина: он двигает сделку в Битриксе,
+  // мы по смене стадии пишем покупателю в Telegram.
+  const { syncShopDeals } = require('./lib/shopDealSync');
+  const shopReplies = await syncShopDeals().catch(e => {
+    console.error('[shopDealSync]', e.message);
+    return 0;
+  });
   // Напоминание владельцу, если выгрузку остатков сегодня так и не прислали
   const { remindIfNoStockToday } = require('./lib/stockBot');
   const stockReminder = await remindIfNoStockToday().catch(e => {
     console.error('[stockBot] reminder failed:', e.message);
     return null;
   });
-  res.json({ ok: true, publications, stockReminder });
+  res.json({ ok: true, publications, shopReplies, stockReminder });
 });
 
 // Telegram bot webhook
@@ -197,6 +204,9 @@ mongoose
     // Дублируется внешним cron-пингом /api/cron/tick для надёжности на Render free.
     setInterval(() => {
       tickPublications().catch(e => console.error('[socialPublish] interval tick failed:', e.message));
+      // Тем же тиком — ответы менеджера по заявкам магазина (см. lib/shopDealSync.js)
+      require('./lib/shopDealSync').syncShopDeals()
+        .catch(e => console.error('[shopDealSync] interval tick failed:', e.message));
     }, 60 * 1000);
 
     app.listen(process.env.PORT, () =>

@@ -14,7 +14,7 @@ const router  = require('express').Router();
 const Product = require('../models/Product');
 const ShopRequest = require('../models/ShopRequest');
 const { tgAuth } = require('../lib/tgWebApp');
-const { createShopDeal } = require('../lib/shopBitrix');
+const { createShopDeal, STAGE_ID } = require('../lib/shopBitrix');
 const { notifyRequestAccepted, notifyManagerNewRequest } = require('../lib/shopNotify');
 
 // Витрина: только то, что человек может купить сегодня.
@@ -178,7 +178,9 @@ router.post('/requests', tgAuth, async (req, res) => {
     // Сделка — главное, ради чего всё затевалось, но заявку она блокировать не должна:
     // при недоступном Битриксе менеджер увидит её в админке, а причина ляжет в bitrix.error.
     const deal = await createShopDeal({ request, product, tgUser });
-    request.bitrix = { dealId: deal.dealId || '', error: deal.error || '' };
+    // Стадию запоминаем сразу: обратная связь клиенту строится на её СМЕНЕ,
+    // и без стартового значения первый же ответ менеджера прошёл бы молча.
+    request.bitrix = { dealId: deal.dealId || '', error: deal.error || '', stage: deal.dealId ? STAGE_ID : '' };
     await request.save();
 
     // Сообщения в Telegram — уже после ответа клиенту: он не должен ждать Bot API.

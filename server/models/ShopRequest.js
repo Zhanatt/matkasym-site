@@ -49,6 +49,9 @@ const shopRequestSchema = new mongoose.Schema({
   bitrix: {
     dealId: { type: String, default: '' },
     error:  { type: String, default: '' },
+    // Последняя увиденная стадия сделки. По её смене мы понимаем, что ответил
+    // менеджер, и пишем клиенту — сам он в Битрикс не заходит.
+    stage:  { type: String, default: '' },
   },
 
   // «Сообщить, когда появится»: остаток пришёл нулевым или менеджер ответил «нет в наличии».
