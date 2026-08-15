@@ -7,6 +7,7 @@
  * Это не ошибка сервера: заявка уже в Битриксе, менеджер всё равно позвонит.
  */
 const { sendTelegramMessage } = require('./telegram');
+const { withAmount } = require('./mbankQr');
 
 const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
 // Ссылка на сам Mini App: t.me/<бот>/<короткое имя приложения из BotFather>.
@@ -27,6 +28,15 @@ const money = n => `${Number(n || 0).toLocaleString('ru')} сом`;
  * а пока её нет — кнопки оплаты просто не будет, реквизиты пришлёт менеджер.
  */
 const payUrl = () => (process.env.MBANK_PAY_URL || '').trim();
+
+/** К оплате по заявке: цена на момент заявки × количество. */
+const requestSum = r => Number(r?.snapshot?.price || 0) * (r?.qty || 1);
+
+/**
+ * Ссылка на оплату конкретной заявки — с уже подставленной суммой,
+ * чтобы клиент не набирал её в банке руками. Формат ссылки не EMV — вернётся исходная.
+ */
+const payUrlFor = request => withAmount(payUrl(), requestSum(request));
 
 /**
  * Номер получателя из платёжной ссылки — запасной путь оплаты.
@@ -51,8 +61,7 @@ const payPhone = () => {
 function keyboardFor(request, status) {
   const rows = [];
   if (status === 'in_stock' && payUrl()) {
-    const sum = Number(request.snapshot?.price || 0) * (request.qty || 1);
-    rows.push([{ text: `💳 Оплатить ${money(sum)}`, url: `${APP_LINK()}?startapp=pay` }]);
+    rows.push([{ text: `💳 Оплатить ${money(requestSum(request))}`, url: `${APP_LINK()}?startapp=pay` }]);
   }
   rows.push([{ text: '🛍 Открыть магазин', url: APP_LINK() }]);
   return rows;
@@ -155,4 +164,7 @@ async function notifyRestocked(stockLogDocs = []) {
   return sent;
 }
 
-module.exports = { notifyRequestAccepted, notifyManagerNewRequest, notifyRestocked, APP_LINK, payUrl, payPhone, keyboardFor };
+module.exports = {
+  notifyRequestAccepted, notifyManagerNewRequest, notifyRestocked,
+  APP_LINK, payUrl, payUrlFor, payPhone, keyboardFor,
+};

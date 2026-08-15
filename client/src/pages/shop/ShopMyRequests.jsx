@@ -63,9 +63,10 @@ export default function ShopMyRequests() {
                   клиент заходит сам. */}
               {r.status === 'in_stock' && payUrl && (
                 <>
+                  {/* Ссылка заявки — с суммой внутри; общая payUrl только на подстраховку */}
                   <button
                     className="shop-pay"
-                    onClick={() => { haptic('medium'); openExternal(payUrl); }}
+                    onClick={() => { haptic('medium'); openExternal(r.payUrl || payUrl); }}
                   >
                     💳 Оплатить {(Number(r.snapshot.price) * r.qty).toLocaleString('ru')} сом
                   </button>
