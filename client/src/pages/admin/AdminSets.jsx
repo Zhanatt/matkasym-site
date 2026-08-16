@@ -152,7 +152,7 @@ function channelsFor(brandKey, country) {
 const SET_CATEGORY_ORDER = {
   'taza-kiym': {
     'Плечики': 1,
-    'Корзина для белья': 2,
+    'Корзины для белья': 2,
     'Гладильная доска': 3,
     'Сушилка': 4,
     'Гардеробная вешалка': 5,
@@ -180,6 +180,91 @@ function useIsMobile() {
 // Приведение к виду, в котором сравниваем при поиске: регистр и «ё» мешать не должны
 function normSearch(str) {
   return String(str || '').toLowerCase().replace(/ё/g, 'е');
+}
+
+// ── Порядок карточек внутри категории ─────────────────────────────────────────
+// Одна линейка идёт целиком: сначала все SANIRA, потом все SAKURA, потом ECO —
+// и внутри линейки от меньшего размера к большему. Буква в скобках про размер
+// не говорит (SANIRA(A) меньше, чем SANIRA(S)), поэтому меряем по `dimensions`.
+
+// Латиница, включая скандинавские буквы: JÄLL, HÖSVANS, SKÅDIS
+const LAT_UP = 'A-ZÄÖÜÅÆØÉÈ';
+const FAMILY_UPPER_RE = new RegExp(`[${LAT_UP}][${LAT_UP}]{2,}`);
+const FAMILY_CAPS_RE  = /[A-ZÄÖÜÅÆØ][a-zäöüåæøéè]{2,}/;
+
+// Линейка модели: «SANIRA», «ECO», «Keremet». Латиницы в названии нет —
+// берём название без цифр, чтобы «Плечики 007/1608/6135» держались вместе.
+function familyKey(name) {
+  const s = String(name || '');
+  const up = s.match(FAMILY_UPPER_RE);
+  if (up) return up[0];
+  const caps = s.match(FAMILY_CAPS_RE);
+  if (caps) return caps[0];
+  return normSearch(s).replace(/\d+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Размер = произведение чисел из «120×38×89 см». Сравниваем только внутри линейки,
+// где формат записи одинаковый, поэтому объёма достаточно.
+function sizeRank(dim) {
+  const nums = String(dim || '').match(/\d+(?:[.,]\d+)?/g);
+  if (!nums) return null;
+  return nums.reduce((acc, n) => acc * parseFloat(n.replace(',', '.')), 1);
+}
+
+const natCompare = (a, b) =>
+  String(a).localeCompare(String(b), 'ru', { numeric: true, sensitivity: 'base' });
+
+// items — пары [name, variants] из группировки по модели.
+// withCategory — для сборной группы «Нет в наличии»: там сначала держим вместе категорию.
+function sortModelsInGroup(items, country, withCategory = false) {
+  const info = items.map(item => {
+    const [name, variants] = item;
+    const sized = variants.find(v => sizeRank(v.dimensions) != null);
+    return {
+      item,
+      name,
+      cat: withCategory ? (variants[0]?.category || 'Прочее') : '',
+      family: familyKey(name),
+      size: sized ? sizeRank(sized.dimensions) : null,
+      stock: Math.max(0, ...variants.map(v => stockOf(v, country))),
+    };
+  });
+
+  // Линейку двигает наверх самая ходовая позиция в ней — иначе редкий размер
+  // утащил бы всю SANIRA в конец категории.
+  const famBest = new Map();
+  info.forEach(i => {
+    const k = `${i.cat}|${i.family}`;
+    famBest.set(k, Math.max(famBest.get(k) ?? 0, i.stock));
+  });
+
+  // Размеры внутри линейки склеиваем в ступени: ECO 103,5×34×78 и 104×34×78 —
+  // это один размер в разном цвете, между собой их сортируем по названию.
+  const byFamily = new Map();
+  info.forEach(i => {
+    const k = `${i.cat}|${i.family}`;
+    if (!byFamily.has(k)) byFamily.set(k, []);
+    byFamily.get(k).push(i);
+  });
+  byFamily.forEach(list => {
+    let step = 0, base = null;
+    list.filter(i => i.size != null).sort((a, b) => a.size - b.size).forEach(i => {
+      if (base == null || i.size / base > 1.02) { step += 1; base = i.size; }
+      i.step = step;
+    });
+  });
+
+  return info.sort((a, b) => {
+    if (a.cat !== b.cat) return a.cat.localeCompare(b.cat, 'ru');
+    const ka = `${a.cat}|${a.family}`, kb = `${b.cat}|${b.family}`;
+    if (ka !== kb) {
+      const byStock = (famBest.get(kb) || 0) - (famBest.get(ka) || 0);
+      return byStock || natCompare(a.family, b.family);
+    }
+    if (a.step && b.step && a.step !== b.step) return a.step - b.step;
+    if ((a.size == null) !== (b.size == null)) return a.size == null ? 1 : -1;
+    return natCompare(a.name, b.name);
+  }).map(i => i.item);
 }
 
 function slugify(name) {
@@ -789,9 +874,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         const orderB = customOrder[b[0]] ?? 999;
         if (orderA !== orderB) return orderA - orderB;
         return a[0].localeCompare(b[0], 'ru');
-      });
+      })
+      // Внутри категории — по линейкам и размерам, а не вперемешку по остатку
+      .map(([groupName, items]) => [
+        groupName,
+        sortModelsInGroup(items, country, groupName === 'Нет в наличии'),
+      ]);
     return result;
-  }, [models, setSlug]);
+  }, [models, setSlug, country]);
 
   // Общая переменная для групп — теперь только categoryGroups
   const accordionGroups = categoryGroups;
@@ -812,8 +902,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         outOfStock.push([name, variants]);
       }
     });
-    return { inStockModels: inStock, outOfStockModels: outOfStock };
-  }, [models]);
+    return {
+      inStockModels:    sortModelsInGroup(inStock, country, true),
+      outOfStockModels: sortModelsInGroup(outOfStock, country, true),
+    };
+  }, [models, country]);
 
   const { visible, sentinelRef, hasMore } = useLazyItems(inStockModels, 24, scrollRef.current);
 
