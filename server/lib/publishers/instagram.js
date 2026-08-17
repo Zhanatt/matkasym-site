@@ -61,8 +61,9 @@ async function publish({ account, caption: rawCaption, images, postType = 'feed'
 
   // Instagram не понимает разметку: HTML ушёл бы в подпись буквально,
   // а wa.me-ссылка — простынёй URL-кодированного текста (и всё равно не кликается).
-  // adaptCaption убирает ссылку и цену, ставит призыв писать в Direct / WhatsApp
-  // и дописывает хэштеги — страховка для публикаций, созданных до этих правил.
+  // adaptCaption убирает ссылку, ставит призыв писать в Direct / WhatsApp и
+  // дописывает хэштеги — страховка для публикаций, созданных до этих правил.
+  // Цену оставляет только у товаров IKEA, поэтому ему и нужен product.
   const caption = htmlToPlain(adaptCaption(rawCaption, 'instagram', null, publication?.product));
 
   try {

@@ -55,8 +55,9 @@ async function publish({ account, caption: rawCaption, images = [], postType = '
   }
 
   // Facebook не рендерит HTML: разметка ушла бы в текст буквально.
-  // adaptCaption — страховка: убирает ссылку на WhatsApp и цену, ставит призыв
-  // писать в Direct и хэштеги даже у публикаций, созданных до этих правил.
+  // adaptCaption — страховка: убирает ссылку на WhatsApp, ставит призыв писать
+  // в Direct и хэштеги даже у публикаций, созданных до этих правил.
+  // Цену оставляет только у товаров IKEA, поэтому ему и нужен product.
   const message = htmlToPlain(adaptCaption(rawCaption, 'facebook', null, publication?.product));
   if (!message.trim() && !images.length) {
     return { ok: false, error: 'Пустой пост: нет ни текста, ни картинки' };

@@ -6,6 +6,8 @@
 
 // Валюта подписи берётся у товара (Product.currency): сом или тенге.
 const { signOf } = require('./stockBases');
+// Признак товара IKEA — у него в посте своя логика цены.
+const { IKEA } = require('./bufferZones');
 // Язык поста: по умолчанию кыргызский, казахский — переключателем в /admin/publish.
 const { phrases, normLang, translateSpecKey, translateSpecValue, detectLang, DEFAULT_LANG } = require('./postLang');
 // Словарь названий товаров + название, вписанное руками в карточку.
@@ -251,11 +253,16 @@ function whatsappLink(p, lang = DEFAULT_LANG, platform) {
   return `https://wa.me/${orderPhone(p)}?text=${encodeURIComponent(orderMessage(p, lang, platform))}`;
 }
 
-// Площадки, где заказ идёт только через личку: ни ссылки, ни цены в посте.
+// Площадки, где заказ идёт только через личку: ссылки в посте нет.
 // Ссылка в подписи Instagram не кликается вовсе, а Facebook под ссылкой рисует
-// свою карточку-превью и режет охват. Цену там не пишем сознательно: вопрос
-// «сколько стоит?» в Direct — это и есть начало разговора с покупателем.
+// свою карточку-превью и режет охват — поэтому вместо неё идёт призыв написать.
 const DIRECT_ONLY_PLATFORMS = new Set(['instagram', 'facebook']);
+
+// Цену в этих постах печатаем только у товаров IKEA. Это перепродажа: покупатель
+// и так знает порядок цен, открытая цифра снимает главный вопрос и приводит его
+// готовым. У своей продукции цену не пишем — вопрос «сколько стоит?» в Direct
+// это и есть начало разговора с покупателем.
+const showsPrice = p => p?.supplier?.company === IKEA;
 
 // Строка со ссылкой на WhatsApp — в готовом (в т.ч. отредактированном руками) тексте.
 const ORDER_LINK_LINE = /^[^\n]*<a\s+href="https:\/\/wa\.me\/[^"]*"[^>]*>[^<]*<\/a>[^\n]*$/gim;
@@ -270,18 +277,23 @@ const PRICE_LINE      = /^[^\n]*💰[^\n]*$/gm;
 const ENDS_WITH_TAGS = /(^|\n)\s*#[^\s#]+(\s+#[^\s#]+)*\s*$/;
 
 // Текст под конкретную площадку: у Instagram и Facebook вырезаем ссылку на
-// WhatsApp (вместо неё — призыв писать в Direct) и строку с ценой, а в конец
-// дописываем тематические хэштеги.
+// WhatsApp (вместо неё — призыв писать в Direct), у не-IKEA убираем ещё и цену,
+// а в конец дописываем тематические хэштеги.
 // Функция идемпотентна — второй вызов (на повторе публикации) ничего не меняет.
 function adaptCaption(html, platform, lang, product) {
   if (!DIRECT_ONLY_PLATFORMS.has(platform)) return String(html || '');
   const cta = phrases(lang || detectLang(html)).directCta;
-  const out = String(html || '')
+  let out = String(html || '')
     .replace(ORDER_LINK_LINE, cta)
     .replace(BARE_WA_LINE, cta)
     // если ссылка встречалась дважды, двух одинаковых призывов подряд быть не должно
-    .replace(new RegExp(`(?:^${escapeRe(cta)}\\n)+(?=${escapeRe(cta)}$)`, 'gm'), '')
-    .replace(PRICE_LINE, '')
+    .replace(new RegExp(`(?:^${escapeRe(cta)}\\n)+(?=${escapeRe(cta)}$)`, 'gm'), '');
+
+  // Товар может не прийти вовсе (пост свободным текстом) — тогда считаем, что это
+  // не IKEA, и цену убираем: так было до правила, лишняя цифра хуже её отсутствия.
+  if (!showsPrice(product)) out = out.replace(PRICE_LINE, '');
+
+  out = out
     // от вырезанной цены остаётся пустая строка — иначе в посте зияет дыра
     .replace(/\n{3,}/g, '\n\n')
     .trim();
