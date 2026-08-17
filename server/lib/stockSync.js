@@ -14,7 +14,7 @@ const { uploadRawBuffer } = require('./cloudinary');
 const { sendBufferStockAlerts } = require('./telegram');
 const { zoneOf } = require('./bufferZones');
 const {
-  BASES, BASE_KEYS, isBaseKey, parseStockRows, looksLikeGroup, detectColumns,
+  BASES, BASE_KEYS, isBaseKey, parseStockRows, looksLikeGroup, detectColumns, findSkuColumn,
   STOCK_SUM_BASES, normName, normSku, normNameLoose, toInt, crossedBuffer,
 } = require('./stockBases');
 
@@ -26,7 +26,7 @@ const {
 // коммерческого (Итого, Виртуальный, Вен агент) игнорируются.
 // В старых выгрузках колонок минимума нет — тогда minOsn/minKomm остаются null.
 function detectStockColumns(rows) {
-  const fallback = { colOsn: 4, colKomm: 19, minOsn: null, minKomm: null, dataStart: 7 };
+  const fallback = { colOsn: 4, colKomm: 19, minOsn: null, minKomm: null, dataStart: 7, skuCol: -1 };
 
   let headRow = -1;
   for (let ri = 0; ri <= 12; ri++) {
@@ -42,7 +42,11 @@ function detectStockColumns(rows) {
   });
   if (!groups.some(g => g.key)) return fallback;
 
-  const out = { colOsn: null, colKomm: null, minOsn: null, minKomm: null, dataStart: headRow + 2 };
+  const out = {
+    colOsn: null, colKomm: null, minOsn: null, minKomm: null, dataStart: headRow + 2,
+    // Артикул: в Make-in его выводят в отчёт не всегда, поэтому колонка необязательна
+    skuCol: findSkuColumn([rows[headRow] || [], rows[headRow + 1] || []]),
+  };
   (rows[headRow + 1] || []).forEach((cell, c) => {
     const t = String(cell || '').trim().toLowerCase();
     if (!t.includes('остаток')) return;
@@ -108,8 +112,9 @@ async function applyStockUpload(buffer, baseKey, user) {
   // Make-in разбираем прежним парсером — формат его выгрузки не менялся
   let stockMap, warehouses = [], looseMap = new Map(), skuMap = new Map(), hasSku = false;
   if (BASES[baseKey].legacyParser) {
-    const { colOsn, colKomm, minOsn, minKomm, dataStart } = detectStockColumns(rows);
+    const { colOsn, colKomm, minOsn, minKomm, dataStart, skuCol } = detectStockColumns(rows);
     const hasBufferCols = minOsn !== null || minKomm !== null;
+    hasSku = skuCol >= 0;
     stockMap = new Map();
     for (let i = dataStart; i < rows.length; i++) {
       const row  = rows[i];
@@ -120,9 +125,14 @@ async function applyStockUpload(buffer, baseKey, user) {
       const kommRaw = Number(row[colKomm]);
       const kommNum = (!isNaN(kommRaw) && Number.isInteger(kommRaw)) ? Math.max(0, kommRaw) : 0;
       const buffer  = hasBufferCols ? bufferFromMins(minOsn === null ? 0 : row[minOsn], minKomm === null ? 0 : row[minKomm]) : 0;
-      const entry = { stock: osnNum + kommNum, buffer, name, raw: name, sku: '' };
+      const sku     = hasSku ? String(row[skuCol] || '').trim() : '';
+      const entry = { stock: osnNum + kommNum, buffer, name, raw: name, sku };
       stockMap.set(normName(name), entry);
       if (!looseMap.has(normNameLoose(name))) looseMap.set(normNameLoose(name), entry);
+      // Артикул в Make-in теперь тоже общий (MKS-ДУ0014-GRY по номеру чертежа):
+      // по нему остаток попадает на ту же карточку, что и остатки Matkasym и Q-top,
+      // как бы номенклатуру ни переименовали в самой базе.
+      if (sku && !skuMap.has(normSku(sku))) skuMap.set(normSku(sku), entry);
     }
   } else {
     ({ stockMap, looseMap, skuMap, hasSku, warehouses } = parseStockRows(rows, baseKey, normName));

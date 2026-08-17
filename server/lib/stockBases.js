@@ -175,6 +175,32 @@ const normNameLoose = s => String(s || '')
   .trim();
 
 /**
+ * Колонка артикула в шапке отчёта, если её туда вывели. Ищем в обеих строках шапки:
+ * 1С кладёт реквизиты номенклатуры то в верхнюю, то в нижнюю.
+ *
+ * «Артикул» важнее «Кода»: код у каждой базы 1С свой (у одной сушилки COMFORT он
+ * 000000408 в Make-in и другой в Q-top), а артикул мы как раз и делаем общим —
+ * MKS-ДУ0014-GRY по номеру чертежа. Связывать базы можно только по нему.
+ * → -1, если колонки нет.
+ */
+function findSkuColumn(headerRows) {
+  let byCode = -1;
+  for (const row of headerRows) {
+    for (let c = 1; c < (row || []).length; c++) {
+      const t = String(row[c] || '').trim();
+      // Хвост после слова отсекаем не через \b: в JS граница слова считается по
+      // латинице, и «Артикул» ей не заканчивается — прежнее условие не срабатывало
+      // никогда, поэтому колонку артикула не находили ни в одной выгрузке.
+      if (RE_SKU_HEAD.test(t))              return c;
+      if (byCode < 0 && RE_CODE_HEAD.test(t)) byCode = c;
+    }
+  }
+  return byCode;
+}
+const RE_SKU_HEAD  = /^артикул(\s|$|[.,:])/i;
+const RE_CODE_HEAD = /^код(\s|$|[.,:])/i;
+
+/**
  * Колонки складов выгрузки: шапка (headerCell) задаёт группы, следующая строка — их поля.
  * Возвращает { dataStart, stockCols, minCols } — только для складов из base.warehouses.
  */
@@ -207,15 +233,7 @@ function detectColumns(rows, base) {
   }
   if (!stockCols.length) return null;
 
-  // Колонка артикула, если её вывели в отчёт. Ищем и в шапке, и в строке под ней —
-  // 1С кладёт реквизиты номенклатуры то туда, то туда.
-  let skuCol = -1;
-  for (const r of [rows[headRow] || [], sub]) {
-    r.forEach((cell, c) => {
-      if (skuCol < 0 && c !== 0 && /^(артикул|код)\b/i.test(String(cell || '').trim())) skuCol = c;
-    });
-    if (skuCol >= 0) break;
-  }
+  const skuCol = findSkuColumn([rows[headRow] || [], sub]);
 
   return { headRow, dataStart: headRow + 2, stockCols, minCols, skuCol, warehouses: wanted.map(g => g.name) };
 }
@@ -310,7 +328,7 @@ function parsePriceRows(rows, priceType, normName) {
 
 module.exports = {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
-  normSku, normNameLoose, normName, toInt, crossedBuffer, detectColumns,
+  normSku, normNameLoose, normName, toInt, crossedBuffer, detectColumns, findSkuColumn,
   COUNTRIES, basesOfCountry, STOCK_SUM_BASES,
   PRICE_TYPES, PRICE_TYPE_KEYS, isPriceType, currencyOf, CURRENCY_SIGN, signOf, fmtMoney,
 };

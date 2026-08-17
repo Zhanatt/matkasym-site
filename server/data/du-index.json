@@ -1,0 +1,812 @@
+[
+  {
+    "code": "0001",
+    "title": "Полки для кухни",
+    "section": "16 Baary ordunda",
+    "archive": true
+  },
+  {
+    "code": "0007",
+    "title": "Зеркало Zina Diamond",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0010",
+    "title": "Гладильная доска ECO c удлинителем",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0011",
+    "title": "Гладильная доска ECO",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0012",
+    "title": "Гладильная доска SAKURA",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0013",
+    "title": "Гладильная доска SAKURA с удлинителем",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0014",
+    "title": "Сушилка COMFORT (3 мм)",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0015",
+    "title": "Сушилка SAKURA (авроара -5 мм)",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0016",
+    "title": "Сушилка AVANGARD (8 мм)",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0017",
+    "title": "Кронштейн Для ТВ ROMI 1 15-47",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0018",
+    "title": "Кронштейн Для ТВ ROMI 2 26-63",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0019",
+    "title": "Вешалка наполная NOVEL",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0020",
+    "title": "Вешалка гардеробная Enigma",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0021",
+    "title": "Вешалка гардеробная Infinity",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0022",
+    "title": "Вешалка гардеробная FENIX",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0023",
+    "title": "полка для обуви QUEEN 3",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0024",
+    "title": "полка для обуви QUEEN 4",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0025",
+    "title": "полка для обуви LION 3",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0026",
+    "title": "полка для обуви LION 4",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0027",
+    "title": "корзина для белья WASHDAY",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0027-01",
+    "title": "Корзина для белья Washday ECO",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0030",
+    "title": "Антенна САНАРИП",
+    "section": "05_Антенна",
+    "archive": false
+  },
+  {
+    "code": "0037",
+    "title": "Кабель для TV",
+    "section": "05_Антенна",
+    "archive": false
+  },
+  {
+    "code": "0038",
+    "title": "Антенна СМАРТ",
+    "section": "05_Антенна",
+    "archive": false
+  },
+  {
+    "code": "0039",
+    "title": "Антенна ТЕРЕЗЕ",
+    "section": "05_Антенна",
+    "archive": false
+  },
+  {
+    "code": "0040",
+    "title": "Антенна КОМПАКТ",
+    "section": "05_Антенна",
+    "archive": false
+  },
+  {
+    "code": "0042",
+    "title": "Локтевой дозатор",
+    "section": "11_Diz product",
+    "archive": false
+  },
+  {
+    "code": "0043",
+    "title": "Газовый щиток",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0044",
+    "title": "Электро щит 30х22х12",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0045",
+    "title": "Электро щит 30х30х15",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0047",
+    "title": "Электро щит 40x30х15",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0048",
+    "title": "Электро щит 50x30х15",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0050",
+    "title": "Электро щит 50Х40Х15",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0051",
+    "title": "Электро щит 50Х40Х20",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0052",
+    "title": "Электро щит 60Х40Х15",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0053",
+    "title": "Электро щит 60Х40Х20",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0054",
+    "title": "Электро щит 65Х50Х20",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0055",
+    "title": "Электро щиток 80х60х20",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0070",
+    "title": "Кронштейн для кондиционера MINI 7-9",
+    "section": "06_Кронштейны",
+    "archive": true
+  },
+  {
+    "code": "0070",
+    "title": "Кронштейн для кондиционера MINI 7-9",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0071",
+    "title": "Кронштейн для кондиционера MIDDLE 12",
+    "section": "06_Кронштейны",
+    "archive": true
+  },
+  {
+    "code": "0071",
+    "title": "Кронштейн для кондиционера MIDDLE 12",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0072",
+    "title": "Кронштейн для кондиционера MAX 18",
+    "section": "06_Кронштейны",
+    "archive": true
+  },
+  {
+    "code": "0072",
+    "title": "Кронштейн для кондиционера MAX 18",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0074",
+    "title": "Кронштейн для антены",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0075",
+    "title": "Мультимедийную подставка R-BOARD (стекло)",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0076",
+    "title": "Мультимедийную подставка R-BOARD (пластик)",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0077",
+    "title": "Мультимедийную подставка R-BOARD (металл)",
+    "section": "06_Кронштейны",
+    "archive": false
+  },
+  {
+    "code": "0078",
+    "title": "Эко Урна G2",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0079",
+    "title": "Эко Урна G3",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0080",
+    "title": "Эко Урна G4",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0086",
+    "title": "Разборный мангал R6",
+    "section": "09_Мангалы",
+    "archive": false
+  },
+  {
+    "code": "0087",
+    "title": "Разборный мангал R8",
+    "section": "09_Мангалы",
+    "archive": false
+  },
+  {
+    "code": "0088",
+    "title": "Разборный мангал R10",
+    "section": "09_Мангалы",
+    "archive": false
+  },
+  {
+    "code": "0090",
+    "title": "Уголок для ванны",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0090",
+    "title": "Уголок для ванны Aria 3х",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0091",
+    "title": "Полка для ванны Zym tekche",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0092",
+    "title": "Настенная вешалка Temir ilgich 5s",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0094",
+    "title": "Настенная вешалка Temir ilgich 10s",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0094",
+    "title": "Настенная вешалка Temir ilgich 10s (разборная)",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0095",
+    "title": "Мусорная урна (TEGEREK)",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0096",
+    "title": "Рециркулятор",
+    "section": "11_Diz product",
+    "archive": false
+  },
+  {
+    "code": "0097",
+    "title": "Напольная вешалка Novel (разборная)",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0099",
+    "title": "Стеллаж для ванны TAITEMIR (Надунитазник)",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0100",
+    "title": "Настенные вешалки BOSOGO",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0101",
+    "title": "Настенная вешалка TEMIR ILGICH 3J",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0102",
+    "title": "Настенная вешалка TEMIR ILGICH 5J",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0103",
+    "title": "Настенная вешалка TEMIR ILGICH 7J",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0112",
+    "title": "Стеллаж для ванны ASYL (Над стиральную машинку)",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0113",
+    "title": "Напольная вешалка (KARAGAI)",
+    "section": "04 KOSH KELINIZ",
+    "archive": true
+  },
+  {
+    "code": "0114",
+    "title": "Напольная вешалка MURAS 1",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0115",
+    "title": "Угловая полка для ванны KAINAR 1",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0116",
+    "title": "Урна BP",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0117",
+    "title": "Банкетка OTURGUCH",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0118",
+    "title": "Стул_для_походов_Ala-Too_1",
+    "section": "12_Стулы",
+    "archive": false
+  },
+  {
+    "code": "0119",
+    "title": "Стул_для_походов_Ala-Too_mini",
+    "section": "12_Стулы",
+    "archive": false
+  },
+  {
+    "code": "0120",
+    "title": "Подставка для утюга UTUK ILGICH",
+    "section": "01 TAZA KIYM",
+    "archive": true
+  },
+  {
+    "code": "0121",
+    "title": "Напольная вешалка ARCHA",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0122",
+    "title": "Гардеробная вешалка KERBEN",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0123",
+    "title": "Полка для цветов Bagym",
+    "section": "13_Jashyl omur",
+    "archive": false
+  },
+  {
+    "code": "0124",
+    "title": "Напольная вешалка KARAGAI",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0125",
+    "title": "Гардеробная вешалка KERBEN",
+    "section": "04 KOSH KELINIZ",
+    "archive": true
+  },
+  {
+    "code": "0126",
+    "title": "Сушилка KEREMET",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0127",
+    "title": "Сушилка KEREMET+",
+    "section": "01 TAZA KIYM",
+    "archive": false
+  },
+  {
+    "code": "0129",
+    "title": "Полка для ванны ORION 3x",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0130",
+    "title": "Стеллаж Бекем-1",
+    "section": "16 Baary ordunda",
+    "archive": false
+  },
+  {
+    "code": "0131",
+    "title": "Стеллаж Бекем-2",
+    "section": "16 Baary ordunda",
+    "archive": false
+  },
+  {
+    "code": "0132",
+    "title": "Стеллаж Бекем-3",
+    "section": "16 Baary ordunda",
+    "archive": false
+  },
+  {
+    "code": "0133",
+    "title": "Стеллаж Бекем-4",
+    "section": "16 Baary ordunda",
+    "archive": false
+  },
+  {
+    "code": "0135",
+    "title": "- Щит газовый горизонталььный 350х300х250",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0135",
+    "title": "- Щит газовый горизонтальный",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0136",
+    "title": "Гладильная доска AVANGARD Press",
+    "section": "01 TAZA KIYM",
+    "archive": true
+  },
+  {
+    "code": "0137",
+    "title": "Гладильная доска AVANGARD Press L",
+    "section": "01 TAZA KIYM",
+    "archive": true
+  },
+  {
+    "code": "0138",
+    "title": "Гладильная доска AVANGARD L",
+    "section": "01 TAZA KIYM",
+    "archive": true
+  },
+  {
+    "code": "0139",
+    "title": "полка для обуви LION 4+",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0140",
+    "title": "Этажерка на колесиках CHYGDAN",
+    "section": "16 Baary ordunda",
+    "archive": false
+  },
+  {
+    "code": "0143",
+    "title": "Урна BP PRO",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0144",
+    "title": "Электро щиток 30х22х15+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0144",
+    "title": "Органайзер KATBOX",
+    "section": "16 Baary ordunda",
+    "archive": false
+  },
+  {
+    "code": "0145",
+    "title": "Электро щиток 30х30х15+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0145",
+    "title": "TIRKE боковой прихват пластикового контейнера",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0147",
+    "title": "Электро щиток 40x30х15+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0147",
+    "title": "Мусорная урна TYKAN",
+    "section": "08_Урны",
+    "archive": true
+  },
+  {
+    "code": "0148",
+    "title": "полка для обуви TAKTAI",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0148",
+    "title": "Электро щиток 50x30х15+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0149",
+    "title": "ЩМП ip 54 300х245х100 ДУ 0149",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0150",
+    "title": "Электро щиток 50Х40Х15+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0151",
+    "title": "Электро щиток 50Х40Х20+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0151",
+    "title": "Перегародка JIYIN",
+    "section": "15 Matkasym gorod",
+    "archive": false
+  },
+  {
+    "code": "0152",
+    "title": "Зеркало передвижное",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0152",
+    "title": "Электро щиток 60Х40Х15+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0153",
+    "title": "Электро щиток 60Х40Х20+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0154",
+    "title": "Электро щиток 65Х50Х20+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0155",
+    "title": "Электро щиток 80×60×20+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0155",
+    "title": "Электро щиток 80х60х20+Фальшпанель",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0157",
+    "title": "Электро щит 35х35х15",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0158",
+    "title": "ЩМП 430х430х150",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0159",
+    "title": "Гладильная доска AVANGARD",
+    "section": "01 TAZA KIYM",
+    "archive": true
+  },
+  {
+    "code": "0160",
+    "title": "ЩМП IP31 400x200x155",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0161",
+    "title": "Держатель для туалетной бумаги-01",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0162",
+    "title": "Держатель для туалетной бумаги-02",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0164",
+    "title": "Крышка для мусорного контейнера 1.1 куб",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0169",
+    "title": "Контейнер ТБО сетчатый V=1.1м3",
+    "section": "08_Урны",
+    "archive": false
+  },
+  {
+    "code": "0170",
+    "title": "Уголок для ванны Aria 2Х",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0171",
+    "title": "Настенная мыльница ТАЗА 1Х",
+    "section": "10_Ванная",
+    "archive": false
+  },
+  {
+    "code": "0173",
+    "title": "Настенная вешалкаTemir ilgich 5s light",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0174",
+    "title": "ЩМП IP54 500х400х200",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0175",
+    "title": "Подставка UYULDUK",
+    "section": "16 Baary ordunda",
+    "archive": false
+  },
+  {
+    "code": "0176",
+    "title": "Напольная вешалка ARCHA",
+    "section": "04 KOSH KELINIZ",
+    "archive": false
+  },
+  {
+    "code": "0177-83",
+    "title": "ЩМП IP54",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0184",
+    "title": "ЩМП IP31 1000х800х300",
+    "section": "07_Щиты",
+    "archive": false
+  },
+  {
+    "code": "0185",
+    "title": "Разборный мангал MURADYL R12",
+    "section": "09_Мангалы",
+    "archive": false
+  },
+  {
+    "code": "0186",
+    "title": "Разборный мангал MURADYL R18",
+    "section": "09_Мангалы",
+    "archive": true
+  },
+  {
+    "code": "0187",
+    "title": "Полка KITEP TEKCHE",
+    "section": "16 Baary ordunda",
+    "archive": false
+  },
+  {
+    "code": "0216",
+    "title": "Урна офисная М1",
+    "section": "08_Урны",
+    "archive": false
+  }
+]
