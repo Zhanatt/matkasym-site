@@ -206,6 +206,79 @@ async function unpublishPublication(pubId) {
   };
 }
 
+/**
+ * Обновить отклик на пост: сходить на площадки и записать лайки, комментарии,
+ * просмотры в publication.targets[i].stats.
+ *
+ * Тянем только там, где пост реально вышел и площадка умеет отдавать цифры
+ * (сейчас Instagram). Ошибка одной площадки не мешает остальным: она ложится
+ * рядом с постом в stats.error, чтобы в журнале было видно, почему цифр нет,
+ * а не «пусто без объяснений».
+ */
+async function refreshStats(pubId) {
+  const pub = await Publication.findById(pubId);
+  if (!pub) return { error: 'Публикация не найдена' };
+
+  let updated = 0, failed = 0;
+  for (let i = 0; i < pub.targets.length; i++) {
+    const t = pub.targets[i];
+    if (t.status !== 'published' || !t.externalId) continue;
+
+    const publisher = PUBLISHERS[t.platform];
+    if (!publisher?.stats) continue;
+
+    const account = await SocialAccount.findById(t.account);
+    if (!account) {
+      pub.targets[i].stats = { ...(t.stats?.toObject?.() || {}), updatedAt: new Date(), error: 'Площадка удалена из настроек' };
+      failed++;
+      continue;
+    }
+
+    let res;
+    try {
+      res = await publisher.stats({ account, externalId: t.externalId, postType: t.postType });
+    } catch (e) {
+      res = { ok: false, error: e.message };
+    }
+
+    if (res.ok) {
+      // Прежние цифры не затираем целиком: у историй охват через сутки перестаёт
+      // отдаваться, и обнулять уже собранное было бы враньём.
+      pub.targets[i].stats = {
+        ...(t.stats?.toObject?.() || {}), ...res.stats,
+        updatedAt: new Date(), error: res.warning || '',
+      };
+      updated++;
+    } else {
+      pub.targets[i].stats = { ...(t.stats?.toObject?.() || {}), updatedAt: new Date(), error: res.error || 'Не удалось получить статистику' };
+      failed++;
+    }
+  }
+
+  if (updated || failed) await pub.save();
+  return { ok: true, updated, failed, publication: pub };
+}
+
+// Обновить отклик по последним публикациям разом — кнопкой в журнале.
+// Идём последовательно: Meta считает запросы в час, и параллельный обстрел
+// упрётся в лимит быстрее, чем принесёт выигрыш в секундах.
+async function refreshRecentStats({ limit = 20 } = {}) {
+  const pubs = await Publication.find({
+    targets: { $elemMatch: { status: 'published', platform: { $in: STATS_PLATFORMS }, externalId: { $nin: ['', null] } } },
+  }).sort({ createdAt: -1 }).limit(Math.min(limit, 50)).select('_id').lean();
+
+  let updated = 0, failed = 0;
+  for (const p of pubs) {
+    const r = await refreshStats(p._id);
+    updated += r.updated || 0;
+    failed  += r.failed  || 0;
+  }
+  return { ok: true, posts: pubs.length, updated, failed };
+}
+
+// Площадки, которые умеют отдавать отклик на пост
+const STATS_PLATFORMS = Object.keys(PUBLISHERS).filter(k => typeof PUBLISHERS[k].stats === 'function');
+
 // Сколько времени считаем повторную отправку того же товара случайной.
 // Плановый перепост через день-два — нормальная работа, а вот второй пост через
 // полчаса почти всегда означает: упал Instagram, человек поправил и отправил всё
@@ -317,5 +390,8 @@ module.exports = {
   captionFor,
   runPublication,
   unpublishPublication,
+  refreshStats,
+  refreshRecentStats,
+  STATS_PLATFORMS,
   tickPublications,
 };

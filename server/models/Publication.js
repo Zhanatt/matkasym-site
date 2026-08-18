@@ -15,6 +15,23 @@ const targetSchema = new mongoose.Schema({
   externalId:  { type: String, default: '' },    // id поста на площадке
   externalUrl: { type: String, default: '' },
   publishedAt: { type: Date },
+
+  // Отклик на пост: тянется с площадки по кнопке, хранится снимком.
+  // Площадка отдаёт не всё и не всем (охват и просмотры требуют отдельного права
+  // в Meta), поэтому каждое поле необязательно: нет числа — нет и строки в отчёте,
+  // а 0 лайков это честный ноль. Ошибку показываем рядом, а не молча прячем.
+  stats: {
+    likes:        { type: Number },
+    comments:     { type: Number },
+    views:        { type: Number },   // просмотры (в старых постах — показы)
+    reach:        { type: Number },   // сколько уникальных аккаунтов увидели
+    saved:        { type: Number },
+    shares:       { type: Number },
+    replies:      { type: Number },   // ответы на историю — у неё комментариев нет
+    interactions: { type: Number },   // все взаимодействия разом
+    updatedAt:    { type: Date },
+    error:        { type: String, default: '' },
+  },
 }, { _id: false });
 
 // Публикация = один контент, разосланный по нескольким площадкам.

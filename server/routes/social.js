@@ -10,6 +10,7 @@ const Publication  = require('../models/Publication');
 const Counter      = require('../models/Counter');
 const Product      = require('../models/Product');
 const { buildProductText, captionFor, runPublication, unpublishPublication,
+        refreshStats, refreshRecentStats,
         recentlyPublished, DUPLICATE_WINDOW_MS, PLATFORM_LABELS } = require('../lib/socialPublish');
 const { normLang } = require('../lib/postLang');
 const { postTitle } = require('../lib/postCaption');
@@ -592,6 +593,29 @@ router.get('/publications/:id', async (req, res) => {
 router.post('/publications/:id/retry', async (req, res) => {
   try {
     const result = await runPublication(req.params.id, { onlyFailed: true });
+    if (result.error) return res.status(404).json({ message: result.error });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /publications/stats — обновить отклик сразу по последним публикациям.
+// Стоит выше маршрута с :id, иначе «stats» попало бы в него как идентификатор.
+router.post('/publications/stats', async (req, res) => {
+  try {
+    res.json(await refreshRecentStats({ limit: Number(req.body?.limit) || 20 }));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// POST /publications/:id/stats — сходить на площадки за лайками, комментариями
+// и просмотрами этого поста. Цифры живут в самой публикации снимком: показывать
+// отчёт надо и тогда, когда Meta недоступна или токен протух.
+router.post('/publications/:id/stats', async (req, res) => {
+  try {
+    const result = await refreshStats(req.params.id);
     if (result.error) return res.status(404).json({ message: result.error });
     res.json(result);
   } catch (e) {

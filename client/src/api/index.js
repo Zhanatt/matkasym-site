@@ -244,6 +244,8 @@ export const socialGetPublications = (limit)     => api.get('/admin/social/publi
 export const socialRetryPublication= (id)        => api.post(`/admin/social/publications/${id}/retry`);
 export const socialUnpublish       = (id)        => api.post(`/admin/social/publications/${id}/unpublish`);
 export const socialDeletePublication=(id)        => api.delete(`/admin/social/publications/${id}`);
+export const socialRefreshStats    = (id)        => api.post(`/admin/social/publications/${id}/stats`);
+export const socialRefreshAllStats = (limit)     => api.post('/admin/social/publications/stats', { limit });
 
 // Заявки «Уточнить наличие» из Telegram-магазина. Ведёт их менеджер в Битриксе,
 // здесь — контроль: дошла ли заявка и создалась ли сделка.

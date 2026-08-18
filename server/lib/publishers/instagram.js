@@ -125,6 +125,122 @@ async function publish({ account, caption: rawCaption, images, postType = 'feed'
   }
 }
 
+// ── Отклик на пост ───────────────────────────────────────────────────────────
+//
+// Считаются два разных источника, и они не взаимозаменяемы:
+//   · поля самого поста (like_count, comments_count) — отдаются всегда;
+//   · insights (просмотры, охват, сохранения) — только с правом
+//     instagram_manage_insights и только у бизнес-аккаунта.
+// Поэтому лайки и комментарии тянем отдельным запросом: пропадёт доступ к
+// статистике — они всё равно будут в отчёте.
+//
+// Набор метрик у Meta разный для ленты и историй и меняется от версии к версии
+// (impressions выпилили в пользу views), а на лишнюю метрику API отвечает ошибкой
+// на весь запрос. Поэтому спрашиваем оптимистично и на отказ выкидываем ровно те
+// метрики, которые Meta назвала в ошибке, — так новые поля появятся сами, когда
+// аккаунт до них дорастёт.
+const MEDIA_METRICS = ['views', 'reach', 'saved', 'shares', 'total_interactions'];
+const STORY_METRICS = ['views', 'reach', 'replies', 'navigation'];
+
+// Ключи Meta → поля отчёта
+const METRIC_FIELD = {
+  views: 'views', impressions: 'views', reach: 'reach', saved: 'saved',
+  shares: 'shares', total_interactions: 'interactions', replies: 'replies',
+};
+
+// Чем заменить метрику, которую эта версия API не знает. views — новое имя
+// показов, у постов, снятых до перехода Meta, работает старое.
+const METRIC_FALLBACK = { views: 'impressions' };
+
+// Отказ по статистике переводим в инструкцию: «(#10) Application does not have
+// permission» значит, что приложению Meta не выдали instagram_manage_insights.
+// Лайки и комментарии при этом приходят — важно, чтобы человек видел разницу
+// между «пост никто не смотрел» и «нам не дали цифру».
+function explainInsights(msg) {
+  const text = String(msg || '');
+  if (/#10\b|does not have permission|instagram_manage_insights/i.test(text)) {
+    return 'Нет доступа к статистике: приложению в Meta нужно разрешение instagram_manage_insights, '
+      + 'после него перевыпустите токен — появятся просмотры, охват и сохранения. '
+      + 'Лайки и комментарии считаются и без него.';
+  }
+  if (/expired|Session has expired|#190/i.test(text)) {
+    return 'Токен истёк — выпустите новый на странице площадок.';
+  }
+  return text;
+}
+
+// Имена метрик, на которые ругнулась Meta: «(#100) ... metric[0] must be one of
+// the following values: ...» или «The following metrics are not supported: views».
+function rejectedMetrics(message, asked) {
+  const text = String(message || '').toLowerCase();
+  return asked.filter(m => text.includes(m.toLowerCase()));
+}
+
+async function fetchInsights(mediaId, accessToken, metrics, depth = 0) {
+  if (!metrics.length || depth > 3) return {};
+  try {
+    const d = await graph(`/${mediaId}/insights`, { metric: metrics, access_token: accessToken }, 'GET');
+    const out = {};
+    (d.data || []).forEach(row => {
+      const field = METRIC_FIELD[row.name];
+      const value = row.values?.[0]?.value;
+      if (field && typeof value === 'number') out[field] = value;
+    });
+    return out;
+  } catch (e) {
+    const bad = rejectedMetrics(e.message, metrics);
+    // Ошибка не про конкретную метрику (нет прав, пост слишком старый) — отдаём наверх
+    if (!bad.length) throw e;
+    const next = metrics.filter(m => !bad.includes(m));
+    bad.forEach(m => {
+      const alt = METRIC_FALLBACK[m];
+      if (alt && !metrics.includes(alt)) next.push(alt);
+    });
+    return fetchInsights(mediaId, accessToken, next, depth + 1);
+  }
+}
+
+/**
+ * Цифры по одному посту: лайки, комментарии, просмотры, охват, сохранения.
+ * Возвращает { ok, stats } либо { ok: false, error } — вызывающий пишет ошибку
+ * рядом с постом, чтобы было видно, почему цифр нет.
+ */
+async function stats({ account, externalId, postType = 'feed' }) {
+  const { accessToken } = account?.config || {};
+  if (!accessToken) return { ok: false, error: 'Не задан accessToken' };
+  if (!externalId)  return { ok: false, error: 'У поста нет id на площадке' };
+
+  const out = {};
+  const notes = [];
+
+  // У историй лайков и комментариев нет — Graph API падает на этих полях
+  const fields = postType === 'story' ? 'permalink,timestamp' : 'like_count,comments_count,permalink,timestamp';
+  try {
+    const base = await graph(`/${externalId}`, { fields, access_token: accessToken }, 'GET');
+    if (typeof base.like_count === 'number')     out.likes    = base.like_count;
+    if (typeof base.comments_count === 'number') out.comments = base.comments_count;
+  } catch (e) {
+    notes.push(e.message);
+  }
+
+  try {
+    Object.assign(out, await fetchInsights(externalId, accessToken,
+      postType === 'story' ? STORY_METRICS : MEDIA_METRICS));
+  } catch (e) {
+    // Статистика историй живёт 24 часа — по старым Meta отвечает ошибкой,
+    // и это не поломка, а ожидаемое поведение.
+    notes.push(postType === 'story'
+      ? `${explainInsights(e.message)} (у историй статистика доступна сутки)`
+      : explainInsights(e.message));
+  }
+
+  // Обе части часто падают с одной и той же причиной (протухший токен) —
+  // повторять её дважды в отчёте незачем.
+  const why = [...new Set(notes)].join('; ');
+  if (!Object.keys(out).length) return { ok: false, error: why || 'Instagram не отдал ни одной цифры' };
+  return { ok: true, stats: out, warning: why };
+}
+
 // Instagram удалять через API НЕ УМЕЕТ: в Content Publishing API есть только создание.
 // Поэтому честно говорим, что пост надо снять руками, и отдаём ссылку на него.
 async function unpublish() {
@@ -135,4 +251,4 @@ async function unpublish() {
   };
 }
 
-module.exports = { publish, unpublish, fitForInstagram };
+module.exports = { publish, unpublish, stats, fitForInstagram };
