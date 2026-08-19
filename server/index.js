@@ -44,7 +44,7 @@ app.get('/api/version', (req, res) => res.json({ version: SERVER_START }));
 // Нужен, потому что на бесплатном Render сервис засыпает и внутренний таймер не идёт.
 // Защищён ключом: ?key=CRON_KEY (или CATALOG_API_KEY как запасной).
 // Старый путь /api/telegram-queue/tick оставлен алиасом — на него настроен внешний cron.
-const { tickPublications } = require('./lib/socialPublish');
+const { tickPublications, tickStats } = require('./lib/socialPublish');
 app.get(['/api/cron/tick', '/api/telegram-queue/tick'], async (req, res) => {
   const expected = process.env.CRON_KEY || process.env.CATALOG_API_KEY;
   if (expected && req.query.key !== expected) return res.status(403).json({ message: 'forbidden' });
@@ -62,7 +62,13 @@ app.get(['/api/cron/tick', '/api/telegram-queue/tick'], async (req, res) => {
     console.error('[stockBot] reminder failed:', e.message);
     return null;
   });
-  res.json({ ok: true, publications, shopReplies, stockReminder });
+  // Отклик на посты за сутки: лайки, просмотры, охват — чтобы журнал открывался
+  // с готовыми цифрами. Сам следит, чтобы не считать дважды в день.
+  const stats = await tickStats().catch(e => {
+    console.error('[stats] daily tick failed:', e.message);
+    return null;
+  });
+  res.json({ ok: true, publications, shopReplies, stockReminder, stats });
 });
 
 // Telegram bot webhook
@@ -212,6 +218,8 @@ mongoose
       // Тем же тиком — ответы менеджера по заявкам магазина (см. lib/shopDealSync.js)
       require('./lib/shopDealSync').syncShopDeals()
         .catch(e => console.error('[shopDealSync] interval tick failed:', e.message));
+      // …и раз в сутки — отклик на посты (лайки, просмотры, охват)
+      tickStats().catch(e => console.error('[stats] interval tick failed:', e.message));
     }, 60 * 1000);
 
     app.listen(process.env.PORT, () =>

@@ -285,6 +285,42 @@ async function refreshRecentStats({ limit = 20 } = {}) {
   return { ok: true, posts: pubs.length, updated, failed };
 }
 
+// ── Ежедневный сбор отклика ──────────────────────────────────────────────────
+//
+// Журнал должен открываться с готовыми цифрами, а не после нажатия кнопки.
+// Раз в сутки проходим по последним публикациям сами.
+//
+// «Сегодня уже считали» определяем по самим данным, а не по счётчику в памяти:
+// Render перезапускает сервис по нескольку раз в день (деплой, сон бесплатного
+// тарифа), и после каждого перезапуска сбор уходил бы к Meta заново. Признак —
+// свежий stats.updatedAt хоть у одной публикации; заодно это значит, что ручной
+// сбор кнопкой отменяет автоматический, а не дублируется с ним.
+const BISHKEK_OFFSET_H  = 6;
+const STATS_HOUR        = 7;    // утро: у вчерашних вечерних постов цифры уже набежали
+const STATS_DAILY_LIMIT = 50;   // столько же публикаций показывает журнал
+
+let statsRanOn = '';
+
+async function tickStats() {
+  const nowB = new Date(Date.now() + BISHKEK_OFFSET_H * 3600 * 1000);
+  if (nowB.getUTCHours() < STATS_HOUR) return null;
+
+  const day = nowB.toISOString().slice(0, 10);
+  if (statsRanOn === day) return null;
+
+  const dayStart = new Date(Date.UTC(nowB.getUTCFullYear(), nowB.getUTCMonth(), nowB.getUTCDate())
+    - BISHKEK_OFFSET_H * 3600 * 1000);
+  if (await Publication.exists({ 'targets.stats.updatedAt': { $gte: dayStart } })) {
+    statsRanOn = day;
+    return null;
+  }
+
+  const r = await refreshRecentStats({ limit: STATS_DAILY_LIMIT });
+  statsRanOn = day;
+  console.log(`[stats] ежедневный сбор: публикаций ${r.posts}, площадок с цифрами ${r.updated}, без цифр ${r.failed}`);
+  return r;
+}
+
 // Площадки, которые умеют отдавать отклик на пост
 const STATS_PLATFORMS = Object.keys(PUBLISHERS).filter(k => typeof PUBLISHERS[k].stats === 'function');
 
@@ -401,6 +437,7 @@ module.exports = {
   unpublishPublication,
   refreshStats,
   refreshRecentStats,
+  tickStats,
   STATS_PLATFORMS,
   tickPublications,
 };
