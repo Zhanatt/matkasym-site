@@ -259,6 +259,31 @@ export default function PublishReport() {
             </>
           )}
 
+          {/* Обращения на номера из кнопки «Заказать». Привязка не идеальная —
+              на эти номера пишут и мимо постов, — но это единственное, что
+              отделяет пришедших с публикаций, пока метку не проставляет робот. */}
+          {leads?.orderLines?.length > 0 && (
+            <div style={{ marginTop: 14, padding: '12px 14px', background: '#f2f7f3', borderRadius: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#111', marginBottom: 2 }}>
+                На номера из кнопки «Заказать»
+              </div>
+              <div style={{ fontSize: 11, color: '#7e8b95', marginBottom: 8 }}>
+                Обращения на те номера WhatsApp, которые стоят в подписях постов.
+              </div>
+              <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
+                {leads.orderLines.map(l => (
+                  <div key={l.key}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#1e7c3a', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                      {(l.leads + l.deals).toLocaleString('ru-RU')}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#5c6873' }}>{l.label}</div>
+                    <div style={{ fontSize: 10, color: '#aab3bd' }}>+{l.phone}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Метка поста — то, ради чего она в подписи и стоит: обращение можно
               приписать площадке, а не догадываться по источнику. Ставит её робот
               в Битриксе, поэтому блок честно говорит, когда он ещё не настроен. */}

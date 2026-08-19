@@ -26,6 +26,15 @@ const CHANNELS = [
 // поэтому считаем её отдельно по номеру воронки.
 const SHOP_CATEGORY_ID = process.env.BITRIX_SHOP_CATEGORY_ID || '49';
 
+// Номера WhatsApp, на которые ведёт кнопка «Заказать» в постах. В Wazzup под каждый
+// номер заведена своя линия, и обращение на неё почти наверняка пришло с поста —
+// это самая точная привязка, доступная без роботов в портале.
+const { ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR } = require('./postCaption');
+const ORDER_LINES = [
+  { key: 'home',  label: 'WhatsApp заказов HOME',  digits: ORDER_WHATSAPP },
+  { key: 'shaar', label: 'WhatsApp заказов SHAAR', digits: ORDER_WHATSAPP_SHAAR },
+];
+
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map();
 
@@ -146,11 +155,26 @@ async function leadsByChannel({ days = 30 } = {}) {
 
   const byTag = await countByTag(period).catch(e => ({ configured: false, tags: [], error: e.message }));
 
+  // Обращения на номера из постов. Линию узнаём по номеру в названии источника:
+  // в портале он записан как «WAZZUP: WhatsApp - 996500001652».
+  const orderLines = [];
+  for (const line of ORDER_LINES) {
+    const ids = sources.filter(s => String(s.name).replace(/\D/g, '').includes(line.digits)).map(s => s.id);
+    if (!ids.length) continue;
+    const filter = { ...period, SOURCE_ID: ids };
+    const [leads, deals] = await Promise.all([
+      count('crm.lead.list', filter),
+      count('crm.deal.list', filter),
+    ]);
+    orderLines.push({ key: line.key, label: line.label, phone: line.digits, leads, deals });
+  }
+
   const data = {
     days,
     from: dayStr(from),
     byTag,
     totals: { leads: totalLeads, deals: totalDeals, all: totalLeads + totalDeals },
+    orderLines,
     channels: channels.filter(c => c.leads || c.deals)
       .sort((a, b) => (b.leads + b.deals) - (a.leads + a.deals)),
   };
