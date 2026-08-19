@@ -44,6 +44,18 @@ async function call(method, params = {}) {
   return data.result;
 }
 
+/**
+ * Сколько записей подходит под фильтр — без выкачивания самих записей.
+ * Битрикс отдаёт страницами по 50, и считать тысячи сделок постранично значило бы
+ * полсотни запросов на одну цифру. Общее число лежит в поле total ответа, поэтому
+ * просим одну страницу с единственным полем ID и берём его.
+ */
+async function count(method, filter = {}) {
+  const { data } = await bitrix.post(method, { filter, select: ['ID'], start: 0 });
+  if (data.error) throw new Error(`Bitrix24 ${method}: ${data.error_description || data.error}`);
+  return Number(data.total || 0);
+}
+
 async function getSections() {
   return call('crm.productsection.list');
 }
@@ -231,6 +243,7 @@ async function mapProductToBitrix(product, sectionId, options = {}) {
 
 module.exports = {
   call,
+  count,
   getSections,
   createSection,
   getProducts,

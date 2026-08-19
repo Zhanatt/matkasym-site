@@ -557,6 +557,23 @@ router.get('/report/person/:userId', async (req, res) => {
   }
 });
 
+// GET /leads?days=30 — сколько обращений пришло за период и по каким каналам.
+// Рядом с отчётом по постам: «сделали 342 публикации» и «пришло 55 обращений»
+// читаются вместе, а по отдельности не значат почти ничего.
+//
+// Считается по источнику обращения в Битриксе, не по метке поста: метки
+// (#inst_matrix) остаются внутри чата Wazzup и в поля CRM не попадают.
+router.get('/leads', async (req, res) => {
+  try {
+    const days = Math.min(Number(req.query.days) || 30, 365);
+    res.json(await require('../lib/bitrixLeads').leadsByChannel({ days }));
+  } catch (e) {
+    // Битрикс может быть недоступен или у вебхука кончились права — отчёт по постам
+    // из-за этого падать не должен, поэтому отдаём причину, а не 500.
+    res.json({ error: e.message, channels: [], totals: { leads: 0, deals: 0, all: 0 } });
+  }
+});
+
 // Черновик текста по товару — тот же, что уходит в предпросмотр.
 router.get('/draft/:productId', async (req, res) => {
   const p = await Product.findById(req.params.productId).lean();

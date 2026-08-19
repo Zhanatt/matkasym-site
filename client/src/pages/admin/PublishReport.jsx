@@ -48,6 +48,7 @@ function plural(n, one, few, many) {
 export default function PublishReport() {
   const [days,    setDays]    = useState(30);
   const [data,    setData]    = useState(null);
+  const [leads,   setLeads]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [open,    setOpen]    = useState(true);
   // Раскрытый сотрудник в таблице отклика и его посты. Кэш по ключу
@@ -62,6 +63,10 @@ export default function PublishReport() {
       .then(r => setData(r.data))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
+    // Обращения тянем отдельным запросом: Битрикс отвечает секунды, и ждать его,
+    // чтобы показать посты, незачем.
+    setLeads(null);
+    socialGetLeads(days).then(r => setLeads(r.data)).catch(() => setLeads(null));
   }, [days]);
 
   // Период сменился — цифры в раскрытом списке уже не те, закрываем.
@@ -89,6 +94,7 @@ export default function PublishReport() {
     .filter(p => p.engagement?.measured)
     .sort((a, b) => b.engagement.reactions - a.engagement.reactions);
   const maxReact = Math.max(1, ...byReactions.map(p => p.engagement.reactions));
+  const maxLeads = Math.max(1, ...(leads?.channels || []).map(c => c.leads + c.deals));
 
   const th = {
     padding: '9px 10px', fontSize: 11, color: '#8b98a5', fontWeight: 700,
@@ -192,6 +198,72 @@ export default function PublishReport() {
               </tbody>
             </table>
           </div>
+
+          {/* Обращения — из Битрикса, по источнику. Стоят рядом с постами
+              намеренно: «сделали 342 публикации» и «пришло 55 обращений» значат
+              что-то только вместе. Прямой связи «пост → обращение» тут нет —
+              метка поста остаётся внутри чата и в CRM не попадает. */}
+          {leads && !leads.error && leads.channels?.length > 0 && (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#111', margin: '26px 0 2px' }}>
+                Обращения из Битрикса
+              </div>
+              <div style={{ fontSize: 11, color: '#aab3bd', marginBottom: 8, lineHeight: 1.5 }}>
+                Новые лиды и сделки за тот же период, по источнику обращения.
+                Это канал целиком, а не конкретный пост: метку из подписи (#inst_matrix)
+                Wazzup оставляет внутри чата, в поля CRM она не попадает.
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 380 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...th, textAlign: 'left' }}>Канал</th>
+                      <th style={{ ...th, textAlign: 'left', width: '40%' }}>Обращений</th>
+                      <th style={th}>Лиды</th>
+                      <th style={th}>Сделки</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leads.channels.map(c => {
+                      const all = c.leads + c.deals;
+                      return (
+                        <tr key={c.key}>
+                          <td style={{ ...td, textAlign: 'left', fontWeight: 700, color: '#111' }}>{c.label}</td>
+                          <td style={{ ...td, textAlign: 'left' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ flex: 1, minWidth: 40, background: '#f2f4f7', borderRadius: 5, height: 14, overflow: 'hidden' }}>
+                                <div style={{ width: `${(all / maxLeads) * 100}%`, height: '100%', background: '#1e7c3a', borderRadius: 5 }} />
+                              </div>
+                              <b style={{ width: 44, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {all.toLocaleString('ru-RU')}
+                              </b>
+                            </div>
+                          </td>
+                          <td style={{ ...td, color: c.leads ? '#111' : '#dde2e7' }}>{c.leads || '—'}</td>
+                          <td style={{ ...td, color: c.deals ? '#111' : '#dde2e7' }}>{c.deals ? c.deals.toLocaleString('ru-RU') : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr>
+                      <td style={{ ...td, textAlign: 'left', color: '#8b98a5', fontWeight: 700 }}>Итого</td>
+                      <td style={{ ...td, textAlign: 'left', color: '#8b98a5', fontWeight: 700, paddingLeft: 10 }}>
+                        {leads.totals.all.toLocaleString('ru-RU')}
+                      </td>
+                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>{leads.totals.leads}</td>
+                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>{leads.totals.deals.toLocaleString('ru-RU')}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {leads?.error && (
+            <div style={{ fontSize: 11, color: '#b26a00', margin: '20px 0 0' }}>
+              Обращения из Битрикса не получены: {leads.error}
+            </div>
+          )}
 
           {/* Отклик — отдельной таблицей от выработки: «сделал много постов» и
               «посты зашли» это два разных вопроса к дизайнеру, и в одной таблице
