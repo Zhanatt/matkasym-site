@@ -50,6 +50,12 @@ export default function PublishReport() {
   const maxPub = Math.max(1, ...people.map(p => p.publications));
   const maxDay = Math.max(1, ...byDay.map(d => d.publications));
 
+  // В таблице отклика — только те, у кого в периоде вообще были посты с цифрами
+  const byReactions = people
+    .filter(p => p.engagement?.measured)
+    .sort((a, b) => b.engagement.reactions - a.engagement.reactions);
+  const maxReact = Math.max(1, ...byReactions.map(p => p.engagement.reactions));
+
   const th = {
     padding: '9px 10px', fontSize: 11, color: '#8b98a5', fontWeight: 700,
     textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1.5px solid #eef0f3',
@@ -152,6 +158,85 @@ export default function PublishReport() {
               </tbody>
             </table>
           </div>
+
+          {/* Отклик — отдельной таблицей от выработки: «сделал много постов» и
+              «посты зашли» это два разных вопроса к дизайнеру, и в одной таблице
+              на девять колонок их не прочитать. */}
+          {data.totals.measured > 0 && (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#111', margin: '26px 0 2px' }}>
+                Отклик на посты
+              </div>
+              <div style={{ fontSize: 11, color: '#aab3bd', marginBottom: 8, lineHeight: 1.5 }}>
+                Реакции — лайки Instagram и все реакции Facebook вместе.
+                Отклик — доля откликнувшихся от охвата, считается по Instagram: Facebook охват не отдаёт.
+                {data.totals.noData > 0 && ` Постов без цифр: ${data.totals.noData} — удалены с площадки или статистику ещё не собирали.`}
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 560 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...th, textAlign: 'left' }}>Сотрудник</th>
+                      <th style={{ ...th, textAlign: 'left', width: '26%' }}>Реакции</th>
+                      <th style={th}>На пост</th>
+                      <th style={th}>Комменты</th>
+                      <th style={th}>Сохран.</th>
+                      <th style={th}>Охват</th>
+                      <th style={th}>Отклик</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byReactions.map(p => {
+                      const e = p.engagement;
+                      return (
+                        <tr key={p.id}>
+                          <td style={{ ...td, textAlign: 'left' }}>
+                            <div style={{ fontWeight: 700, color: '#111' }}>{p.name}</div>
+                            <div style={{ fontSize: 10, color: '#aab3bd' }}>
+                              {e.measured} {plural(e.measured, 'пост посчитан', 'поста посчитано', 'постов посчитано')}
+                            </div>
+                          </td>
+                          <td style={{ ...td, textAlign: 'left' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ flex: 1, minWidth: 40, background: '#f2f4f7', borderRadius: 5, height: 14, overflow: 'hidden' }}>
+                                <div style={{ width: `${(e.reactions / maxReact) * 100}%`, height: '100%', background: '#e05263', borderRadius: 5 }} />
+                              </div>
+                              <b style={{ width: 30, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{e.reactions}</b>
+                            </div>
+                          </td>
+                          <td style={{ ...td, fontWeight: 700 }}>{e.perPost === null ? '—' : e.perPost.toFixed(1)}</td>
+                          <td style={{ ...td, color: e.comments ? '#111' : '#dde2e7' }}>{e.comments || '—'}</td>
+                          <td style={{ ...td, color: e.saved ? '#111' : '#dde2e7' }}>{e.saved || '—'}</td>
+                          <td style={{ ...td, color: e.reach ? '#5c6873' : '#dde2e7' }}>
+                            {e.reach ? e.reach.toLocaleString('ru-RU') : '—'}
+                          </td>
+                          <td style={{ ...td, fontWeight: 700, color: e.responseRate === null ? '#dde2e7' : '#111' }}>
+                            {e.responseRate === null ? '—' : `${(e.responseRate * 100).toFixed(1)}%`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr>
+                      <td style={{ ...td, textAlign: 'left', color: '#8b98a5', fontWeight: 700 }}>Итого</td>
+                      <td style={{ ...td, textAlign: 'left', color: '#8b98a5', fontWeight: 700, paddingLeft: 10 }}>
+                        {data.totals.reactions}
+                      </td>
+                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>
+                        {data.totals.measured ? (data.totals.reactions / data.totals.measured).toFixed(1) : '—'}
+                      </td>
+                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>{data.totals.comments || '—'}</td>
+                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>{data.totals.saved || '—'}</td>
+                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>{data.totals.reach.toLocaleString('ru-RU')}</td>
+                      <td style={{ ...td, color: '#8b98a5', fontWeight: 700 }}>
+                        {data.totals.reach ? `${(data.totals.reactions / data.totals.reach * 100).toFixed(1)}%` : '—'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           {/* По дням — списком, а не матрицей «дата × сотрудник»: в матрице
               на шесть человек почти все клетки пустые, и читать её невозможно. */}

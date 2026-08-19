@@ -10,7 +10,7 @@ const Publication  = require('../models/Publication');
 const Counter      = require('../models/Counter');
 const Product      = require('../models/Product');
 const { buildProductText, captionFor, runPublication, unpublishPublication,
-        refreshStats, refreshRecentStats,
+        refreshStats, refreshRecentStats, STATS_PLATFORMS,
         recentlyPublished, DUPLICATE_WINDOW_MS, PLATFORM_LABELS } = require('../lib/socialPublish');
 const { normLang } = require('../lib/postLang');
 const { postTitle } = require('../lib/postCaption');
@@ -404,6 +404,63 @@ router.get('/report', async (req, res) => {
       p.role     = p.role || roleOf[p.id] || '';
     }
 
+    // Отклик на посты этого человека: сколько людей увидело и сколько откликнулось.
+    // Выработка («сделал 30 постов») ничего не говорит о том, сработали они или нет,
+    // а вопрос к дизайнеру именно такой.
+    //
+    // Реакции складываем из двух площадок: у Instagram это лайки, у Facebook —
+    // все реакции разом (лайк, сердце, «ха-ха»). Считаем по одной строке на площадку:
+    // публикация уходит в несколько мест, и отклик у каждого свой.
+    const measuredPubs = await Publication.find(match)
+      .select('createdBy targets.platform targets.status targets.stats').lean();
+
+    for (const pub of measuredPubs) {
+      const uid = String(pub.createdBy || 'none');
+      const p = people[uid] || (people[uid] = {
+        id: uid, name: nameOf[uid]?.name || 'без автора', role: nameOf[uid]?.role || '',
+        publications: 0, posts: 0,
+      });
+      const e = p.engagement || (p.engagement = {
+        reactions: 0, comments: 0, saved: 0, shares: 0, views: 0, reach: 0,
+        // measured — постов, по которым цифры есть; noData — вышли, но цифр нет
+        // (пост удалён с площадки или статистику ещё не собирали). Без этого
+        // деления среднее на пост врёт: делить пришлось бы на посты без данных.
+        measured: 0, noData: 0,
+        // Для «отклика к охвату» берём только те посты, где охват известен:
+        // у Facebook его нет, и общий охват занизил бы долю.
+        reachReactions: 0, reachBase: 0,
+      });
+
+      for (const t of pub.targets || []) {
+        if (!STATS_PLATFORMS.includes(t.platform) || t.status !== 'published') continue;
+        const s = t.stats || {};
+        const nums = ['views', 'reach', 'likes', 'reactions', 'comments', 'saved', 'shares']
+          .some(k => typeof s[k] === 'number');
+        if (!nums) { e.noData++; continue; }
+
+        const reactions = (s.likes || 0) + (s.reactions || 0);
+        e.measured++;
+        e.reactions += reactions;
+        e.comments  += (s.comments || 0) + (s.replies || 0);
+        e.saved     += s.saved  || 0;
+        e.shares    += s.shares || 0;
+        e.views     += s.views  || 0;
+        e.reach     += s.reach  || 0;
+        if (s.reach > 0) { e.reachReactions += reactions; e.reachBase += s.reach; }
+      }
+    }
+
+    for (const p of Object.values(people)) {
+      const e = p.engagement || (p.engagement = {
+        reactions: 0, comments: 0, saved: 0, shares: 0, views: 0, reach: 0,
+        measured: 0, noData: 0, reachReactions: 0, reachBase: 0,
+      });
+      e.perPost      = e.measured ? e.reactions / e.measured : null;
+      e.responseRate = e.reachBase ? e.reachReactions / e.reachBase : null;
+    }
+
+    const sumEng = (key) => Object.values(people).reduce((s, p) => s + (p.engagement?.[key] || 0), 0);
+
     res.json({
       days,
       // Сначала те, кто публиковал в этом периоде, потом остальные — по зоне.
@@ -413,6 +470,13 @@ router.get('/report', async (req, res) => {
       totals: {
         publications: Object.values(people).reduce((s, p) => s + p.publications, 0),
         posts:        Object.values(people).reduce((s, p) => s + p.posts, 0),
+        reactions:    sumEng('reactions'),
+        comments:     sumEng('comments'),
+        saved:        sumEng('saved'),
+        views:        sumEng('views'),
+        reach:        sumEng('reach'),
+        measured:     sumEng('measured'),
+        noData:       sumEng('noData'),
       },
     });
   } catch (e) {

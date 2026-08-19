@@ -297,7 +297,8 @@ async function refreshRecentStats({ limit = 20 } = {}) {
 // сбор кнопкой отменяет автоматический, а не дублируется с ним.
 const BISHKEK_OFFSET_H  = 6;
 const STATS_HOUR        = 7;    // утро: у вчерашних вечерних постов цифры уже набежали
-const STATS_DAILY_LIMIT = 50;   // столько же публикаций показывает журнал
+const STATS_DAILY_LIMIT    = 50;   // столько же публикаций показывает журнал
+const STATS_BACKFILL_LIMIT = 100;  // добор пропусков за прошлые дни
 
 let statsRanOn = '';
 
@@ -315,10 +316,44 @@ async function tickStats() {
     return null;
   }
 
-  const r = await refreshRecentStats({ limit: STATS_DAILY_LIMIT });
+  // Свежие посты — цифры у них ещё растут; потом добираем те, по которым
+  // статистику не собирали вовсе. Без второго прохода отчёт по дизайнерам
+  // считался бы по последним пятидесяти публикациям, а остальные выглядели бы
+  // как посты вообще без отклика.
+  const fresh  = await refreshRecentStats({ limit: STATS_DAILY_LIMIT });
+  const filled = await refreshMissingStats({ limit: STATS_BACKFILL_LIMIT });
   statsRanOn = day;
-  console.log(`[stats] ежедневный сбор: публикаций ${r.posts}, площадок с цифрами ${r.updated}, без цифр ${r.failed}`);
-  return r;
+  console.log(`[stats] ежедневный сбор: свежих ${fresh.posts} (площадок ${fresh.updated}), добрано ${filled.posts} (площадок ${filled.updated})`);
+  return { posts: fresh.posts + filled.posts, updated: fresh.updated + filled.updated, failed: fresh.failed + filled.failed };
+}
+
+/**
+ * Добрать посты, по которым отклик не собирали ни разу.
+ *
+ * Такие берутся из обычной жизни сервиса: пост вышел, пока сбора ещё не было,
+ * или в тот день сбор не дошёл до него по лимиту. В отчёте по дизайнерам они
+ * тянут средние вниз, поэтому дыры закрываем, начиная со свежих.
+ */
+async function refreshMissingStats({ limit = 100 } = {}) {
+  const pubs = await Publication.find({
+    targets: { $elemMatch: {
+      status: 'published',
+      platform: { $in: STATS_PLATFORMS },
+      externalId: { $nin: ['', null] },
+      'stats.updatedAt': null,
+    } },
+  }).sort({ createdAt: -1 }).limit(Math.min(limit, 200)).select('_id').lean();
+
+  let updated = 0, failed = 0;
+  for (let i = 0; i < pubs.length; i += STATS_CONCURRENCY) {
+    const results = await Promise.all(pubs.slice(i, i + STATS_CONCURRENCY).map(p =>
+      refreshStats(p._id).catch(e => {
+        console.error('[stats] backfill', p._id, e.message);
+        return { updated: 0, failed: 1 };
+      })));
+    results.forEach(r => { updated += r.updated || 0; failed += r.failed || 0; });
+  }
+  return { ok: true, posts: pubs.length, updated, failed };
 }
 
 // Площадки, которые умеют отдавать отклик на пост
@@ -437,6 +472,7 @@ module.exports = {
   unpublishPublication,
   refreshStats,
   refreshRecentStats,
+  refreshMissingStats,
   tickStats,
   STATS_PLATFORMS,
   tickPublications,
