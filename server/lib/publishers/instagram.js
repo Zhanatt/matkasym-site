@@ -156,8 +156,11 @@ const METRIC_FALLBACK = { views: 'impressions' };
 // permission» значит, что приложению Meta не выдали instagram_manage_insights.
 // Лайки и комментарии при этом приходят — важно, чтобы человек видел разницу
 // между «пост никто не смотрел» и «нам не дали цифру».
-function explainInsights(msg) {
+function explainStatsError(msg) {
   const text = String(msg || '');
+  if (/does not exist|cannot be loaded|Unsupported get request/i.test(text)) {
+    return 'Instagram не отдаёт этот пост: обычно так бывает, если его удалили или скрыли в аккаунте.';
+  }
   if (/#10\b|does not have permission|instagram_manage_insights/i.test(text)) {
     return 'Нет доступа к статистике: приложению в Meta нужно разрешение instagram_manage_insights, '
       + 'после него перевыпустите токен — появятся просмотры, охват и сохранения. '
@@ -220,7 +223,7 @@ async function stats({ account, externalId, postType = 'feed' }) {
     if (typeof base.like_count === 'number')     out.likes    = base.like_count;
     if (typeof base.comments_count === 'number') out.comments = base.comments_count;
   } catch (e) {
-    notes.push(e.message);
+    notes.push(explainStatsError(e.message));
   }
 
   try {
@@ -230,8 +233,8 @@ async function stats({ account, externalId, postType = 'feed' }) {
     // Статистика историй живёт 24 часа — по старым Meta отвечает ошибкой,
     // и это не поломка, а ожидаемое поведение.
     notes.push(postType === 'story'
-      ? `${explainInsights(e.message)} (у историй статистика доступна сутки)`
-      : explainInsights(e.message));
+      ? `${explainStatsError(e.message)} (у историй статистика доступна сутки)`
+      : explainStatsError(e.message));
   }
 
   // Обе части часто падают с одной и той же причиной (протухший токен) —
