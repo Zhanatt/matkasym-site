@@ -411,8 +411,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     return {
       ...b, rows, qty, buffer,
       showStock:  !isIndependentKit && (qty > 0 || known),
-      // Буфер ведут по Кыргызстану: у казахской базы свой учёт, там его не показываем
-      showBuffer: !isIndependentKit && !b.kz,
+      // Буфер ведут по Кыргызстану и только там, где база знает товар
+      showBuffer: !isIndependentKit && !b.kz && (qty > 0 || known),
       belowBuffer: buffer > 0 && qty < buffer,
     };
   }).filter(Boolean);
@@ -672,6 +672,28 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   )}
                 </div>
 
+                {/* Цены сайта. Показываем всегда: прайс базы 1С покрывает не все типы цен
+                    (розничной может не быть ни в одной базе), а каталог, PDF и посты
+                    читают именно эти поля — прятать их за карточками баз нельзя. */}
+                {prices.length > 0 && !isIndependentKit && country !== 'KZ' && (
+                  <div style={card}>
+                    <div style={{ ...cardTitle, marginBottom: 4 }}>Цены на сайте</div>
+                    <div style={{ fontSize: 12, color: UI.label, marginBottom: 12 }}>
+                      их показывают каталог, PDF и посты
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(auto-fit, minmax(150px,1fr))', gap: 10 }}>
+                      {prices.map(p => (
+                        <div key={p.label} style={{ background: '#f8fafc', border: `1px solid ${UI.lineSoft}`, borderRadius: 12, padding: '10px 14px' }}>
+                          <div style={{ fontSize: 11.5, color: UI.label, fontWeight: 700 }}>{p.label}</div>
+                          <div style={{ fontSize: 17, fontWeight: 800, color: UI.ink, marginTop: 2 }}>
+                            {p.value.toLocaleString('ru')} {signOf(localProduct)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Остатки и цены по базам */}
                 {baseCards.length > 0 && (
                   <div style={card}>
@@ -791,22 +813,6 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   </div>
                 )}
 
-                {/* Цены сайта — если баз ещё нет */}
-                {prices.length > 0 && !baseCards.length && !isIndependentKit && country !== 'KZ' && (
-                  <div style={card}>
-                    <div style={cardTitle}>Цены на сайте</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(auto-fit, minmax(150px,1fr))', gap: 10 }}>
-                      {prices.map(p => (
-                        <div key={p.label} style={{ background: '#f8fafc', border: `1px solid ${UI.lineSoft}`, borderRadius: 12, padding: '10px 14px' }}>
-                          <div style={{ fontSize: 11.5, color: UI.label, fontWeight: 700 }}>{p.label}</div>
-                          <div style={{ fontSize: 17, fontWeight: 800, color: UI.ink, marginTop: 2 }}>
-                            {p.value.toLocaleString('ru')} {signOf(localProduct)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
