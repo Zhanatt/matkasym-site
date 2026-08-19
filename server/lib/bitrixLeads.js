@@ -80,9 +80,21 @@ async function loadTagField() {
     return { field: f.FIELD_NAME, values: byXml };
   };
 
+  // Второе поле — текстовое: если робот в Битриксе умеет отдать текст сообщения
+  // целиком, метку выгоднее писать как есть, а разбирать уже здесь. Какой из двух
+  // способов заработает в портале, зависит от того, что там предложит конструктор,
+  // поэтому считаем по обоим.
+  const readRaw = async (method) => {
+    const list = await call(method, { filter: {} }).catch(() => []);
+    const f = (list || []).find(x => x.XML_ID === 'POST_TAG_RAW');
+    return f ? f.FIELD_NAME : null;
+  };
+
   tagFieldCache = {
-    deal: await read('crm.deal.userfield.list'),
-    lead: await read('crm.lead.userfield.list'),
+    deal:    await read('crm.deal.userfield.list'),
+    lead:    await read('crm.lead.userfield.list'),
+    dealRaw: await readRaw('crm.deal.userfield.list'),
+    leadRaw: await readRaw('crm.lead.userfield.list'),
   };
   tagFieldAt = Date.now();
   return tagFieldCache;
@@ -93,17 +105,21 @@ async function loadTagField() {
 // поле configured в ответе.
 async function countByTag(period) {
   const uf = await loadTagField();
-  if (!uf.deal && !uf.lead) return { configured: false, tags: [] };
+  if (!uf.deal && !uf.lead && !uf.dealRaw && !uf.leadRaw) return { configured: false, tags: [] };
 
   const tags = [];
   for (const t of TAGS) {
     const dealId = uf.deal?.values?.[t.xmlId];
     const leadId = uf.lead?.values?.[t.xmlId];
-    const [deals, leads] = await Promise.all([
+    // Робот заполняет одно поле из двух — списком или текстом, поэтому суммируем:
+    // одна и та же сделка в обе строки не попадёт.
+    const [dealsList, leadsList, dealsRaw, leadsRaw] = await Promise.all([
       dealId ? count('crm.deal.list', { ...period, [uf.deal.field]: dealId }) : 0,
       leadId ? count('crm.lead.list', { ...period, [uf.lead.field]: leadId }) : 0,
+      uf.dealRaw ? count('crm.deal.list', { ...period, [`%${uf.dealRaw}`]: t.xmlId }) : 0,
+      uf.leadRaw ? count('crm.lead.list', { ...period, [`%${uf.leadRaw}`]: t.xmlId }) : 0,
     ]);
-    tags.push({ key: t.key, label: t.label, leads, deals });
+    tags.push({ key: t.key, label: t.label, leads: leadsList + leadsRaw, deals: dealsList + dealsRaw });
   }
   return { configured: true, tags };
 }
