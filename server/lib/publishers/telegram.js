@@ -1,6 +1,6 @@
 // Публикация в Telegram-группу / канал. Бот — тот же (TELEGRAM_BOT_TOKEN),
 // адрес берётся из настроек площадки (config.chatId), а не из env: групп может быть несколько.
-const { publishToChat, tgImage, clampCaption } = require('../telegram');
+const { publishToChat, tgImage, clampCaption, getChatInfo, fetchPostViews } = require('../telegram');
 
 const TOKEN = () => process.env.TELEGRAM_BOT_TOKEN;
 
@@ -99,4 +99,43 @@ async function unpublish({ account, externalId }) {
   };
 }
 
-module.exports = { publish, unpublish };
+// ── Отклик на пост ───────────────────────────────────────────────────────────
+//
+// Telegram здесь устроен не как Meta, и границы жёсткие:
+//   · просмотры есть ТОЛЬКО у каналов — в группах такого счётчика не существует;
+//   · Bot API их не отдаёт вовсе, поэтому у публичного канала читаем со страницы
+//     поста, а у приватного взять неоткуда;
+//   · реакции запросом не получить — они приходят событиями в вебхук и копятся
+//     в stats.reactions сами (см. index.js). Здесь их не трогаем: refreshStats
+//     подмешивает новые цифры к старым, накопленное переживёт обновление.
+async function stats({ account, externalId }) {
+  const chatId = account?.config?.chatId;
+  if (!chatId)     return { ok: false, error: 'Не указан chat_id' };
+  if (!externalId) return { ok: false, error: 'У поста нет id сообщения' };
+  if (!TOKEN())    return { ok: false, error: 'Не задан TELEGRAM_BOT_TOKEN' };
+
+  let chat;
+  try {
+    chat = await getChatInfo(chatId);
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+
+  // Нечего и пытаться: это свойство самого чата, а не сбой. Помечаем skip —
+  // иначе одна и та же надпись про «в группе просмотров нет» висела бы красным
+  // под каждым постом, а в отчёте они считались бы постами без данных.
+  if (chat.type !== 'channel') {
+    return { ok: false, skip: true, error: 'В группах Telegram просмотров нет — считаются только реакции' };
+  }
+  if (!chat.username) {
+    return { ok: false, skip: true, error: 'Просмотры Telegram отдаёт только у публичных каналов' };
+  }
+
+  // Альбом — это несколько сообщений подряд, просмотры у них общие: берём первое.
+  const firstId = String(externalId).split(',')[0].trim();
+  const r = await fetchPostViews(chat.username, firstId);
+  if (r.error) return { ok: false, error: r.error };
+  return { ok: true, stats: { views: r.views } };
+}
+
+module.exports = { publish, unpublish, stats };

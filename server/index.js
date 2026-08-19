@@ -89,6 +89,14 @@ app.post('/api/telegram-webhook', async (req, res) => {
       ).catch(() => {});
     }
 
+    // Реакции на посты: считаем отклик по Telegram так же, как по Instagram.
+    // Приходят отдельными типами обновлений, message в них нет.
+    if (update.message_reaction || update.message_reaction_count) {
+      const { applyTelegramReaction } = require('./lib/socialPublish');
+      applyTelegramReaction(update).catch(e => console.error('[tg reaction]', e.message));
+      return res.sendStatus(200);
+    }
+
     if (!message) return res.sendStatus(200);
 
     const chatId = message.chat?.id;
@@ -210,6 +218,12 @@ mongoose
         console.error('⚠️ Migration ProductReview index failed:', e.message);
       }
     }
+
+    // Реакции Telegram приходят только тем, кто на них подписан: вебхук заведён
+    // снаружи, и в его allowed_updates этих типов нет — дописываем при старте.
+    require('./lib/telegram').ensureWebhookUpdates()
+      .then(r => { if (!r.ok) console.log('[telegram] подписка на реакции не настроена:', r.reason); })
+      .catch(e => console.error('[telegram] ensureWebhookUpdates:', e.message));
 
     // Внутренний тик автопубликаций каждую минуту (пока сервис не спит).
     // Дублируется внешним cron-пингом /api/cron/tick для надёжности на Render free.

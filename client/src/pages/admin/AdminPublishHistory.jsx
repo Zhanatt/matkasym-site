@@ -34,8 +34,10 @@ const METRICS = [
 
 const hasNumbers = s => METRICS.some(m => typeof s?.[m.key] === 'number');
 
-// Площадки, которые умеют отдавать отклик на пост (см. lib/socialPublish.js)
-const STATS_PLATFORMS = ['instagram', 'facebook'];
+// Площадки, которые умеют отдавать отклик на пост (см. lib/socialPublish.js).
+// У Telegram отдельная механика: просмотры читаются только у публичного канала,
+// а реакции копятся сами из вебхука — кнопка их не тянет, но показать их надо.
+const STATS_PLATFORMS = ['instagram', 'facebook', 'telegram'];
 
 // Площадка отдаёт не все метрики (у историй нет лайков, охват требует прав в Meta),
 // поэтому рисуем только пришедшие числа. Пустой отчёт с прочерками выглядел бы так,

@@ -241,6 +241,10 @@ async function refreshStats(pubId) {
       res = { ok: false, error: e.message };
     }
 
+    // skip — площадка таких цифр не отдаёт в принципе (в группе Telegram нет
+    // просмотров). Это не ошибка сбора: карточку не трогаем совсем.
+    if (res.skip) continue;
+
     if (res.ok) {
       // Прежние цифры не затираем целиком: у историй охват через сутки перестаёт
       // отдаваться, и обнулять уже собранное было бы враньём.
@@ -354,6 +358,55 @@ async function refreshMissingStats({ limit = 100 } = {}) {
     results.forEach(r => { updated += r.updated || 0; failed += r.failed || 0; });
   }
   return { ok: true, posts: pubs.length, updated, failed };
+}
+
+/**
+ * Реакция на пост Telegram — из вебхука в статистику публикации.
+ *
+ * Прилетает два разных события, и считаются они по-разному:
+ *   · message_reaction_count (каналы) — готовая сумма по каждому эмодзи,
+ *     её просто записываем;
+ *   · message_reaction (группы) — «человек поставил / снял», абсолютного числа
+ *     в нём нет, поэтому ведём счётчик: появилась реакция +1, убрал −1, сменил
+ *     эмодзи 0. Это число откликнувшихся людей, а не сумма эмодзи — по смыслу
+ *     ближе всего к лайкам Instagram, с которыми оно потом складывается в отчёте.
+ *
+ * Пост ищем по message_id внутри externalId: у альбома там список id через запятую,
+ * а реакцию человек ставит на любое сообщение из него.
+ */
+async function applyTelegramReaction(update) {
+  const u = update.message_reaction_count || update.message_reaction;
+  if (!u?.chat?.id || !u.message_id) return null;
+
+  const id = String(u.message_id);
+  const pub = await Publication.findOne({
+    targets: { $elemMatch: {
+      platform: 'telegram',
+      status: 'published',
+      externalId: new RegExp(`(^|,)\\s*${id}\\s*(,|$)`),
+    } },
+  });
+  if (!pub) return null;
+
+  const i = pub.targets.findIndex(t => t.platform === 'telegram'
+    && new RegExp(`(^|,)\\s*${id}\\s*(,|$)`).test(t.externalId || ''));
+  if (i < 0) return null;
+
+  const prev = pub.targets[i].stats?.toObject?.() || pub.targets[i].stats || {};
+
+  if (update.message_reaction_count) {
+    const total = (u.reactions || []).reduce((n, r) => n + (r.total_count || 0), 0);
+    pub.targets[i].stats = { ...prev, reactions: total, updatedAt: new Date() };
+  } else {
+    const had = (u.old_reaction || []).length > 0;
+    const has = (u.new_reaction || []).length > 0;
+    const delta = (has ? 1 : 0) - (had ? 1 : 0);
+    if (!delta) return null;
+    pub.targets[i].stats = { ...prev, reactions: Math.max(0, (prev.reactions || 0) + delta), updatedAt: new Date() };
+  }
+
+  await pub.save();
+  return { number: pub.number, reactions: pub.targets[i].stats.reactions };
 }
 
 // Площадки, которые умеют отдавать отклик на пост
@@ -473,6 +526,7 @@ module.exports = {
   refreshStats,
   refreshRecentStats,
   refreshMissingStats,
+  applyTelegramReaction,
   tickStats,
   STATS_PLATFORMS,
   tickPublications,

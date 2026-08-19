@@ -342,4 +342,92 @@ async function downloadTelegramFile(fileId) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-module.exports = { sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage, clampCaption, downloadTelegramFile };
+
+// ── Вебхук: типы обновлений ──────────────────────────────────────────────────
+//
+// Реакции Telegram присылает только тем, кто явно на них подписался: в пустом
+// allowed_updates message_reaction и message_reaction_count не входят. Вебхук у нас
+// заведён руками снаружи, поэтому при старте дописываем недостающие типы к тому же
+// адресу — иначе о реакциях мы бы просто никогда не узнали.
+//
+// Считать реакции задним числом Telegram не даёт: узнать текущее число реакций у
+// старого поста нечем, приходят только события «поставил / снял». Поэтому счётчик
+// начинает набираться с момента подписки.
+const WEBHOOK_UPDATES = [
+  'message', 'edited_message', 'channel_post', 'edited_channel_post',
+  'callback_query', 'my_chat_member',
+  'message_reaction', 'message_reaction_count',
+];
+
+async function ensureWebhookUpdates() {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return { ok: false, reason: 'нет TELEGRAM_BOT_TOKEN' };
+
+  const info = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`).then(r => r.json());
+  const url = info?.result?.url;
+  if (!url) return { ok: false, reason: 'вебхук не настроен' };
+
+  const have = info.result.allowed_updates || [];
+  const need = ['message_reaction', 'message_reaction_count'];
+  if (need.every(u => have.includes(u))) return { ok: true, changed: false };
+
+  // Переставляем вебхук на тот же адрес, меняется только список типов.
+  // drop_pending_updates не трогаем: очередь обновлений должна дойти как есть.
+  const r = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, allowed_updates: WEBHOOK_UPDATES }),
+  }).then(x => x.json());
+
+  if (!r.ok) return { ok: false, reason: r.description };
+  console.log('[telegram] вебхук подписан на реакции');
+  return { ok: true, changed: true };
+}
+
+// Данные чата: тип и публичное имя. Просмотры есть только у каналов, а прочитать
+// их можно лишь у публичного — по адресу t.me/<username>/<id>. Ответ кэшируем:
+// на каждый пост в отчёте getChat дёргать незачем, чат меняется раз в никогда.
+const chatCache = new Map();
+const CHAT_TTL_MS = 60 * 60 * 1000;
+
+async function getChatInfo(chatId) {
+  const key = String(chatId);
+  const hit = chatCache.get(key);
+  if (hit && Date.now() - hit.at < CHAT_TTL_MS) return hit.data;
+
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new Error('Не задан TELEGRAM_BOT_TOKEN');
+  const r = await fetch(`https://api.telegram.org/bot${token}/getChat?chat_id=${encodeURIComponent(chatId)}`)
+    .then(x => x.json());
+  if (!r.ok) throw new Error(r.description || 'Telegram не отдал данные чата');
+
+  const data = { type: r.result.type, username: r.result.username || '', title: r.result.title || '' };
+  chatCache.set(key, { at: Date.now(), data });
+  return data;
+}
+
+// «1.2K» / «7» с публичной страницы поста → число
+function parseViews(raw) {
+  const t = String(raw || '').trim().replace(/\s/g, '');
+  const m = t.match(/^([\d.,]+)([KMkm]?)$/);
+  if (!m) return null;
+  const n = parseFloat(m[1].replace(',', '.'));
+  if (isNaN(n)) return null;
+  return Math.round(n * ({ k: 1e3, m: 1e6 }[m[2].toLowerCase()] || 1));
+}
+
+// Просмотры поста публичного канала. Bot API их не отдаёт вообще — берём со
+// страницы, которую Telegram сам показывает всем желающим.
+async function fetchPostViews(username, messageId) {
+  const r = await fetch(`https://t.me/${username}/${messageId}?embed=1`, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; matkasym-site/1.0)' },
+  });
+  if (!r.ok) return { error: `Telegram ответил ${r.status}` };
+  const html = await r.text();
+  if (/tgme_widget_message_error/.test(html)) return { error: 'Пост не найден — удалён из канала' };
+  const m = html.match(/_views">([^<]+)</);
+  const views = m ? parseViews(m[1]) : null;
+  return views === null ? { error: 'На странице поста нет счётчика просмотров' } : { views };
+}
+
+module.exports = { ensureWebhookUpdates, getChatInfo, fetchPostViews, sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage, clampCaption, downloadTelegramFile };
