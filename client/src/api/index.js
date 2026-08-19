@@ -48,7 +48,7 @@ export const adminUpdateUser  = (id, data) => api.patch(`/admin/users/${id}`, da
 export const adminSetUserPassword = (id, password) => api.patch(`/admin/users/${id}/password`, { password });
 export const adminDeleteUser  = (id)    => api.delete(`/admin/users/${id}`);
 export const adminGetUserActivity = (id) => api.get(`/admin/users/${id}/activity`);
-export const adminSetBufferStock = (id, bufferStock) => api.patch(`/admin/products/${id}/buffer-stock`, { bufferStock });
+export const adminSetBufferStock = (id, bufferStock, base) => api.patch(`/admin/products/${id}/buffer-stock`, { bufferStock, base });
 export const adminGetBufferStock = (zone) => api.get('/admin/buffer-stock', { params: zone ? { zone } : {} });
 export const adminGetNomenclature = (set) => api.get('/admin/nomenclature', { params: set ? { set } : {} });
 export const adminDeleteImage = (url)       => api.delete('/admin/images', { data: { url } });

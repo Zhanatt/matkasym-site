@@ -10,11 +10,61 @@ const NO_PHOTO = '/logos/no-photo.png';
 
 // Прайсы баз 1С (зеркалит server/lib/stockBases.js). Набор цен у баз разный.
 const PRICE_BASES = [
-  { key: 'makein',   label: 'Make-in',     priceTypes: ['retail', 'wholesale', 'dealer', 'cost'] },
-  { key: 'matkasym', label: 'Matkasym',    priceTypes: ['retail', 'dealer', 'wholesale', 'cost', 'export'] },
-  { key: 'qtop',     label: 'Matkasym KZ', priceTypes: ['retail', 'wholesale', 'cost'], kz: true },
+  { key: 'makein',   label: 'Make-in',     icon: '📦', hint: 'Кыргызстан', priceTypes: ['retail', 'wholesale', 'dealer', 'cost'] },
+  { key: 'matkasym', label: 'Matkasym',    icon: '🏠', hint: 'Кыргызстан', priceTypes: ['retail', 'dealer', 'wholesale', 'cost', 'export'] },
+  { key: 'qtop',     label: 'Matkasym KZ', icon: '🇰🇿', hint: 'Казахстан',  priceTypes: ['retail', 'wholesale', 'cost'], kz: true },
 ];
 const PRICE_LABEL = { retail: 'розн.', wholesale: 'опт.', dealer: 'дилер.', cost: 'закуп.', export: 'экспорт' };
+// Развёрнутые подписи — для карточек баз в новом макете
+const PRICE_FULL  = { retail: 'Розничная цена', wholesale: 'Оптовая цена', dealer: 'Дилерская цена', cost: 'Закупочная цена', export: 'Экспортная цена' };
+
+// Палитра карточки: светлый холст + белые панели, как в остальной админке
+const UI = {
+  canvas: '#eef2f8', card: '#ffffff', line: '#e6ecf4', lineSoft: '#f1f5f9',
+  ink: '#0f172a', muted: '#64748b', label: '#94a3b8',
+  blue: '#2563eb', blueWash: '#eff6ff', green: '#15803d', red: '#dc2626',
+  shadow: '0 1px 2px rgba(16,24,40,.05)',
+};
+
+// Иконка характеристики по названию — тайлы «Общих характеристик»
+const SPEC_ICONS = [
+  [/габарит|размер/,            '📐'],
+  [/конструкц/,                 '✂️'],
+  [/материал чехла|чехол|ткан/, '🧵'],
+  [/материал|корпус/,           '🧱'],
+  [/покрыт/,                    '🖌'],
+  [/цвет/,                      '🎨'],
+  [/размещен|установ/,          '📍'],
+  [/нагрузк/,                   '🏋️'],
+  [/вес упаковки|упаковк/,      '📦'],
+  [/вес/,                       '⚖️'],
+  [/количеств|кол-?во/,         '🔢'],
+  [/предназначен|назначен/,     '✅'],
+  [/столешниц|полк/,            '🪵'],
+  [/высот|ширин|длин|глубин/,   '📏'],
+];
+const specIcon = key => (SPEC_ICONS.find(([re]) => re.test(String(key).toLowerCase())) || [null, '🔹'])[1];
+
+// Строка «подпись — значение» в карточке базы
+const baseRow = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+  padding: '8px 0', borderTop: '1px solid #e8eff8',
+};
+// Пункт меню «⋮»
+const menuItemStyle = (color = '#334155') => ({
+  display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px',
+  borderRadius: 10, background: 'transparent', border: 'none',
+  color, fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+});
+// Стрелки галереи
+const galleryArrow = side => ({
+  position: 'absolute', [side]: 10, top: '50%', transform: 'translateY(-50%)',
+  width: 36, height: 36, borderRadius: 11, fontSize: 20, lineHeight: 1,
+  background: 'rgba(255,255,255,.92)', border: '1px solid #e6ecf4', color: '#334155',
+  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  boxShadow: '0 2px 8px rgba(15,23,42,.12)',
+});
+
 // Экспортный прайс всегда в долларах; Matkasym KZ закупается по нему же, а продаёт в тенге
 const priceCurrency = (base, type) =>
   type === 'export' ? '$' : base === 'qtop' ? (type === 'cost' ? '$' : '₸') : 'сом';
@@ -63,6 +113,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const [addStockComment, setAddStockComment] = useState('');
   const [addingStock, setAddingStock] = useState(false);
   const [localProduct, setLocalProduct] = useState(product);
+  const [menuOpen,   setMenuOpen]   = useState(false); // выпадашка «⋮» в шапке
+  const [zoom,       setZoom]       = useState(false); // фото на весь экран
   const [partPreview, setPartPreview] = useState(null); // деталь комплекта, открытая своей карточкой
   const [loadingPart, setLoadingPart] = useState(null); // id детали, которая грузится
 
@@ -72,17 +124,26 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     adminGetProduct(product._id).then(r => setLocalProduct(prev => ({ ...prev, ...r.data }))).catch(() => {});
   }, [product?._id]);
   const canSetBuffer = user?.role === 'owner' || user?.canSetBufferStock;
-  const [bufferEdit, setBufferEdit] = useState(false);
-  const [bufferVal, setBufferVal] = useState(product.bufferStock || 0);
+  const [bufferEditBase, setBufferEditBase] = useState(null); // ключ базы, у которой правят буфер
+  const [bufferVal, setBufferVal] = useState(0);
   const [savingBuffer, setSavingBuffer] = useState(false);
 
-  const saveBuffer = async () => {
+  // Буфер у каждой базы 1С свой. У карточек, которые ещё не разделены, прежнее
+  // общее значение — это буфер Make-in (так его и считали до разделения).
+  const bufferOf = (baseKey) => {
+    const by = localProduct.bufferByBase;
+    const has = by && (by.makein || by.matkasym || by.qtop);
+    if (has) return by[baseKey] || 0;
+    return baseKey === 'makein' ? (localProduct.bufferStock || 0) : 0;
+  };
+
+  const saveBuffer = async (baseKey) => {
     setSavingBuffer(true);
     try {
-      const res = await adminSetBufferStock(localProduct._id, Number(bufferVal) || 0);
+      const res = await adminSetBufferStock(localProduct._id, Number(bufferVal) || 0, baseKey);
       setLocalProduct(res.data);
       onSaved && onSaved(res.data);
-      setBufferEdit(false);
+      setBufferEditBase(null);
     } catch (e) {
       alert(e.response?.data?.error || 'Не удалось сохранить буферный запас');
     } finally {
@@ -311,10 +372,55 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     return () => window.removeEventListener('popstate', handlePop);
   }, [onClose]);
 
+  // ── Общие стили нового макета ─────────────────────────────────────────────
+  const card = {
+    background: UI.card, border: `1px solid ${UI.line}`, borderRadius: 16,
+    boxShadow: UI.shadow, padding: isMobile ? 14 : 18,
+  };
+  const cardTitle = {
+    fontSize: isMobile ? 15 : 17, fontWeight: 800, color: UI.ink, marginBottom: isMobile ? 10 : 14,
+  };
+  const softBtn = {
+    display: 'inline-flex', alignItems: 'center', gap: 7,
+    padding: isMobile ? '8px 12px' : '9px 16px', borderRadius: 11,
+    background: '#fff', border: `1px solid #d8e0ec`, color: '#334155',
+    fontWeight: 700, fontSize: 13.5, cursor: 'pointer', whiteSpace: 'nowrap',
+  };
+  const pill = (bg, color) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 20,
+    background: bg, color, whiteSpace: 'nowrap',
+  });
+  const dot = color => (
+    <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }} />
+  );
+
+  // Остатки и цены по базам 1С сведены в одну карточку на базу
+  const visibleBases = PRICE_BASES.filter(b => country === 'KZ' ? b.kz : country === 'KG' ? !b.kz : true);
+  const isIndependentKit = localProduct.isKit && localProduct.kitType === 'independent';
+  const baseCards = visibleBases.map(b => {
+    const pr    = localProduct.pricesByBase?.[b.key] || {};
+    const rows  = b.priceTypes
+      .filter(t => t !== 'cost' || user?.role === 'owner')       // себестоимость — только владельцу
+      .filter(t => Number(pr[t]) > 0)
+      .map(t => ({ label: PRICE_FULL[t], value: `${Number(pr[t]).toLocaleString('ru-RU')} ${priceCurrency(b.key, t)}` }));
+    const qty   = localProduct.stockByBase?.[b.key] || 0;
+    const known = localProduct.inBase?.[b.key];
+    if (!rows.length && !qty && !known) return null;             // базе товар неизвестен — не мусорим
+    const buffer = bufferOf(b.key);
+    return {
+      ...b, rows, qty, buffer,
+      showStock:  !isIndependentKit && (qty > 0 || known),
+      // Буфер ведут по Кыргызстану: у казахской базы свой учёт, там его не показываем
+      showBuffer: !isIndependentKit && !b.kz,
+      belowBuffer: buffer > 0 && qty < buffer,
+    };
+  }).filter(Boolean);
+
   return createPortal(
     <>
       <div onClick={onClose}
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.6)', zIndex: zBase }} />
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,.55)', zIndex: zBase }} />
 
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: zBase + 1,
@@ -322,125 +428,129 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
         padding: isMobile ? 0 : 24, pointerEvents: 'none',
       }}>
         <div style={{
-          background: '#fff',
-          borderRadius: isMobile ? 0 : 18,
-          width: '100%', maxWidth: 900,
-          maxHeight: isMobile ? '100%' : '92vh',
+          background: UI.canvas,
+          borderRadius: isMobile ? 0 : 22,
+          width: '100%', maxWidth: 1180,
+          maxHeight: isMobile ? '100%' : '94vh',
           height: isMobile ? '100%' : 'auto',
           overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
           pointerEvents: 'auto',
+          boxShadow: '0 24px 70px rgba(15,23,42,.28)',
           fontFamily: 'var(--admin-font)',
         }}>
 
-          {/* Top bar */}
+          {/* ── Шапка ─────────────────────────────────────────────────────── */}
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: isMobile ? '10px 12px' : '12px 16px',
-            borderBottom: '1px solid var(--admin-line)',
-            flexShrink: 0,
-            gap: 8,
+            display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12,
+            padding: isMobile ? '10px 12px' : '14px 20px',
+            background: '#fff', borderBottom: `1px solid ${UI.line}`, flexShrink: 0,
           }}>
-            {/* Left side - back button on mobile, title on desktop */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              {isMobile && (
-                <button onClick={onClose}
-                  style={{
-                    width: 36, height: 36, borderRadius: 10, background: '#f5f5f5',
-                    border: 'none', cursor: 'pointer', fontSize: 20,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                  ←
-                </button>
-              )}
-              <div style={{
-                fontSize: isMobile ? 14 : 12,
-                fontWeight: 600,
-                color: isMobile ? '#333' : '#aaa',
-                textTransform: isMobile ? 'none' : 'uppercase',
-                letterSpacing: isMobile ? 0 : 0.5,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {isMobile ? (product.name || 'Товар') : 'Карточка товара'}
-              </div>
+            <button onClick={onClose} title="Закрыть"
+              style={{
+                width: 38, height: 38, borderRadius: 12, background: '#f3f6fb',
+                border: `1px solid ${UI.line}`, cursor: 'pointer', fontSize: 18, color: '#475569',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>←</button>
+
+            <div style={{
+              fontSize: isMobile ? 15 : 20, fontWeight: 800, color: UI.ink,
+              minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {isMobile ? (product.name || 'Товар') : 'Карточка товара'}
             </div>
 
-            {/* Right side - action buttons */}
-            <div style={{ display: 'flex', gap: isMobile ? 6 : 8, alignItems: 'center', flexShrink: 0 }}>
-              {canDelete && (
-                <button onClick={() => setConfirming(true)}
-                  style={{
-                    padding: isMobile ? '8px 10px' : '7px 14px',
-                    borderRadius: 8,
-                    background: '#fff0f0',
-                    color: '#c00',
-                    border: '1.5px solid #f5c6cb',
-                    fontWeight: 700,
-                    fontSize: isMobile ? 12 : 13,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}>
-                  {isMobile ? '🗑' : '🗑 Удалить'}
-                </button>
-              )}
+            {statusMeta && !isMobile && (
+              <span style={{ ...pill(statusMeta.bg, statusMeta.color), flexShrink: 0 }}>
+                {dot(statusMeta.color)} {statusMeta.label}
+              </span>
+            )}
+
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
               {canEdit && !isMobile && (
                 <button onClick={handleCopy} disabled={copying}
-                  style={{ padding: '7px 14px', borderRadius: 8, background: '#f0f7ff', color: '#3463A3',
-                    border: '1.5px solid #b8d0f0', fontWeight: 700, fontSize: 13,
-                    cursor: copying ? 'not-allowed' : 'pointer', opacity: copying ? 0.7 : 1 }}>
-                  {copying ? '⏳…' : '📋 Копировать'}
+                  style={{ ...softBtn, opacity: copying ? .6 : 1, cursor: copying ? 'not-allowed' : 'pointer' }}>
+                  {copying ? '⏳…' : '⧉ Копировать'}
                 </button>
               )}
               {canEdit && (
                 <button onClick={() => { document.body.style.overflow = ''; navigate(`/admin/products/${product._id}/edit`, { replace: true }); }}
                   style={{
-                    padding: isMobile ? '8px 12px' : '7px 16px',
-                    borderRadius: 8,
-                    background: '#111',
-                    color: '#fff',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: isMobile ? 12 : 13,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
+                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                    padding: isMobile ? '8px 12px' : '9px 18px', borderRadius: 11,
+                    background: UI.blue, color: '#fff', border: 'none',
+                    fontWeight: 700, fontSize: 13.5, cursor: 'pointer', whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 8px rgba(37,99,235,.28)',
                   }}>
-                  {isMobile ? '✏️' : '✏️ Редактировать'}
+                  ✏️ {isMobile ? '' : 'Редактировать'}
                 </button>
               )}
-              {!isMobile && (
-                <button onClick={onClose}
-                  style={{ width: 32, height: 32, borderRadius: 8, background: '#f5f5f5',
-                    border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: '32px', textAlign: 'center' }}>
-                  ✕
-                </button>
-              )}
+
+              {/* Меню «⋮»: копирование на мобильном, скачивание фото, удаление */}
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setMenuOpen(o => !o)} title="Ещё"
+                  style={{
+                    width: 38, height: 38, borderRadius: 12, background: '#fff',
+                    border: `1px solid #d8e0ec`, cursor: 'pointer', fontSize: 18, color: '#475569',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>⋮</button>
+                {menuOpen && (
+                  <>
+                    <div onClick={() => setMenuOpen(false)}
+                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: zBase + 8 }} />
+                    <div style={{
+                      position: 'absolute', top: 46, right: 0, minWidth: 210, zIndex: zBase + 9,
+                      background: '#fff', border: `1px solid ${UI.line}`, borderRadius: 14,
+                      boxShadow: '0 12px 34px rgba(15,23,42,.16)', padding: 6, overflow: 'hidden',
+                    }}>
+                      {canEdit && isMobile && (
+                        <button onClick={() => { setMenuOpen(false); handleCopy(); }} style={menuItemStyle()}>
+                          ⧉ Копировать
+                        </button>
+                      )}
+                      {!hasColorOnly && img !== NO_PHOTO && (
+                        <button onClick={() => { setMenuOpen(false); downloadImage(img, imgIdx); }} style={menuItemStyle()}>
+                          ⬇ Скачать фото
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => { setMenuOpen(false); setConfirming(true); }} style={menuItemStyle(UI.red)}>
+                          🗑 Удалить товар
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Body */}
+          {/* ── Тело ──────────────────────────────────────────────────────── */}
           <div style={{
             flex: 1, minHeight: 0, overflow: 'auto',
             overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
-            display: isMobile ? 'block' : 'grid', gridTemplateColumns: '1fr 1fr',
+            background: UI.canvas, padding: isMobile ? 12 : 18,
+            display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 16,
           }}>
 
-            {/* Image gallery */}
-            <div style={{ background: hasColorOnly ? product.color : '#f7f6f3', display: 'flex', flexDirection: 'column' }}>
-              <div
-                onTouchStart={images.length > 1 ? onTouchStart : undefined}
-                onTouchEnd={images.length > 1 ? onTouchEnd : undefined}
-                style={{ flex: 1, position: 'relative', minHeight: isMobile ? 280 : 380,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {hasColorOnly ? (
-                  <div style={{
-                    width: '100%', height: isMobile ? 280 : 380,
-                    background: product.color,
+            {/* Верхний блок: галерея + основное */}
+            <div style={{
+              display: 'grid', gap: isMobile ? 12 : 16, alignItems: 'start',
+              gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 440px) minmax(0, 1fr)',
+            }}>
+
+              {/* Галерея */}
+              <div style={{ ...card, padding: isMobile ? 10 : 12 }}>
+                <div
+                  onTouchStart={images.length > 1 ? onTouchStart : undefined}
+                  onTouchEnd={images.length > 1 ? onTouchEnd : undefined}
+                  style={{
+                    position: 'relative', borderRadius: 14, overflow: 'hidden',
+                    background: hasColorOnly ? product.color : '#f6f7f9',
+                    height: isMobile ? 260 : 380,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexDirection: 'column', gap: 8,
                   }}>
+                  {hasColorOnly ? (
                     <div style={{
                       fontSize: 14, fontWeight: 700, color: '#fff',
                       textShadow: '0 1px 3px rgba(0,0,0,0.3)',
@@ -448,455 +558,417 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     }}>
                       {product.color}
                     </div>
-                  </div>
-                ) : (
-                  <img src={cloudinaryOpt(img, 800)} alt={product.name}
-                    style={{ maxWidth: '100%', maxHeight: isMobile ? 280 : 380, objectFit: 'contain', display: 'block', padding: 16 }}
-                    onError={e => { e.target.src = NO_PHOTO; }} />
-                )}
-
-                {/* Download icon — top-right corner */}
-                {!hasColorOnly && img !== NO_PHOTO && (
-                  <button
-                    onClick={() => downloadImage(img, imgIdx)}
-                    title="Скачать фото"
-                    style={{
-                      position: 'absolute', top: 8, right: 8,
-                      width: 32, height: 32, borderRadius: 8,
-                      background: 'rgba(0,0,0,0.45)', border: 'none',
-                      color: '#fff', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 15, lineHeight: 1, backdropFilter: 'blur(2px)',
-                    }}
-                  >
-                    ↓
-                  </button>
-                )}
-
-                {images.length > 1 && (
-                  <>
-                    <button onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
-                      style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-                        background: 'rgba(0,0,0,.35)', color: '#fff', border: 'none', borderRadius: 8,
-                        width: 36, height: 36, fontSize: 20, cursor: 'pointer', lineHeight: '36px', textAlign: 'center' }}>‹</button>
-                    <button onClick={() => setImgIdx(i => (i + 1) % images.length)}
-                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                        background: 'rgba(0,0,0,.35)', color: '#fff', border: 'none', borderRadius: 8,
-                        width: 36, height: 36, fontSize: 20, cursor: 'pointer', lineHeight: '36px', textAlign: 'center' }}>›</button>
-                    <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
-                      fontSize: 11, color: '#999', background: 'rgba(255,255,255,.8)', borderRadius: 10, padding: '2px 8px' }}>
-                      {imgIdx + 1} / {images.length}
-                    </div>
-                  </>
-                )}
-              </div>
-              {images.length > 1 && (
-                <div style={{ display: 'flex', gap: 6, padding: '8px 12px', overflowX: 'auto', background: '#efece6', flexShrink: 0 }}>
-                  {images.map((src, i) => (
-                    <img key={i} src={cloudinaryOpt(src, 160)} alt="" onClick={() => setImgIdx(i)}
-                      style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', flexShrink: 0,
-                        border: i === imgIdx ? '2px solid #333' : '2px solid transparent',
-                        opacity: i === imgIdx ? 1 : 0.6 }} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Info */}
-            <div style={{ padding: '20px 24px', overflowY: 'auto', overscrollBehavior: 'contain',
-              WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Badges */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {statusMeta && (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                    background: statusMeta.bg, color: statusMeta.color }}>{statusMeta.icon} {statusMeta.label}</span>
-                )}
-                {product.isNew && (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                    background: '#fff3cd', color: '#856404' }}>Новинка</span>
-                )}
-                {localProduct.inTransit && (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                    background: '#eef6ff', color: '#1d4ed8' }}>
-                    🚚 В пути {localProduct.inTransitQty > 0 && `(${localProduct.inTransitQty} шт)`}
-                  </span>
-                )}
-                {localProduct.pendingReceive && !localProduct.inTransit && (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                    background: '#fef3c7', color: '#92400e' }}>
-                    📋 Ожидает приёмки {localProduct.pendingReceiveQty > 0 && `(${localProduct.pendingReceiveQty} шт)`}
-                  </span>
-                )}
-                {canReceive && needsReceive && (
-                  <button
-                    onClick={openReceiveModal}
-                    style={{
-                      fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
-                      background: '#2d7a3a', color: '#fff',
-                      border: 'none', cursor: 'pointer',
-                    }}>
-                    {receiving ? '⏳...' : '📦 Принять'}
-                  </button>
-                )}
-                {canReceive && !needsReceive && (
-                  <button
-                    onClick={openAddStockModal}
-                    style={{
-                      fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
-                      background: '#3b82f6', color: '#fff',
-                      border: 'none', cursor: 'pointer',
-                    }}>
-                    ➕ Добавить
-                  </button>
-                )}
-                {(() => {
-                  const displayStock = country === 'KZ' ? (localProduct.stockByBase?.qtop || 0) : (localProduct.stock || 0);
-                  const displayInStock = country === 'KZ' ? displayStock > 0 : localProduct.inStock;
-                  return (
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                      background: localProduct.isKit && localProduct.kitType === 'independent' ? '#f5f3ff' : (displayInStock ? '#e8f5e9' : '#fce8e8'),
-                      color: localProduct.isKit && localProduct.kitType === 'independent' ? '#7c3aed' : (displayInStock ? '#2d7a3a' : '#c00') }}>
-                      {localProduct.isKit && localProduct.kitType === 'independent' ? 'Комплект' : (displayStock > 0 ? `${displayStock} шт.` : (displayInStock ? 'Есть' : 'Нет'))}
-                    </span>
-                  );
-                })()}
-              </div>
-
-              {/* Прайс каждой базы отдельно. Набор цен у баз разный: у Matkasym есть
-                  экспортный прайс в долларах — по нему закупается Matkasym KZ,
-                  а сам он продаёт в Казахстане в тенге. */}
-              {localProduct.pricesByBase && (() => {
-                const visibleBases = country === 'KZ'
-                  ? PRICE_BASES.filter(b => b.kz)
-                  : country === 'KG'
-                    ? PRICE_BASES.filter(b => !b.kz)
-                    : PRICE_BASES;
-                const rows = visibleBases.map(b => {
-                  const pr = localProduct.pricesByBase?.[b.key] || {};
-                  const cells = b.priceTypes.filter(t => Number(pr[t]) > 0)
-                    .map(t => `${PRICE_LABEL[t]} ${Number(pr[t]).toLocaleString('ru-RU')} ${priceCurrency(b.key, t)}`);
-                  return cells.length ? { label: b.label, kz: b.kz, cells } : null;
-                }).filter(Boolean);
-                if (!rows.length) return null;
-                return (
-                  <div style={{ background: '#f8f8f8', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#666', textTransform: 'uppercase', letterSpacing: .4, marginBottom: 7 }}>
-                      Прайсы по базам
-                    </div>
-                    {rows.map(r => (
-                      <div key={r.label} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: r.kz ? '#b45309' : '#444', minWidth: 96 }}>
-                          {r.kz && '🇰🇿 '}{r.label}
-                        </span>
-                        <span style={{ fontSize: 12.5, color: '#333' }}>{r.cells.join(' · ')}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              {/* Остатки по базам 1С. Q-top отделён: это Казахстан, свой склад и учёт,
-                  поэтому в общий остаток (Кыргызстан) он не входит. */}
-              {!(localProduct.isKit && localProduct.kitType === 'independent') && localProduct.stockByBase && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {[
-                    { key: 'makein',   label: 'Make-in',  hint: 'Кыргызстан' },
-                    { key: 'matkasym', label: 'Matkasym', hint: 'Кыргызстан' },
-                    { key: 'qtop',     label: 'Q-top',    hint: 'Казахстан', kz: true },
-                  ].filter(b => country === 'KZ' ? b.kz : country === 'KG' ? !b.kz : true).map(b => {
-                    const qty = localProduct.stockByBase?.[b.key] || 0;
-                    const known = localProduct.inBase?.[b.key];
-                    if (!qty && !known) return null;   // базе этот товар неизвестен — не мусорим
-                    return (
-                      <span key={b.key} title={`${b.label} — ${b.hint}`} style={{
-                        fontSize: 11.5, padding: '4px 10px', borderRadius: 8,
-                        background: b.kz ? '#fff7ed' : '#f5f7fa',
-                        border: `1px solid ${b.kz ? '#fed7aa' : '#e8ecf1'}`,
-                        color: '#555', whiteSpace: 'nowrap',
-                      }}>
-                        {b.kz && '🇰🇿 '}{b.label}: <b style={{ color: qty > 0 ? '#111' : '#bbb' }}>{qty}</b>
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Буферный запас — видят все, менять могут owner и canSetBufferStock (только KG) */}
-              {!(localProduct.isKit && localProduct.kitType === 'independent') && country !== 'KZ' && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-                  background: (localProduct.bufferStock > 0 && (localProduct.stock || 0) < localProduct.bufferStock) ? '#fef2f2' : '#f8f8f8',
-                  border: (localProduct.bufferStock > 0 && (localProduct.stock || 0) < localProduct.bufferStock) ? '1.5px solid #fecaca' : '1px solid #eee',
-                  borderRadius: 10, padding: '10px 14px',
-                }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>🛡 Буферный запас:</span>
-                  {bufferEdit ? (
-                    <>
-                      <input
-                        type="number" min="0" value={bufferVal}
-                        onChange={e => setBufferVal(e.target.value)}
-                        style={{ width: 80, padding: '6px 10px', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: 14, fontWeight: 700 }}
-                        autoFocus
-                      />
-                      <button onClick={saveBuffer} disabled={savingBuffer} style={{
-                        padding: '6px 14px', borderRadius: 8, border: 'none', background: '#2d7a3a',
-                        color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                      }}>{savingBuffer ? '...' : '✓ Сохранить'}</button>
-                      <button onClick={() => { setBufferEdit(false); setBufferVal(localProduct.bufferStock || 0); }} style={{
-                        padding: '6px 12px', borderRadius: 8, border: 'none', background: '#f3f4f6',
-                        color: '#555', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      }}>Отмена</button>
-                    </>
                   ) : (
+                    <img src={cloudinaryOpt(img, 900)} alt={product.name}
+                      onClick={() => setZoom(true)}
+                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block', cursor: 'zoom-in' }}
+                      onError={e => { e.target.src = NO_PHOTO; }} />
+                  )}
+
+                  {!hasColorOnly && img !== NO_PHOTO && (
+                    <button onClick={() => setZoom(true)} title="Открыть фото"
+                      style={{
+                        position: 'absolute', top: 10, right: 10,
+                        width: 36, height: 36, borderRadius: 11,
+                        background: 'rgba(255,255,255,.92)', border: `1px solid ${UI.line}`,
+                        color: '#475569', cursor: 'pointer', fontSize: 15,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(15,23,42,.12)',
+                      }}>⤢</button>
+                  )}
+
+                  {images.length > 1 && (
                     <>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
-                        {localProduct.bufferStock > 0 ? `${localProduct.bufferStock} шт.` : 'не задан'}
-                      </span>
-                      {localProduct.bufferStock > 0 && (localProduct.stock || 0) < localProduct.bufferStock && (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: '#fee2e2', color: '#dc2626' }}>
-                          ⚠️ ниже буфера
-                        </span>
-                      )}
-                      {canSetBuffer && (
-                        <button onClick={() => setBufferEdit(true)} style={{
-                          marginLeft: 'auto', padding: '5px 12px', borderRadius: 8, border: '1.5px solid #d1d5db',
-                          background: '#fff', color: '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                        }}>✏️ Изменить</button>
-                      )}
+                      <button onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
+                        style={galleryArrow('left')}>‹</button>
+                      <button onClick={() => setImgIdx(i => (i + 1) % images.length)}
+                        style={galleryArrow('right')}>›</button>
+                      <div style={{
+                        position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+                        fontSize: 11.5, fontWeight: 700, color: '#475569',
+                        background: 'rgba(255,255,255,.9)', borderRadius: 20, padding: '3px 10px',
+                      }}>{imgIdx + 1} / {images.length}</div>
                     </>
                   )}
                 </div>
-              )}
 
-              {/* Status note (pause reason, etc.) */}
-              {product.pauseNote && (
-                <div style={{
-                  background: '#f9fafb', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '10px 14px',
-                }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                    ⏸ Причина паузы
-                  </div>
-                  <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
-                    {product.pauseNote}
-                  </div>
-                </div>
-              )}
-
-              {/* Title */}
-              <div>
-                <div style={{ fontSize: isMobile ? 16 : 19, fontWeight: 800, color: '#111', lineHeight: 1.25 }}>
-                  {product.fullName || product.name}
-                </div>
-                {product.fullName && product.name !== product.fullName && (
-                  <div style={{ fontSize: 13, color: '#888', marginTop: 3 }}>{product.name}</div>
-                )}
-                {product.sku && <div style={{ fontSize: 12, color: '#bbb', marginTop: 4 }}>SKU: {product.sku}</div>}
-              </div>
-
-              {/* Prices — скрыть для независимых комплектов и для KZ (у них свои цены в pricesByBase) */}
-              {prices.length > 0 && !(product.isKit && product.kitType === 'independent') && country !== 'KZ' && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    Цены
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
-                    {prices.map(p => (
-                      <div key={p.label} style={{ background: '#f8f8f8', borderRadius: 8, padding: '8px 12px' }}>
-                        <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>{p.label}</div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: '#111' }}>{p.value.toLocaleString('ru')} {signOf(localProduct)}</div>
-                      </div>
+                {images.length > 1 && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
+                    {images.map((src, i) => (
+                      <img key={i} src={cloudinaryOpt(src, 160)} alt="" onClick={() => setImgIdx(i)}
+                        style={{
+                          width: 62, height: 62, objectFit: 'cover', borderRadius: 12, cursor: 'pointer',
+                          flexShrink: 0, background: '#f6f7f9',
+                          border: i === imgIdx ? `2px solid ${UI.blue}` : `1px solid ${UI.line}`,
+                          padding: 2, opacity: i === imgIdx ? 1 : .75,
+                        }} />
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Specs + Dimensions combined — dimensions first, then specs */}
-              {(() => {
-                // Build dimensions row
-                let dimRow = null;
-                if (product.dimensions) {
-                  const raw = product.dimensions.trim();
-                  const unitMatch = raw.match(/[а-яёa-z]+\.?$/i);
-                  const unit = unitMatch ? unitMatch[0] : 'см';
-                  const numStr = raw.replace(/[а-яёa-z]+\.?$/i, '').trim();
-                  const parts = numStr.split(/[×x*]/i).map(s => s.trim()).filter(Boolean);
-                  const dimValue = parts.length === 3
-                    ? <span>
-                        {[['Д', parts[0]], ['Ш', parts[1]], ['В', parts[2]]].map(([lbl, val], i) => (
-                          <span key={lbl} style={{ marginRight: i < 2 ? 12 : 0 }}>
-                            <span style={{ color: '#bbb', fontSize: 11, marginRight: 2 }}>{lbl}</span>
-                            <span style={{ fontWeight: 700 }}>{val}</span>
-                          </span>
-                        ))}
-                        <span style={{ color: '#aaa', fontSize: 11, marginLeft: 4 }}>{unit}</span>
-                      </span>
-                    : <span style={{ fontWeight: 700 }}>{raw}</span>;
-                  dimRow = { key: 'Габариты', valueNode: dimValue };
-                }
-
-                // Build filtered spec rows
-                const seen = new Set();
-                // Priority order for common spec keys (normalized lowercase)
-                const SPEC_PRIORITY = [
-                  'конструкция', 'тип конструкции',
-                  'материал', 'материал корпуса',
-                  'покрытие', 'цвет',
-                  'размещение',
-                  'макс. нагрузка', 'максимальная нагрузка', 'нагрузка',
-                  'вес товара', 'вес',
-                  'вес товара в упаковке', 'вес в упаковке',
-                  'количество', 'кол-во',
-                ];
-
-                const specPriority = k => {
-                  const idx = SPEC_PRIORITY.indexOf(k.trim().toLowerCase());
-                  return idx === -1 ? SPEC_PRIORITY.length : idx;
-                };
-
-                const visibleSpecs = (product.specs || [])
-                  .filter(s => {
-                    if (!s.value || /^габарит/i.test(s.key)) return false;
-                    const norm = s.key.trim().toLowerCase();
-                    if (seen.has(norm)) return false;
-                    seen.add(norm);
-                    return true;
-                  })
-                  .sort((a, b) => {
-                    const pa = specPriority(a.key);
-                    const pb = specPriority(b.key);
-                    if (pa !== pb) return pa - pb;
-                    return a.key.localeCompare(b.key, 'ru');
-                  });
-
-                const hasContent = dimRow || visibleSpecs.length > 0;
-                if (!hasContent) return null;
-
-                const capFirst = str => str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
-
-                const guessUnit = (key, value) => {
-                  const k = key.trim().toLowerCase();
-                  const v = String(value || '');
-                  // don't add unit if value already contains letters (unit embedded)
-                  if (/[а-яёa-z]/i.test(v)) return '';
-                  if (/вес/.test(k))      return 'кг';
-                  if (/нагрузк/.test(k))  return 'кг';
-                  if (/высот/.test(k) || /ширин/.test(k) || /длин/.test(k) || /глубин/.test(k)) return 'см';
-                  if (/количеств|кол-?во/.test(k)) return 'шт';
-                  return '';
-                };
-
-                return (
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                      Характеристики
+              {/* Название, артикул, бейджи */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 16 }}>
+                <div style={card}>
+                  <div style={{ fontSize: isMobile ? 19 : 26, fontWeight: 800, color: UI.ink, lineHeight: 1.2 }}>
+                    {product.fullName || product.name}
+                  </div>
+                  {product.fullName && product.name !== product.fullName && (
+                    <div style={{ fontSize: 13.5, color: UI.muted, marginTop: 4 }}>{product.name}</div>
+                  )}
+                  {product.sku && (
+                    <div style={{ fontSize: isMobile ? 13 : 15, color: UI.label, fontWeight: 700, marginTop: 6 }}>
+                      SKU: {product.sku}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {dimRow && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '7px 0', borderBottom: '1px solid #f5f5f5' }}>
-                          <span style={{ color: '#aaa', minWidth: 130, flexShrink: 0 }}>{dimRow.key}</span>
-                          <span style={{ color: '#1c1c1c' }}>{dimRow.valueNode}</span>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 14 }}>
+                    {statusMeta && isMobile && (
+                      <span style={pill(statusMeta.bg, statusMeta.color)}>{dot(statusMeta.color)} {statusMeta.label}</span>
+                    )}
+                    {product.isNew && <span style={pill('#fff3cd', '#856404')}>Новинка</span>}
+                    {localProduct.inTransit && (
+                      <span style={pill('#eef6ff', '#1d4ed8')}>
+                        🚚 В пути {localProduct.inTransitQty > 0 && `(${localProduct.inTransitQty} шт)`}
+                      </span>
+                    )}
+                    {localProduct.pendingReceive && !localProduct.inTransit && (
+                      <span style={pill('#fef3c7', '#92400e')}>
+                        📋 Ожидает приёмки {localProduct.pendingReceiveQty > 0 && `(${localProduct.pendingReceiveQty} шт)`}
+                      </span>
+                    )}
+                    {(() => {
+                      const displayStock = country === 'KZ' ? (localProduct.stockByBase?.qtop || 0) : (localProduct.stock || 0);
+                      const displayInStock = country === 'KZ' ? displayStock > 0 : localProduct.inStock;
+                      if (isIndependentKit) return <span style={pill('#f5f3ff', '#7c3aed')}>Комплект</span>;
+                      return (
+                        <span style={pill(displayInStock ? '#e8f5e9' : '#fce8e8', displayInStock ? UI.green : UI.red)}>
+                          {displayStock > 0 ? `${displayStock} шт.` : (displayInStock ? 'Есть' : 'Нет в наличии')}
+                        </span>
+                      );
+                    })()}
+                    {canReceive && needsReceive && (
+                      <button onClick={openReceiveModal}
+                        style={{ ...pill('#2d7a3a', '#fff'), border: 'none', cursor: 'pointer' }}>
+                        {receiving ? '⏳...' : '📦 Принять'}
+                      </button>
+                    )}
+                    {canReceive && !needsReceive && (
+                      <button onClick={openAddStockModal}
+                        style={{ ...pill(UI.blue, '#fff'), border: 'none', cursor: 'pointer' }}>
+                        ➕ Добавить
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Причина паузы */}
+                  {product.pauseNote && (
+                    <div style={{ marginTop: 14, background: '#f8fafc', border: `1px solid ${UI.line}`, borderRadius: 12, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 800, color: UI.muted, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>
+                        ⏸ Причина паузы
+                      </div>
+                      <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{product.pauseNote}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Остатки и цены по базам */}
+                {baseCards.length > 0 && (
+                  <div style={card}>
+                    <div style={cardTitle}>Остатки и цены по базам</div>
+                    <div style={{
+                      display: 'grid', gap: 12,
+                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(240px, 1fr))',
+                    }}>
+                      {baseCards.map(b => (
+                        <div key={b.key} style={{
+                          border: `1px solid ${b.kz ? '#fed7aa' : '#dbe6f5'}`,
+                          background: b.kz ? '#fffbf5' : '#f9fbff',
+                          borderRadius: 14, padding: 14,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                            <span style={{
+                              width: 36, height: 36, borderRadius: 11, flexShrink: 0,
+                              background: '#fff', border: `1px solid ${UI.line}`, fontSize: 17,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>{b.icon}</span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 15, fontWeight: 800, color: UI.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {b.label}
+                              </div>
+                              <div style={{ fontSize: 11, color: UI.label }}>{b.hint}</div>
+                            </div>
+                          </div>
+
+                          {b.showStock && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                              <span style={pill(b.qty > 0 ? '#e8f5e9' : '#fce8e8', b.qty > 0 ? UI.green : UI.red)}>
+                                {dot(b.qty > 0 ? UI.green : UI.red)} {b.qty > 0 ? 'В наличии' : 'Нет'}
+                              </span>
+                              {b.belowBuffer && <span style={pill('#fff1e6', '#b45309')}>⚠ Ниже буфера</span>}
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            {b.showStock && (
+                              <div style={baseRow}>
+                                <span style={{ color: UI.muted, fontSize: 13 }}>Остаток</span>
+                                <span style={{ fontSize: 16, fontWeight: 800, color: b.qty > 0 ? UI.blue : '#cbd5e1' }}>
+                                  {b.qty} шт.
+                                </span>
+                              </div>
+                            )}
+                            {b.showBuffer && (
+                              <div style={{ ...baseRow, flexWrap: 'wrap' }}>
+                                <span style={{ color: UI.muted, fontSize: 13 }}>🛡 Буфер</span>
+                                {bufferEditBase === b.key ? (
+                                  <span style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <input
+                                      type="number" min="0" value={bufferVal}
+                                      onChange={e => setBufferVal(e.target.value)}
+                                      style={{ width: 74, padding: '5px 8px', borderRadius: 8, border: '1.5px solid #d1d5db', fontSize: 13.5, fontWeight: 700 }}
+                                      autoFocus
+                                    />
+                                    <button onClick={() => saveBuffer(b.key)} disabled={savingBuffer} style={{
+                                      padding: '6px 11px', borderRadius: 8, border: 'none', background: '#2d7a3a',
+                                      color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                                    }}>{savingBuffer ? '…' : '✓'}</button>
+                                    <button onClick={() => setBufferEditBase(null)} style={{
+                                      padding: '6px 11px', borderRadius: 8, border: 'none', background: '#f1f5f9',
+                                      color: '#555', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                                    }}>Отмена</button>
+                                  </span>
+                                ) : (
+                                  <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <span style={{ fontSize: 14, fontWeight: 700, color: b.buffer > 0 ? UI.ink : '#cbd5e1' }}>
+                                      {b.buffer > 0 ? `${b.buffer} шт.` : 'не задан'}
+                                    </span>
+                                    {canSetBuffer && (
+                                      <button onClick={() => { setBufferVal(b.buffer); setBufferEditBase(b.key); }}
+                                        title="Изменить буфер базы"
+                                        style={{
+                                          width: 26, height: 26, borderRadius: 8, background: '#fff',
+                                          border: '1px solid #d8e0ec', color: '#475569', fontSize: 12,
+                                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        }}>✏️</button>
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {b.rows.map(r => (
+                              <div key={r.label} style={baseRow}>
+                                <span style={{ color: UI.muted, fontSize: 13 }}>{r.label}</span>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: UI.ink }}>{r.value}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      )}
-                      {visibleSpecs.map((s, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '7px 0', borderBottom: '1px solid #f5f5f5' }}>
-                          <span style={{ color: '#aaa', minWidth: 130, flexShrink: 0 }}>{capFirst(s.key)}</span>
-                          <span style={{ color: '#1c1c1c', fontWeight: 600 }}>
-                            {s.value}
-                            {(() => { const u = s.unit || guessUnit(s.key, s.value); return u ? <span style={{ color: '#aaa', fontSize: 11, marginLeft: 3 }}>{u}</span> : null; })()}
+                      ))}
+                    </div>
+
+                    {/* Итог по Кыргызстану: остаток и буфер — суммы по базам КГ */}
+                    {!isIndependentKit && country !== 'KZ' && baseCards.some(b => b.showBuffer) && (() => {
+                      const kgBuffer = baseCards.filter(b => b.showBuffer).reduce((n, b) => n + b.buffer, 0);
+                      const kgStock  = localProduct.stock || 0;
+                      const below    = kgBuffer > 0 && kgStock < kgBuffer;
+                      return (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 12,
+                          background: below ? '#fef2f2' : '#f8fafc',
+                          border: `1px solid ${below ? '#fecaca' : UI.line}`,
+                          borderRadius: 12, padding: '11px 14px',
+                        }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Итого по Кыргызстану:</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>{kgStock} шт.</span>
+                          <span style={{ fontSize: 13, color: UI.muted }}>
+                            буфер {kgBuffer > 0 ? `${kgBuffer} шт.` : 'не задан'}
                           </span>
+                          {below && <span style={pill('#fee2e2', UI.red)}>⚠️ ниже буфера</span>}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Цены сайта — если баз ещё нет */}
+                {prices.length > 0 && !baseCards.length && !isIndependentKit && country !== 'KZ' && (
+                  <div style={card}>
+                    <div style={cardTitle}>Цены на сайте</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(auto-fit, minmax(150px,1fr))', gap: 10 }}>
+                      {prices.map(p => (
+                        <div key={p.label} style={{ background: '#f8fafc', border: `1px solid ${UI.lineSoft}`, borderRadius: 12, padding: '10px 14px' }}>
+                          <div style={{ fontSize: 11.5, color: UI.label, fontWeight: 700 }}>{p.label}</div>
+                          <div style={{ fontSize: 17, fontWeight: 800, color: UI.ink, marginTop: 2 }}>
+                            {p.value.toLocaleString('ru')} {signOf(localProduct)}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                );
-              })()}
+                )}
+              </div>
+            </div>
 
-              {/* Description */}
-              {product.description && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    Описание
-                  </div>
-                  <div style={{ fontSize: 13, color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                    {product.description}
-                  </div>
-                </div>
-              )}
+            {/* ── Общие характеристики ──────────────────────────────────────── */}
+            {(() => {
+              // Габариты — отдельным тайлом первым
+              let dimTile = null;
+              if (product.dimensions) {
+                const raw = product.dimensions.trim();
+                const unitMatch = raw.match(/[а-яёa-z]+\.?$/i);
+                const unit = unitMatch ? unitMatch[0] : 'см';
+                const numStr = raw.replace(/[а-яёa-z]+\.?$/i, '').trim();
+                const parts = numStr.split(/[×x*]/i).map(s => s.trim()).filter(Boolean);
+                dimTile = {
+                  icon: '📐',
+                  label: parts.length === 3 ? 'Габариты (Д × Ш × В)' : 'Габариты',
+                  value: parts.length === 3 ? `${parts.join(' × ')} ${unit}` : raw,
+                };
+              }
 
-              {/* Технический лист — скачать PDF */}
-              {localProduct.techSheet?.files?.length > 0 && (
-                <div style={{ background: '#f0f7ff', border: '1.5px solid #93c5fd', borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    📄 Технический лист
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {localProduct.techSheet.files.map((f, i) => (
-                      <a
-                        key={i}
-                        href={`/api/admin/products/${localProduct._id}/techsheet/${i}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 8,
-                          padding: '8px 14px', borderRadius: 8,
-                          background: '#1d4ed8', color: '#fff',
-                          fontSize: 13, fontWeight: 700,
-                          textDecoration: 'none', cursor: 'pointer',
-                          width: 'fit-content',
-                        }}
-                      >
-                        ⬇ Скачать PDF{localProduct.techSheet.files.length > 1 ? ` (${i + 1})` : ''}
-                      </a>
+              const seen = new Set();
+              const SPEC_PRIORITY = [
+                'конструкция', 'тип конструкции',
+                'материал', 'материал корпуса',
+                'покрытие', 'цвет',
+                'размещение',
+                'макс. нагрузка', 'максимальная нагрузка', 'нагрузка',
+                'вес товара', 'вес',
+                'вес товара в упаковке', 'вес в упаковке',
+                'количество', 'кол-во',
+              ];
+              const specPriority = k => {
+                const idx = SPEC_PRIORITY.indexOf(k.trim().toLowerCase());
+                return idx === -1 ? SPEC_PRIORITY.length : idx;
+              };
+              const capFirst = str => str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+              const guessUnit = (key, value) => {
+                const k = key.trim().toLowerCase();
+                const v = String(value || '');
+                if (/[а-яёa-z]/i.test(v)) return '';
+                if (/вес/.test(k))      return 'кг';
+                if (/нагрузк/.test(k))  return 'кг';
+                if (/высот|ширин|длин|глубин/.test(k)) return 'см';
+                if (/количеств|кол-?во/.test(k)) return 'шт';
+                return '';
+              };
+
+              const specTiles = (product.specs || [])
+                .filter(s => {
+                  if (!s.value || /^габарит/i.test(s.key)) return false;
+                  const norm = s.key.trim().toLowerCase();
+                  if (seen.has(norm)) return false;
+                  seen.add(norm);
+                  return true;
+                })
+                .sort((a, b) => {
+                  const pa = specPriority(a.key), pb = specPriority(b.key);
+                  return pa !== pb ? pa - pb : a.key.localeCompare(b.key, 'ru');
+                })
+                .map(s => {
+                  const u = s.unit || guessUnit(s.key, s.value);
+                  return { icon: specIcon(s.key), label: capFirst(s.key), value: `${s.value}${u ? ' ' + u : ''}` };
+                });
+
+              const tiles = [...(dimTile ? [dimTile] : []), ...specTiles];
+              if (!tiles.length) return null;
+
+              return (
+                <div style={card}>
+                  <div style={cardTitle}>Общие характеристики</div>
+                  <div style={{
+                    display: 'grid', gap: isMobile ? 10 : 14,
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(230px, 1fr))',
+                  }}>
+                    {tiles.map((t, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 2px' }}>
+                        <span style={{
+                          width: 42, height: 42, borderRadius: 13, flexShrink: 0, fontSize: 18,
+                          background: UI.blueWash, border: '1px solid #dbeafe',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>{t.icon}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12, color: UI.label, fontWeight: 600 }}>{t.label}</div>
+                          <div style={{ fontSize: 14.5, fontWeight: 700, color: UI.ink, marginTop: 1 }}>{t.value}</div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
-              )}
+              );
+            })()}
 
-              {/* Supplier — привозной товар (только для owner и navigator) */}
-              {product.isSupplied && (user?.role === 'owner' || user?.role === 'navigator') && (
-                <div style={{ background: '#eef6ff', border: '1.5px solid #93c5fd', borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    📦 Привозной товар (поставщик)
-                  </div>
-                  {[
-                    ['Компания',           product.supplier?.company],
-                    ['Контактное лицо',    product.supplier?.contactName],
-                    ['Артикул поставщика', product.supplier?.sku],
-                  ].filter(([, v]) => v).map(([label, value]) => (
-                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '5px 0' }}>
-                      <span style={{ color: '#7aa5d8', minWidth: 130, flexShrink: 0 }}>{label}</span>
-                      <span style={{ color: '#1c1c1c', fontWeight: 600 }}>{value}</span>
-                    </div>
-                  ))}
-                  {!product.supplier?.company && !product.supplier?.contactName && !product.supplier?.sku && (
-                    <span style={{ fontSize: 13, color: '#7aa5d8' }}>Данные поставщика не заполнены</span>
-                  )}
+            {/* Описание */}
+            {product.description && (
+              <div style={card}>
+                <div style={cardTitle}>Описание</div>
+                <div style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                  {product.description}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Kit parts — состав комплекта */}
-              {localProduct.isKit && localProduct.kitParts?.length > 0 && (() => {
-                const missingParts = localProduct.kitParts.filter(part => {
-                  const p = part.product;
-                  return p && (p.stock || 0) < (part.qty || 1);
-                });
-                const hasMissing = missingParts.length > 0;
-                return (
-                <div style={{
-                  background: hasMissing ? '#fef2f2' : '#f0fdf4',
-                  border: `1.5px solid ${hasMissing ? '#fecaca' : '#86efac'}`,
-                  borderRadius: 10, padding: '12px 14px'
-                }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: hasMissing ? '#dc2626' : '#16a34a', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+            {/* Технический лист — скачать PDF */}
+            {localProduct.techSheet?.files?.length > 0 && (
+              <div style={{ ...card, background: '#f5f9ff', borderColor: '#bfdbfe' }}>
+                <div style={{ ...cardTitle, color: '#1d4ed8' }}>📄 Технический лист</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {localProduct.techSheet.files.map((f, i) => (
+                    <a key={i}
+                      href={`/api/admin/products/${localProduct._id}/techsheet/${i}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        padding: '9px 16px', borderRadius: 11,
+                        background: '#1d4ed8', color: '#fff',
+                        fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
+                      }}>
+                      ⬇ Скачать PDF{localProduct.techSheet.files.length > 1 ? ` (${i + 1})` : ''}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Поставщик — привозной товар (только owner и navigator) */}
+            {product.isSupplied && (user?.role === 'owner' || user?.role === 'navigator') && (
+              <div style={{ ...card, background: '#f5f9ff', borderColor: '#bfdbfe' }}>
+                <div style={{ ...cardTitle, color: '#1d4ed8' }}>📦 Привозной товар (поставщик)</div>
+                {[
+                  ['Компания',           product.supplier?.company],
+                  ['Контактное лицо',    product.supplier?.contactName],
+                  ['Артикул поставщика', product.supplier?.sku],
+                ].filter(([, v]) => v).map(([label, value]) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, padding: '6px 0' }}>
+                    <span style={{ color: '#7aa5d8', minWidth: 150, flexShrink: 0 }}>{label}</span>
+                    <span style={{ color: UI.ink, fontWeight: 700 }}>{value}</span>
+                  </div>
+                ))}
+                {!product.supplier?.company && !product.supplier?.contactName && !product.supplier?.sku && (
+                  <span style={{ fontSize: 13, color: '#7aa5d8' }}>Данные поставщика не заполнены</span>
+                )}
+              </div>
+            )}
+
+            {/* Состав комплекта */}
+            {localProduct.isKit && localProduct.kitParts?.length > 0 && (() => {
+              const missingParts = localProduct.kitParts.filter(part => {
+                const p = part.product;
+                return p && (p.stock || 0) < (part.qty || 1);
+              });
+              const hasMissing = missingParts.length > 0;
+              return (
+                <div style={{ ...card, background: hasMissing ? '#fef7f7' : '#f6fdf8', borderColor: hasMissing ? '#fecaca' : '#bbf7d0' }}>
+                  <div style={{ ...cardTitle, color: hasMissing ? UI.red : '#16a34a' }}>
                     📦 Состав комплекта ({localProduct.kitParts.length} деталей)
                   </div>
                   {hasMissing && (
-                    <div style={{ background: '#fee2e2', borderRadius: 6, padding: '8px 10px', marginBottom: 10, fontSize: 11, color: '#dc2626', fontWeight: 600 }}>
+                    <div style={{ background: '#fee2e2', borderRadius: 10, padding: '9px 12px', marginBottom: 12, fontSize: 12, color: UI.red, fontWeight: 700 }}>
                       ⚠️ Не хватает деталей для сборки комплекта
                     </div>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'grid', gap: 10, gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))' }}>
                     {localProduct.kitParts.map((part, i) => {
                       const p = part.product;
                       if (!p) return null;
@@ -907,56 +979,66 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                         <div key={i} onClick={() => openPart(p)} style={{
                           display: 'flex', alignItems: 'center', gap: 12,
                           background: isMissing ? '#fee2e2' : '#fff',
-                          borderRadius: 10, padding: '12px 14px',
-                          border: isMissing ? '1px solid #fecaca' : '1px solid #e5e7eb',
-                          cursor: 'pointer', transition: 'all 0.15s'
+                          borderRadius: 12, padding: '11px 14px',
+                          border: `1px solid ${isMissing ? '#fecaca' : UI.line}`,
+                          cursor: 'pointer', transition: 'transform .15s',
                         }}
                         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.01)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                        >
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
                           {p.images?.[0] && (
-                            <img src={cloudinaryOpt(p.images[0], 100)} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 8, background: '#f8f8f8' }} />
+                            <img src={cloudinaryOpt(p.images[0], 100)} alt="" style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 10, background: '#f8f8f8' }} />
                           )}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 700, color: UI.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {p.fullName || p.name}
                             </div>
-                            <div style={{ fontSize: 12, color: isMissing ? '#dc2626' : '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                            <div style={{ fontSize: 12, color: isMissing ? UI.red : '#16a34a', fontWeight: 700, marginTop: 2 }}>
                               {loadingPart === p._id ? 'Открываем…' : <>{available} шт{isMissing && ` (нужно ${needed})`}</>}
                             </div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>
                               {p.price?.toLocaleString('ru')} {signOf(p)}
                             </div>
-                            {needed > 1 && (
-                              <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-                                × {needed} шт
-                              </div>
-                            )}
+                            {needed > 1 && <div style={{ fontSize: 11, color: UI.muted, marginTop: 2 }}>× {needed} шт</div>}
                           </div>
                         </div>
                       );
                     })}
                   </div>
                   {localProduct.kitType !== 'independent' && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, color: hasMissing ? '#dc2626' : '#16a34a', fontWeight: 600 }}>Итого</span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#111' }}>
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: hasMissing ? UI.red : '#16a34a', fontWeight: 700 }}>Итого</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: UI.ink }}>
                         {localProduct.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} {signOf(localProduct)}
                       </span>
                     </div>
                   )}
                 </div>
-                );
-              })()}
+              );
+            })()}
 
-              {/* Extra actions slot */}
-              {extraActions}
-            </div>
+            {/* Extra actions slot */}
+            {extraActions}
           </div>
         </div>
       </div>
+
+      {/* Фото на весь экран */}
+      {zoom && !hasColorOnly && (
+        <div onClick={() => setZoom(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: zBase + 300,
+          background: 'rgba(15,23,42,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24, cursor: 'zoom-out',
+        }}>
+          <img src={cloudinaryOpt(img, 1600)} alt={product.name}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          <button onClick={() => setZoom(false)} style={{
+            position: 'absolute', top: 20, right: 24, width: 42, height: 42, borderRadius: 12,
+            background: 'rgba(255,255,255,.15)', color: '#fff', border: 'none', fontSize: 20, cursor: 'pointer',
+          }}>✕</button>
+        </div>
+      )}
       {/* Delete confirmation dialog */}
       {confirming && (
         <>

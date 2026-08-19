@@ -24,7 +24,7 @@ const SalesRecord  = require('../models/SalesRecord');
 const SalesDoc     = require('../models/SalesDoc');
 const SalesUpload  = require('../models/SalesUpload');
 const cloudinary   = require('../lib/cloudinary');
-const { uploadRawBuffer } = cloudinary;
+const { uploadRawBuffer, publicIdFromUrl } = cloudinary;
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
 const { ZONES, zoneOf, zoneFilter } = require('../lib/bufferZones');
 const {
@@ -403,7 +403,10 @@ router.get('/products/:id', async (req, res) => {
   }
 });
 
-// PATCH /admin/products/:id/buffer-stock — установить буферный запас
+// PATCH /admin/products/:id/buffer-stock — установить буферный запас базы 1С
+// Буфер ведётся по базам (как остаток): в теле — { base, bufferStock }.
+// Без base значение уходит в Make-in: так вели буфер до разделения по базам.
+// Общий bufferStock пересчитывается как сумма по базам Кыргызстана.
 // Доступ: owner или пользователи с флагом canSetBufferStock
 router.patch('/products/:id/buffer-stock', async (req, res) => {
   if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
@@ -411,18 +414,33 @@ router.patch('/products/:id/buffer-stock', async (req, res) => {
     return res.status(403).json({ error: 'Нет прав менять буферный запас' });
   }
   try {
-    const bufferStock = Math.max(0, Math.floor(Number(req.body.bufferStock) || 0));
+    const base = String(req.body.base || 'makein');
+    if (!isBaseKey(base)) return res.status(400).json({ error: `Неизвестная база 1С: ${base}` });
+    const value = Math.max(0, Math.floor(Number(req.body.bufferStock) || 0));
+
     const old = await Product.findById(req.params.id);
     if (!old) return res.status(404).json({ error: 'Товар не найден' });
-    if ((old.bufferStock || 0) !== bufferStock) {
+
+    const byBase = { makein: 0, matkasym: 0, qtop: 0,
+      ...(old.bufferByBase ? (old.bufferByBase.toObject?.() || old.bufferByBase) : {}) };
+    // Карточка ещё не разделена по базам — прежний общий буфер это буфер Make-in
+    if (!byBase.makein && !byBase.matkasym && !byBase.qtop && (old.bufferStock || 0) > 0) {
+      byBase.makein = old.bufferStock;
+    }
+    const oldValue = byBase[base] || 0;
+    byBase[base] = value;
+    const total = STOCK_SUM_BASES.reduce((n, k) => n + (byBase[k] || 0), 0);
+
+    if (oldValue !== value) {
       await ChangeLog.create({
         productId:   old._id,
         productName: old.fullName || old.name,
         changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
-        changes:     [{ field: 'Буферный запас', from: old.bufferStock || 0, to: bufferStock }],
+        changes:     [{ field: `Буферный запас (${BASES[base].label || base})`, from: oldValue, to: value }],
       });
     }
-    old.bufferStock = bufferStock;
+    old.bufferByBase = byBase;
+    old.bufferStock  = total;
     await old.save();
     res.json(old);
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
@@ -453,6 +471,30 @@ router.post('/products', editor, async (req, res) => {
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
+// Снести из Cloudinary фото, которые убрали из товара. Вызывается ТОЛЬКО после
+// успешного сохранения: пока товар не сохранён, файл трогать нельзя — иначе в базе
+// останется ссылка на несуществующий ассет (битые фото на сайте, упавшие автопубликации).
+// Ассет удаляем, лишь если на него больше никто не ссылается: варианты товара часто
+// делят одни и те же снимки, а публикация в очереди отправит его при следующем тике.
+async function dropUnusedImages(removed, productId) {
+  const Publication = require('../models/Publication');
+  for (const url of removed) {
+    if (!String(url).includes('cloudinary.com')) continue;
+    const publicId = publicIdFromUrl(url);
+    if (!publicId) continue;
+    try {
+      const usedElsewhere = await Product.countDocuments({ _id: { $ne: productId }, images: url });
+      if (usedElsewhere) continue;
+      const inQueue = await Publication.countDocuments({ images: url, status: { $ne: 'done' } });
+      if (inQueue) continue;
+      await cloudinary.uploader.destroy(publicId);
+    } catch (e) {
+      // Не роняем сохранение товара из-за уборки мусора — максимум останется лишний файл.
+      console.error('[Cloudinary] не удалось удалить', publicId, e.message);
+    }
+  }
+}
+
 router.patch('/products/:id', editor, async (req, res) => {
   if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
   try {
@@ -479,6 +521,13 @@ router.patch('/products/:id', editor, async (req, res) => {
     }
 
     const p = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+
+    // Товар сохранён — теперь можно убирать из Cloudinary фото, которых в нём не осталось.
+    if (req.body.images !== undefined) {
+      const kept    = new Set(req.body.images || []);
+      const removed = (old.images || []).filter(u => !kept.has(u));
+      if (removed.length) dropUnusedImages(removed, p._id).catch(e => console.error('[Cloudinary]', e.message));
+    }
 
     if (changes.length > 0) {
       await ChangeLog.create({

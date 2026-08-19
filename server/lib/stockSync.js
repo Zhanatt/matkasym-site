@@ -138,7 +138,7 @@ async function applyStockUpload(buffer, baseKey, user) {
     ({ stockMap, looseMap, skuMap, hasSku, warehouses } = parseStockRows(rows, baseKey, normName));
   }
 
-  const products = await Product.find({}, '_id fullName name sku skuByBase category price priceWholesale stock stockByBase inBase bufferStock brand supplier.company isKit kitType kitParts');
+  const products = await Product.find({}, '_id fullName name sku skuByBase category price priceWholesale stock stockByBase inBase bufferStock bufferByBase brand supplier.company isKit kitType kitParts');
 
   // Товар из выгрузки ищем по артикулу, а не по названию: в разных базах 1С одну
   // и ту же позицию пишут по-разному («Эко мангал R10» / «Эко мангал R 10»), и остаток
@@ -207,10 +207,18 @@ async function applyStockUpload(buffer, baseKey, user) {
 
     // Буфер из 1С перезаписывает ручной, но только если задан.
     // У товаров IKEA в 1С минимума нет — там буфер ведут вручную, его не затираем.
-    // Буфер берём только из Make-in: у Matkasym свои минимумы по цехам, они бы затирали общий.
+    // Пишем в свою базу: у Make-in и Matkasym минимумы свои, раньше вторые отбрасывались.
+    const bufByBase = { makein: 0, matkasym: 0, qtop: 0,
+      ...(p.bufferByBase ? (p.bufferByBase.toObject?.() || p.bufferByBase) : {}) };
+    const oldBaseBuffer = bufByBase[baseKey] || 0;
+    if (row && row.buffer > 0) bufByBase[baseKey] = row.buffer;
+    if (bufByBase[baseKey] !== oldBaseBuffer) buffersUpdated++;
+
+    // Общий буфер — сумма по базам Кыргызстана, как и остаток. Пока по базам пусто
+    // (старые карточки, ручной буфер до разделения) — прежнее значение не трогаем.
     const oldBuffer = p.bufferStock || 0;
-    const newBuffer = (baseKey === 'makein' && row && row.buffer > 0) ? row.buffer : oldBuffer;
-    if (newBuffer !== oldBuffer) buffersUpdated++;
+    const sumBuffer = STOCK_SUM_BASES.reduce((n, k) => n + (bufByBase[k] || 0), 0);
+    const newBuffer = sumBuffer > 0 ? sumBuffer : oldBuffer;
 
     if (newStock !== oldStock) {
       stockLogDocs.push({
@@ -233,6 +241,7 @@ async function applyStockUpload(buffer, baseKey, user) {
     return { updateOne: { filter: { _id: p._id }, update: { $set: {
       stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock',
       bufferStock: newBuffer,
+      [`bufferByBase.${baseKey}`]: bufByBase[baseKey],
       [`stockByBase.${baseKey}`]: byBase[baseKey],
       [`inBase.${baseKey}`]:      !!row,
       [`skuByBase.${baseKey}`]:   skuBase[baseKey],

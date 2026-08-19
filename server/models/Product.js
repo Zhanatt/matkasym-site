@@ -103,7 +103,14 @@ const productSchema = new mongoose.Schema({
     matkasym: { type: Boolean, default: false },
     qtop:     { type: Boolean, default: false },
   },
-  bufferStock:   { type: Number, default: 0 },  // минимальный (буферный) запас на складе
+  bufferStock:   { type: Number, default: 0 },  // минимальный (буферный) запас — сумма по базам Кыргызстана
+  // Буфер, как и остаток, ведётся по каждой базе 1С отдельно: у Make-in и Matkasym
+  // свои минимальные остатки. bufferStock — их сумма; Q-top это Казахстан и в неё не входит.
+  bufferByBase: {
+    makein:   { type: Number, default: 0 },
+    matkasym: { type: Number, default: 0 },
+    qtop:     { type: Number, default: 0 },
+  },
   stockStatus:      { type: String, enum: ['in_stock', 'out_of_stock', 'expected'], default: 'in_stock' },
   inTransit:        { type: Boolean, default: false },  // товар в пути, ещё не на складе
   inTransitQty:     { type: Number, default: 0 },       // количество товара в пути
