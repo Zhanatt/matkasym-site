@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
-import { socialGetReport, socialGetPersonPosts } from '../../api';
+import { socialGetReport, socialGetPersonPosts, socialGetLeads } from '../../api';
 
 // Кто сколько публикаций сделал и что за ним закреплено.
 // Журнал показывает записи сплошным списком и на вопрос «сколько за неделю
