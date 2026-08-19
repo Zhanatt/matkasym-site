@@ -260,18 +260,27 @@ async function refreshStats(pubId) {
 }
 
 // Обновить отклик по последним публикациям разом — кнопкой в журнале.
-// Идём последовательно: Meta считает запросы в час, и параллельный обстрел
-// упрётся в лимит быстрее, чем принесёт выигрыш в секундах.
+//
+// На каждый пост уходит по два запроса к площадке (счётчики + insights), и на
+// полусотне публикаций строго последовательный обход занимает минуты — столько
+// браузер ждать не станет. Идём пачками по STATS_CONCURRENCY: Meta считает лимит
+// в час, а не в секунду, так что несколько параллельных запросов её не смущают,
+// зато весь сбор укладывается в десятки секунд.
+const STATS_CONCURRENCY = 5;
+
 async function refreshRecentStats({ limit = 20 } = {}) {
   const pubs = await Publication.find({
     targets: { $elemMatch: { status: 'published', platform: { $in: STATS_PLATFORMS }, externalId: { $nin: ['', null] } } },
-  }).sort({ createdAt: -1 }).limit(Math.min(limit, 50)).select('_id').lean();
+  }).sort({ createdAt: -1 }).limit(Math.min(limit, 100)).select('_id').lean();
 
   let updated = 0, failed = 0;
-  for (const p of pubs) {
-    const r = await refreshStats(p._id);
-    updated += r.updated || 0;
-    failed  += r.failed  || 0;
+  for (let i = 0; i < pubs.length; i += STATS_CONCURRENCY) {
+    const batch = pubs.slice(i, i + STATS_CONCURRENCY);
+    const results = await Promise.all(batch.map(p => refreshStats(p._id).catch(e => {
+      console.error('[stats]', p._id, e.message);
+      return { updated: 0, failed: 1 };
+    })));
+    results.forEach(r => { updated += r.updated || 0; failed += r.failed || 0; });
   }
   return { ok: true, posts: pubs.length, updated, failed };
 }
