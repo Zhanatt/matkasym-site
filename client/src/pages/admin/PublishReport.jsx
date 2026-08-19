@@ -259,6 +259,36 @@ export default function PublishReport() {
             </>
           )}
 
+          {/* Метка поста — то, ради чего она в подписи и стоит: обращение можно
+              приписать площадке, а не догадываться по источнику. Ставит её робот
+              в Битриксе, поэтому блок честно говорит, когда он ещё не настроен. */}
+          {leads && !leads.error && leads.byTag && (
+            <div style={{ marginTop: 14, padding: '12px 14px', background: '#f7f9fb', borderRadius: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#111', marginBottom: 8 }}>
+                По метке из подписи поста
+              </div>
+              {leads.byTag.tags.some(t => t.leads + t.deals > 0) ? (
+                <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
+                  {leads.byTag.tags.map(t => (
+                    <div key={t.key}>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: '#111', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                        {(t.leads + t.deals).toLocaleString('ru-RU')}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#5c6873' }}>{t.label}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: '#8b98a5', lineHeight: 1.5 }}>
+                  Пока пусто. Метку в сделку ставит робот в Битриксе: поле «Метка поста» заведено,
+                  осталось настроить триггер «Входящее сообщение» с условием на текст
+                  (#inst_matrix, #tg_matrix, #fb_matrix). Как заработает — обращения появятся здесь
+                  с привязкой к площадке, а не к каналу связи.
+                </div>
+              )}
+            </div>
+          )}
+
           {leads?.error && (
             <div style={{ fontSize: 11, color: '#b26a00', margin: '20px 0 0' }}>
               Обращения из Битрикса не получены: {leads.error}

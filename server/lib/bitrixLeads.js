@@ -44,6 +44,61 @@ async function loadSources() {
 
 const dayStr = d => d.toISOString().slice(0, 10);
 
+// Метка поста в CRM. Само поле — список, и у лида с сделкой у него РАЗНЫЕ
+// внутренние id значений, поэтому ищем их по XML_ID, а не зашиваем числа.
+// Проставляет метку робот в Битриксе: он ловит #inst_matrix в первом сообщении
+// клиента (текст сообщения до полей CRM сам не доходит) и пишет в это поле.
+const TAG_FIELD_XML_ID = 'POST_TRAFFIC_TAG';
+const TAGS = [
+  { key: 'instagram', label: 'Instagram', xmlId: 'inst_matrix' },
+  { key: 'telegram',  label: 'Telegram',  xmlId: 'tg_matrix' },
+  { key: 'facebook',  label: 'Facebook',  xmlId: 'fb_matrix' },
+];
+
+let tagFieldCache = null;
+let tagFieldAt = 0;
+
+async function loadTagField() {
+  if (tagFieldCache && Date.now() - tagFieldAt < 6 * 60 * 60 * 1000) return tagFieldCache;
+  const { call } = require('../utils/bitrix24');
+
+  const read = async (method) => {
+    const list = await call(method, { filter: {} }).catch(() => []);
+    const f = (list || []).find(x => x.XML_ID === TAG_FIELD_XML_ID);
+    if (!f) return null;
+    const byXml = {};
+    (f.LIST || []).forEach(v => { byXml[v.XML_ID] = v.ID; });
+    return { field: f.FIELD_NAME, values: byXml };
+  };
+
+  tagFieldCache = {
+    deal: await read('crm.deal.userfield.list'),
+    lead: await read('crm.lead.userfield.list'),
+  };
+  tagFieldAt = Date.now();
+  return tagFieldCache;
+}
+
+// Сколько обращений пришло по каждой метке. Пока робот не настроен, тут нули —
+// это не ошибка, и отличить «никто не пришёл» от «метку никто не ставит» помогает
+// поле configured в ответе.
+async function countByTag(period) {
+  const uf = await loadTagField();
+  if (!uf.deal && !uf.lead) return { configured: false, tags: [] };
+
+  const tags = [];
+  for (const t of TAGS) {
+    const dealId = uf.deal?.values?.[t.xmlId];
+    const leadId = uf.lead?.values?.[t.xmlId];
+    const [deals, leads] = await Promise.all([
+      dealId ? count('crm.deal.list', { ...period, [uf.deal.field]: dealId }) : 0,
+      leadId ? count('crm.lead.list', { ...period, [uf.lead.field]: leadId }) : 0,
+    ]);
+    tags.push({ key: t.key, label: t.label, leads, deals });
+  }
+  return { configured: true, tags };
+}
+
 /**
  * @param {number} days — 0 означает «за всё время», но Битрикс без даты считает
  *                        весь портал целиком, поэтому дно ставим на год.
@@ -89,9 +144,12 @@ async function leadsByChannel({ days = 30 } = {}) {
     deals: Math.max(0, totalDeals - known.deals),
   });
 
+  const byTag = await countByTag(period).catch(e => ({ configured: false, tags: [], error: e.message }));
+
   const data = {
     days,
     from: dayStr(from),
+    byTag,
     totals: { leads: totalLeads, deals: totalDeals, all: totalLeads + totalDeals },
     channels: channels.filter(c => c.leads || c.deals)
       .sort((a, b) => (b.leads + b.deals) - (a.leads + a.deals)),
