@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { socialGetReport } from '../../api';
+import { useState, useEffect, Fragment } from 'react';
+import { socialGetReport, socialGetPersonPosts } from '../../api';
 
 // Кто сколько публикаций сделал и что за ним закреплено.
 // Журнал показывает записи сплошным списком и на вопрос «сколько за неделю
@@ -12,6 +12,20 @@ const PERIODS = [
 ];
 
 const ROLE = { designer: 'дизайнер', owner: 'владелец', editor: 'редактор', viewer: 'сотрудник' };
+
+const PLATFORM = {
+  instagram: { label: 'Instagram', color: '#c13584' },
+  facebook:  { label: 'Facebook',  color: '#3b5998' },
+  telegram:  { label: 'Telegram',  color: '#229ED9' },
+};
+
+// '2026-08-19T...' → «19.08». Дата поста в списке нужна только для порядка,
+// год и время там лишний шум.
+function shortDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 // '2026-08-10' → «10.08, пн». Разбираем строку руками, а не new Date(s):
 // строка вида '2026-08-10' читается как полночь UTC и в минусовых поясах
@@ -36,6 +50,11 @@ export default function PublishReport() {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [open,    setOpen]    = useState(true);
+  // Раскрытый сотрудник в таблице отклика и его посты. Кэш по ключу
+  // «человек+период»: при смене периода цифры другие, старые показывать нельзя.
+  const [openPerson, setOpenPerson] = useState(null);
+  const [personPosts, setPersonPosts] = useState({});
+  const [personLoading, setPersonLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -44,6 +63,21 @@ export default function PublishReport() {
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [days]);
+
+  // Период сменился — цифры в раскрытом списке уже не те, закрываем.
+  useEffect(() => { setOpenPerson(null); }, [days]);
+
+  function togglePerson(uid) {
+    if (openPerson === uid) { setOpenPerson(null); return; }
+    setOpenPerson(uid);
+    const key = `${uid}:${days}`;
+    if (personPosts[key]) return;                 // уже загружали
+    setPersonLoading(true);
+    socialGetPersonPosts(uid, days)
+      .then(r => setPersonPosts(prev => ({ ...prev, [key]: r.data.posts || [] })))
+      .catch(() => setPersonPosts(prev => ({ ...prev, [key]: [] })))
+      .finally(() => setPersonLoading(false));
+  }
 
   const people = data?.people || [];
   const byDay  = data?.byDay  || [];
@@ -171,6 +205,7 @@ export default function PublishReport() {
                 Реакции — лайки Instagram и все реакции Facebook вместе.
                 Отклик — доля откликнувшихся от охвата, считается по Instagram: Facebook охват не отдаёт.
                 {data.totals.noData > 0 && ` Постов без цифр: ${data.totals.noData} — удалены с площадки или статистику ещё не собирали.`}
+                <b style={{ color: '#8b98a5' }}> Клик по сотруднику — его посты по отдельности.</b>
               </div>
 
               <div style={{ overflowX: 'auto' }}>
@@ -189,11 +224,20 @@ export default function PublishReport() {
                   <tbody>
                     {byReactions.map(p => {
                       const e = p.engagement;
+                      const isOpen = openPerson === p.id;
+                      const posts  = personPosts[`${p.id}:${days}`];
                       return (
-                        <tr key={p.id}>
+                        <Fragment key={p.id}>
+                        <tr
+                          onClick={() => togglePerson(p.id)}
+                          style={{ cursor: 'pointer', background: isOpen ? '#f7f9fb' : 'transparent' }}
+                        >
                           <td style={{ ...td, textAlign: 'left' }}>
-                            <div style={{ fontWeight: 700, color: '#111' }}>{p.name}</div>
-                            <div style={{ fontSize: 10, color: '#aab3bd' }}>
+                            <div style={{ fontWeight: 700, color: '#111' }}>
+                              <span style={{ color: '#aab3bd', marginRight: 5, fontSize: 11 }}>{isOpen ? '▾' : '▸'}</span>
+                              {p.name}
+                            </div>
+                            <div style={{ fontSize: 10, color: '#aab3bd', paddingLeft: 16 }}>
                               {e.measured} {plural(e.measured, 'пост посчитан', 'поста посчитано', 'постов посчитано')}
                             </div>
                           </td>
@@ -215,6 +259,94 @@ export default function PublishReport() {
                             {e.responseRate === null ? '—' : `${(e.responseRate * 100).toFixed(1)}%`}
                           </td>
                         </tr>
+
+                        {/* Посты этого человека — вложенной строкой, а не модалкой:
+                            сравнивать «у кого зашло» удобнее, не теряя таблицу из виду. */}
+                        {isOpen && (
+                          <tr>
+                            <td colSpan={7} style={{ padding: 0, background: '#f7f9fb', borderBottom: '1px solid #f4f6f8' }}>
+                              {!posts ? (
+                                <div style={{ padding: '14px 12px', fontSize: 12, color: '#aab3bd' }}>
+                                  {personLoading ? 'Загрузка постов...' : 'Не удалось загрузить.'}
+                                </div>
+                              ) : !posts.length ? (
+                                <div style={{ padding: '14px 12px', fontSize: 12, color: '#aab3bd' }}>
+                                  Постов с цифрами за этот период нет.
+                                </div>
+                              ) : (
+                                <div style={{ padding: '10px 12px 14px' }}>
+                                  <div style={{ fontSize: 10, color: '#aab3bd', marginBottom: 8 }}>
+                                    Сильные посты сверху. Строка — один пост на одной площадке.
+                                  </div>
+                                  {posts.map((post, i) => (
+                                    <div
+                                      key={`${post.id}-${post.platform}-${i}`}
+                                      style={{
+                                        display: 'flex', alignItems: 'center', gap: 10,
+                                        padding: '7px 8px', borderRadius: 8,
+                                        background: i % 2 ? 'transparent' : '#fff',
+                                      }}
+                                    >
+                                      {post.image ? (
+                                        <img src={post.image} alt="" style={{
+                                          width: 36, height: 36, borderRadius: 6, objectFit: 'cover',
+                                          flexShrink: 0, background: '#eef0f3',
+                                        }} />
+                                      ) : (
+                                        <div style={{ width: 36, height: 36, borderRadius: 6, background: '#eef0f3', flexShrink: 0 }} />
+                                      )}
+
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{
+                                          fontSize: 12, fontWeight: 600, color: '#111',
+                                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                        }}>
+                                          {post.url ? (
+                                            <a href={post.url} target="_blank" rel="noreferrer"
+                                               onClick={ev => ev.stopPropagation()}
+                                               style={{ color: '#111', textDecoration: 'none' }}>
+                                              {post.name}
+                                            </a>
+                                          ) : post.name}
+                                        </div>
+                                        <div style={{ fontSize: 10, color: '#aab3bd', display: 'flex', gap: 6, marginTop: 1 }}>
+                                          <span style={{ color: PLATFORM[post.platform]?.color || '#aab3bd', fontWeight: 600 }}>
+                                            {PLATFORM[post.platform]?.label || post.platform}
+                                          </span>
+                                          {post.postType === 'story' && <span>история</span>}
+                                          <span>{shortDate(post.publishedAt || post.date)}</span>
+                                          {post.number && <span>№{post.number}</span>}
+                                        </div>
+                                      </div>
+
+                                      {!post.hasStats ? (
+                                        <div style={{ fontSize: 10, color: '#c9d1d9', whiteSpace: 'nowrap' }}>
+                                          цифр нет
+                                        </div>
+                                      ) : (
+                                        <div style={{
+                                          display: 'flex', gap: 12, fontSize: 11, color: '#5c6873',
+                                          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                                        }}>
+                                          <span title="Реакции"><b style={{ color: '#e05263', fontSize: 12 }}>{post.reactions}</b> ❤</span>
+                                          <span title="Комментарии" style={{ width: 34, textAlign: 'right' }}>{post.comments || '—'} 💬</span>
+                                          <span title="Сохранения" style={{ width: 34, textAlign: 'right' }}>{post.saved || '—'} 🔖</span>
+                                          <span title="Охват" style={{ width: 52, textAlign: 'right' }}>
+                                            {post.reach ? post.reach.toLocaleString('ru-RU') : '—'}
+                                          </span>
+                                          <span title="Отклик" style={{ width: 42, textAlign: 'right', fontWeight: 700, color: '#111' }}>
+                                            {post.responseRate === null ? '—' : `${(post.responseRate * 100).toFixed(1)}%`}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                     <tr>

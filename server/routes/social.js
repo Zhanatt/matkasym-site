@@ -484,6 +484,79 @@ router.get('/report', async (req, res) => {
   }
 });
 
+// GET /report/person/:userId?days=30 — посты одного человека с цифрами по каждому.
+// В сводной таблице отклика видно только среднее: «112 реакций, 2.0 на пост».
+// На вопрос «а какие именно посты зашли» она не отвечает — отвечает этот список.
+//
+// Строка = один пост на одной площадке, как и в сводке: публикация уходит
+// в несколько мест, и отклик у каждого свой. Считаем теми же правилами,
+// иначе суммы здесь и в таблице разойдутся.
+//
+// userId = 'none' — публикации без автора (createdBy пустой у старых записей).
+router.get('/report/person/:userId', async (req, res) => {
+  try {
+    const days = Math.min(Number(req.query.days) || 30, 365);
+    const uid  = req.params.userId;
+
+    // Строку в ObjectId кастует сам mongoose — поле в схеме уже типизировано.
+    const match = uid === 'none' ? { createdBy: null } : { createdBy: uid };
+    if (days > 0) {
+      const from = new Date();
+      from.setHours(0, 0, 0, 0);
+      from.setDate(from.getDate() - (days - 1));
+      match.createdAt = { $gte: from };
+    }
+
+    const pubs = await Publication.find(match)
+      .select('number productName kind images createdAt targets')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const posts = [];
+    for (const pub of pubs) {
+      for (const t of pub.targets || []) {
+        if (!STATS_PLATFORMS.includes(t.platform) || t.status !== 'published') continue;
+        const s = t.stats || {};
+        const hasStats = ['views', 'reach', 'likes', 'reactions', 'comments', 'saved', 'shares']
+          .some(k => typeof s[k] === 'number');
+        const reactions = (s.likes || 0) + (s.reactions || 0);
+
+        posts.push({
+          id:          String(pub._id),
+          number:      pub.number || null,
+          name:        pub.productName || (pub.kind === 'custom' ? 'Свой пост' : 'Без названия'),
+          image:       (pub.images || [])[0] || '',
+          date:        pub.createdAt,
+          publishedAt: t.publishedAt || null,
+          platform:    t.platform,
+          postType:    t.postType || 'feed',
+          url:         t.externalUrl || '',
+          hasStats,
+          reactions:   hasStats ? reactions : null,
+          comments:    hasStats ? (s.comments || 0) + (s.replies || 0) : null,
+          saved:       hasStats ? (s.saved  || 0) : null,
+          shares:      hasStats ? (s.shares || 0) : null,
+          views:       hasStats ? (s.views  || 0) : null,
+          reach:       hasStats ? (s.reach  || 0) : null,
+          // Доля откликнувшихся — только там, где охват известен (Facebook его не отдаёт).
+          responseRate: hasStats && s.reach > 0 ? reactions / s.reach : null,
+        });
+      }
+    }
+
+    // Сильные посты сверху — ради них список и открывают. Посты без цифр
+    // не смешиваем с нулевыми: у них не «ноль реакций», а «неизвестно».
+    posts.sort((a, b) => {
+      if (a.hasStats !== b.hasStats) return a.hasStats ? -1 : 1;
+      return (b.reactions || 0) - (a.reactions || 0);
+    });
+
+    res.json({ days, posts });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // Черновик текста по товару — тот же, что уходит в предпросмотр.
 router.get('/draft/:productId', async (req, res) => {
   const p = await Product.findById(req.params.productId).lean();
