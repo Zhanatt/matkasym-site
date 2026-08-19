@@ -22,6 +22,8 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
     setProgress(5);
 
     // Build grouped data for PDF
+    // «В пути» в PDF не попадает: на складе товара нет, печатать его в каталоге
+    // нельзя. Позиции с остатком проходят по stock/inStock как обычно.
     let pdfGroups = null;
 
     if (groups && groups.length > 0) {
@@ -32,7 +34,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           // items is array of [name, variants] — extract first variant (primary product)
           const groupProducts = items
             .map(([, variants]) => variants[0])
-            .filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit || p.productStatus === 'test_sale');
+            .filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.productStatus === 'test_sale');
           return { groupName, products: groupProducts };
         })
         .filter(g => g.products.length > 0);
@@ -44,7 +46,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
       }
     } else {
       // No groups — use flat list filtered by availability
-      const availableProducts = products.filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit || p.productStatus === 'test_sale');
+      const availableProducts = products.filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.productStatus === 'test_sale');
       if (availableProducts.length === 0) {
         alert('Нет доступных товаров для выгрузки');
         setLoading(false);

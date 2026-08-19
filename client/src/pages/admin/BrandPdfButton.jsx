@@ -21,8 +21,11 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const res = await adminGetProducts({ brand: brandKey, limit: 5000 });
       const allProducts = res.data.products || [];
 
+      // «В пути» в выгрузку не идёт: товара ещё нет на складе, продавать по
+      // каталогу нечего. Позиция с остатком остаётся — её берут stock/inStock,
+      // даже если сверху едет ещё партия.
       const availableProducts = allProducts.filter(p =>
-        p.inStock || p.stock > 0 || p.isOnOrder || p.inTransit || p.productStatus === 'test_sale'
+        p.inStock || p.stock > 0 || p.isOnOrder || p.productStatus === 'test_sale'
       );
 
       if (availableProducts.length === 0) {
