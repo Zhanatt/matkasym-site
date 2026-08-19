@@ -22,6 +22,7 @@ const targetSchema = new mongoose.Schema({
   // а 0 лайков это честный ноль. Ошибку показываем рядом, а не молча прячем.
   stats: {
     likes:        { type: Number },
+    reactions:    { type: Number },   // Facebook: лайк, сердце, «ха-ха» и прочие в сумме
     comments:     { type: Number },
     views:        { type: Number },   // просмотры (в старых постах — показы)
     reach:        { type: Number },   // сколько уникальных аккаунтов увидели
@@ -29,6 +30,7 @@ const targetSchema = new mongoose.Schema({
     shares:       { type: Number },
     replies:      { type: Number },   // ответы на историю — у неё комментариев нет
     interactions: { type: Number },   // все взаимодействия разом
+    clicks:       { type: Number },   // Facebook: клики по посту
     updatedAt:    { type: Date },
     error:        { type: String, default: '' },
   },

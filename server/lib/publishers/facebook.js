@@ -104,6 +104,104 @@ async function publish({ account, caption: rawCaption, images = [], postType = '
   }
 }
 
+// ── Отклик на пост ───────────────────────────────────────────────────────────
+//
+// Как и в Instagram, источника два и они независимы:
+//   · счётчики самого поста (реакции, комментарии, репосты) — отдаются по
+//     pages_read_engagement, то есть тем же токеном, которым мы публикуем;
+//   · insights (показы, охват, клики) — только с правом read_insights.
+// Без второго отчёт всё равно осмысленный, поэтому счётчики тянем отдельно.
+//
+// Набор метрик у страниц Meta переписывала не раз, и на неизвестное имя приходит
+// не «нет такого поля», а ошибка на весь запрос. Спрашиваем оптимистично и на
+// отказ выкидываем названные метрики — новые подхватятся сами.
+const POST_FIELDS  = 'reactions.summary(true).limit(0),comments.summary(true).limit(0),shares';
+const POST_METRICS = ['post_impressions', 'post_impressions_unique', 'post_clicks'];
+
+// Ключи Meta → поля отчёта. Реакции считаем отдельно от лайков Instagram:
+// в Facebook это лайк, сердце, «ха-ха» и остальные — в сумме.
+const METRIC_FIELD = {
+  post_impressions: 'views', post_impressions_unique: 'reach', post_clicks: 'clicks',
+};
+
+// «(#100) The value must be a valid insights metric» страница отдаёт и тогда,
+// когда метрика реально снята с поддержки, и когда у токена нет read_insights —
+// различить нельзя, поэтому подсказываем самое вероятное.
+function explainStatsError(msg) {
+  const text = String(msg || '');
+  if (/does not exist|cannot be loaded|Unsupported get request/i.test(text)) {
+    return 'Facebook не отдаёт этот пост: обычно так бывает, если его удалили со страницы.';
+  }
+  if (/valid insights metric|#100/i.test(text)) {
+    return 'Показы и охват страница не отдала: чаще всего токену не хватает права read_insights — '
+      + 'добавьте его и перевыпустите токен страницы. Реакции, комментарии и репосты считаются и без него.';
+  }
+  if (/expired|Session has expired|#190/i.test(text)) {
+    return 'Токен истёк — выпустите новый на странице площадок.';
+  }
+  return text;
+}
+
+const rejectedMetrics = (message, asked) => {
+  const text = String(message || '').toLowerCase();
+  return asked.filter(m => text.includes(m.toLowerCase()));
+};
+
+async function fetchInsights(postId, accessToken, metrics, depth = 0) {
+  if (!metrics.length || depth > 3) return {};
+  try {
+    const d = await graph(`/${postId}/insights`, { metric: metrics.join(','), access_token: accessToken }, 'GET');
+    const out = {};
+    (d.data || []).forEach(row => {
+      const field = METRIC_FIELD[row.name];
+      const value = row.values?.[0]?.value;
+      if (field && typeof value === 'number') out[field] = value;
+    });
+    return out;
+  } catch (e) {
+    const bad = rejectedMetrics(e.message, metrics);
+    if (!bad.length) throw e;
+    return fetchInsights(postId, accessToken, metrics.filter(m => !bad.includes(m)), depth + 1);
+  }
+}
+
+/**
+ * Цифры по одному посту страницы: реакции, комментарии, репосты, показы, охват.
+ * Ошибку возвращаем текстом — она ложится рядом с постом в журнале.
+ */
+async function stats({ account, externalId }) {
+  const { accessToken } = account?.config || {};
+  if (!accessToken) return { ok: false, error: 'Не задан accessToken' };
+  if (!externalId)  return { ok: false, error: 'У поста нет id на площадке' };
+
+  const out = {};
+  const notes = [];
+
+  try {
+    const d = await graph(`/${externalId}`, { fields: POST_FIELDS, access_token: accessToken }, 'GET');
+    if (typeof d.reactions?.summary?.total_count === 'number') out.reactions = d.reactions.summary.total_count;
+    if (typeof d.comments?.summary?.total_count === 'number')  out.comments  = d.comments.summary.total_count;
+    // Репостов может не быть вовсе — тогда Facebook поля не присылает, а не ноль
+    out.shares = typeof d.shares?.count === 'number' ? d.shares.count : 0;
+  } catch (e) {
+    notes.push(explainStatsError(e.message));
+  }
+
+  try {
+    Object.assign(out, await fetchInsights(externalId, accessToken, POST_METRICS));
+  } catch (e) {
+    notes.push(explainStatsError(e.message));
+  }
+  // Метрики отвалились по одной — до вызова дело не дошло, а показов нет
+  if (!('views' in out) && !notes.length) {
+    notes.push(explainStatsError('valid insights metric'));
+  }
+
+  const why = [...new Set(notes)].join('; ');
+  if (!Object.keys(out).length) return { ok: false, error: why || 'Facebook не отдал ни одной цифры' };
+  return { ok: true, stats: out, warning: why };
+}
+
 // Facebook, в отличие от Instagram, удалять посты через API умеет.
 async function unpublish({ account, externalId }) {
   const { accessToken } = account?.config || {};
@@ -120,4 +218,4 @@ async function unpublish({ account, externalId }) {
   }
 }
 
-module.exports = { publish, unpublish, compressed };
+module.exports = { publish, unpublish, stats, compressed };

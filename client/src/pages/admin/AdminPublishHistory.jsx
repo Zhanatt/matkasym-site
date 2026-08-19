@@ -23,14 +23,19 @@ const METRICS = [
   { key: 'views',        icon: '👁',  label: 'просмотры' },
   { key: 'reach',        icon: '👤',  label: 'охват' },
   { key: 'likes',        icon: '❤️',  label: 'лайки' },
+  { key: 'reactions',    icon: '👍',  label: 'реакции' },
   { key: 'comments',     icon: '💬',  label: 'комменты' },
   { key: 'replies',      icon: '↩',   label: 'ответы' },
   { key: 'saved',        icon: '🔖',  label: 'сохранили' },
   { key: 'shares',       icon: '↗',   label: 'поделились' },
+  { key: 'clicks',       icon: '🖱',  label: 'клики' },
   { key: 'interactions', icon: '✨',  label: 'всего реакций' },
 ];
 
 const hasNumbers = s => METRICS.some(m => typeof s?.[m.key] === 'number');
+
+// Площадки, которые умеют отдавать отклик на пост (см. lib/socialPublish.js)
+const STATS_PLATFORMS = ['instagram', 'facebook'];
 
 // Площадка отдаёт не все метрики (у историй нет лайков, охват требует прав в Meta),
 // поэтому рисуем только пришедшие числа. Пустой отчёт с прочерками выглядел бы так,
@@ -108,9 +113,9 @@ export default function AdminPublishHistory() {
   const loadAllStats = async () => {
     setBusy('all');
     try {
-      const r = await socialRefreshAllStats(20);
+      const r = await socialRefreshAllStats(50);
       load();
-      if (!r.data.updated) alert('Ни по одному посту цифр не пришло — проверьте токен Instagram на странице площадок');
+      if (!r.data.updated) alert('Ни по одному посту цифр не пришло — проверьте токены на странице площадок');
     } catch (e) {
       alert(e.response?.data?.message || 'Не удалось собрать статистику');
     }
@@ -158,7 +163,7 @@ export default function AdminPublishHistory() {
           padding: '6px 14px', fontSize: 13, cursor: 'pointer', color: '#555', fontWeight: 600,
         }}>← К публикации</button>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>📜 Журнал публикаций</h1>
-        <button onClick={loadAllStats} disabled={busy === 'all'} title="Собрать лайки, комментарии и просмотры по последним 20 публикациям" style={{
+        <button onClick={loadAllStats} disabled={busy === 'all'} title="Собрать отклик по загруженным публикациям" style={{
           marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, border: '1.5px solid #e0e0e0',
           background: '#fff', fontSize: 12, fontWeight: 600, cursor: busy === 'all' ? 'wait' : 'pointer', color: '#555',
         }}>{busy === 'all' ? 'Считаю...' : '📊 Собрать статистику'}</button>
@@ -178,8 +183,9 @@ export default function AdminPublishHistory() {
         </div>
       ) : items.map(p => {
         const failed = (p.targets || []).filter(t => t.status === 'failed').length;
-        // Отчёт есть только там, где пост реально вышел и площадка умеет отдавать цифры
-        const measurable = (p.targets || []).filter(t => t.platform === 'instagram' && t.status === 'published' && t.externalId);
+        // Отчёт есть там, где пост реально вышел и площадка умеет отдавать цифры
+        const measurable = (p.targets || []).filter(t =>
+          STATS_PLATFORMS.includes(t.platform) && t.status === 'published' && t.externalId);
         return (
           <div key={p._id} style={{ background: '#fff', borderRadius: 14, padding: 20, boxShadow: '0 1px 6px rgba(0,0,0,.07)', marginBottom: 14 }}>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
@@ -213,7 +219,7 @@ export default function AdminPublishHistory() {
                   }}>{busy === p._id ? '...' : `↻ Повторить (${failed})`}</button>
                 )}
                 {measurable.length > 0 && (
-                  <button onClick={() => loadStats(p._id)} disabled={busy === p._id} title="Лайки, комментарии и просмотры этого поста в Instagram" style={{
+                  <button onClick={() => loadStats(p._id)} disabled={busy === p._id} title="Отклик на этот пост в Instagram и Facebook" style={{
                     padding: '7px 14px', borderRadius: 8, border: '1.5px solid #e0e0e0', background: '#fff',
                     color: '#3463A3', fontSize: 12, fontWeight: 700, cursor: busy === p._id ? 'wait' : 'pointer',
                   }}>{busy === p._id ? '...' : '📊 Статистика'}</button>
