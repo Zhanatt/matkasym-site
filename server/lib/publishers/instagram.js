@@ -6,6 +6,7 @@
 //
 // account.config = { igUserId, accessToken, username }
 const { htmlToPlain, adaptCaption } = require('../postCaption');
+const { metaError } = require('../metaError');
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -36,7 +37,11 @@ async function graph(path, params, method = 'POST') {
     : await fetch(url, { method: 'POST', body });
 
   const d = await r.json().catch(() => ({}));
-  if (d.error) throw new Error(d.error.error_user_msg || d.error.message || 'Instagram API error');
+  if (d.error) {
+    const e = new Error(d.error.error_user_msg || metaError(d.error));
+    e.code = d.error.code;
+    throw e;
+  }
   return d;
 }
 

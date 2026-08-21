@@ -15,6 +15,7 @@
 // Токен — ТОКЕНА СТРАНИЦЫ (GET /me/accounts), с правом pages_manage_posts:
 // пользовательский токен Meta не пропустит, а без pages_manage_posts вернёт (#200).
 const { htmlToPlain, adaptCaption } = require('../postCaption');
+const { metaError } = require('../metaError');
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -37,7 +38,9 @@ async function graph(path, params, method = 'POST') {
 
   const d = await r.json().catch(() => ({}));
   if (d.error) {
-    const e = new Error(d.error.error_user_msg || d.error.message || 'Facebook API error');
+    // Сырой текст Meta в журнале читается как поломка сайта, хотя почти всегда
+    // это протухший токен — metaError говорит, что именно пошло не так и что делать.
+    const e = new Error(d.error.error_user_msg || metaError(d.error));
     e.code = d.error.code;
     throw e;
   }

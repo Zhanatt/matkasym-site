@@ -3,6 +3,7 @@
 const express = require('express');
 const router  = express.Router();
 
+const { metaError } = require('../lib/metaError');
 const { protect, editor } = require('../middleware/auth');
 const { SocialAccount, TelegramChat } = require('../models/SocialAccount');
 const PublishFlow  = require('../models/PublishFlow');
@@ -93,32 +94,6 @@ router.delete('/accounts/:id', async (req, res) => {
   await SocialAccount.findByIdAndDelete(req.params.id);
   res.json({ ok: true });
 });
-
-// Ошибки Meta приходят англоязычной простынёй, из которой не видно, что делать.
-// Переводим типовые случаи в инструкцию: почти всегда лечится перевыпуском токена.
-// Общая для Instagram и Facebook — API и ошибки у них одни и те же.
-const META_SCOPES = 'pages_show_list, pages_read_engagement, pages_manage_posts, '
-  + 'instagram_basic, instagram_content_publish';
-
-function metaError(err = {}) {
-  const msg = String(err.message || '');
-  if (/pages_manage_posts/i.test(msg)) {
-    return 'У токена нет права публиковать на странице (pages_manage_posts). Перевыпустите токен '
-      + `в Graph API Explorer с разрешениями ${META_SCOPES} — и возьмите токен САМОЙ СТРАНИЦЫ `
-      + '(GET /me/accounts), а не пользователя.';
-  }
-  if (/permission\(s\) must be granted|pages_show_list|pages_read_engagement/i.test(msg)) {
-    return 'У токена нет прав на страницу. Перевыпустите его в Graph API Explorer с разрешениями '
-      + `${META_SCOPES} — и возьмите токен САМОЙ СТРАНИЦЫ (GET /me/accounts), а не пользователя.`;
-  }
-  if (/expired|Session has expired/i.test(msg)) {
-    return 'Токен истёк. Выпустите новый долгоживущий токен страницы и вставьте его в «Изменить».';
-  }
-  if (Number(err.code) === 190) {
-    return `Токен недействителен: ${msg}`;
-  }
-  return msg || 'Meta API error';
-}
 
 // POST /accounts/:id/check — проверка связи без публикации: доступен ли чат / жив ли токен.
 router.post('/accounts/:id/check', async (req, res) => {
