@@ -235,6 +235,7 @@ export const socialGetDraft        = (productId, priceMode, lang) => api.get(`/a
 });
 // Сколько раз и куда товар уже публиковали — показывается в поиске товара
 export const socialGetPublishStats = ()          => api.get('/admin/social/publish-stats');
+export const socialGetLalafo       = ()          => api.get('/admin/social/lalafo');
 export const socialGetLeads        = (days)      => api.get('/admin/social/leads', { params: { days } });
 export const socialGetReport       = (days)      => api.get('/admin/social/report', { params: { days } });
 export const socialGetPersonPosts  = (userId, days) => api.get(`/admin/social/report/person/${userId}`, { params: { days } });

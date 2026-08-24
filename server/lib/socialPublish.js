@@ -15,6 +15,7 @@ const PUBLISHERS = {
   facebook:  require('./publishers/facebook'),
   bitrix24:  require('./publishers/bitrix24'),
   site:      require('./publishers/site'),
+  lalafo:    require('./publishers/lalafo'),
 };
 
 const PLATFORM_LABELS = {
@@ -23,6 +24,7 @@ const PLATFORM_LABELS = {
   facebook:  'Facebook',
   bitrix24:  'Битрикс24',
   site:      'Сайт',
+  lalafo:    'Лалафо',
 };
 
 function fmtPrice(n) {

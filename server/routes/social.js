@@ -44,7 +44,7 @@ router.get('/accounts', async (req, res) => {
 router.post('/accounts', async (req, res) => {
   try {
     const { platform, title, config, postTypes, captionTemplate, enabled } = req.body || {};
-    if (!['telegram', 'instagram', 'facebook', 'bitrix24', 'site'].includes(platform)) {
+    if (!['telegram', 'instagram', 'facebook', 'bitrix24', 'site', 'lalafo'].includes(platform)) {
       return res.status(400).json({ message: 'Неизвестная платформа' });
     }
     if (!String(title || '').trim()) return res.status(400).json({ message: 'Укажите название площадки' });
@@ -546,6 +546,78 @@ router.get('/leads', async (req, res) => {
     // Битрикс может быть недоступен или у вебхука кончились права — отчёт по постам
     // из-за этого падать не должен, поэтому отдаём причину, а не 500.
     res.json({ error: e.message, channels: [], totals: { leads: 0, deals: 0, all: 0 } });
+  }
+});
+
+// ===== Лалафо =====
+//
+// Площадка живёт файлом, а не API: публикация ставит объявление в очередь,
+// а здесь очередь показывается и скачивается одним xlsx. Формат — тот же, что
+// собирали руками: 13 колонок, название по-русски, карточка по-кыргызски.
+
+const LALAFO_COLUMNS = ['Артикул', 'Название', 'Мүнөздөмөсү (характеристики)',
+  'Сүрөттөмөсү (описание)', 'Баасы (цена)',
+  'Фото 1', 'Фото 2', 'Фото 3', 'Фото 4', 'Фото 5', 'Фото 6', 'Фото 7', 'Фото 8'];
+
+// GET /lalafo — что стоит в очереди на выгрузку
+router.get('/lalafo', async (req, res) => {
+  try {
+    const LalafoItem = require('../models/LalafoItem');
+    const items = await LalafoItem.find({ status: 'queued' }).sort({ createdAt: 1 }).lean();
+    res.json({
+      queued: items.length,
+      // Товары без фото на Лалафо не принимают — показываем их отдельно, а не прячем
+      noPhotos: items.filter(i => !i.photos?.length).map(i => i.title),
+      items: items.map(i => ({
+        id: i._id, sku: i.sku, title: i.title, photos: i.photos?.length || 0,
+        hasSpecs: !!i.specs, createdAt: i.createdAt,
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// GET /lalafo/export — скачать очередь файлом. По умолчанию помечает выгруженным:
+// файл ушёл на площадку, и второй раз те же объявления заливать не надо.
+// ?mark=0 — просто посмотреть, ничего не помечая.
+router.get('/lalafo/export', async (req, res) => {
+  try {
+    const xlsx = require('xlsx');
+    const LalafoItem = require('../models/LalafoItem');
+    const items = await LalafoItem.find({ status: 'queued' }).sort({ createdAt: 1 }).lean();
+    if (!items.length) return res.status(404).json({ message: 'Очередь пуста — выгружать нечего' });
+
+    const rows = items.map(i => {
+      const row = {
+        'Артикул': i.sku || '',
+        'Название': i.title || '',
+        'Мүнөздөмөсү (характеристики)': i.specs || '',
+        'Сүрөттөмөсү (описание)': i.description || '',
+        'Баасы (цена)': i.price || '',
+      };
+      LALAFO_COLUMNS.slice(5).forEach((col, idx) => { row[col] = i.photos?.[idx] || ''; });
+      return row;
+    });
+
+    const ws = xlsx.utils.json_to_sheet(rows, { header: LALAFO_COLUMNS });
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, 'Лалафо');
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    if (req.query.mark !== '0') {
+      await LalafoItem.updateMany(
+        { _id: { $in: items.map(i => i._id) } },
+        { $set: { status: 'exported', exportedAt: new Date() } },
+      );
+    }
+
+    const name = `Лалафо_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+    res.send(buf);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
   }
 });
 

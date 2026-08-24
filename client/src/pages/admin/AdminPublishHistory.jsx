@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socialGetPublications, socialRetryPublication, socialUnpublish, socialDeletePublication,
-         socialRefreshStats, socialRefreshAllStats } from '../../api';
+         socialRefreshStats, socialRefreshAllStats, socialGetLalafo } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
 import { platformMeta } from '../../config/socialPlatforms';
 import PublishReport from './PublishReport';
@@ -81,6 +81,7 @@ export default function AdminPublishHistory() {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy,    setBusy]    = useState('');
+  const [lalafo,  setLalafo]  = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -91,6 +92,10 @@ export default function AdminPublishHistory() {
   };
 
   useEffect(load, []);
+
+  // Очередь Лалафо: у площадки нет API, объявления копятся и уходят одним файлом
+  const loadLalafo = () => socialGetLalafo().then(r => setLalafo(r.data)).catch(() => setLalafo(null));
+  useEffect(() => { loadLalafo(); }, []);
 
   const retry = async (id) => {
     setBusy(id);
@@ -174,6 +179,30 @@ export default function AdminPublishHistory() {
           background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#555',
         }}>Обновить</button>
       </div>
+
+      {lalafo?.queued > 0 && (
+        <div style={{
+          background: '#fff9ec', border: '1px solid #f2e0bb', borderRadius: 12,
+          padding: '14px 16px', marginBottom: 14, display: 'flex', gap: 14,
+          alignItems: 'center', flexWrap: 'wrap',
+        }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>
+              🟡 Лалафо: {lalafo.queued} {lalafo.queued === 1 ? 'объявление' : lalafo.queued < 5 ? 'объявления' : 'объявлений'} к выгрузке
+            </div>
+            <div style={{ fontSize: 11, color: '#8a7a55', marginTop: 3, lineHeight: 1.5 }}>
+              Скачайте файл и залейте его на площадку — API у Лалафо нет.
+              После скачивания объявления помечаются выгруженными.
+              {lalafo.noPhotos?.length > 0 && ` Без фото: ${lalafo.noPhotos.length} — их Лалафо не примет.`}
+            </div>
+          </div>
+          <a href="/api/admin/social/lalafo/export" onClick={() => setTimeout(loadLalafo, 1500)}
+            style={{
+              padding: '8px 16px', borderRadius: 8, background: '#111', color: '#fff',
+              fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap',
+            }}>📥 Скачать xlsx</a>
+        </div>
+      )}
 
       <PublishReport />
 
