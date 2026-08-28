@@ -29,7 +29,7 @@ const PAPER     = '#FFFFFF';
 
 const LOGO = '/logos/logo-white.png';
 
-// Труба продаётся хлыстом; в базе цена за погонный метр
+// Длина хлыста; цена в прайсе — за погонный метр, как в базе
 const PIPE_LENGTH_M = 6;
 
 // ── Тексты ────────────────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ const L = {
     page: n => `${n}-БЕТ`,
     colSize: 'ӨЛЧӨМҮ',
     colWall: 'МЕТАЛЛДЫН КАЛЫҢДЫГЫ',
-    colPrice: `БААСЫ, ${PIPE_LENGTH_M} М ҮЧҮН`,
+    colPrice: 'БААСЫ, 1 М ҮЧҮН',
     length: `Бир түтүктүн узундугу — ${PIPE_LENGTH_M} м`,
     currency: 'сом',
     noPrice: 'келишим боюнча',
@@ -64,7 +64,7 @@ const L = {
     page: n => `СТР. ${n}`,
     colSize: 'РАЗМЕР',
     colWall: 'ТОЛЩИНА МЕТАЛЛА',
-    colPrice: `ЦЕНА ЗА ${PIPE_LENGTH_M} М`,
+    colPrice: 'ЦЕНА ЗА 1 М',
     length: `Длина одной трубы — ${PIPE_LENGTH_M} м`,
     currency: 'сом',
     noPrice: 'по запросу',
@@ -114,7 +114,7 @@ const rowOf = (p, type, dict) => {
                   .replace(/\s*мм$/i, '').replace(/^[⌀Øø]\s*/, '').trim();
   const wall  = (spec(p, 'толщина стенки') || nWall || '').replace(/\s*мм$/i, '').trim();
   if (!size || !wall) return null;           // без размеров строка в прайсе бессмысленна
-  const price = Number(p.price) > 0 ? Number(p.price) * PIPE_LENGTH_M : null;
+  const price = Number(p.price) > 0 ? Number(p.price) : null;
   return {
     key:   p._id || p.sku,
     size:  round ? `Ø ${size} мм` : `${size.replace(/[x*]/g, '×')} мм`,
