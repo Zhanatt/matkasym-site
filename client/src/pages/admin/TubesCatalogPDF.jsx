@@ -15,22 +15,24 @@ Font.register({
 Font.registerHyphenationCallback(w => [w]);
 
 // ── Палитра ───────────────────────────────────────────────────────────────────
-const NAVY      = '#123C7A';
-const NAVY_DARK = '#0C2A57';
-const BLUE      = '#1B57B0';
-const BLUE_SOFT = '#E8F0FB';
-const PAPER     = '#EFF3F8';
-const GRID      = '#DCE5F0';
-const INK       = '#12233D';
-const GRAY      = '#5E6C80';
-const WHITE     = '#FFFFFF';
+const NAVY      = '#14315E';
+const NAVY_DEEP = '#0D2244';
+const GOLD      = '#F5B921';
+const GOLD_SOFT = '#FFF7E3';
+const GOLD_LINE = '#E8C878';
+const INK       = '#121A24';
+const GRAY      = '#6B7684';
+const GRAY_SOFT = '#98A2AF';
+const LINE      = '#E2E7EE';
+const PHOTO_BG  = '#F1F4F8';
+const PAPER     = '#FFFFFF';
 
 const LOGO = '/logos/logo-white.png';
 
 // Труба продаётся хлыстом; в базе цена за погонный метр
 const PIPE_LENGTH_M = 6;
 
-// Ходовые размеры — отмечены синей меткой в каталоге
+// Ходовые размеры — отмечены жёлтой меткой в каталоге
 const POPULAR = new Set([
   'MKS-Tkr-16-05', 'MKS-Tkr-19-09', 'MKS-Tkr-19-10',
   'MKS-Tkr-25-07', 'MKS-Tkr-25-09', 'MKS-Tkr-32-09',
@@ -42,16 +44,17 @@ const POPULAR = new Set([
 const L = {
   ky: {
     title: 'ТҮТҮКТӨР КАТАЛОГУ',
-    legend: 'КӨК БЕЛГИ — КӨП ТАНДАЛГАН ӨЛЧӨМ',
+    subtitle: 'Металл түтүктөрдүн баа тизмеси',
+    legend: 'САРЫ БЕЛГИ — КӨП ТАНДАЛГАН ӨЛЧӨМ',
     page: n => `${n}-БЕТ`,
     colSize: 'ӨЛЧӨМҮ',
-    colWall: 'МЕТАЛЛДЫН\nКАЛЫҢДЫГЫ',
-    colPrice: `БААСЫ (${PIPE_LENGTH_M} М ҮЧҮН)`,
-    length: `УЗУНДУГУ: ${PIPE_LENGTH_M} м`,
-    popular: 'КӨП ТАНДАЛАТ',
-    priceUnit: `сом/${PIPE_LENGTH_M} м`,
+    colWall: 'МЕТАЛЛДЫН КАЛЫҢДЫГЫ',
+    colPrice: `БААСЫ, ${PIPE_LENGTH_M} М ҮЧҮН`,
+    length: `Бир түтүктүн узундугу — ${PIPE_LENGTH_M} м`,
+    popular: 'КӨП\u00A0АЛЫНАТ',
+    currency: 'сом',
     noPrice: 'келишим боюнча',
-    contKey: '(уландысы)',
+    cont: 'уландысы',
     footerTitle: 'КЕҢИРИ АССОРТИМЕНТТЕГИ ТҮТҮКТӨР',
     footerBullets: [
       'Ар кандай өлчөмдөр жеткиликтүү',
@@ -67,16 +70,17 @@ const L = {
   },
   ru: {
     title: 'КАТАЛОГ ТРУБ',
-    legend: 'СИНЯЯ МЕТКА — ХОДОВОЙ РАЗМЕР',
+    subtitle: 'Прайс-лист на металлические трубы',
+    legend: 'ЖЁЛТАЯ МЕТКА — ХОДОВОЙ РАЗМЕР',
     page: n => `СТР. ${n}`,
     colSize: 'РАЗМЕР',
-    colWall: 'ТОЛЩИНА\nМЕТАЛЛА',
-    colPrice: `ЦЕНА (ЗА ${PIPE_LENGTH_M} М)`,
-    length: `ДЛИНА: ${PIPE_LENGTH_M} м`,
+    colWall: 'ТОЛЩИНА МЕТАЛЛА',
+    colPrice: `ЦЕНА ЗА ${PIPE_LENGTH_M} М`,
+    length: `Длина одной трубы — ${PIPE_LENGTH_M} м`,
     popular: 'ХОДОВОЙ',
-    priceUnit: `сом/${PIPE_LENGTH_M} м`,
+    currency: 'сом',
     noPrice: 'по запросу',
-    contKey: '(продолжение)',
+    cont: 'продолжение',
     footerTitle: 'ШИРОКИЙ АССОРТИМЕНТ ТРУБ',
     footerBullets: [
       'Доступны любые размеры',
@@ -97,11 +101,13 @@ const TYPE_ORDER = ['Круглая', 'Квадратная', 'Прямоуго�
 // ── Разбор товара ─────────────────────────────────────────────────────────────
 const spec = (p, key) => (p.specs || []).find(s => s.key?.trim().toLowerCase() === key)?.value?.trim();
 
+// null — значит позиция не труба (в сете лежат ещё и услуги вроде лазерной резки)
 const typeOf = (p) => {
   const t = spec(p, 'тип');
   if (t && TYPE_ORDER.includes(t)) return t;
   const n = (p.name || '').toLowerCase();
-  return TYPE_ORDER.find(x => n.includes(x.toLowerCase())) || 'Круглая';
+  if (!n.startsWith('труба')) return null;
+  return TYPE_ORDER.find(x => n.includes(x.toLowerCase())) || null;
 };
 
 // «Труба круглая 16×0,5» → ['16', '0,5'];  «Труба квадратная 15x15x0,9» → ['15x15', '0,9']
@@ -113,186 +119,221 @@ const fromName = (name) => {
 
 const num = (s) => parseFloat(String(s ?? '').replace(',', '.').replace(/[^\d.]/g, '')) || 0;
 
-const rowOf = (p, dict) => {
+const rowOf = (p, type, dict) => {
   const [nSize, nWall] = fromName(p.name);
-  const round = typeOf(p) === 'Круглая';
-  const size  = (spec(p, 'диаметр трубы') || spec(p, 'размер трубы') || nSize || '').replace(/\s*мм$/i, '');
-  const wall  = (spec(p, 'толщина стенки') || nWall || '').replace(/\s*мм$/i, '');
+  const round = type === 'Круглая';
+  const size  = (spec(p, 'диаметр трубы') || spec(p, 'размер трубы') || nSize || '').replace(/\s*мм$/i, '').trim();
+  const wall  = (spec(p, 'толщина стенки') || nWall || '').replace(/\s*мм$/i, '').trim();
+  if (!size || !wall) return null;           // без размеров строка в прайсе бессмысленна
   const price = Number(p.price) > 0 ? Number(p.price) * PIPE_LENGTH_M : null;
   return {
     key:   p._id || p.sku,
     size:  round ? `Ø ${size} мм` : `${size.replace(/[x*]/g, '×')} мм`,
     wall:  `${String(wall).replace('.', ',')} мм`,
-    price: price === null ? dict.noPrice : `${price.toLocaleString('ru-RU')} ${dict.priceUnit}`,
+    price: price === null ? null : price.toLocaleString('ru-RU'),
     hot:   POPULAR.has(p.sku),
     sortA: num(size),
     sortB: num(wall),
   };
 };
 
-// ── Раскладка: блоки по типам, блоки по страницам ─────────────────────────────
-const ROW_H       = 20;
-const BLOCK_CHROME = 80;  // шапка таблицы, полоса «длина 6 м», отступы карточки
-const BLOCK_MIN_H  = 168; // ниже фото и заголовок в левой колонке уже не помещаются
+// ── Раскладка ─────────────────────────────────────────────────────────────────
+const ROW_H        = 17;
+const BLOCK_CHROME = 56;   // шапка таблицы, строка про длину, отступ под карточкой
+const BLOCK_SPLIT  = 14;   // разделитель, если карточка не первая на листе
+const BLOCK_MIN_H  = 180;  // столько нужно колонке с фото, чтобы труба влезла целиком
+const MIN_ROWS     = 4;    // хвост короче уже не выглядит таблицей
 const FOOTER_H     = 96;
-const PAGE_BODY_H  = 740; // A4 минус шапка и поля страницы
+const PAGE_BODY_H  = 684;  // A4 за вычетом шапки, легенды и колонтитула
 
-const blockHeight = (rows) => Math.max(BLOCK_MIN_H, BLOCK_CHROME + rows.length * ROW_H);
+const blockHeight = (rows, split) =>
+  Math.max(BLOCK_MIN_H, BLOCK_CHROME + rows * ROW_H) + (split ? BLOCK_SPLIT : 0);
 
-// Блок не переносится по строкам: каждая часть — цельная карточка со своим фото.
-// Если тип не влезает на страницу, режем его на РАВНЫЕ части, иначе получается
-// длинный блок и куцый хвост из двух строк на следующей странице.
-const buildBlocks = (products, dict) => {
+const groupRows = (products, dict) => {
   const byType = {};
   products.forEach(p => {
     const t = typeOf(p);
-    (byType[t] ||= []).push(p);
+    if (t) (byType[t] ||= []).push(p);
   });
-
-  const maxRows = Math.floor((PAGE_BODY_H - BLOCK_CHROME) / ROW_H);
-  const blocks = [];
-  let n = 0;
-  TYPE_ORDER.filter(t => byType[t]?.length).forEach(type => {
-    n += 1;
-    const rows = byType[type].map(p => rowOf(p, dict)).sort((a, b) => a.sortA - b.sortA || a.sortB - b.sortB);
-    const photo = byType[type].find(p => p.images?.[0])?.images?.[0] || null;
-    const parts = Math.ceil(rows.length / maxRows);
-    const per   = Math.ceil(rows.length / parts);
-    for (let i = 0; i < rows.length; i += per) {
-      blocks.push({ type, num: n, photo, rows: rows.slice(i, i + per), cont: i > 0 });
-    }
-  });
-  return blocks;
+  return TYPE_ORDER.filter(t => byType[t]?.length).map(type => ({
+    type,
+    photo: byType[type].find(p => p.images?.[0])?.images?.[0] || null,
+    rows:  byType[type].map(p => rowOf(p, type, dict)).filter(Boolean)
+             .sort((a, b) => a.sortA - b.sortA || a.sortB - b.sortB),
+  })).filter(g => g.rows.length);
 };
 
-const paginate = (blocks) => {
+// Карточка не переносится по строкам — она цельная, с фото и заголовком. Поэтому
+// страницы набиваем сами: длинный тип режем ровно по месту, что осталось на листе,
+// а хвост короче MIN_ROWS не оставляем — двумя строками лист начинать некрасиво.
+const layout = (products, dict) => {
   const pages = [];
   let page = [], left = PAGE_BODY_H;
-  blocks.forEach(b => {
-    const h = blockHeight(b.rows);
-    if (page.length && h > left) { pages.push(page); page = []; left = PAGE_BODY_H; }
-    page.push(b); left -= h;
+
+  const flush = () => { if (page.length) pages.push(page); page = []; left = PAGE_BODY_H; };
+
+  groupRows(products, dict).forEach((group, i) => {
+    let rest = group.rows, cont = false;
+    while (rest.length) {
+      const split    = page.length > 0;
+      const chrome   = BLOCK_CHROME + (split ? BLOCK_SPLIT : 0);
+      const capacity = Math.floor((left - chrome) / ROW_H);
+      if (capacity < MIN_ROWS || left < BLOCK_MIN_H + (split ? BLOCK_SPLIT : 0)) { flush(); continue; }
+      // рвать тип посреди листа стоит только если он и на пустой лист не влезает
+      if (capacity < rest.length && blockHeight(rest.length, false) <= PAGE_BODY_H && split) { flush(); continue; }
+
+      let take = Math.min(capacity, rest.length);
+      if (rest.length - take > 0 && rest.length - take < MIN_ROWS) take = rest.length - MIN_ROWS;
+
+      page.push({ type: group.type, num: i + 1, photo: group.photo, rows: rest.slice(0, take), cont });
+      left -= blockHeight(take, split);
+      rest = rest.slice(take);
+      cont = true;
+    }
   });
-  if (page.length) pages.push(page);
-  // Хвост «широкий ассортимент» — на последней странице, если там осталось место
-  const tail = pages[pages.length - 1] || [];
-  const used = tail.reduce((s, b) => s + blockHeight(b.rows), 0);
+  flush();
+
+  const used = (pages[pages.length - 1] || []).reduce((s, b, i) => s + blockHeight(b.rows.length, i > 0), 0);
   return { pages, footerOnLast: PAGE_BODY_H - used >= FOOTER_H };
 };
 
 // ── Стили ─────────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({
-  page:      { fontFamily: 'Roboto', backgroundColor: PAPER, paddingBottom: 18 },
-  grid:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  gridLine:  { position: 'absolute', backgroundColor: GRID },
+  page:       { fontFamily: 'Roboto', backgroundColor: PAPER, paddingBottom: 34 },
 
-  header:    { backgroundColor: NAVY, paddingHorizontal: 22, paddingTop: 14, paddingBottom: 10 },
-  headRow:   { flexDirection: 'row', alignItems: 'center' },
-  logo:      { width: 96, height: 18, marginRight: 14 },
-  title:     { flex: 1, color: WHITE, fontSize: 21, fontWeight: 700, letterSpacing: 1 },
-  pageChip:  { backgroundColor: BLUE, borderRadius: 3, paddingHorizontal: 8, paddingVertical: 3 },
-  pageChipT: { color: WHITE, fontSize: 8.5, fontWeight: 700, letterSpacing: 0.6 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', marginTop: 7 },
-  legendDot: { width: 15, height: 8, borderRadius: 2, backgroundColor: BLUE, marginRight: 7 },
-  legendT:   { color: '#BDD2F0', fontSize: 8, fontWeight: 500, letterSpacing: 0.7 },
+  header:     { backgroundColor: NAVY, paddingHorizontal: 26, paddingTop: 15, paddingBottom: 13 },
+  headRow:    { flexDirection: 'row', alignItems: 'flex-start' },
+  headLeft:   { flex: 1 },
+  logo:       { width: 88, height: 16, marginBottom: 9 },
+  title:      { color: PAPER, fontSize: 20, fontWeight: 700, letterSpacing: 1.6 },
+  subtitle:   { color: '#9CB3D4', fontSize: 8, marginTop: 3, letterSpacing: 0.3 },
+  pageNum:    { borderWidth: 0.8, borderColor: '#5C7BAA', borderRadius: 2,
+                paddingHorizontal: 7, paddingVertical: 3 },
+  pageNumT:   { color: PAPER, fontSize: 7.5, fontWeight: 500, letterSpacing: 0.9 },
+  goldRule:   { height: 2.6, backgroundColor: GOLD },
 
-  body:      { paddingHorizontal: 18, paddingTop: 12 },
+  legendRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 26, paddingTop: 9 },
+  legendChip: { width: 13, height: 7, borderRadius: 1.5, backgroundColor: GOLD, marginRight: 6 },
+  legendT:    { color: GRAY, fontSize: 6.8, fontWeight: 500, letterSpacing: 0.8 },
 
-  block:     { backgroundColor: WHITE, borderRadius: 6, borderWidth: 1.4, borderColor: NAVY,
-               marginBottom: 10, flexDirection: 'row', padding: 7, minHeight: BLOCK_MIN_H },
-  side:      { width: '35%', paddingRight: 8 },
-  sideTitle: { backgroundColor: NAVY, borderRadius: 3, paddingVertical: 5, paddingHorizontal: 8 },
-  sideTitleT:{ color: WHITE, fontSize: 11, fontWeight: 700, letterSpacing: 0.4 },
-  sideNote:  { color: GRAY, fontSize: 7.5, marginTop: 6, lineHeight: 1.35 },
-  photo:     { marginTop: 7, width: '100%', height: 104, borderRadius: 4, objectFit: 'cover' },
+  body:       { paddingHorizontal: 26, paddingTop: 11 },
 
-  table:     { width: '65%' },
-  th:        { flexDirection: 'row', backgroundColor: NAVY, borderRadius: 3 },
-  thCell:    { color: WHITE, fontSize: 7, fontWeight: 700, textAlign: 'center', paddingVertical: 6,
-               paddingHorizontal: 3, lineHeight: 1.25 },
-  tr:        { flexDirection: 'row', alignItems: 'center', height: ROW_H,
-               borderBottomWidth: 0.6, borderBottomColor: '#D7E2F2' },
-  trHot:     { backgroundColor: BLUE_SOFT },
-  td:        { fontSize: 8.5, color: INK, textAlign: 'center', paddingHorizontal: 3 },
-  tdSize:    { fontSize: 9, color: INK, fontWeight: 500 },
-  cSize:     { width: '42%', flexDirection: 'row', alignItems: 'center', paddingLeft: 5 },
-  cWall:     { width: '25%' },
-  cPrice:    { width: '33%' },
-  hotChip:   { backgroundColor: BLUE, borderRadius: 2, paddingHorizontal: 3, paddingVertical: 1.5, marginRight: 5 },
-  hotChipT:  { color: WHITE, fontSize: 4.6, fontWeight: 700, lineHeight: 1.1, textAlign: 'center' },
-  lenBar:    { backgroundColor: BLUE_SOFT, borderRadius: 3, marginTop: 5, paddingVertical: 4, paddingHorizontal: 8 },
-  lenBarT:   { color: NAVY, fontSize: 8, fontWeight: 700, letterSpacing: 0.4 },
+  block:      { flexDirection: 'row', marginBottom: 14, minHeight: BLOCK_MIN_H },
+  blockSplit: { borderTopWidth: 0.5, borderTopColor: LINE, paddingTop: 14 },
+  side:       { width: '31%', paddingRight: 16 },
+  numBox:     { width: 21, height: 21, borderRadius: 2, backgroundColor: NAVY,
+                alignItems: 'center', justifyContent: 'center', marginBottom: 7 },
+  numT:       { color: PAPER, fontSize: 10, fontWeight: 700 },
+  typeName:   { color: INK, fontSize: 11.5, fontWeight: 700, letterSpacing: 0.5, lineHeight: 1.2 },
+  contMark:   { color: GRAY_SOFT, fontSize: 7.5, fontWeight: 400, letterSpacing: 0.4, marginTop: 2 },
+  typeNote:   { color: GRAY, fontSize: 7.5, marginTop: 5, lineHeight: 1.45 },
+  photoWrap:  { marginTop: 10, backgroundColor: PHOTO_BG, borderRadius: 3, padding: 8, height: 92 },
+  photo:      { width: '100%', height: '100%', objectFit: 'contain' },
 
-  footer:    { backgroundColor: NAVY_DARK, borderRadius: 6, padding: 12, marginTop: 2 },
-  footerT:   { color: WHITE, fontSize: 12, fontWeight: 700, letterSpacing: 0.6, marginBottom: 7 },
-  bullet:    { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  bulletDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#7FA8E8', marginRight: 6 },
-  bulletT:   { color: '#D6E3F7', fontSize: 8.5 },
+  table:      { flex: 1 },
+  th:         { flexDirection: 'row', alignItems: 'flex-end', height: 26, paddingBottom: 5,
+                borderBottomWidth: 1, borderBottomColor: NAVY },
+  thT:        { color: GRAY, fontSize: 6.2, fontWeight: 700, letterSpacing: 0.9, textAlign: 'center' },
+
+  tr:         { flexDirection: 'row', alignItems: 'center', height: ROW_H,
+                borderBottomWidth: 0.5, borderBottomColor: LINE },
+  trHot:      { backgroundColor: GOLD_SOFT },
+
+  cMark:      { width: 58, paddingLeft: 3 },
+  cSize:      { flex: 1 },
+  cWall:      { width: 96, textAlign: 'center' },
+  cPrice:     { width: 96, textAlign: 'right', paddingRight: 3, flexDirection: 'row',
+                alignItems: 'baseline', justifyContent: 'flex-end' },
+
+  hotChip:    { backgroundColor: GOLD, borderRadius: 2, paddingHorizontal: 4, paddingVertical: 2 },
+  hotChipT:   { color: '#4A3306', fontSize: 5, fontWeight: 700, textAlign: 'center' },
+
+  tdSize:     { fontSize: 9, color: INK, fontWeight: 500 },
+  tdWall:     { fontSize: 8.5, color: GRAY },
+  tdPrice:    { fontSize: 9.5, color: INK, fontWeight: 700 },
+  tdCur:      { fontSize: 7.5, color: GRAY, marginLeft: 3 },
+  tdAsk:      { fontSize: 8, color: GRAY_SOFT },
+
+  lenRow:     { marginTop: 6, flexDirection: 'row', justifyContent: 'flex-end' },
+  lenT:       { color: GRAY_SOFT, fontSize: 7, letterSpacing: 0.3 },
+
+  footer:     { backgroundColor: NAVY_DEEP, borderRadius: 4, paddingVertical: 16, paddingHorizontal: 18 },
+  footerT:    { color: GOLD, fontSize: 12, fontWeight: 700, letterSpacing: 1 },
+  bullet:     { flexDirection: 'row', alignItems: 'center', marginTop: 7 },
+  bulletDot:  { width: 3, height: 3, borderRadius: 1.5, backgroundColor: GOLD, marginRight: 7 },
+  bulletT:    { color: '#D3DEEE', fontSize: 8.5 },
+
+  pageFoot:   { position: 'absolute', bottom: 15, left: 26, right: 26,
+                flexDirection: 'row', justifyContent: 'space-between',
+                borderTopWidth: 0.5, borderTopColor: LINE, paddingTop: 7 },
+  pageFootT:  { color: GRAY_SOFT, fontSize: 6.5, letterSpacing: 1 },
 });
 
 // ── Куски документа ───────────────────────────────────────────────────────────
-const Grid = () => (
-  <View style={S.grid} fixed>
-    {Array.from({ length: 47 }, (_, i) => (
-      <View key={`h${i}`} style={[S.gridLine, { left: 0, right: 0, top: i * 18, height: 0.4 }]} />
-    ))}
-    {Array.from({ length: 34 }, (_, i) => (
-      <View key={`v${i}`} style={[S.gridLine, { top: 0, bottom: 0, left: i * 18, width: 0.4 }]} />
-    ))}
-  </View>
-);
-
 const Header = ({ dict }) => (
-  <View style={S.header} fixed>
-    <View style={S.headRow}>
-      <Image src={LOGO} style={S.logo} />
-      <Text style={S.title}>{dict.title}</Text>
-      <View style={S.pageChip}>
-        <Text style={S.pageChipT} render={({ pageNumber }) => dict.page(pageNumber)} />
+  <View fixed>
+    <View style={S.header}>
+      <View style={S.headRow}>
+        <View style={S.headLeft}>
+          <Image src={LOGO} style={S.logo} />
+          <Text style={S.title}>{dict.title}</Text>
+          <Text style={S.subtitle}>{dict.subtitle}</Text>
+        </View>
+        <View style={S.pageNum}>
+          <Text style={S.pageNumT} render={({ pageNumber }) => dict.page(pageNumber)} />
+        </View>
       </View>
     </View>
+    <View style={S.goldRule} />
     <View style={S.legendRow}>
-      <View style={S.legendDot} />
+      <View style={S.legendChip} />
       <Text style={S.legendT}>{dict.legend}</Text>
     </View>
   </View>
 );
 
-const Block = ({ block, dict }) => {
+const Block = ({ block, dict, first }) => {
   const meta = dict.types[block.type] || { name: block.type, note: '' };
   return (
-    <View style={S.block} wrap={false}>
+    <View style={[S.block, !first && S.blockSplit]} wrap={false}>
       <View style={S.side}>
-        <View style={S.sideTitle}>
-          <Text style={S.sideTitleT}>
-            {block.num}. {meta.name}{block.cont ? ` ${dict.contKey}` : ''}
-          </Text>
-        </View>
-        <Text style={S.sideNote}>{meta.note}</Text>
-        {block.photo && <Image src={block.photo} style={S.photo} />}
+        <View style={S.numBox}><Text style={S.numT}>{block.num}</Text></View>
+        <Text style={S.typeName}>{meta.name}</Text>
+        {block.cont && <Text style={S.contMark}>{dict.cont}</Text>}
+        <Text style={S.typeNote}>{meta.note}</Text>
+        {block.photo && (
+          <View style={S.photoWrap}>
+            <Image src={block.photo} style={S.photo} />
+          </View>
+        )}
       </View>
 
       <View style={S.table}>
         <View style={S.th}>
-          <Text style={[S.thCell, { width: '42%' }]}>{dict.colSize}</Text>
-          <Text style={[S.thCell, { width: '25%' }]}>{dict.colWall}</Text>
-          <Text style={[S.thCell, { width: '33%' }]}>{dict.colPrice}</Text>
+          <View style={S.cMark} />
+          <Text style={[S.thT, S.cSize, { textAlign: 'left' }]}>{dict.colSize}</Text>
+          <Text style={[S.thT, S.cWall]}>{dict.colWall}</Text>
+          <Text style={[S.thT, { width: 96, textAlign: 'right', paddingRight: 3 }]}>{dict.colPrice}</Text>
         </View>
+
         {block.rows.map(r => (
           <View key={r.key} style={[S.tr, r.hot && S.trHot]}>
-            <View style={S.cSize}>
+            <View style={S.cMark}>
               {r.hot && (
-                <View style={S.hotChip}>
-                  <Text style={S.hotChipT}>{dict.popular}</Text>
-                </View>
+                <View style={S.hotChip}><Text style={S.hotChipT}>{dict.popular}</Text></View>
               )}
-              <Text style={[S.td, S.tdSize]}>{r.size}</Text>
             </View>
-            <Text style={[S.td, S.cWall]}>{r.wall}</Text>
-            <Text style={[S.td, S.cPrice]}>{r.price}</Text>
+            <Text style={[S.tdSize, S.cSize]}>{r.size}</Text>
+            <Text style={[S.tdWall, S.cWall]}>{r.wall}</Text>
+            <View style={S.cPrice}>
+              {r.price
+                ? <><Text style={S.tdPrice}>{r.price}</Text><Text style={S.tdCur}>{dict.currency}</Text></>
+                : <Text style={S.tdAsk}>{dict.noPrice}</Text>}
+            </View>
           </View>
         ))}
-        <View style={S.lenBar}><Text style={S.lenBarT}>{dict.length}</Text></View>
+
+        <View style={S.lenRow}><Text style={S.lenT}>{dict.length}</Text></View>
       </View>
     </View>
   );
@@ -310,27 +351,34 @@ const Footer = ({ dict }) => (
   </View>
 );
 
+const PageFoot = ({ dict }) => (
+  <View style={S.pageFoot} fixed>
+    <Text style={S.pageFootT}>MATKASYM</Text>
+    <Text style={S.pageFootT} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+  </View>
+);
+
 function TubesDocument({ products, lang }) {
   const dict = L[lang] || L.ky;
-  const { pages, footerOnLast } = paginate(buildBlocks(products, dict));
+  const { pages, footerOnLast } = layout(products, dict);
 
   return (
     <Document title={dict.title} author="MATKASYM">
       {pages.map((blocks, i) => (
         <Page key={i} size="A4" style={S.page}>
-          <Grid />
           <Header dict={dict} />
           <View style={S.body}>
-            {blocks.map((b, j) => <Block key={`${b.type}-${j}`} block={b} dict={dict} />)}
+            {blocks.map((b, j) => <Block key={`${b.type}-${j}`} block={b} dict={dict} first={j === 0} />)}
             {footerOnLast && i === pages.length - 1 && <Footer dict={dict} />}
           </View>
+          <PageFoot dict={dict} />
         </Page>
       ))}
       {!footerOnLast && (
         <Page size="A4" style={S.page}>
-          <Grid />
           <Header dict={dict} />
           <View style={S.body}><Footer dict={dict} /></View>
+          <PageFoot dict={dict} />
         </Page>
       )}
     </Document>
