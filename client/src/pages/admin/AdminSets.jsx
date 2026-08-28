@@ -210,6 +210,12 @@ const SORTING_URN_SERIES = [
 ];
 
 const SET_CATEGORY_SORT = {
+  'dayar-tutuk': {
+    'Трубы круглые':       'size',
+    'Трубы овальные':      'size',
+    'Трубы квадратные':    'size',
+    'Трубы прямоугольные': 'size',
+  },
   '0-tashtandy': {
     'Пластиковые баки':   'size',
     'Мусорные баки':      'size',
@@ -266,6 +272,12 @@ function sizeRank(dim) {
   const nums = String(dim || '').match(/\d+(?:[.,]\d+)?/g);
   if (!nums) return null;
   return nums.reduce((acc, n) => acc * parseFloat(n.replace(',', '.')), 1);
+}
+
+// Последнее число названия — у труб это толщина стенки: «20×10×0,85» → 0.85.
+function lastNumber(name) {
+  const nums = String(name || '').match(/\d+(?:[.,]\d+)?/g);
+  return nums ? parseFloat(nums[nums.length - 1].replace(',', '.')) : null;
 }
 
 const natCompare = (a, b) =>
@@ -336,6 +348,12 @@ function sortModelsInGroup(items, country, withCategory = false, mode = '') {
       if (sa !== sb) return sa - sb;
       if ((a.size == null) !== (b.size == null)) return a.size == null ? 1 : -1;
       if (a.size != null && a.size !== b.size) return a.size - b.size;
+      // Размер совпал — значит это одно сечение трубы, и различает их только
+      // толщина стенки, последнее число в названии. Сравнивать названия целиком
+      // нельзя: natCompare читает «0,85» как «0» и «85», и труба 0,85 встаёт
+      // после 0,9, потому что 85 больше 9.
+      const ta = lastNumber(a.name), tb = lastNumber(b.name);
+      if (ta != null && tb != null && ta !== tb) return ta - tb;
       return natCompare(a.name, b.name);
     }).map(i => i.item);
   }
