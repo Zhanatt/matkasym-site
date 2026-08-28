@@ -110,7 +110,8 @@ const num = (s) => parseFloat(String(s ?? '').replace(',', '.').replace(/[^\d.]/
 const rowOf = (p, type, dict) => {
   const [nSize, nWall] = fromName(p.name);
   const round = type === 'Круглая';
-  const size  = (spec(p, 'диаметр трубы') || spec(p, 'размер трубы') || nSize || '').replace(/\s*мм$/i, '').trim();
+  const size  = (spec(p, 'диаметр трубы') || spec(p, 'размер трубы') || p.dimensions || nSize || '')
+                  .replace(/\s*мм$/i, '').replace(/^[⌀Øø]\s*/, '').trim();
   const wall  = (spec(p, 'толщина стенки') || nWall || '').replace(/\s*мм$/i, '').trim();
   if (!size || !wall) return null;           // без размеров строка в прайсе бессмысленна
   const price = Number(p.price) > 0 ? Number(p.price) * PIPE_LENGTH_M : null;
