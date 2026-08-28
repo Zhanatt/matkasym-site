@@ -51,6 +51,13 @@ const BASES = {
     headerCell: 'товар, ед.изм',
     trimUnit:   true,
     warehouses: [/склад\s+гп/i],   // «9,Склад ГП» + «11. Склад  ГП Маткасым Шаар»
+    // Краски лежат не на складе готовой продукции, а в сырье — правило действует
+    // только внутри своей группы 1С. Добавить склад сырья всем подряд нельзя:
+    // «Кабель коаксиальный» получил бы 4556 метров комплектующих, «Щиток для
+    // лица» — 7569 штук заготовок, и остаток сайта перестал бы значить товар.
+    groupWarehouses: [
+      { group: /краски\s+и\s+растворители/i, warehouses: [/склад\s+сырья/i] },
+    ],
   },
   qtop: {
     key:        'qtop',
@@ -141,8 +148,19 @@ function looksLikeGroup(raw, baseKey, knownGroups) {
   return false;
 }
 
+// Число из ячейки выгрузки. 1С печатает остаток строкой и разделяет тысячи
+// запятой — «1,474». Number() на такой строке даёт NaN, и остаток молча
+// становился нулём: страдали только позиции от тысячи, поэтому не бросалось
+// в глаза. Дробную часть 1С пишет через точку («825.00»), так что запятая
+// перед тремя цифрами — всегда разделитель разрядов, а не десятичная.
 const toNum = v => {
-  const n = Number(v);
+  if (v === null || v === undefined) return 0;
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  let s = String(v).replace(/[\s\u00a0\u202f]/g, '');
+  if (!s) return 0;
+  if (s.includes('.') && s.includes(',')) s = s.replace(/,/g, '');
+  else if (s.includes(',')) s = /,\d{3}(?!\d)/.test(s) ? s.replace(/,/g, '') : s.replace(',', '.');
+  const n = Number(s);
   return isNaN(n) ? 0 : n;
 };
 
@@ -165,6 +183,12 @@ const crossedBuffer = (oldStock, newStock, bufferStock) =>
 // («BBQ-R10», «bbq r10»), значимы только буквы и цифры.
 const normSku = s => String(s || '').toLowerCase().replace(/[^a-zа-я0-9]/gi, '');
 
+// Кириллические двойники латинских букв. В номенклатуре 1С латиница и кириллица
+// набраны вперемешку внутри одного слова: «Краска 9005 MAT (черная) ACРР/RALL» —
+// здесь MAT латинское, а РР в ACРР кириллическое. Глазом не отличить, строки
+// разные, и товар не находится. Сводим к латинице обе стороны сравнения.
+const CYR_TWINS = { 'а':'a','в':'b','е':'e','к':'k','м':'m','н':'h','о':'o','р':'p','с':'c','т':'t','у':'y','х':'x' };
+
 // Запасное сравнение имён, когда артикула в выгрузке нет: пробелы не значимы,
 // иначе «Эко мангал R10» и «Эко мангал R 10» считаются разными товарами
 // и остаток уезжает на дубликат.
@@ -172,6 +196,7 @@ const normNameLoose = s => String(s || '')
   .toLowerCase()
   .replace(/[«»"""''`]/g, '')
   .replace(/\s+/g, '')
+  .replace(/[авекмнорстух]/g, c => CYR_TWINS[c])
   .trim();
 
 /**
@@ -217,25 +242,41 @@ function detectColumns(rows, base) {
     if (name && col !== 0) groups.push({ col, name });
   });
 
-  const wanted = groups.filter(g => base.warehouses.some(re => re.test(g.name)));
-  if (!wanted.length) return null;
-
   const sub = rows[headRow + 1] || [];
-  const stockCols = [], minCols = [];
-  for (const g of wanted) {
-    const next = groups.find(x => x.col > g.col);
-    const end  = next ? next.col : sub.length;
-    for (let c = g.col; c < end; c++) {
-      const t = String(sub[c] || '').trim().toLowerCase();
-      if (t === 'остаток')             stockCols.push(c);
-      else if (t === 'минимальный остаток') minCols.push(c);
+
+  // Колонки «Остаток» и «Минимальный остаток» тех складов, что подошли под набор
+  // регулярок. Границей склада служит колонка следующего склада в шапке.
+  const pick = (patterns) => {
+    const wanted = groups.filter(g => patterns.some(re => re.test(g.name)));
+    const stockCols = [], minCols = [];
+    for (const g of wanted) {
+      const next = groups.find(x => x.col > g.col);
+      const end  = next ? next.col : sub.length;
+      for (let c = g.col; c < end; c++) {
+        const t = String(sub[c] || '').trim().toLowerCase();
+        if (t === 'остаток')                  stockCols.push(c);
+        else if (t === 'минимальный остаток') minCols.push(c);
+      }
     }
-  }
-  if (!stockCols.length) return null;
+    return { stockCols, minCols, warehouses: wanted.map(g => g.name) };
+  };
+
+  const main = pick(base.warehouses);
+  if (!main.stockCols.length) return null;
+
+  // Склады, которые читаются только внутри своей группы 1С (см. groupWarehouses).
+  const groupCols = (base.groupWarehouses || [])
+    .map(rule => ({ group: rule.group, ...pick(rule.warehouses) }))
+    .filter(r => r.stockCols.length);
 
   const skuCol = findSkuColumn([rows[headRow] || [], sub]);
 
-  return { headRow, dataStart: headRow + 2, stockCols, minCols, skuCol, warehouses: wanted.map(g => g.name) };
+  return {
+    headRow, dataStart: headRow + 2, skuCol,
+    stockCols: main.stockCols, minCols: main.minCols,
+    groupCols,
+    warehouses: main.warehouses.concat(groupCols.flatMap(g => g.warehouses)),
+  };
 }
 
 /**
@@ -259,17 +300,27 @@ function parseStockRows(rows, baseKey, normName) {
   const looseMap = new Map();   // по имени без пробелов — запасной вариант
   const skuMap   = new Map();   // по артикулу из 1С — основной, если колонка есть
   let rowsRead = 0;
+  let group = '';
   for (let i = cols.dataStart; i < rows.length; i++) {
     const row = rows[i] || [];
     const raw = String(row[0] || '').trim();
     if (!raw) continue;
 
+    // Строка группы 1С кончается запятой («2 КРАСКИ И РАСТВОРИТЕЛИ, »), у товара
+    // на этом месте единица измерения («, кг»). Запоминаем группу: от неё зависит,
+    // с какого склада берётся остаток.
+    if (/,\s*$/.test(raw)) { group = raw.replace(/,\s*$/, '').trim(); continue; }
+
     const name = base.trimUnit ? stripUnit(raw) : raw;
     if (!name) continue;
 
-    const stock  = Math.max(0, Math.floor(cols.stockCols.reduce((n, c) => n + toNum(row[c]), 0)));
+    const rule = cols.groupCols.find(g => g.group.test(group));
+    const stockCols = rule ? rule.stockCols : cols.stockCols;
+    const minCols   = rule ? rule.minCols   : cols.minCols;
+
+    const stock  = Math.max(0, Math.floor(stockCols.reduce((n, c) => n + toNum(row[c]), 0)));
     // Буфер 1С ведёт по каждому складу отдельно — берём больший, 0 = не задан
-    const buffer = cols.minCols.reduce((n, c) => Math.max(n, Math.floor(toNum(row[c]))), 0);
+    const buffer = minCols.reduce((n, c) => Math.max(n, Math.floor(toNum(row[c]))), 0);
     const sku    = cols.skuCol >= 0 ? String(row[cols.skuCol] || '').trim() : '';
 
     // raw нужен как есть: признак «товар/группа» у Matkasym читается по единице
