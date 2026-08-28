@@ -178,6 +178,13 @@ const SET_CATEGORY_ORDER = {
   },
 };
 
+// Сеты, где карточки внутри категории идут строго по возрастанию размера.
+// Обычный порядок сначала собирает линейки и двигает наверх ту, где больше
+// остаток, — для баков и урн это бессмысленно: там линейка одна, а «больше
+// объём» и есть порядок каталога. Без этого 120-литровый бак оказывался после
+// 1100-литрового только потому, что у того на складе лежало больше штук.
+const SET_SORT_BY_SIZE = new Set(['0-tashtandy']);
+
 function toTitle(slug) {
   return SET_NAMES[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -233,7 +240,7 @@ const natCompare = (a, b) =>
 
 // items — пары [name, variants] из группировки по модели.
 // withCategory — для сборной группы «Нет в наличии»: там сначала держим вместе категорию.
-function sortModelsInGroup(items, country, withCategory = false) {
+function sortModelsInGroup(items, country, withCategory = false, bySize = false) {
   const info = items.map(item => {
     const [name, variants] = item;
     const sized = variants.find(v => sizeRank(v.dimensions) != null);
@@ -270,6 +277,17 @@ function sortModelsInGroup(items, country, withCategory = false) {
       i.step = step;
     });
   });
+
+  // Размер решает всё: линейки и остаток в порядок не вмешиваются.
+  // Карточки без размера — в конец, иначе они разорвали бы возрастающий ряд.
+  if (bySize) {
+    return info.sort((a, b) => {
+      if (a.cat !== b.cat) return a.cat.localeCompare(b.cat, 'ru');
+      if ((a.size == null) !== (b.size == null)) return a.size == null ? 1 : -1;
+      if (a.size != null && a.size !== b.size) return a.size - b.size;
+      return natCompare(a.name, b.name);
+    }).map(i => i.item);
+  }
 
   return info.sort((a, b) => {
     if (a.cat !== b.cat) return a.cat.localeCompare(b.cat, 'ru');
@@ -895,7 +913,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       // Внутри категории — по линейкам и размерам, а не вперемешку по остатку
       .map(([groupName, items]) => [
         groupName,
-        sortModelsInGroup(items, country, groupName === 'Нет в наличии'),
+        sortModelsInGroup(items, country, groupName === 'Нет в наличии', SET_SORT_BY_SIZE.has(setSlug)),
       ]);
     return result;
   }, [models, setSlug, country]);
