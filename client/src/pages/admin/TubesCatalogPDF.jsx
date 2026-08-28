@@ -32,26 +32,16 @@ const LOGO = '/logos/logo-white.png';
 // Труба продаётся хлыстом; в базе цена за погонный метр
 const PIPE_LENGTH_M = 6;
 
-// Ходовые размеры — отмечены жёлтой меткой в каталоге
-const POPULAR = new Set([
-  'MKS-Tkr-16-05', 'MKS-Tkr-19-09', 'MKS-Tkr-19-10',
-  'MKS-Tkr-25-07', 'MKS-Tkr-25-09', 'MKS-Tkr-32-09',
-  'MKS-Tkv-1515-09', 'MKS-Tkv-2020-09', 'MKS-Tkv-2525-09',
-  'MKS-Tpr-2010-09',
-]);
-
 // ── Тексты ────────────────────────────────────────────────────────────────────
 const L = {
   ky: {
     title: 'ТҮТҮКТӨР КАТАЛОГУ',
     subtitle: 'Металл түтүктөрдүн баа тизмеси',
-    legend: 'САРЫ БЕЛГИ — КӨП ТАНДАЛГАН ӨЛЧӨМ',
     page: n => `${n}-БЕТ`,
     colSize: 'ӨЛЧӨМҮ',
     colWall: 'МЕТАЛЛДЫН КАЛЫҢДЫГЫ',
     colPrice: `БААСЫ, ${PIPE_LENGTH_M} М ҮЧҮН`,
     length: `Бир түтүктүн узундугу — ${PIPE_LENGTH_M} м`,
-    popular: 'КӨП\u00A0АЛЫНАТ',
     currency: 'сом',
     noPrice: 'келишим боюнча',
     cont: 'уландысы',
@@ -71,13 +61,11 @@ const L = {
   ru: {
     title: 'КАТАЛОГ ТРУБ',
     subtitle: 'Прайс-лист на металлические трубы',
-    legend: 'ЖЁЛТАЯ МЕТКА — ХОДОВОЙ РАЗМЕР',
     page: n => `СТР. ${n}`,
     colSize: 'РАЗМЕР',
     colWall: 'ТОЛЩИНА МЕТАЛЛА',
     colPrice: `ЦЕНА ЗА ${PIPE_LENGTH_M} М`,
     length: `Длина одной трубы — ${PIPE_LENGTH_M} м`,
-    popular: 'ХОДОВОЙ',
     currency: 'сом',
     noPrice: 'по запросу',
     cont: 'продолжение',
@@ -131,7 +119,6 @@ const rowOf = (p, type, dict) => {
     size:  round ? `Ø ${size} мм` : `${size.replace(/[x*]/g, '×')} мм`,
     wall:  `${String(wall).replace('.', ',')} мм`,
     price: price === null ? null : price.toLocaleString('ru-RU'),
-    hot:   POPULAR.has(p.sku),
     sortA: num(size),
     sortB: num(wall),
   };
@@ -144,7 +131,7 @@ const BLOCK_SPLIT  = 14;   // разделитель, если карточка 
 const BLOCK_MIN_H  = 180;  // столько нужно колонке с фото, чтобы труба влезла целиком
 const MIN_ROWS     = 4;    // хвост короче уже не выглядит таблицей
 const FOOTER_H     = 96;
-const PAGE_BODY_H  = 684;  // A4 за вычетом шапки, легенды и колонтитула
+const PAGE_BODY_H  = 700;  // A4 за вычетом шапки и колонтитула
 
 const blockHeight = (rows, split) =>
   Math.max(BLOCK_MIN_H, BLOCK_CHROME + rows * ROW_H) + (split ? BLOCK_SPLIT : 0);
@@ -212,11 +199,8 @@ const S = StyleSheet.create({
   pageNumT:   { color: PAPER, fontSize: 7.5, fontWeight: 500, letterSpacing: 0.9 },
   goldRule:   { height: 2.6, backgroundColor: GOLD },
 
-  legendRow:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 26, paddingTop: 9 },
-  legendChip: { width: 13, height: 7, borderRadius: 1.5, backgroundColor: GOLD, marginRight: 6 },
-  legendT:    { color: GRAY, fontSize: 6.8, fontWeight: 500, letterSpacing: 0.8 },
 
-  body:       { paddingHorizontal: 26, paddingTop: 11 },
+  body:       { paddingHorizontal: 26, paddingTop: 16 },
 
   block:      { flexDirection: 'row', marginBottom: 14, minHeight: BLOCK_MIN_H },
   blockSplit: { borderTopWidth: 0.5, borderTopColor: LINE, paddingTop: 14 },
@@ -237,16 +221,12 @@ const S = StyleSheet.create({
 
   tr:         { flexDirection: 'row', alignItems: 'center', height: ROW_H,
                 borderBottomWidth: 0.5, borderBottomColor: LINE },
-  trHot:      { backgroundColor: GOLD_SOFT },
 
-  cMark:      { width: 58, paddingLeft: 3 },
   cSize:      { flex: 1 },
   cWall:      { width: 96, textAlign: 'center' },
   cPrice:     { width: 96, textAlign: 'right', paddingRight: 3, flexDirection: 'row',
                 alignItems: 'baseline', justifyContent: 'flex-end' },
 
-  hotChip:    { backgroundColor: GOLD, borderRadius: 2, paddingHorizontal: 4, paddingVertical: 2 },
-  hotChipT:   { color: '#4A3306', fontSize: 5, fontWeight: 700, textAlign: 'center' },
 
   tdSize:     { fontSize: 9, color: INK, fontWeight: 500 },
   tdWall:     { fontSize: 8.5, color: GRAY },
@@ -285,10 +265,6 @@ const Header = ({ dict }) => (
       </View>
     </View>
     <View style={S.goldRule} />
-    <View style={S.legendRow}>
-      <View style={S.legendChip} />
-      <Text style={S.legendT}>{dict.legend}</Text>
-    </View>
   </View>
 );
 
@@ -310,20 +286,14 @@ const Block = ({ block, dict, first }) => {
 
       <View style={S.table}>
         <View style={S.th}>
-          <View style={S.cMark} />
-          <Text style={[S.thT, S.cSize, { textAlign: 'left' }]}>{dict.colSize}</Text>
+          <Text style={[S.thT, S.cSize, { textAlign: 'left', paddingLeft: 3 }]}>{dict.colSize}</Text>
           <Text style={[S.thT, S.cWall]}>{dict.colWall}</Text>
           <Text style={[S.thT, { width: 96, textAlign: 'right', paddingRight: 3 }]}>{dict.colPrice}</Text>
         </View>
 
         {block.rows.map(r => (
-          <View key={r.key} style={[S.tr, r.hot && S.trHot]}>
-            <View style={S.cMark}>
-              {r.hot && (
-                <View style={S.hotChip}><Text style={S.hotChipT}>{dict.popular}</Text></View>
-              )}
-            </View>
-            <Text style={[S.tdSize, S.cSize]}>{r.size}</Text>
+          <View key={r.key} style={S.tr}>
+            <Text style={[S.tdSize, S.cSize, { paddingLeft: 3 }]}>{r.size}</Text>
             <Text style={[S.tdWall, S.cWall]}>{r.wall}</Text>
             <View style={S.cPrice}>
               {r.price

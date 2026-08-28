@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { shopProduct } from './shopApi';
 import { setBackButton, setMainButton, isTelegram, haptic } from './useTelegram';
 import { photosOf, money, setLabel, stockLabel } from './shopUtils';
+import { dimensionLabel } from '../../utils/dimensions';
 
 export default function ShopProduct() {
   const { id } = useParams();
@@ -71,7 +72,7 @@ export default function ShopProduct() {
         {(specs.length > 0 || product.dimensions) && (
           <div className="shop-specs">
             {product.dimensions && (
-              <div className="shop-spec"><span>Габариты</span><span>{product.dimensions}</span></div>
+              <div className="shop-spec"><span>{dimensionLabel(product.dimensions)}</span><span>{product.dimensions}</span></div>
             )}
             {specs.map((s, i) => (
               <div className="shop-spec" key={i}><span>{s.key}</span><span>{s.value}</span></div>

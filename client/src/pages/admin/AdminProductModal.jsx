@@ -6,6 +6,7 @@ import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddSt
 import { cloudinaryOpt } from '../../utils/drive';
 import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { signOf } from '../../utils/price';
+import { dimensionLabel } from '../../utils/dimensions';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -821,7 +822,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 const parts = numStr.split(/[×x*]/i).map(s => s.trim()).filter(Boolean);
                 dimTile = {
                   icon: '📐',
-                  label: parts.length === 3 ? 'Габариты (Д × Ш × В)' : 'Габариты',
+                  label: dimensionLabel(raw),
                   value: parts.length === 3 ? `${parts.join(' × ')} ${unit}` : raw,
                 };
               }

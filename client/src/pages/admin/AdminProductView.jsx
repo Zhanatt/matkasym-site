@@ -7,6 +7,7 @@ import { cloudinaryOpt } from '../../utils/drive';
 import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { CRM_STAGES } from './AdminProductForm';
 import { signOf } from '../../utils/price';
+import { dimensionLabel } from '../../utils/dimensions';
 
 const PRODUCT_STATUS_META = {
   for_sale:       { label: 'В продаже',           color: '#2d7a3a' },
@@ -265,7 +266,7 @@ export default function AdminProductView() {
           {product.color && <Row label="Цвет" value={{ white: 'Белый', black: 'Чёрный', grey: 'Серый', pink: 'Розовый', green: 'Зелёный' }[product.color] || product.color} />}
 
           {/* Dimensions */}
-          {product.dimensions && <Row label="Габариты" value={product.dimensions} />}
+          {product.dimensions && <Row label={dimensionLabel(product.dimensions)} value={product.dimensions} />}
 
           {/* Supplier — привозной товар */}
           {product.isSupplied && (
