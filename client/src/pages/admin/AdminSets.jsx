@@ -188,11 +188,26 @@ const SET_CATEGORY_ORDER = {
 //   'series' — серия идёт целиком (SW, GW, GWR, KARAKOL, NOVOTEL…), внутри серии
 //              по возрастанию, сами серии — по своей меньшей модели. Урны выбирают
 //              рядом: сначала смотрят линейку, потом размер внутри неё.
+//   массив  — серии в заданном порядке, а не по размеру. Владелец задаёт его
+//              руками: G, GW, GWR, SW, KARAKOL, NOVOTEL — порядок каталога,
+//              который из названий и габаритов не выводится.
+const SORTING_URN_SERIES = [
+  // Регулярки не пересекаются, поэтому порядок проверки роли не играет:
+  // «урна G2» ловится только первой (у GW и GWR после G идёт буква, не цифра),
+  // а «Каракол G3» — только по слову «Каракол».
+  { label: 'G',       re: /урна\s+G\d/i },
+  { label: 'GW',      re: /урна\s+GW\d?\s/i },
+  { label: 'GWR',     re: /урна\s+GWR\d?/i },
+  { label: 'SW',      re: /урна\s+SW\d?\s/i },
+  { label: 'KARAKOL', re: /каракол|karakol/i },
+  { label: 'NOVOTEL', re: /novotel|новотел/i },
+];
+
 const SET_CATEGORY_SORT = {
   '0-tashtandy': {
     'Пластиковые баки':   'size',
     'Мусорные баки':      'size',
-    'Сортировочные урны': 'series',
+    'Сортировочные урны': SORTING_URN_SERIES,
     'Уличные урны':       'series',
   },
 };
@@ -295,6 +310,24 @@ function sortModelsInGroup(items, country, withCategory = false, mode = '') {
   if (mode === 'size') {
     return info.sort((a, b) => {
       if (a.cat !== b.cat) return a.cat.localeCompare(b.cat, 'ru');
+      if ((a.size == null) !== (b.size == null)) return a.size == null ? 1 : -1;
+      if (a.size != null && a.size !== b.size) return a.size - b.size;
+      return natCompare(a.name, b.name);
+    }).map(i => i.item);
+  }
+
+  // Серии в заданном порядке. Внутри серии — по возрастанию размера.
+  // Не попавшее ни в одну серию уходит в конец: выдумывать ему место в чужом
+  // ряду нельзя, а прятать нельзя тем более.
+  if (Array.isArray(mode)) {
+    const seriesOf = name => {
+      const i = mode.findIndex(x => x.re.test(name));
+      return i < 0 ? mode.length : i;
+    };
+    return info.sort((a, b) => {
+      if (a.cat !== b.cat) return a.cat.localeCompare(b.cat, 'ru');
+      const sa = seriesOf(a.name), sb = seriesOf(b.name);
+      if (sa !== sb) return sa - sb;
       if ((a.size == null) !== (b.size == null)) return a.size == null ? 1 : -1;
       if (a.size != null && a.size !== b.size) return a.size - b.size;
       return natCompare(a.name, b.name);
