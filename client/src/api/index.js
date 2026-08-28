@@ -234,6 +234,10 @@ export const socialGetDraft        = (productId, priceMode, lang) => api.get(`/a
   params: { ...(priceMode ? { price: priceMode } : {}), ...(lang ? { lang } : {}) },
 });
 // Сколько раз и куда товар уже публиковали — показывается в поиске товара
+// Порядок категорий в сете — настройка витрины, правится из панели сета
+export const adminGetSetLayout  = (brand, set) => api.get('/admin/set-layout', { params: { brand, set } });
+export const adminSaveSetLayout = (brand, set, categories) => api.put('/admin/set-layout', { brand, set, categories });
+
 export const socialGetPublishStats = ()          => api.get('/admin/social/publish-stats');
 export const socialGetLalafo       = ()          => api.get('/admin/social/lalafo');
 export const socialGetLeads        = (days)      => api.get('/admin/social/leads', { params: { days } });

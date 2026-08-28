@@ -7,10 +7,12 @@ import AdminProductModal from './AdminProductModal';
 import {
   adminGetFacets, adminGetProducts,
   adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets,
+  adminGetSetLayout,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
 import TubesPdfButton from './TubesPdfButton';
+import SetOrderEditor from './SetOrderEditor';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
@@ -883,6 +885,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const scrollRef = useRef(null);
   const [detailProduct, setDetailProduct] = useState(null);
   const [viewMode,  setViewMode]  = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
+  // Порядок категорий, заданный руками. Пустой список = порядок не настраивали.
+  const [catOrder, setCatOrder]   = useState([]);
+  const [orderOpen, setOrderOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const toggleView = () => {
@@ -904,6 +909,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       .then(r => { setProducts(r.data.products || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [brandKey, setSlug, country, fetchParams && JSON.stringify(fetchParams)]);
+
+  useEffect(() => {
+    adminGetSetLayout(brandKey, setSlug)
+      .then(r => setCatOrder(r.data.categories || []))
+      .catch(() => setCatOrder([]));
+  }, [brandKey, setSlug]);
 
   // Поиск внутри сета: позиций бывает под сотню и больше, глазами не найти.
   // Ищем по названию, артикулу, цвету, размерам и категории; если слов несколько —
@@ -968,8 +979,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       if (!groupsMap[targetGroup]) groupsMap[targetGroup] = [];
       groupsMap[targetGroup].push([name, variants]);
     });
-    // Порядок категорий: сначала по кастомному порядку для сета, потом по алфавиту
-    const customOrder = SET_CATEGORY_ORDER[setSlug] || {};
+    // Порядок категорий: сначала заданный руками в админке, потом старый
+    // захардкоженный (для сетов, которые ещё не переносили), потом алфавит.
+    const saved = {};
+    catOrder.forEach((c, i) => { saved[c] = i; });
+    const customOrder = catOrder.length ? saved : (SET_CATEGORY_ORDER[setSlug] || {});
     const result = Object.entries(groupsMap)
       .filter(([, items]) => items.length > 0)
       .sort((a, b) => {
@@ -988,7 +1002,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         sortModelsInGroup(items, country, groupName === 'Нет в наличии', (SET_CATEGORY_SORT[setSlug] || {})[groupName] || ''),
       ]);
     return result;
-  }, [models, setSlug, country]);
+  }, [models, setSlug, country, catOrder]);
 
   // Общая переменная для групп — теперь только categoryGroups
   const accordionGroups = categoryGroups;
@@ -1122,6 +1136,15 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             }}>
               {viewMode === 'grid' ? '☰' : '⊞'}
             </button>
+
+            {/* Порядок категорий — правится владельцем, без правки кода */}
+            {!isMobile && accordionGroups && (
+              <button onClick={() => setOrderOpen(true)} title="Порядок категорий" style={{
+                padding: '7px 12px', borderRadius: 9, cursor: 'pointer',
+                border: '1.5px solid #e0e0e0', background: '#fff',
+                color: '#555', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+              }}>↕ Порядок</button>
+            )}
 
             {/* PDF button on desktop */}
             {!isMobile && (
@@ -1779,6 +1802,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       </div>
 
       {/* Product detail modal */}
+      {orderOpen && accordionGroups && (
+        <SetOrderEditor
+          brand={brandKey}
+          set={setSlug}
+          categories={accordionGroups
+            .map(([name]) => name)
+            .filter(n => n !== 'Нет в наличии' && n !== 'Прочее')}
+          onSave={setCatOrder}
+          onClose={() => setOrderOpen(false)}
+        />
+      )}
+
       {detailProduct && (
         <AdminProductModal product={detailProduct} country={country} onClose={() => setDetailProduct(null)}
           onDeleted={id => { setProducts(p => p.filter(x => x._id !== id)); setDetailProduct(null); }} />

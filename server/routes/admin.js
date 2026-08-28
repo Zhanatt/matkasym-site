@@ -366,6 +366,36 @@ async function brandStockStats(brand, country) {
   return { inMod: r.inMod, outMod: r.models - r.inMod, inUnits: r.inUnits, outUnits: r.outUnits };
 }
 
+// ── Порядок категорий в сете ──────────────────────────────────────────────────
+// Настройка витрины, а не данные товара: какая категория идёт первой на странице
+// сета. Раньше лежала в коде фронтенда и меняли её деплоем.
+const SetLayout = require('../models/SetLayout');
+
+router.get('/set-layout', async (req, res) => {
+  try {
+    const { brand, set } = req.query;
+    if (!brand || !set) return res.status(400).json({ message: 'Нужны brand и set' });
+    const layout = await SetLayout.findOne({ brand, set }).lean();
+    res.json({ categories: layout?.categories || [] });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+router.put('/set-layout', editor, async (req, res) => {
+  try {
+    const { brand, set, categories } = req.body;
+    if (!brand || !set) return res.status(400).json({ message: 'Нужны brand и set' });
+    if (!Array.isArray(categories)) return res.status(400).json({ message: 'categories должен быть массивом' });
+    // Пустые строки и дубли в списке сделали бы порядок неоднозначным.
+    const clean = [...new Set(categories.map(c => String(c || '').trim()).filter(Boolean))];
+    const layout = await SetLayout.findOneAndUpdate(
+      { brand, set },
+      { $set: { categories: clean } },
+      { new: true, upsert: true },
+    );
+    res.json({ categories: layout.categories });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 router.get('/products/facets', async (req, res) => {
   try {
     const { brand, set, category, search, country } = req.query;
