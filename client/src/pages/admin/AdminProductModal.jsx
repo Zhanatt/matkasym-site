@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock, adminGetProduct } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
+import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { signOf } from '../../utils/price';
 
 const NO_PHOTO = '/logos/no-photo.png';
@@ -313,19 +314,11 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   };
 
   const downloadImage = async (url, index) => {
-    const orig = url.includes('cloudinary.com')
-      ? url.replace(/\/upload\/[^/]+\//, '/upload/')
-      : url;
-    const name = `${product.name || 'photo'}_${index + 1}.jpg`.replace(/[\\/:*?"<>|]/g, '_');
     try {
-      const blob = await fetch(orig).then(r => r.blob());
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const file = await fetchImageFile(url, `${product.name || 'photo'}_${index + 1}`);
+      await saveImageFiles([file]);
     } catch {
-      window.open(orig, '_blank');
+      window.open(url, '_blank');
     }
   };
 

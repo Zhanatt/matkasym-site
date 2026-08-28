@@ -4,6 +4,7 @@ import { adminGetProduct, adminTZPdf } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 import { CATEGORIES } from '../../config/categorySpecs';
 import { cloudinaryOpt } from '../../utils/drive';
+import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { CRM_STAGES } from './AdminProductForm';
 import { signOf } from '../../utils/price';
 
@@ -53,30 +54,26 @@ export default function AdminProductView() {
 
   const imgSrc = (url) => url?.includes('cloudinary.com') ? cloudinaryOpt(url, 600) : url;
 
-  // Strip Cloudinary transforms to get original full-resolution URL
-  const imgOriginal = (url) => {
-    if (!url) return url;
-    if (url.includes('cloudinary.com')) return url.replace(/\/upload\/[^/]+\//, '/upload/');
-    return url;
-  };
-
   const downloadImage = async (url, index) => {
-    const orig = imgOriginal(url);
-    const name = `${product.name || 'photo'}_${index + 1}.jpg`.replace(/[\\/:*?"<>|]/g, '_');
     try {
-      const resp = await fetch(orig);
-      const blob = await resp.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const file = await fetchImageFile(url, `${product.name || 'photo'}_${index + 1}`);
+      await saveImageFiles([file]);
     } catch {
-      window.open(orig, '_blank');
+      window.open(url, '_blank');
     }
   };
 
-  const downloadAll = () => images.forEach((url, i) => downloadImage(url, i));
+  // One share sheet for the whole set, not one per photo
+  const downloadAll = async () => {
+    try {
+      const files = await Promise.all(
+        images.map((url, i) => fetchImageFile(url, `${product.name || 'photo'}_${i + 1}`)),
+      );
+      await saveImageFiles(files);
+    } catch {
+      images.forEach((url, i) => downloadImage(url, i));
+    }
+  };
 
   const prevImg = () => setImgIdx(i => (i - 1 + images.length) % images.length);
   const nextImg = () => setImgIdx(i => (i + 1) % images.length);
