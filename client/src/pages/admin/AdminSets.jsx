@@ -10,6 +10,7 @@ import {
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
+import TubesPdfButton from './TubesPdfButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
@@ -71,6 +72,9 @@ function isProductAvailable(p, country = 'KG') {
 }
 
 // ── constants ──────────────────────────────────────────────────────────────────
+
+// У труб свой каталог — прайс-лист по размерам вместо карточек с фото
+const TUBES_SET = 'dayar-tutuk';
 
 const SET_NAMES = {
   'önügüü-set':      'Onuguu Set',
@@ -1121,7 +1125,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
             {/* PDF button on desktop */}
             {!isMobile && (
-              <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
+              setSlug === TUBES_SET
+                ? <TubesPdfButton products={shownProducts} />
+                : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
             )}
           </div>
 
@@ -1136,7 +1142,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               gap: 12,
             }}>
               {!loading && renderStockStats(11)}
-              <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
+              {setSlug === TUBES_SET
+                ? <TubesPdfButton products={shownProducts} />
+                : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />}
             </div>
           )}
 
