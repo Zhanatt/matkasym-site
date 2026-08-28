@@ -18,5 +18,17 @@ function uploadRawBuffer(buffer, folder, filename) {
   });
 }
 
+// public_id из URL доставки. Папку (matkasym/shaar/...) отрезать НЕЛЬЗЯ — она часть
+// public_id, без неё destroy молча не находит ассет, а api.resource врёт «нет такого».
+function publicIdFromUrl(url) {
+  const after = String(url || '').split('/upload/')[1];
+  if (!after) return null;
+  const parts = after.split('/');
+  while (parts.length > 1 && /[,=]/.test(parts[0])) parts.shift();  // блок трансформаций
+  if (/^v\d+$/.test(parts[0])) parts.shift();                        // версия
+  return parts.join('/').replace(/\.[a-z0-9]+$/i, '') || null;
+}
+
 module.exports = cloudinary;
-module.exports.uploadRawBuffer = uploadRawBuffer;
+module.exports.uploadRawBuffer  = uploadRawBuffer;
+module.exports.publicIdFromUrl  = publicIdFromUrl;

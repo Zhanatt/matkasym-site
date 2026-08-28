@@ -7,6 +7,9 @@
 // Каждую ссылку скрипт перед удалением ПРОВЕРЯЕТ запросом: удаляются только те, что
 // реально отдают 404. Живую ссылку скрипт не тронет, даже если её передали в аргументах.
 //
+// Те же ссылки вычищаются из снимков упавших публикаций (Publication.images) — иначе
+// «Отправить только в упавшие» повторит попытку по тем же покойникам (публикация №273).
+//
 //   node scripts/clean-dead-images.js                 # только показать, что изменится
 //   node scripts/clean-dead-images.js --apply         # применить
 //   node scripts/clean-dead-images.js --all           # проверить ВСЕ товары (долго)
@@ -69,12 +72,24 @@ async function checkAll(urls) {
   const docs = await Products.find(query).project({ name: 1, fullName: 1, sku: 1, images: 1 }).toArray();
   console.log(`Товаров к проверке: ${docs.length}` +
     (ONLY_SKUS ? ` (артикулы: ${ONLY_SKUS.join(', ')})` : ALL ? ' (полный скан)' : ''));
-  if (!docs.length) { await mongoose.disconnect(); return; }
 
   const candidates = new Set();
   docs.forEach((d) => (d.images || []).forEach((u) => {
     if (ALL || ONLY_SKUS || KNOWN_DEAD.some((k) => u.includes(k))) candidates.add(u);
   }));
+
+  // Снимки упавших публикаций проверяем отдельно: товар могли уже почистить (или пост
+  // собрали из произвольных картинок, kind: 'custom') — тогда в товарах покойников
+  // больше нет, а публикация всё равно падает на них при повторе.
+  const Publications = mongoose.connection.db.collection('publications');
+  const failedPubs = await Publications
+    .find({ 'targets.status': 'failed', images: { $exists: true, $ne: [] } })
+    .project({ number: 1, productName: 1, product: 1, images: 1 })
+    .toArray();
+  failedPubs.forEach((p) => (p.images || []).forEach((u) => candidates.add(u)));
+  console.log(`Упавших публикаций к проверке: ${failedPubs.length}`);
+
+  if (!candidates.size) { await mongoose.disconnect(); return; }
   console.log(`Ссылок к проверке: ${candidates.size}`);
 
   const dead = await checkAll(candidates);
@@ -102,7 +117,21 @@ async function checkAll(urls) {
     skipped.forEach(({ doc }) => console.log(`  ${doc.sku || '-'} | ${doc.fullName || doc.name}`));
   }
 
-  if (!affected.length) { await mongoose.disconnect(); return; }
+  // Publication.images — снимок на момент создания поста, из товара он не перечитывается.
+  // Пока битые ссылки не убрать и отсюда, кнопка «Отправить только в упавшие» будет
+  // падать на тех же файлах. Чиним только неудавшиеся: у опубликованных пост уже вышел,
+  // и переписывать историю задним числом нельзя.
+  const stuck = failedPubs.filter((p) => (p.images || []).some((u) => dead.has(u)));
+  if (stuck.length) {
+    console.log(`\nЗатронуто упавших публикаций: ${stuck.length}`);
+    stuck.forEach((p) => {
+      const next = (p.images || []).filter((u) => !dead.has(u));
+      console.log(`  №${p.number} | ${(p.productName || '').slice(0, 40)}: ${p.images.length} → ${next.length} фото` +
+        (next.length ? '' : '   ВНИМАНИЕ: фото не осталось, публиковать нечего'));
+    });
+  }
+
+  if (!affected.length && !stuck.length) { await mongoose.disconnect(); return; }
 
   if (!APPLY) {
     console.log('\nПредпросмотр. Чтобы применить: node scripts/clean-dead-images.js --apply');
@@ -112,15 +141,31 @@ async function checkAll(urls) {
 
   const dir = path.join(__dirname, 'backup');
   fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, `products-images-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
-  fs.writeFileSync(file, JSON.stringify(affected.map(({ doc }) => doc), null, 2));
-  console.log(`\nБэкап: ${file}`);
 
-  let n = 0;
-  for (const { doc, next } of affected) {
-    await Products.updateOne({ _id: doc._id }, { $set: { images: next } });
-    n++;
+  if (affected.length) {
+    const file = path.join(dir, `products-images-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+    fs.writeFileSync(file, JSON.stringify(affected.map(({ doc }) => doc), null, 2));
+    console.log(`\nБэкап: ${file}`);
+
+    let n = 0;
+    for (const { doc, next } of affected) {
+      await Products.updateOne({ _id: doc._id }, { $set: { images: next } });
+      n++;
+    }
+    console.log(`Обновлено товаров: ${n}`);
   }
-  console.log(`Обновлено товаров: ${n}`);
+
+  if (stuck.length) {
+    const pubFile = path.join(dir, `publications-images-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+    fs.writeFileSync(pubFile, JSON.stringify(stuck, null, 2));
+    console.log(`\nБэкап публикаций: ${pubFile}`);
+    for (const p of stuck) {
+      const next = (p.images || []).filter((u) => !dead.has(u));
+      await Publications.updateOne({ _id: p._id }, { $set: { images: next } });
+      console.log(`  №${p.number}: ${p.images.length} → ${next.length} фото` +
+        (next.length ? '' : '  ВНИМАНИЕ: фото не осталось, публиковать нечего'));
+    }
+  }
+
   await mongoose.disconnect();
 })().catch((e) => { console.error(e); process.exit(1); });

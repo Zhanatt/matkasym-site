@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { adminDeleteImage } from '../api/index';
 import './ImageUploader.css';
 import { cloudinaryOpt } from '../utils/drive';
 
@@ -7,7 +5,6 @@ const CLOUD_NAME    = 'dnbg21ef8';
 const UPLOAD_PRESET = 'Matkasym';
 
 export default function ImageUploader({ images = [], onChange }) {
-  const [deleting, setDeleting] = useState(null); // url being deleted
   const openWidget = () => {
     const batch = []; // собираем все загруженные URL в одну сессию
     window.cloudinary.openUploadWidget(
@@ -62,19 +59,13 @@ export default function ImageUploader({ images = [], onChange }) {
     );
   };
 
-  const remove = async (idx) => {
-    const url = images[idx];
-    setDeleting(url);
-    try {
-      if (url.includes('cloudinary.com')) {
-        await adminDeleteImage(url);
-      }
-    } catch (e) {
-      console.error('Cloudinary delete error:', e);
-    } finally {
-      setDeleting(null);
-      onChange(images.filter((_, i) => i !== idx));
-    }
+  // Крестик убирает фото ТОЛЬКО из формы. Ассет в Cloudinary сносит сервер и только
+  // после успешного сохранения товара (PATCH /admin/products/:id).
+  // Раньше удаляли здесь же, до сохранения: если форму закрывали не сохранив, файла
+  // в Cloudinary уже не было, а ссылка оставалась в товаре — битые фото на сайте и
+  // упавшие автопубликации (так потеряли 4 фото у MKS-MS-009, публикация №273).
+  const remove = (idx) => {
+    onChange(images.filter((_, i) => i !== idx));
   };
 
   const move = (from, to) => {
@@ -87,15 +78,14 @@ export default function ImageUploader({ images = [], onChange }) {
     <div className="img-uploader">
       <div className="img-uploader__grid">
         {images.map((url, i) => (
-          <div key={url} className={`img-uploader__item ${deleting === url ? 'deleting' : ''}`}>
+          <div key={url} className="img-uploader__item">
             <img src={cloudinaryOpt(url, 200)} alt="" />
-            {deleting === url && <div className="img-uploader__spinner" />}
             {i === 0 && <span className="img-uploader__main-badge">Главное</span>}
             <div className="img-uploader__actions">
               {i > 0 && (
                 <button type="button" title="Сделать главным" onClick={() => move(i, 0)}>★</button>
               )}
-              <button type="button" title="Удалить" disabled={deleting === url} onClick={() => remove(i)}>✕</button>
+              <button type="button" title="Убрать фото" onClick={() => remove(i)}>✕</button>
             </div>
           </div>
         ))}
