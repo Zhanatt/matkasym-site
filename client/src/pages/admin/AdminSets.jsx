@@ -9,10 +9,12 @@ import {
   adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets,
   adminGetSetLayout,
   adminSaveSetLayout,
+  adminDeleteProduct,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
 import TubesPdfButton from './TubesPdfButton';
+import './AdminSets.css';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
@@ -933,6 +935,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const snapshot = useRef(null);
   // Что тащим: категорию целиком или карточку внутри категории.
   const drag = useRef(null);
+  const [dragName, setDragName] = useState(null);   // карточка под курсором — гасим качание
+  const [toDelete, setToDelete] = useState(null);   // { name, variants } — ждём подтверждения
+  const [deleting, setDeleting] = useState(false);
   const isMobile = useIsMobile();
 
   const toggleView = () => {
@@ -1100,6 +1105,22 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     if (drag.current?.type !== 'cat' || from < 0 || to < 0 || from === to) return;
     setCatOrder(moveItem(catOrder, from, to));
   };
+
+  // Удаление товара из каталога. Карточка на витрине — это модель, у неё может
+  // быть несколько вариантов (цвета) с разными id, поэтому сносим все: иначе
+  // карточка осталась бы на месте, но с урезанным набором.
+  async function confirmDelete() {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      for (const v of toDelete.variants) await adminDeleteProduct(v._id);
+      const gone = new Set(toDelete.variants.map(v => String(v._id)));
+      setProducts(prev => prev.filter(p => !gone.has(String(p._id))));
+      setToDelete(null);
+    } catch (e) {
+      alert('Не удалось удалить: ' + (e.response?.data?.error || e.response?.data?.message || e.message));
+    } finally { setDeleting(false); }
+  }
 
   const dropProduct = (cat, toName) => {
     const d = drag.current;
@@ -1696,7 +1717,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))',
                     gap: isMobile ? 10 : 16,
                   }}>
-                    {items.map(([name, variants]) => {
+                    {items.map(([name, variants], idx) => {
                       const primary    = variants[0];
                       const price      = getPrice(primary, priceMode);
                       const stockInfo  = getStockInfo(primary, country);
@@ -1710,16 +1731,29 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           // иначе каждое перетаскивание кончалось бы модалкой товара.
                           onClick={() => { if (!editMode) setDetailProduct(primary); }}
                           draggable={editMode}
-                          onDragStart={() => { drag.current = { type: 'item', cat: groupName, name }; }}
+                          className={editMode ? (dragName === name ? 'set-jiggle set-dragging' : 'set-jiggle') : undefined}
+                          onDragStart={() => { drag.current = { type: 'item', cat: groupName, name }; setDragName(name); }}
+                          onDragEnd={() => setDragName(null)}
                           onDragOver={e => { if (editMode) e.preventDefault(); }}
-                          onDrop={e => { if (editMode) { e.preventDefault(); dropProduct(groupName, name); } }}
+                          onDrop={e => { if (editMode) { e.preventDefault(); dropProduct(groupName, name); setDragName(null); } }}
                           style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                             background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                            cursor: editMode ? 'grab' : 'pointer', transition: 'box-shadow .15s, transform .15s',
-                            opacity: cardOpacity }}
+                            cursor: editMode ? 'grab' : 'pointer', transition: 'box-shadow .15s',
+                            opacity: cardOpacity, position: 'relative',
+                            // Фазу качания сдвигаем по позиции, иначе вся сетка
+                            // дёргается синхронно и это читается как дрожь экрана.
+                            animationDelay: `${(idx % 7) * 45}ms` }}
                           onMouseEnter={e => { if (editMode) return; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                           onMouseLeave={e => { if (editMode) return; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                         >
+                          {editMode && (
+                            <button
+                              className="set-del"
+                              title="Удалить товар из каталога"
+                              onClick={e => { e.stopPropagation(); setToDelete({ name, variants }); }}
+                              onDragStart={e => e.preventDefault()}
+                            >×</button>
+                          )}
                           <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {!hasColorOnly && (
                               <img src={cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400)} alt={name}
@@ -1727,7 +1761,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                                 onError={e => { e.target.src = NO_PHOTO; }} />
                             )}
                             {primary.isSupplied && (
-                              <div style={{ position: 'absolute', top: 6, left: 6 }}>
+                              // В режиме правки левый верхний угол занят крестиком —
+                              // сдвигаем бейдж вниз, чтобы не перекрывали друг друга.
+                              <div style={{ position: 'absolute', top: editMode ? 36 : 6, left: 6 }}>
                                 <SupplierBadge product={primary} />
                               </div>
                             )}
@@ -1950,6 +1986,91 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       </div>
 
       {/* Product detail modal */}
+
+      {toDelete && (
+
+        <div
+
+          onClick={() => !deleting && setToDelete(null)}
+
+          style={{
+
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000,
+
+            background: 'rgba(17,20,24,.5)', display: 'flex',
+
+            alignItems: 'center', justifyContent: 'center', padding: 16,
+
+          }}
+
+        >
+
+          <div onClick={e => e.stopPropagation()} style={{
+
+            background: '#fff', borderRadius: 14, width: 'min(420px, 100%)',
+
+            padding: '20px 22px', boxShadow: '0 12px 40px rgba(0,0,0,.28)',
+
+          }}>
+
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#111' }}>Точно удалить?</div>
+
+            <div style={{ fontSize: 13, color: '#444', marginTop: 10, lineHeight: 1.55 }}>
+
+              Товар <b>«{toDelete.name}»</b> будет удалён из каталога.
+
+              {toDelete.variants.length > 1 && (
+
+                <> Вместе с ним удалятся все <b>{toDelete.variants.length}</b> вариантов этой модели.</>
+
+              )}
+
+            </div>
+
+            {/* Показываем артикулы: по названию модели легко снести не тот товар. */}
+
+            <div style={{ fontSize: 11, color: '#8b98a5', marginTop: 8, lineHeight: 1.5 }}>
+
+              {toDelete.variants.map(v => v.sku).filter(Boolean).join(' · ') || 'без артикула'}
+
+            </div>
+
+            <div style={{ fontSize: 11, color: '#c0392b', marginTop: 10 }}>
+
+              Отменить удаление нельзя.
+
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
+
+              <button onClick={() => setToDelete(null)} disabled={deleting} style={{
+
+                padding: '8px 14px', borderRadius: 9, border: '1.5px solid #e0e0e0',
+
+                background: '#fff', color: '#555', fontSize: 13, fontWeight: 600,
+
+                cursor: deleting ? 'default' : 'pointer',
+
+              }}>Отмена</button>
+
+              <button onClick={confirmDelete} disabled={deleting} style={{
+
+                padding: '8px 16px', borderRadius: 9, border: 'none',
+
+                background: deleting ? '#e0a0a0' : '#d64545', color: '#fff',
+
+                fontSize: 13, fontWeight: 700, cursor: deleting ? 'default' : 'pointer',
+
+              }}>{deleting ? 'Удаляю...' : 'Удалить'}</button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
 
       {detailProduct && (
         <AdminProductModal product={detailProduct} country={country} onClose={() => setDetailProduct(null)}

@@ -1,0 +1,44 @@
+/* Режим правки порядка: карточки покачиваются, как иконки на телефоне при
+   перестановке. Без этого непонятно, что их можно тащить — курсор-«ладонь»
+   виден только под указателем, а подсказку сверху читают не все. */
+@keyframes setJiggle {
+  0%   { transform: rotate(-0.55deg); }
+  50%  { transform: rotate(0.55deg);  }
+  100% { transform: rotate(-0.55deg); }
+}
+
+.set-jiggle {
+  animation: setJiggle .34s ease-in-out infinite;
+  /* Синхронное покачивание всех карточек читается как дрожь страницы,
+     поэтому фазу сдвигаем — задержку задаём поштучно в разметке. */
+}
+
+.set-jiggle:hover {
+  animation-play-state: paused;   /* прицелиться в крестик по дрожащей карточке трудно */
+}
+
+/* Карточка, которую тащат: приподнимаем и гасим качание. */
+.set-dragging {
+  animation: none;
+  opacity: .45;
+  transform: scale(.97);
+}
+
+/* Крестик удаления в углу карточки. */
+.set-del {
+  position: absolute;
+  top: 6px; left: 6px;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%;
+  background: #d64545; color: #fff;
+  font-size: 15px; line-height: 1; font-weight: 700;
+  cursor: pointer; padding: 0;
+  box-shadow: 0 1px 5px rgba(0,0,0,.3);
+  z-index: 2;
+}
+.set-del:hover { background: #b93636; }
+
+@media (prefers-reduced-motion: reduce) {
+  .set-jiggle { animation: none; }
+}
