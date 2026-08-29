@@ -376,8 +376,10 @@ router.get('/set-layout', async (req, res) => {
     const { brand, set } = req.query;
     if (!brand || !set) return res.status(400).json({ message: 'Нужны brand и set' });
     const layout = await SetLayout.findOne({ brand, set }).lean();
-    // Map в lean() приходит обычным объектом — фронтенду отдаём как есть.
-    res.json({ categories: layout?.categories || [], products: layout?.products || {} });
+    // В базе пары, наружу — привычный объект «категория → порядок товаров».
+    const products = {};
+    (layout?.productOrder || []).forEach(r => { products[r.category] = r.names || []; });
+    res.json({ categories: layout?.categories || [], products });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -390,18 +392,20 @@ router.put('/set-layout', editor, async (req, res) => {
     const clean = [...new Set(categories.map(c => String(c || '').trim()).filter(Boolean))];
     const set$ = { categories: clean };
     if (products && typeof products === 'object') {
-      const cleanProducts = {};
-      for (const [cat, names] of Object.entries(products)) {
+      const rows = [];
+      for (const [category, names] of Object.entries(products)) {
         if (!Array.isArray(names)) continue;
         const list = [...new Set(names.map(n => String(n || '').trim()).filter(Boolean))];
-        if (list.length) cleanProducts[cat] = list;
+        if (list.length) rows.push({ category, names: list });
       }
-      set$.products = cleanProducts;
+      set$.productOrder = rows;
     }
     const layout = await SetLayout.findOneAndUpdate(
       { brand, set }, { $set: set$ }, { new: true, upsert: true },
     );
-    res.json({ categories: layout.categories, products: layout.products || {} });
+    const saved = {};
+    (layout.productOrder || []).forEach(r => { saved[r.category] = r.names || []; });
+    res.json({ categories: layout.categories, products: saved });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
