@@ -8,11 +8,11 @@ import {
   adminGetFacets, adminGetProducts,
   adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets,
   adminGetSetLayout,
+  adminSaveSetLayout,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
 import TubesPdfButton from './TubesPdfButton';
-import SetOrderEditor from './SetOrderEditor';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
@@ -272,6 +272,27 @@ function sizeRank(dim) {
   const nums = String(dim || '').match(/\d+(?:[.,]\d+)?/g);
   if (!nums) return null;
   return nums.reduce((acc, n) => acc * parseFloat(n.replace(',', '.')), 1);
+}
+
+// Ручной порядок поверх автоматического. Модели, которых в списке нет (завели
+// после настройки), остаются после перечисленных — в том порядке, в каком их
+// поставила автоматика. Пропасть со страницы товар не должен.
+function applyManualOrder(items, order) {
+  if (!order || !order.length) return items;
+  const at = new Map(order.map((name, i) => [name, i]));
+  return [...items].sort((a, b) => {
+    const ia = at.has(a[0]) ? at.get(a[0]) : Infinity;
+    const ib = at.has(b[0]) ? at.get(b[0]) : Infinity;
+    return ia - ib;
+  });
+}
+
+// Перестановка элемента списка: вынули с позиции from, вставили на to.
+function moveItem(list, from, to) {
+  const next = [...list];
+  const [x] = next.splice(from, 1);
+  next.splice(to, 0, x);
+  return next;
 }
 
 // Последнее число названия — у труб это толщина стенки: «20×10×0,85» → 0.85.
@@ -903,9 +924,15 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const scrollRef = useRef(null);
   const [detailProduct, setDetailProduct] = useState(null);
   const [viewMode,  setViewMode]  = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
-  // Порядок категорий, заданный руками. Пустой список = порядок не настраивали.
-  const [catOrder, setCatOrder]   = useState([]);
-  const [orderOpen, setOrderOpen] = useState(false);
+  // Порядок, заданный руками. Пустой = не настраивали, работает автоматический.
+  const [catOrder,  setCatOrder]  = useState([]);      // ['Трубы круглые', ...]
+  const [prodOrder, setProdOrder] = useState({});      // { 'Трубы круглые': ['Труба круглая 8×0,5', ...] }
+  const [editMode,  setEditMode]  = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  // Снимок на случай «Отмена»: правки видно сразу на странице, откатывать не с чего.
+  const snapshot = useRef(null);
+  // Что тащим: категорию целиком или карточку внутри категории.
+  const drag = useRef(null);
   const isMobile = useIsMobile();
 
   const toggleView = () => {
@@ -930,8 +957,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   useEffect(() => {
     adminGetSetLayout(brandKey, setSlug)
-      .then(r => setCatOrder(r.data.categories || []))
-      .catch(() => setCatOrder([]));
+      .then(r => { setCatOrder(r.data.categories || []); setProdOrder(r.data.products || {}); })
+      .catch(() => { setCatOrder([]); setProdOrder({}); });
+    setEditMode(false);
   }, [brandKey, setSlug]);
 
   // Поиск внутри сета: позиций бывает под сотню и больше, глазами не найти.
@@ -1017,13 +1045,72 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       // Внутри категории — по линейкам и размерам, а не вперемешку по остатку
       .map(([groupName, items]) => [
         groupName,
-        sortModelsInGroup(items, country, groupName === 'Нет в наличии', (SET_CATEGORY_SORT[setSlug] || {})[groupName] || ''),
+        applyManualOrder(
+          sortModelsInGroup(items, country, groupName === 'Нет в наличии', (SET_CATEGORY_SORT[setSlug] || {})[groupName] || ''),
+          prodOrder[groupName],
+        ),
       ]);
     return result;
-  }, [models, setSlug, country, catOrder]);
+  }, [models, setSlug, country, catOrder, prodOrder]);
 
   // Общая переменная для групп — теперь только categoryGroups
   const accordionGroups = categoryGroups;
+
+  // ── Режим правки порядка ────────────────────────────────────────────────
+  // Тащим прямо по странице: так видно результат, а не абстрактный список.
+  // Порядок правим в состоянии сразу — сетка перестраивается под курсором;
+  // на сервер уходит только по «Сохранить».
+  const catNames = (accordionGroups || [])
+    .map(([n]) => n)
+    .filter(n => n !== 'Нет в наличии' && n !== 'Прочее');
+
+  function startEdit() {
+    // Снимок — то, что видно сейчас: автоматический порядок становится
+    // отправной точкой, иначе первая же перестановка всё перемешала бы.
+    const prods = {};
+    (accordionGroups || []).forEach(([cat, items]) => { prods[cat] = items.map(([n]) => n); });
+    snapshot.current = { cats: catOrder, prods: prodOrder };
+    setCatOrder(catNames);
+    setProdOrder(prods);
+    setEditMode(true);
+  }
+
+  function cancelEdit() {
+    if (snapshot.current) { setCatOrder(snapshot.current.cats); setProdOrder(snapshot.current.prods); }
+    snapshot.current = null;
+    setEditMode(false);
+  }
+
+  async function saveEdit() {
+    setSaving(true);
+    try {
+      const r = await adminSaveSetLayout(brandKey, setSlug, catOrder, prodOrder);
+      setCatOrder(r.data.categories || catOrder);
+      setProdOrder(r.data.products || prodOrder);
+      snapshot.current = null;
+      setEditMode(false);
+    } catch (e) {
+      alert('Не удалось сохранить порядок: ' + (e.response?.data?.message || e.message));
+    } finally { setSaving(false); }
+  }
+
+  const dropCategory = (toName) => {
+    const from = catOrder.indexOf(drag.current?.name);
+    const to   = catOrder.indexOf(toName);
+    if (drag.current?.type !== 'cat' || from < 0 || to < 0 || from === to) return;
+    setCatOrder(moveItem(catOrder, from, to));
+  };
+
+  const dropProduct = (cat, toName) => {
+    const d = drag.current;
+    // Между категориями не переносим: категория товара — это его поле, а не
+    // порядок на витрине. Меняют её в карточке товара.
+    if (d?.type !== 'item' || d.cat !== cat) return;
+    const list = prodOrder[cat] || [];
+    const from = list.indexOf(d.name), to = list.indexOf(toName);
+    if (from < 0 || to < 0 || from === to) return;
+    setProdOrder({ ...prodOrder, [cat]: moveItem(list, from, to) });
+  };
 
   const [openGroups, setOpenGroups] = useState({});
 
@@ -1155,13 +1242,28 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               {viewMode === 'grid' ? '☰' : '⊞'}
             </button>
 
-            {/* Порядок категорий — правится владельцем, без правки кода */}
-            {!isMobile && accordionGroups && (
-              <button onClick={() => setOrderOpen(true)} title="Порядок категорий" style={{
+            {/* Порядок правится владельцем прямо на странице, без правки кода.
+                Только на десктопе: перетаскивание на тач-экране не работает. */}
+            {!isMobile && accordionGroups && !editMode && (
+              <button onClick={startEdit} title="Изменить порядок категорий и товаров" style={{
                 padding: '7px 12px', borderRadius: 9, cursor: 'pointer',
                 border: '1.5px solid #e0e0e0', background: '#fff',
                 color: '#555', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
-              }}>↕ Порядок</button>
+              }}>✎ Порядок</button>
+            )}
+            {!isMobile && editMode && (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={cancelEdit} style={{
+                  padding: '7px 12px', borderRadius: 9, cursor: 'pointer',
+                  border: '1.5px solid #e0e0e0', background: '#fff',
+                  color: '#555', fontSize: 12, fontWeight: 600,
+                }}>Отмена</button>
+                <button onClick={saveEdit} disabled={saving} style={{
+                  padding: '7px 14px', borderRadius: 9, cursor: saving ? 'default' : 'pointer',
+                  border: 'none', background: saving ? '#9bb3d4' : '#3463A3',
+                  color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+                }}>{saving ? 'Сохраняю...' : 'Сохранить порядок'}</button>
+              </div>
             )}
 
             {/* PDF button on desktop */}
@@ -1548,11 +1650,29 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
           ) : accordionGroups ? (
             /* Grid view with category sections */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {editMode && (
+                <div style={{
+                  background: '#eef2f7', border: '1px solid #d6e0ec', borderRadius: 10,
+                  padding: '9px 12px', fontSize: 12, color: '#3c5a80', lineHeight: 1.5,
+                }}>
+                  Тащите карточку — поменяется порядок внутри категории.
+                  Тащите заголовок ⠿ — переставится вся категория.
+                  Между категориями товары не переносятся: категория задаётся в карточке товара.
+                  Порядок сохранится только по кнопке «Сохранить порядок».
+                </div>
+              )}
               {accordionGroups.map(([groupName, items]) => {
                 const isOutOfStock = groupName === 'Нет в наличии';
+                // «Прочее» и «Нет в наличии» всегда последние — их не двигаем.
+                const catDraggable = editMode && !isOutOfStock && groupName !== 'Прочее';
                 return (
                 <div key={groupName} style={{ marginTop: isOutOfStock ? 24 : 0 }}>
-                  <div style={{
+                  <div
+                    draggable={catDraggable}
+                    onDragStart={() => { drag.current = { type: 'cat', name: groupName }; }}
+                    onDragOver={e => { if (catDraggable) e.preventDefault(); }}
+                    onDrop={e => { if (catDraggable) { e.preventDefault(); dropCategory(groupName); } }}
+                    style={{
                     fontSize: 14,
                     fontWeight: 800,
                     color: isOutOfStock ? '#999' : '#1c1c1c',
@@ -1564,7 +1684,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
+                    cursor: catDraggable ? 'grab' : 'default',
+                    background: catDraggable ? '#fbfcfd' : 'transparent',
                   }}>
+                    {catDraggable && <span style={{ color: '#c3cad2', fontSize: 15, letterSpacing: -1 }}>⠿</span>}
                     {groupName}
                     <span style={{ fontSize: 12, fontWeight: 500, color: '#999' }}>{items.length} тов.</span>
                   </div>
@@ -1582,13 +1705,20 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       const hasColorOnly = primary.color && !primary.images?.[0];
                       const cardOpacity = isOutOfStock ? 0.5 : (stockInfo.isKitMissing ? 0.5 : 1);
                       return (
-                        <div key={name} onClick={() => setDetailProduct(primary)}
+                        <div key={name}
+                          // В режиме правки карточка тащится, а не открывается:
+                          // иначе каждое перетаскивание кончалось бы модалкой товара.
+                          onClick={() => { if (!editMode) setDetailProduct(primary); }}
+                          draggable={editMode}
+                          onDragStart={() => { drag.current = { type: 'item', cat: groupName, name }; }}
+                          onDragOver={e => { if (editMode) e.preventDefault(); }}
+                          onDrop={e => { if (editMode) { e.preventDefault(); dropProduct(groupName, name); } }}
                           style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                             background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                            cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
+                            cursor: editMode ? 'grab' : 'pointer', transition: 'box-shadow .15s, transform .15s',
                             opacity: cardOpacity }}
-                          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
+                          onMouseEnter={e => { if (editMode) return; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                          onMouseLeave={e => { if (editMode) return; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                         >
                           <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {!hasColorOnly && (
@@ -1820,17 +1950,6 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       </div>
 
       {/* Product detail modal */}
-      {orderOpen && accordionGroups && (
-        <SetOrderEditor
-          brand={brandKey}
-          set={setSlug}
-          categories={accordionGroups
-            .map(([name]) => name)
-            .filter(n => n !== 'Нет в наличии' && n !== 'Прочее')}
-          onSave={setCatOrder}
-          onClose={() => setOrderOpen(false)}
-        />
-      )}
 
       {detailProduct && (
         <AdminProductModal product={detailProduct} country={country} onClose={() => setDetailProduct(null)}

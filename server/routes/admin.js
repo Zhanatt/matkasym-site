@@ -376,23 +376,32 @@ router.get('/set-layout', async (req, res) => {
     const { brand, set } = req.query;
     if (!brand || !set) return res.status(400).json({ message: 'Нужны brand и set' });
     const layout = await SetLayout.findOne({ brand, set }).lean();
-    res.json({ categories: layout?.categories || [] });
+    // Map в lean() приходит обычным объектом — фронтенду отдаём как есть.
+    res.json({ categories: layout?.categories || [], products: layout?.products || {} });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 router.put('/set-layout', editor, async (req, res) => {
   try {
-    const { brand, set, categories } = req.body;
+    const { brand, set, categories, products } = req.body;
     if (!brand || !set) return res.status(400).json({ message: 'Нужны brand и set' });
     if (!Array.isArray(categories)) return res.status(400).json({ message: 'categories должен быть массивом' });
     // Пустые строки и дубли в списке сделали бы порядок неоднозначным.
     const clean = [...new Set(categories.map(c => String(c || '').trim()).filter(Boolean))];
+    const set$ = { categories: clean };
+    if (products && typeof products === 'object') {
+      const cleanProducts = {};
+      for (const [cat, names] of Object.entries(products)) {
+        if (!Array.isArray(names)) continue;
+        const list = [...new Set(names.map(n => String(n || '').trim()).filter(Boolean))];
+        if (list.length) cleanProducts[cat] = list;
+      }
+      set$.products = cleanProducts;
+    }
     const layout = await SetLayout.findOneAndUpdate(
-      { brand, set },
-      { $set: { categories: clean } },
-      { new: true, upsert: true },
+      { brand, set }, { $set: set$ }, { new: true, upsert: true },
     );
-    res.json({ categories: layout.categories });
+    res.json({ categories: layout.categories, products: layout.products || {} });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
