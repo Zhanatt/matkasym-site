@@ -298,6 +298,28 @@ function moveItem(list, from, to) {
   return next;
 }
 
+// Стрелки перестановки. Одинаковые на категориях и на карточках, в обоих видах.
+// stopPropagation обязателен: и заголовок категории, и карточка товара — сами по
+// себе кликабельны (сворачивают список, открывают товар).
+function MoveArrows({ onUp, onDown, canUp, canDown, size = 24 }) {
+  const btn = on => ({
+    width: size, height: size, borderRadius: 6, padding: 0,
+    border: '1.5px solid ' + (on ? '#cfd6de' : '#eef0f3'),
+    background: '#fff', color: on ? '#3463A3' : '#dde2e7',
+    fontSize: size > 22 ? 12 : 10, lineHeight: 1,
+    cursor: on ? 'pointer' : 'default',
+  });
+  const stop = (e, fn, on) => { e.stopPropagation(); if (on) fn(); };
+  return (
+    <span style={{ display: 'inline-flex', gap: 3 }}>
+      <button title="Выше" style={btn(canUp)}
+        onClick={e => stop(e, onUp, canUp)}>▲</button>
+      <button title="Ниже" style={btn(canDown)}
+        onClick={e => stop(e, onDown, canDown)}>▼</button>
+    </span>
+  );
+}
+
 // Последнее число названия — у труб это толщина стенки: «20×10×0,85» → 0.85.
 function lastNumber(name) {
   const nums = String(name || '').match(/\d+(?:[.,]\d+)?/g);
@@ -939,9 +961,6 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const [saving,    setSaving]    = useState(false);
   // Снимок на случай «Отмена»: правки видно сразу на странице, откатывать не с чего.
   const snapshot = useRef(null);
-  // Что тащим: категорию целиком или карточку внутри категории.
-  const drag = useRef(null);
-  const [dragName, setDragName] = useState(null);   // карточка под курсором — гасим качание
   const [toDelete, setToDelete] = useState(null);   // { name, variants } — ждём подтверждения
   const [deleting, setDeleting] = useState(false);
   const isMobile = useIsMobile();
@@ -1105,11 +1124,21 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     } finally { setSaving(false); }
   }
 
-  const dropCategory = (toName) => {
-    const from = catOrder.indexOf(drag.current?.name);
-    const to   = catOrder.indexOf(toName);
-    if (drag.current?.type !== 'cat' || from < 0 || to < 0 || from === to) return;
+  // Двигаем стрелками, а не перетаскиванием: тащить карточку через всю сетку
+  // на 20+ позиций неудобно, а в списковом виде тащить нечего вовсе.
+  const moveCategory = (name, dir) => {
+    const from = catOrder.indexOf(name);
+    const to   = from + dir;
+    if (from < 0 || to < 0 || to >= catOrder.length) return;
     setCatOrder(moveItem(catOrder, from, to));
+  };
+
+  const moveProduct = (cat, name, dir) => {
+    const list = prodOrder[cat] || [];
+    const from = list.indexOf(name);
+    const to   = from + dir;
+    if (from < 0 || to < 0 || to >= list.length) return;
+    setProdOrder({ ...prodOrder, [cat]: moveItem(list, from, to) });
   };
 
   // Удаление товара из каталога. Карточка на витрине — это модель, у неё может
@@ -1128,16 +1157,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     } finally { setDeleting(false); }
   }
 
-  const dropProduct = (cat, toName) => {
-    const d = drag.current;
-    // Между категориями не переносим: категория товара — это его поле, а не
-    // порядок на витрине. Меняют её в карточке товара.
-    if (d?.type !== 'item' || d.cat !== cat) return;
-    const list = prodOrder[cat] || [];
-    const from = list.indexOf(d.name), to = list.indexOf(toName);
-    if (from < 0 || to < 0 || from === to) return;
-    setProdOrder({ ...prodOrder, [cat]: moveItem(list, from, to) });
-  };
+
 
   const [openGroups, setOpenGroups] = useState({});
 
@@ -1595,6 +1615,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div className={`tube-accordion-icon ${isOpen ? 'open' : ''}`}>▶</div>
+                          {editMode && !isOutOfStockGroup && groupName !== 'Прочее' && (
+                            <MoveArrows
+                              onUp={() => moveCategory(groupName, -1)}
+                              onDown={() => moveCategory(groupName, 1)}
+                              canUp={catOrder.indexOf(groupName) > 0}
+                              canDown={catOrder.indexOf(groupName) < catOrder.length - 1}
+                            />
+                          )}
                           <span className="tube-accordion-title">{groupName}</span>
                         </div>
                         <span className="tube-accordion-badge">{items.length} шт</span>
@@ -1610,9 +1638,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                             <div
                               key={name}
                               className="tube-item"
-                              onClick={() => setDetailProduct(primary)}
-                              style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none', opacity: isOutOfStockGroup ? 0.5 : 1 }}
+                              onClick={() => { if (!editMode) setDetailProduct(primary); }}
+                              style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none', opacity: isOutOfStockGroup ? 0.5 : 1, cursor: editMode ? 'default' : 'pointer' }}
                             >
+                              {editMode && (
+                                <MoveArrows
+                                  onUp={() => moveProduct(groupName, name, -1)}
+                                  onDown={() => moveProduct(groupName, name, 1)}
+                                  canUp={itemIdx > 0}
+                                  canDown={itemIdx < items.length - 1}
+                                  size={26}
+                                />
+                              )}
                               <ProductImage product={primary} size={80} className="tube-item-img" />
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div className="tube-item-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1628,6 +1665,17 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               >
                                 {primary.priceUndefined ? 'Цена не определена' : fmtPrice(price, country)}
                               </div>
+                              {editMode && (
+                                <button
+                                  title="Удалить товар из каталога"
+                                  onClick={e => { e.stopPropagation(); setToDelete({ name, variants }); }}
+                                  style={{
+                                    width: 26, height: 26, borderRadius: '50%', border: 'none',
+                                    background: '#d64545', color: '#fff', fontSize: 15, lineHeight: 1,
+                                    fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0,
+                                  }}
+                                >×</button>
+                              )}
                               <div className={`tube-stock-badge ${hasStock ? 'in-stock' : 'out-stock'}`}>
                                 {stockLabel}
                               </div>
@@ -1682,9 +1730,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   background: '#eef2f7', border: '1px solid #d6e0ec', borderRadius: 10,
                   padding: '9px 12px', fontSize: 12, color: '#3c5a80', lineHeight: 1.5,
                 }}>
-                  Тащите карточку — поменяется порядок внутри категории.
-                  Тащите заголовок ⠿ — переставится вся категория.
-                  Между категориями товары не переносятся: категория задаётся в карточке товара.
+                  Стрелки ▲▼ у карточки двигают её внутри категории, у заголовка — переставляют
+                  всю категорию. Между категориями товары не переносятся: категория задаётся
+                  в карточке товара. Крестик удаляет товар из каталога.
                   Порядок сохранится только по кнопке «Сохранить порядок».
                 </div>
               )}
@@ -1694,12 +1742,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 const catDraggable = editMode && !isOutOfStock && groupName !== 'Прочее';
                 return (
                 <div key={groupName} style={{ marginTop: isOutOfStock ? 24 : 0 }}>
-                  <div
-                    draggable={catDraggable}
-                    onDragStart={() => { drag.current = { type: 'cat', name: groupName }; }}
-                    onDragOver={e => { if (catDraggable) e.preventDefault(); }}
-                    onDrop={e => { if (catDraggable) { e.preventDefault(); dropCategory(groupName); } }}
-                    style={{
+                  <div style={{
                     fontSize: 14,
                     fontWeight: 800,
                     color: isOutOfStock ? '#999' : '#1c1c1c',
@@ -1711,10 +1754,16 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
-                    cursor: catDraggable ? 'grab' : 'default',
                     background: catDraggable ? '#fbfcfd' : 'transparent',
                   }}>
-                    {catDraggable && <span style={{ color: '#c3cad2', fontSize: 15, letterSpacing: -1 }}>⠿</span>}
+                    {catDraggable && (
+                      <MoveArrows
+                        onUp={() => moveCategory(groupName, -1)}
+                        onDown={() => moveCategory(groupName, 1)}
+                        canUp={catOrder.indexOf(groupName) > 0}
+                        canDown={catOrder.indexOf(groupName) < catOrder.length - 1}
+                      />
+                    )}
                     {groupName}
                     <span style={{ fontSize: 12, fontWeight: 500, color: '#999' }}>{items.length} тов.</span>
                   </div>
@@ -1736,15 +1785,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           // В режиме правки карточка тащится, а не открывается:
                           // иначе каждое перетаскивание кончалось бы модалкой товара.
                           onClick={() => { if (!editMode) setDetailProduct(primary); }}
-                          draggable={editMode}
-                          className={editMode ? (dragName === name ? 'set-jiggle set-dragging' : 'set-jiggle') : undefined}
-                          onDragStart={() => { drag.current = { type: 'item', cat: groupName, name }; setDragName(name); }}
-                          onDragEnd={() => setDragName(null)}
-                          onDragOver={e => { if (editMode) e.preventDefault(); }}
-                          onDrop={e => { if (editMode) { e.preventDefault(); dropProduct(groupName, name); setDragName(null); } }}
+                          className={editMode ? 'set-jiggle' : undefined}
                           style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                             background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                            cursor: editMode ? 'grab' : 'pointer', transition: 'box-shadow .15s',
+                            cursor: editMode ? 'default' : 'pointer', transition: 'box-shadow .15s',
                             opacity: cardOpacity, position: 'relative',
                             // Фазу качания сдвигаем по позиции, иначе вся сетка
                             // дёргается синхронно и это читается как дрожь экрана.
@@ -1753,12 +1797,21 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           onMouseLeave={e => { if (editMode) return; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                         >
                           {editMode && (
-                            <button
-                              className="set-del"
-                              title="Удалить товар из каталога"
-                              onClick={e => { e.stopPropagation(); setToDelete({ name, variants }); }}
-                              onDragStart={e => e.preventDefault()}
-                            >×</button>
+                            <>
+                              <button
+                                className="set-del"
+                                title="Удалить товар из каталога"
+                                onClick={e => { e.stopPropagation(); setToDelete({ name, variants }); }}
+                              >×</button>
+                              <span style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}>
+                                <MoveArrows
+                                  onUp={() => moveProduct(groupName, name, -1)}
+                                  onDown={() => moveProduct(groupName, name, 1)}
+                                  canUp={idx > 0}
+                                  canDown={idx < items.length - 1}
+                                />
+                              </span>
+                            </>
                           )}
                           <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {!hasColorOnly && (
