@@ -14,3 +14,16 @@
 export const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer'];
 
 export const canEnterAdmin = role => ADMIN_ROLES.includes(role);
+
+/**
+ * Роли, которым можно править каталог: заводить и удалять товары, менять
+ * порядок категорий и карточек в сете. Совпадает с middleware `editor`
+ * на сервере (server/middleware/auth.js) — сервер всё равно проверит сам,
+ * но кнопку, которая заведомо кончится ошибкой 403, показывать нельзя.
+ *
+ * Список держим здесь, а не копией в каждой странице: копии уже расходились
+ * (см. историю с «Закупщиком» выше).
+ */
+export const EDITOR_ROLES = ['owner', 'editor', 'designer'];
+
+export const canEditCatalog = role => EDITOR_ROLES.includes(role);

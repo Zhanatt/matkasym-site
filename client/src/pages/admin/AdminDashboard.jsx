@@ -5,6 +5,7 @@ import { signOf } from '../../utils/price';
 import * as pdfjsLib from 'pdfjs-dist';
 import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
+import { canEditCatalog } from '../../constants/roles';
 
 // PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -128,7 +129,7 @@ export default function AdminDashboard() {
     : null;
 
   const isOwner = user?.role === 'owner';
-  const canEdit = ['owner', 'editor', 'designer'].includes(user?.role);
+  const canEdit = canEditCatalog(user?.role);
 
   const setProgress = (key, val) => setUploadProgress(p => ({ ...p, [key]: val }));
 

@@ -15,6 +15,7 @@ import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
 import TubesPdfButton from './TubesPdfButton';
 import './AdminSets.css';
+import { canEditCatalog } from '../../constants/roles';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
@@ -918,6 +919,11 @@ const fmtPrice = (price, country) =>
 
 function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride, fetchParams }) {
   const country     = useCountry();
+  const { user }    = useAuth();
+  // Порядок и удаление — только владелец, редактор и дизайнер. Сервер проверяет
+  // сам (middleware editor), здесь просто не показываем кнопку остальным:
+  // складу и закупщику она бы кончилась ошибкой 403.
+  const canEdit     = canEditCatalog(user?.role);
   const accent      = accentOverride || BRAND_META[brandKey]?.accent || '#555';
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
   const [priceMode, setPriceMode]         = useState(defaultMode);
@@ -1265,14 +1271,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
             {/* Порядок правится владельцем прямо на странице, без правки кода.
                 Только на десктопе: перетаскивание на тач-экране не работает. */}
-            {!isMobile && accordionGroups && !editMode && (
+            {!isMobile && canEdit && accordionGroups && !editMode && (
               <button onClick={startEdit} title="Изменить порядок категорий и товаров" style={{
                 padding: '7px 12px', borderRadius: 9, cursor: 'pointer',
                 border: '1.5px solid #e0e0e0', background: '#fff',
                 color: '#555', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
               }}>✎ Порядок</button>
             )}
-            {!isMobile && editMode && (
+            {!isMobile && canEdit && editMode && (
               <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={cancelEdit} style={{
                   padding: '7px 12px', borderRadius: 9, cursor: 'pointer',

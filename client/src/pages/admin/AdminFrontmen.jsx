@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { canEditCatalog } from '../../constants/roles';
 import { useFrontmen } from '../../context/FrontmenContext';
 import { adminGetUsers, adminGetBrands } from '../../api/index';
 
@@ -69,7 +70,7 @@ const CHANNEL_LABELS = {
 export default function AdminFrontmen() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const canEdit = ['owner', 'editor', 'designer'].includes(user?.role);
+  const canEdit = canEditCatalog(user?.role);
 
   const { frontmen, loading: frontmenLoading, createFrontman, updateFrontman, deleteFrontman } = useFrontmen();
   const [users, setUsers] = useState([]);
