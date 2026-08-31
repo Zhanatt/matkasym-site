@@ -37,11 +37,11 @@ const L = {
   ky: {
     title: 'ТҮТҮКТӨР КАТАЛОГУ',
     subtitle: 'Металл түтүктөрдүн баа тизмеси',
+    common: 'ЖАЛПЫ МҮНӨЗДӨМӨЛӨРҮ',
     page: n => `${n}-БЕТ`,
     colSize: 'ӨЛЧӨМҮ',
     colWall: 'МЕТАЛЛДЫН КАЛЫҢДЫГЫ',
     colPrice: 'БААСЫ, 1 М ҮЧҮН',
-    length: `Бир түтүктүн узундугу — ${PIPE_LENGTH_M} м`,
     currency: 'сом',
     noPrice: 'келишим боюнча',
     cont: 'уландысы',
@@ -61,11 +61,11 @@ const L = {
   ru: {
     title: 'КАТАЛОГ ТРУБ',
     subtitle: 'Прайс-лист на металлические трубы',
+    common: 'ОБЩИЕ ХАРАКТЕРИСТИКИ',
     page: n => `СТР. ${n}`,
     colSize: 'РАЗМЕР',
     colWall: 'ТОЛЩИНА МЕТАЛЛА',
     colPrice: 'ЦЕНА ЗА 1 М',
-    length: `Длина одной трубы — ${PIPE_LENGTH_M} м`,
     currency: 'сом',
     noPrice: 'по запросу',
     cont: 'продолжение',
@@ -85,6 +85,51 @@ const L = {
 };
 
 const TYPE_ORDER = ['Круглая', 'Квадратная', 'Прямоугольная', 'Овальная'];
+
+// Характеристики в каталоге читаются как свойства товара, а не как строки базы:
+// «Шов: Нет» превращается в «Бесшовная».
+const SPEC_PHRASE = {
+  ky: {
+    'материал':            v => v,
+    'прокат':              v => (/холодно/i.test(v) ? 'Муздак прокат' : v),
+    'шов':                 v => (/нет/i.test(v) ? 'Тигишсиз' : 'Тигиши бар'),
+    'страна производства': v => `Өндүрүлгөн жери: ${v}`,
+    'длина трубы':         v => `Узундугу ${v}`,
+  },
+  ru: {
+    'материал':            v => v,
+    'прокат':              v => v,
+    'шов':                 v => (/нет/i.test(v) ? 'Бесшовная' : 'Со швом'),
+    'страна производства': v => `Производство: ${v}`,
+    'длина трубы':         v => `Длина ${v}`,
+  },
+};
+
+// Размерные и штучные характеристики у каждой позиции свои — в общий блок не идут.
+const PER_ITEM_SPECS = new Set([
+  'тип', 'толщина стенки', 'диаметр', 'диаметр трубы', 'размер трубы', 'сечение',
+  'количество в пачке', 'количество в одной пачке', 'количество',
+]);
+
+// Характеристики, совпадающие у ВСЕХ труб каталога: их место в шапке, а не в
+// каждой строке таблицы. Считаем по данным, а не списком в коде, — поменяют
+// сталь или страну в карточках, каталог подхватит сам.
+const commonSpecs = (products, lang) => {
+  const [first] = products;
+  if (!first) return [];
+  const phrase = SPEC_PHRASE[lang] || SPEC_PHRASE.ky;
+  const out = [];
+  for (const s of first.specs || []) {
+    const key = String(s.key || '').trim();
+    const val = String(s.value || '').trim();
+    if (!key || !val || PER_ITEM_SPECS.has(key.toLowerCase())) continue;
+    const everywhere = products.every(p => (p.specs || []).some(x =>
+      String(x.key || '').trim().toLowerCase() === key.toLowerCase() &&
+      String(x.value || '').trim() === val));
+    if (everywhere) out.push((phrase[key.toLowerCase()] || (v => `${key}: ${v}`))(val));
+  }
+  return out;
+};
 
 // ── Разбор товара ─────────────────────────────────────────────────────────────
 const spec = (p, key) => (p.specs || []).find(s => s.key?.trim().toLowerCase() === key)?.value?.trim();
@@ -127,15 +172,27 @@ const rowOf = (p, type, dict) => {
 
 // ── Раскладка ─────────────────────────────────────────────────────────────────
 const ROW_H        = 17;
-const BLOCK_CHROME = 56;   // шапка таблицы, строка про длину, отступ под карточкой
+const BLOCK_CHROME = 44;   // шапка таблицы и отступ под карточкой
 const BLOCK_SPLIT  = 14;   // разделитель, если карточка не первая на листе
 const BLOCK_MIN_H  = 180;  // столько нужно колонке с фото, чтобы труба влезла целиком
 const MIN_ROWS     = 4;    // хвост короче уже не выглядит таблицей
 const FOOTER_H     = 96;
-const PAGE_BODY_H  = 700;  // A4 за вычетом шапки и колонтитула
+const PAGE_BODY_H  = 668;  // A4 за вычетом шапки, полосы характеристик и колонтитула
 
 const blockHeight = (rows, split) =>
   Math.max(BLOCK_MIN_H, BLOCK_CHROME + rows * ROW_H) + (split ? BLOCK_SPLIT : 0);
+
+// Фото для секции — то, что стоит у большинства позиций линейки: это общий кадр
+// трубы. У отдельных товаров первым лежит рекламный баннер с текстом и ценой —
+// в прайсе он смотрелся бы рекламой внутри рекламы.
+const sectionPhoto = (items) => {
+  const count = new Map();
+  // считаем по всей галерее: общий кадр у части позиций лежит не первым
+  items.forEach(p => (p.images || []).forEach(u => count.set(u, (count.get(u) || 0) + 1)));
+  let best = null, top = 0;
+  for (const [url, n] of count) if (n > top) { best = url; top = n; }
+  return best;
+};
 
 const groupRows = (products, dict) => {
   const byType = {};
@@ -145,7 +202,7 @@ const groupRows = (products, dict) => {
   });
   return TYPE_ORDER.filter(t => byType[t]?.length).map(type => ({
     type,
-    photo: byType[type].find(p => p.images?.[0])?.images?.[0] || null,
+    photo: sectionPhoto(byType[type]),
     rows:  byType[type].map(p => rowOf(p, type, dict)).filter(Boolean)
              .sort((a, b) => a.sortA - b.sortA || a.sortB - b.sortB),
   })).filter(g => g.rows.length);
@@ -201,7 +258,15 @@ const S = StyleSheet.create({
   goldRule:   { height: 2.6, backgroundColor: GOLD },
 
 
-  body:       { paddingHorizontal: 26, paddingTop: 16 },
+  commonBar:  { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
+                paddingHorizontal: 26, paddingTop: 9, paddingBottom: 9,
+                borderBottomWidth: 0.5, borderBottomColor: LINE },
+  commonLabel:{ color: NAVY, fontSize: 6.4, fontWeight: 700, letterSpacing: 0.9, marginRight: 10 },
+  commonItem: { flexDirection: 'row', alignItems: 'center' },
+  commonDot:  { width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: GOLD, marginHorizontal: 7 },
+  commonText: { color: GRAY, fontSize: 7.6 },
+
+  body:       { paddingHorizontal: 26, paddingTop: 14 },
 
   block:      { flexDirection: 'row', marginBottom: 14, minHeight: BLOCK_MIN_H },
   blockSplit: { borderTopWidth: 0.5, borderTopColor: LINE, paddingTop: 14 },
@@ -235,8 +300,6 @@ const S = StyleSheet.create({
   tdCur:      { fontSize: 7.5, color: GRAY, marginLeft: 3 },
   tdAsk:      { fontSize: 8, color: GRAY_SOFT },
 
-  lenRow:     { marginTop: 6, flexDirection: 'row', justifyContent: 'flex-end' },
-  lenT:       { color: GRAY_SOFT, fontSize: 7, letterSpacing: 0.3 },
 
   footer:     { backgroundColor: NAVY_DEEP, borderRadius: 4, paddingVertical: 16, paddingHorizontal: 18 },
   footerT:    { color: GOLD, fontSize: 12, fontWeight: 700, letterSpacing: 1 },
@@ -251,7 +314,7 @@ const S = StyleSheet.create({
 });
 
 // ── Куски документа ───────────────────────────────────────────────────────────
-const Header = ({ dict }) => (
+const Header = ({ dict, common }) => (
   <View fixed>
     <View style={S.header}>
       <View style={S.headRow}>
@@ -266,6 +329,17 @@ const Header = ({ dict }) => (
       </View>
     </View>
     <View style={S.goldRule} />
+    {common.length > 0 && (
+      <View style={S.commonBar}>
+        <Text style={S.commonLabel}>{dict.common}</Text>
+        {common.map((c, i) => (
+          <View key={c} style={S.commonItem}>
+            {i > 0 && <View style={S.commonDot} />}
+            <Text style={S.commonText}>{c}</Text>
+          </View>
+        ))}
+      </View>
+    )}
   </View>
 );
 
@@ -304,7 +378,6 @@ const Block = ({ block, dict, first }) => {
           </View>
         ))}
 
-        <View style={S.lenRow}><Text style={S.lenT}>{dict.length}</Text></View>
       </View>
     </View>
   );
@@ -331,13 +404,14 @@ const PageFoot = ({ dict }) => (
 
 function TubesDocument({ products, lang }) {
   const dict = L[lang] || L.ky;
+  const common = commonSpecs(products.filter(p => typeOf(p)), lang);
   const { pages, footerOnLast } = layout(products, dict);
 
   return (
     <Document title={dict.title} author="MATKASYM">
       {pages.map((blocks, i) => (
         <Page key={i} size="A4" style={S.page}>
-          <Header dict={dict} />
+          <Header dict={dict} common={common} />
           <View style={S.body}>
             {blocks.map((b, j) => <Block key={`${b.type}-${j}`} block={b} dict={dict} first={j === 0} />)}
             {footerOnLast && i === pages.length - 1 && <Footer dict={dict} />}
@@ -347,7 +421,7 @@ function TubesDocument({ products, lang }) {
       ))}
       {!footerOnLast && (
         <Page size="A4" style={S.page}>
-          <Header dict={dict} />
+          <Header dict={dict} common={common} />
           <View style={S.body}><Footer dict={dict} /></View>
           <PageFoot dict={dict} />
         </Page>
