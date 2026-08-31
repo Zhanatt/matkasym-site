@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from 'react';
+import { Fragment, useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -80,6 +80,14 @@ function isProductAvailable(p, country = 'KG') {
 
 // У труб свой каталог — прайс-лист по размерам вместо карточек с фото
 const TUBES_SET = 'dayar-tutuk';
+
+// Внутри категории трубы идут линейками одного сечения: Ø8, Ø12, 20×10… Список
+// длинный и весь на одно лицо, поэтому при смене линейки ставим подзаголовок.
+const tubeSizeOf = (p) => {
+  const raw = String(p?.dimensions || '').replace(/\s*мм$/i, '').trim();
+  if (!raw) return '';
+  return /^[⌀Ø]/.test(raw) ? `Ø ${raw.replace(/^[⌀Ø]\s*/, '')} мм` : `${raw.replace(/[x*]/g, '×')} мм`;
+};
 
 const SET_NAMES = {
   'önügüü-set':      'Onuguu Set',
@@ -1602,6 +1610,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 {accordionGroups.map(([groupName, items], groupIdx) => {
                   const isOpen = openGroups[groupName] ?? false;
                   const isOutOfStockGroup = groupName === 'Нет в наличии';
+                  const byTubeSize = setSlug === TUBES_SET
+                    && new Set(items.map(([, v]) => tubeSizeOf(v[0]))).size > 1;
                   return (
                     <div
                       key={groupName}
@@ -1630,13 +1640,25 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       <div className={`tube-accordion-content ${isOpen ? 'open' : ''}`}>
                         {items.map(([name, variants], itemIdx) => {
                           const primary = variants[0];
+                          const size = byTubeSize ? tubeSizeOf(primary) : '';
+                          const sizeHead = size && size !== (itemIdx > 0 ? tubeSizeOf(items[itemIdx - 1][1][0]) : null);
                           const price = getPrice(primary, priceMode);
                           const stockInfo = getStockInfo(primary, country);
                           const hasStock = stockInfo.hasStock;
                           const stockLabel = stockInfo.label;
                           return (
+                            <Fragment key={name}>
+                            {sizeHead && (
+                              <div style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '10px 14px 6px', fontSize: 12, fontWeight: 700,
+                                color: '#6b7684', letterSpacing: 0.4,
+                              }}>
+                                {size}
+                                <span style={{ flex: 1, height: 1, background: '#ececec' }} />
+                              </div>
+                            )}
                             <div
-                              key={name}
                               className="tube-item"
                               onClick={() => { if (!editMode) setDetailProduct(primary); }}
                               style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none', opacity: isOutOfStockGroup ? 0.5 : 1, cursor: editMode ? 'default' : 'pointer' }}
@@ -1680,6 +1702,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                                 {stockLabel}
                               </div>
                             </div>
+                            </Fragment>
                           );
                         })}
                       </div>
@@ -1738,6 +1761,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               )}
               {accordionGroups.map(([groupName, items]) => {
                 const isOutOfStock = groupName === 'Нет в наличии';
+                // Разбивка по сечению нужна только там, где сечений в категории несколько
+                const byTubeSize = setSlug === TUBES_SET
+                  && new Set(items.map(([, v]) => tubeSizeOf(v[0]))).size > 1;
                 // «Прочее» и «Нет в наличии» всегда последние — их не двигаем.
                 const catDraggable = editMode && !isOutOfStock && groupName !== 'Прочее';
                 return (
@@ -1774,6 +1800,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   }}>
                     {items.map(([name, variants], idx) => {
                       const primary    = variants[0];
+                      const size       = byTubeSize ? tubeSizeOf(primary) : '';
+                      const sizeHead   = size && size !== (idx > 0 ? tubeSizeOf(items[idx - 1][1][0]) : null);
                       const price      = getPrice(primary, priceMode);
                       const stockInfo  = getStockInfo(primary, country);
                       const stockLabel = stockInfo.label;
@@ -1781,7 +1809,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       const hasColorOnly = primary.color && !primary.images?.[0];
                       const cardOpacity = isOutOfStock ? 0.5 : (stockInfo.isKitMissing ? 0.5 : 1);
                       return (
-                        <div key={name}
+                        <Fragment key={name}>
+                        {sizeHead && (
+                          <div style={{
+                            gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10,
+                            marginTop: idx ? 8 : 0, fontSize: 12, fontWeight: 700,
+                            color: '#6b7684', letterSpacing: 0.4,
+                          }}>
+                            {size}
+                            <span style={{ flex: 1, height: 1, background: '#ececec' }} />
+                          </div>
+                        )}
+                        <div
                           // В режиме правки карточка тащится, а не открывается:
                           // иначе каждое перетаскивание кончалось бы модалкой товара.
                           onClick={() => { if (!editMode) setDetailProduct(primary); }}
@@ -1866,6 +1905,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                             {primary.sku && <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>}
                           </div>
                         </div>
+                        </Fragment>
                       );
                     })}
                   </div>
