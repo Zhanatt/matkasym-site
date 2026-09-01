@@ -114,6 +114,8 @@ const PER_ITEM_SPECS = new Set([
 // Характеристики, совпадающие у ВСЕХ труб каталога: их место в шапке, а не в
 // каждой строке таблицы. Считаем по данным, а не списком в коде, — поменяют
 // сталь или страну в карточках, каталог подхватит сам.
+const SPEC_RANK = ['материал', 'шов', 'прокат', 'длина трубы', 'страна производства'];
+
 const commonSpecs = (products, lang) => {
   const [first] = products;
   if (!first) return [];
@@ -126,9 +128,10 @@ const commonSpecs = (products, lang) => {
     const everywhere = products.every(p => (p.specs || []).some(x =>
       String(x.key || '').trim().toLowerCase() === key.toLowerCase() &&
       String(x.value || '').trim() === val));
-    if (everywhere) out.push((phrase[key.toLowerCase()] || (v => `${key}: ${v}`))(val));
+    if (everywhere) out.push({ key: key.toLowerCase(), text: (phrase[key.toLowerCase()] || (v => `${key}: ${v}`))(val) });
   }
-  return out;
+  const rank = k => (SPEC_RANK.indexOf(k) + 1 || 99);
+  return out.sort((a, b) => rank(a.key) - rank(b.key)).map(x => x.text);
 };
 
 // ── Разбор товара ─────────────────────────────────────────────────────────────
@@ -174,10 +177,10 @@ const rowOf = (p, type, dict) => {
 const ROW_H        = 17;
 const BLOCK_CHROME = 44;   // шапка таблицы и отступ под карточкой
 const BLOCK_SPLIT  = 14;   // разделитель, если карточка не первая на листе
-const BLOCK_MIN_H  = 180;  // столько нужно колонке с фото, чтобы труба влезла целиком
+const BLOCK_MIN_H  = 214;  // колонка с фото и свойствами трубы
 const MIN_ROWS     = 4;    // хвост короче уже не выглядит таблицей
 const FOOTER_H     = 96;
-const PAGE_BODY_H  = 668;  // A4 за вычетом шапки, полосы характеристик и колонтитула
+const PAGE_BODY_H  = 700;  // A4 за вычетом шапки и колонтитула
 
 const blockHeight = (rows, split) =>
   Math.max(BLOCK_MIN_H, BLOCK_CHROME + rows * ROW_H) + (split ? BLOCK_SPLIT : 0);
@@ -258,13 +261,10 @@ const S = StyleSheet.create({
   goldRule:   { height: 2.6, backgroundColor: GOLD },
 
 
-  commonBar:  { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
-                paddingHorizontal: 26, paddingTop: 9, paddingBottom: 9,
-                borderBottomWidth: 0.5, borderBottomColor: LINE },
-  commonLabel:{ color: NAVY, fontSize: 6.4, fontWeight: 700, letterSpacing: 0.9, marginRight: 10 },
-  commonItem: { flexDirection: 'row', alignItems: 'center' },
-  commonDot:  { width: 2.2, height: 2.2, borderRadius: 1.1, backgroundColor: GOLD, marginHorizontal: 7 },
-  commonText: { color: GRAY, fontSize: 7.6 },
+  props:      { marginTop: 9, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: LINE },
+  propRow:    { flexDirection: 'row', alignItems: 'center', marginBottom: 3.5 },
+  propDot:    { width: 2.6, height: 2.6, borderRadius: 1.3, backgroundColor: GOLD, marginRight: 6 },
+  propText:   { color: INK, fontSize: 7.8, fontWeight: 700 },
 
   body:       { paddingHorizontal: 26, paddingTop: 14 },
 
@@ -277,7 +277,7 @@ const S = StyleSheet.create({
   typeName:   { color: INK, fontSize: 11.5, fontWeight: 700, letterSpacing: 0.5, lineHeight: 1.2 },
   contMark:   { color: GRAY_SOFT, fontSize: 7.5, fontWeight: 400, letterSpacing: 0.4, marginTop: 2 },
   typeNote:   { color: GRAY, fontSize: 7.5, marginTop: 5, lineHeight: 1.45 },
-  photoWrap:  { marginTop: 10, backgroundColor: PHOTO_BG, borderRadius: 3, padding: 8, height: 92 },
+  photoWrap:  { marginTop: 9, backgroundColor: PHOTO_BG, borderRadius: 3, padding: 8, height: 84 },
   photo:      { width: '100%', height: '100%', objectFit: 'contain' },
 
   table:      { flex: 1 },
@@ -314,7 +314,7 @@ const S = StyleSheet.create({
 });
 
 // ── Куски документа ───────────────────────────────────────────────────────────
-const Header = ({ dict, common }) => (
+const Header = ({ dict }) => (
   <View fixed>
     <View style={S.header}>
       <View style={S.headRow}>
@@ -329,21 +329,10 @@ const Header = ({ dict, common }) => (
       </View>
     </View>
     <View style={S.goldRule} />
-    {common.length > 0 && (
-      <View style={S.commonBar}>
-        <Text style={S.commonLabel}>{dict.common}</Text>
-        {common.map((c, i) => (
-          <View key={c} style={S.commonItem}>
-            {i > 0 && <View style={S.commonDot} />}
-            <Text style={S.commonText}>{c}</Text>
-          </View>
-        ))}
-      </View>
-    )}
   </View>
 );
 
-const Block = ({ block, dict, first }) => {
+const Block = ({ block, dict, common, first }) => {
   const meta = dict.types[block.type] || { name: block.type, note: '' };
   return (
     <View style={[S.block, !first && S.blockSplit]} wrap={false}>
@@ -355,6 +344,16 @@ const Block = ({ block, dict, first }) => {
         {block.photo && (
           <View style={S.photoWrap}>
             <Image src={block.photo} style={S.photo} />
+          </View>
+        )}
+        {common.length > 0 && (
+          <View style={S.props}>
+            {common.map(c => (
+              <View key={c} style={S.propRow}>
+                <View style={S.propDot} />
+                <Text style={S.propText}>{c}</Text>
+              </View>
+            ))}
           </View>
         )}
       </View>
@@ -411,9 +410,11 @@ function TubesDocument({ products, lang }) {
     <Document title={dict.title} author="MATKASYM">
       {pages.map((blocks, i) => (
         <Page key={i} size="A4" style={S.page}>
-          <Header dict={dict} common={common} />
+          <Header dict={dict} />
           <View style={S.body}>
-            {blocks.map((b, j) => <Block key={`${b.type}-${j}`} block={b} dict={dict} first={j === 0} />)}
+            {blocks.map((b, j) => (
+              <Block key={`${b.type}-${j}`} block={b} dict={dict} common={common} first={j === 0} />
+            ))}
             {footerOnLast && i === pages.length - 1 && <Footer dict={dict} />}
           </View>
           <PageFoot dict={dict} />
@@ -421,7 +422,7 @@ function TubesDocument({ products, lang }) {
       ))}
       {!footerOnLast && (
         <Page size="A4" style={S.page}>
-          <Header dict={dict} common={common} />
+          <Header dict={dict} />
           <View style={S.body}><Footer dict={dict} /></View>
           <PageFoot dict={dict} />
         </Page>
