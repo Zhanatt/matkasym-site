@@ -309,6 +309,118 @@ function moveItem(list, from, to) {
 // Стрелки перестановки. Одинаковые на категориях и на карточках, в обоих видах.
 // stopPropagation обязателен: и заголовок категории, и карточка товара — сами по
 // себе кликабельны (сворачивают список, открывают товар).
+// Перетаскивание карточек в режиме правки порядка.
+//
+// Стрелки на 20+ позициях означали десяток кликов, чтобы увести карточку в конец,
+// поэтому порядок правится перетаскиванием. Пока карточка едет за курсором,
+// соседи разъезжаются и освобождают ей место — так видно, куда она встанет.
+//
+// Слоты (rect каждой ячейки) снимаем один раз в начале, в координатах документа:
+// сетка во время перетаскивания не перестраивается — двигаются только transform-ы,
+// поэтому позиции остаются валидными, а страницу можно спокойно прокручивать.
+function useCardDrag(onReorder) {
+  const [drag, setDrag] = useState(null);   // { group, from, to, dx, dy, w, h }
+  const slots = useRef([]);
+  const nodes = useRef(new Map());          // группа → элементы карточек
+
+  const register = useCallback((group, index, el) => {
+    if (!nodes.current.has(group)) nodes.current.set(group, []);
+    nodes.current.get(group)[index] = el || undefined;
+  }, []);
+
+  const start = useCallback((group, index) => (e) => {
+    if (e.button) return;                   // правая кнопка порядок не меняет
+    const origin = { x: e.clientX, y: e.clientY };
+    let started = false;
+
+    const nearest = (x, y) => {
+      let best = 0, dist = Infinity;
+      slots.current.forEach((r, i) => {
+        const d = (x - (r.left + r.width / 2)) ** 2 + (y - (r.top + r.height / 2)) ** 2;
+        if (d < dist) { dist = d; best = i; }
+      });
+      return best;
+    };
+
+    let frame = 0;
+    const move = (ev) => {
+      const dx = ev.clientX - origin.x;
+      const dy = ev.clientY - origin.y;
+      if (!started) {
+        if (Math.hypot(dx, dy) < 6) return;  // дрожание руки — ещё не перетаскивание
+        const els = (nodes.current.get(group) || []).filter(Boolean);
+        if (els.length < 2) { finish(); return; }
+        slots.current = els.map(el => {
+          const r = el.getBoundingClientRect();
+          return { left: r.left + window.scrollX, top: r.top + window.scrollY, width: r.width, height: r.height };
+        });
+        started = true;
+        const r = slots.current[index];
+        setDrag({ group, from: index, to: index, dx, dy, w: r.width, h: r.height });
+        return;
+      }
+      ev.preventDefault();
+      // события летят чаще, чем перерисовывается сетка на сотню карточек
+      if (frame) return;
+      const x = ev.clientX + window.scrollX, y = ev.clientY + window.scrollY;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setDrag(d => (d ? { ...d, dx, dy, to: nearest(x, y) } : d));
+      });
+    };
+
+    const up = () => {
+      setDrag(d => {
+        if (d && d.to !== d.from) onReorder(d.group, d.from, d.to);
+        return null;
+      });
+      finish();
+    };
+
+    function finish() {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    }
+
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }, [onReorder]);
+
+  // Смещение ячейки: карточки между исходным и целевым местом сдвигаются на слот.
+  const styleFor = (group, index) => {
+    if (!drag || drag.group !== group) return null;
+    if (index === drag.from) {
+      return {
+        transform: `translate(${drag.dx}px, ${drag.dy}px) scale(1.04)`,
+        zIndex: 30, transition: 'none', animation: 'none',
+        boxShadow: '0 18px 40px rgba(0,0,0,.22)', cursor: 'grabbing',
+      };
+    }
+    const { from, to } = drag;
+    let shifted = index;
+    if (from < to && index > from && index <= to) shifted = index - 1;
+    else if (from > to && index >= to && index < from) shifted = index + 1;
+    if (shifted === index) return { transition: 'transform .18s ease' };
+    const a = slots.current[index], b = slots.current[shifted];
+    if (!a || !b) return null;
+    return {
+      transform: `translate(${b.left - a.left}px, ${b.top - a.top}px)`,
+      transition: 'transform .18s ease',
+    };
+  };
+
+  const target = drag && slots.current[drag.to];
+  const ghost = target ? {
+    left: target.left - window.scrollX, top: target.top - window.scrollY,
+    width: drag.w, height: drag.h,
+  } : null;
+
+  return { drag, register, start, styleFor, ghost };
+}
+
 function MoveArrows({ onUp, onDown, canUp, canDown, size = 24 }) {
   const btn = on => ({
     width: size, height: size, borderRadius: 6, padding: 0,
@@ -1094,6 +1206,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   // Общая переменная для групп — теперь только categoryGroups
   const accordionGroups = categoryGroups;
 
+  // Перетаскивание карточек. Ссылка на группы — через ref: колбэк живёт дольше
+  // одного рендера, а замыкание на accordionGroups устаревало бы после каждого.
+  const groupsRef = useRef([]);
+  groupsRef.current = accordionGroups || [];
+  const reorderProduct = useCallback((cat, from, to) => {
+    const group = groupsRef.current.find(([name]) => name === cat);
+    if (!group) return;
+    const names = group[1].map(([name]) => name);
+    setProdOrder(prev => ({ ...prev, [cat]: moveItem(names, from, to) }));
+  }, []);
+  const cardDrag = useCardDrag(reorderProduct);
+
   // ── Режим правки порядка ────────────────────────────────────────────────
   // Тащим прямо по странице: так видно результат, а не абстрактный список.
   // Порядок правим в состоянии сразу — сетка перестраивается под курсором;
@@ -1132,21 +1256,13 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     } finally { setSaving(false); }
   }
 
-  // Двигаем стрелками, а не перетаскиванием: тащить карточку через всю сетку
-  // на 20+ позиций неудобно, а в списковом виде тащить нечего вовсе.
+  // Категорию двигаем стрелками: их в сете единицы, и тащить целую секцию
+  // мимо десятков карточек неудобно. Сами карточки — перетаскиванием.
   const moveCategory = (name, dir) => {
     const from = catOrder.indexOf(name);
     const to   = from + dir;
     if (from < 0 || to < 0 || to >= catOrder.length) return;
     setCatOrder(moveItem(catOrder, from, to));
-  };
-
-  const moveProduct = (cat, name, dir) => {
-    const list = prodOrder[cat] || [];
-    const from = list.indexOf(name);
-    const to   = from + dir;
-    if (from < 0 || to < 0 || to >= list.length) return;
-    setProdOrder({ ...prodOrder, [cat]: moveItem(list, from, to) });
   };
 
   // Удаление товара из каталога. Карточка на витрине — это модель, у неё может
@@ -1659,19 +1775,16 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               </div>
                             )}
                             <div
+                              ref={el => cardDrag.register(groupName, itemIdx, el)}
                               className="tube-item"
                               onClick={() => { if (!editMode) setDetailProduct(primary); }}
-                              style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none', opacity: isOutOfStockGroup ? 0.5 : 1, cursor: editMode ? 'default' : 'pointer' }}
+                              onPointerDown={editMode ? cardDrag.start(groupName, itemIdx) : undefined}
+                              style={{ animation: isOpen ? `tubeItemFadeIn 0.3s ease ${itemIdx * 0.03}s both` : 'none',
+                                opacity: isOutOfStockGroup ? 0.5 : 1,
+                                cursor: editMode ? 'grab' : 'pointer',
+                                touchAction: editMode ? 'none' : undefined,
+                                ...(cardDrag.styleFor(groupName, itemIdx) || {}) }}
                             >
-                              {editMode && (
-                                <MoveArrows
-                                  onUp={() => moveProduct(groupName, name, -1)}
-                                  onDown={() => moveProduct(groupName, name, 1)}
-                                  canUp={itemIdx > 0}
-                                  canDown={itemIdx < items.length - 1}
-                                  size={26}
-                                />
-                              )}
                               <ProductImage product={primary} size={80} className="tube-item-img" />
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div className="tube-item-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1753,10 +1866,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   background: '#eef2f7', border: '1px solid #d6e0ec', borderRadius: 10,
                   padding: '9px 12px', fontSize: 12, color: '#3c5a80', lineHeight: 1.5,
                 }}>
-                  Стрелки ▲▼ у карточки двигают её внутри категории, у заголовка — переставляют
-                  всю категорию. Между категориями товары не переносятся: категория задаётся
-                  в карточке товара. Крестик удаляет товар из каталога.
-                  Порядок сохранится только по кнопке «Сохранить порядок».
+                  Тащите карточку на новое место — соседи расступятся и покажут, куда она встанет.
+                  Стрелки ▲▼ у заголовка переставляют всю категорию. Между категориями товары
+                  не переносятся: категория задаётся в карточке товара. Крестик удаляет товар
+                  из каталога. Порядок сохранится только по кнопке «Сохранить порядок».
                 </div>
               )}
               {accordionGroups.map(([groupName, items]) => {
@@ -1821,36 +1934,32 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           </div>
                         )}
                         <div
+                          ref={el => cardDrag.register(groupName, idx, el)}
                           // В режиме правки карточка тащится, а не открывается:
                           // иначе каждое перетаскивание кончалось бы модалкой товара.
                           onClick={() => { if (!editMode) setDetailProduct(primary); }}
+                          onPointerDown={editMode ? cardDrag.start(groupName, idx) : undefined}
                           className={editMode ? 'set-jiggle' : undefined}
                           style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                             background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                            cursor: editMode ? 'default' : 'pointer', transition: 'box-shadow .15s',
+                            cursor: editMode ? 'grab' : 'pointer', transition: 'box-shadow .15s',
                             opacity: cardOpacity, position: 'relative',
+                            // на тач-экране палец должен тащить карточку, а не листать страницу
+                            touchAction: editMode ? 'none' : undefined,
                             // Фазу качания сдвигаем по позиции, иначе вся сетка
                             // дёргается синхронно и это читается как дрожь экрана.
-                            animationDelay: `${(idx % 7) * 45}ms` }}
+                            animationDelay: `${(idx % 7) * 45}ms`,
+                            ...(cardDrag.styleFor(groupName, idx) || {}) }}
                           onMouseEnter={e => { if (editMode) return; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                           onMouseLeave={e => { if (editMode) return; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                         >
                           {editMode && (
-                            <>
-                              <button
-                                className="set-del"
-                                title="Удалить товар из каталога"
-                                onClick={e => { e.stopPropagation(); setToDelete({ name, variants }); }}
-                              >×</button>
-                              <span style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }}>
-                                <MoveArrows
-                                  onUp={() => moveProduct(groupName, name, -1)}
-                                  onDown={() => moveProduct(groupName, name, 1)}
-                                  canUp={idx > 0}
-                                  canDown={idx < items.length - 1}
-                                />
-                              </span>
-                            </>
+                            <button
+                              className="set-del"
+                              title="Удалить товар из каталога"
+                              onPointerDown={e => e.stopPropagation()}
+                              onClick={e => { e.stopPropagation(); setToDelete({ name, variants }); }}
+                            >×</button>
                           )}
                           <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {!hasColorOnly && (
@@ -2174,6 +2283,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       {detailProduct && (
         <AdminProductModal product={detailProduct} country={country} onClose={() => setDetailProduct(null)}
           onDeleted={id => { setProducts(p => p.filter(x => x._id !== id)); setDetailProduct(null); }} />
+      )}
+
+      {/* Место, куда встанет карточка: рамка переезжает вслед за расступанием соседей */}
+      {cardDrag.ghost && (
+        <div style={{
+          position: 'fixed', pointerEvents: 'none', zIndex: 28,
+          left: cardDrag.ghost.left, top: cardDrag.ghost.top,
+          width: cardDrag.ghost.width, height: cardDrag.ghost.height,
+          border: '2px dashed #3463A3', borderRadius: 12,
+          background: 'rgba(52,99,163,.07)',
+          transition: 'left .18s ease, top .18s ease',
+        }} />
       )}
     </>,
     document.body
