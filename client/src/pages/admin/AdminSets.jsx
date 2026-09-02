@@ -27,8 +27,9 @@ const COUNTRIES = [
   { key: 'KG', label: 'Кыргызстан', flag: '🇰🇬' },
   { key: 'KZ', label: 'Казахстан',  flag: '🇰🇿' },
 ];
-const CountryCtx = createContext('KG');
-const useCountry = () => useContext(CountryCtx);
+const CountryCtx = createContext({ country: 'KG', setCountry: () => {} });
+const useCountry = () => useContext(CountryCtx).country;
+const useCountrySwitch = () => useContext(CountryCtx).setCountry;
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -569,6 +570,7 @@ function slugify(name) {
 
 function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOpenCatalog, onCloseCatalog, frontmen, productCount = 0, stockStats = null }) {
   const country = useCountry();
+  const switchCountry = useCountrySwitch();
   const [editing, setEditing]     = useState(false);
   const [catalogSlug, setCatalog] = useState(() => autoOpenSet || null);
   const isMobile                  = useIsMobile();
@@ -1368,11 +1370,21 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               }}>
                 {titleOverride || toTitle(setSlug)}
               </div>
-              {BRAND_META[brandKey]?.label && (
-                <div style={{ fontSize: 11, color: accent, fontWeight: 600, marginTop: 2 }}>
-                  {BRAND_META[brandKey].label}
-                </div>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 2 }}>
+                {BRAND_META[brandKey]?.label && (
+                  <span style={{ fontSize: 11, color: accent, fontWeight: 600 }}>
+                    {BRAND_META[brandKey].label}
+                  </span>
+                )}
+                {/* Каталог другой страны — иначе пустой сет выглядит поломкой */}
+                {country !== 'KG' && (
+                  <button onClick={() => switchCountry('KG')} title="Вернуться к каталогу Кыргызстана"
+                    style={{ fontSize: 10.5, fontWeight: 700, color: '#8a6d1f', background: '#fff6e0',
+                      border: '1px solid #f0dca8', borderRadius: 5, padding: '1px 6px', cursor: 'pointer' }}>
+                    🇰🇿 каталог Казахстана
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Stats inline - hide on mobile */}
@@ -1523,6 +1535,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     style={{ marginTop: 12, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#fff',
                       background: accent, border: 'none', borderRadius: 8, cursor: 'pointer' }}>
                     Показать все товары
+                  </button>
+                </>
+              ) : country === 'KZ' ? (
+                <>
+                  <div style={{ fontSize: 15, color: '#888' }}>В каталоге Казахстана этих товаров нет</div>
+                  <div style={{ marginTop: 6, fontSize: 12.5 }}>
+                    Казахстан показывает только то, что заведено в базе Q-top — здесь таких позиций нет.
+                  </div>
+                  <button onClick={() => switchCountry('KG')}
+                    style={{ marginTop: 14, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#fff',
+                      background: accent, border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+                    🇰🇬 Показать каталог Кыргызстана
                   </button>
                 </>
               ) : 'Нет товаров'}
@@ -2376,6 +2400,7 @@ export default function AdminSets() {
   const [country, setCountry] = useState(() => localStorage.getItem('adminSetsCountry') || 'KG');
 
   useEffect(() => { localStorage.setItem('adminSetsCountry', country); }, [country]);
+  const countryCtx = useMemo(() => ({ country, setCountry }), [country]);
 
   // Читаем brand и set из URL
   const urlBrand = searchParams.get('brand');
@@ -2422,7 +2447,7 @@ export default function AdminSets() {
   const isKZ = country === 'KZ';
 
   return (
-    <CountryCtx.Provider value={country}>
+    <CountryCtx.Provider value={countryCtx}>
     <div style={{ maxWidth: 860, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
         <div>
