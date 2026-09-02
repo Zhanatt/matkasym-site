@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock, adminGetProduct } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
 import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
-import { signOf } from '../../utils/price';
+import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
 
 const NO_PHOTO = '/logos/no-photo.png';
@@ -123,6 +123,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   // Подгружаем полные данные товара (techSheet и др. могут отсутствовать в списке)
   useEffect(() => {
     if (!product?._id) return;
+    setImgIdx(0);   // иначе на новом товаре откроется фото под старым номером
     adminGetProduct(product._id).then(r => setLocalProduct(prev => ({ ...prev, ...r.data }))).catch(() => {});
   }, [product?._id]);
   const canSetBuffer = user?.role === 'owner' || user?.canSetBufferStock;
@@ -289,9 +290,13 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     }
   };
 
-  const images = (product.images || []).filter(Boolean);
+  // Берём из localProduct, а не из пропа: список отдаёт товар «кратко» и
+  // обрезает images до одной штуки ради веса ответа (на сете под сотню позиций
+  // это сотни лишних килобайт). Полный набор приезжает следом, в localProduct,
+  // — по пропу галерея показывала бы одно фото даже там, где их десять.
+  const images = (localProduct.images || []).filter(Boolean);
   const img    = images[imgIdx] || NO_PHOTO;
-  const hasColorOnly = product.color && images.length === 0;
+  const hasColorOnly = localProduct.color && images.length === 0;
 
   // Swipe handlers
   const minSwipeDistance = 40;
@@ -328,7 +333,9 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     { label: 'Оптовая',       value: product.priceWholesale },
     { label: 'Дилерская',     value: product.priceDealer },
     // Себестоимость — только владельцу
-    ...(user?.role === 'owner' ? [{ label: 'Себестоимость', value: product.priceCost }] : []),
+    ...(user?.role === 'owner'
+      ? [{ label: 'Себестоимость', value: product.priceCost, sign: costSignOf(product) }]
+      : []),
   ].filter(p => p.value > 0);
 
   const statusMeta = PRODUCT_STATUS_META[product.productStatus];
@@ -680,7 +687,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                         <div key={p.label} style={{ background: '#f8fafc', border: `1px solid ${UI.lineSoft}`, borderRadius: 12, padding: '10px 14px' }}>
                           <div style={{ fontSize: 11.5, color: UI.label, fontWeight: 700 }}>{p.label}</div>
                           <div style={{ fontSize: 17, fontWeight: 800, color: UI.ink, marginTop: 2 }}>
-                            {p.value.toLocaleString('ru')} {signOf(localProduct)}
+                            {p.value.toLocaleString('ru')} {p.sign || signOf(localProduct)}
                           </div>
                         </div>
                       ))}

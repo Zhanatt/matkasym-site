@@ -13,7 +13,7 @@ import SelectWithAdd  from '../../components/SelectWithAdd';
 import { CATEGORIES, CATEGORY_SPECS } from '../../config/categorySpecs';
 import KitEditor from './KitEditor';
 import { useAuth } from '../../context/AuthContext';
-import { CURRENCIES, CURRENCY_SIGN } from '../../utils/price';
+import { CURRENCIES, CURRENCY_SIGN, COST_CURRENCIES } from '../../utils/price';
 
 // Spec keys that duplicate top-level fields (dimensions, color) — skip in specs grid
 const SKIP_SPEC_KEYS = new Set(['Цвет']);
@@ -95,7 +95,7 @@ const EMPTY = {
   supplier: { company: '', contactName: '', sku: '' },
   dimensions: '',
   specs: [],
-  priceCost: '', priceWholesale: '', priceDealer: '', price: '', priceUndefined: false,
+  priceCost: '', costCurrency: 'KGS', priceWholesale: '', priceDealer: '', price: '', priceUndefined: false,
   currency: 'KGS',
   description: '',
   images: [],
@@ -311,6 +311,7 @@ export default function AdminProductForm() {
           images:         p.images || [],
           specs:          baseSpecs,
           priceCost:      p.priceCost ?? '',
+          costCurrency:   p.costCurrency || 'KGS',
           priceWholesale: p.priceWholesale ?? '',
           priceDealer:    p.priceDealer ?? '',
           priceUndefined: p.priceUndefined || false,
@@ -903,7 +904,15 @@ export default function AdminProductForm() {
               {isOwner && (
                 <div className="admin-form-group">
                   <label>Себестоимость {form.isSupplied && <span style={{ fontSize: 10, color: '#888', fontWeight: 400 }}>(цена поставщика)</span>}</label>
-                  <input type="number" min="0" value={form.priceCost} onChange={e => set('priceCost', e.target.value)} placeholder="0" />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input type="number" min="0" value={form.priceCost} onChange={e => set('priceCost', e.target.value)}
+                      placeholder="0" style={{ flex: 1, minWidth: 0 }} />
+                    {/* Закупают за юани и доллары, а продают в валюте каталога */}
+                    <select value={form.costCurrency || 'KGS'} onChange={e => set('costCurrency', e.target.value)}
+                      style={{ width: 76, flexShrink: 0 }}>
+                      {COST_CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.sign}</option>)}
+                    </select>
+                  </div>
                 </div>
               )}
               <div className="admin-form-group">

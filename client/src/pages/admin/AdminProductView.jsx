@@ -6,7 +6,7 @@ import { CATEGORIES } from '../../config/categorySpecs';
 import { cloudinaryOpt } from '../../utils/drive';
 import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { CRM_STAGES } from './AdminProductForm';
-import { signOf } from '../../utils/price';
+import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
 
 const PRODUCT_STATUS_META = {
@@ -359,7 +359,7 @@ export default function AdminProductView() {
               <PriceCard label="Оптовая"   value={product.priceWholesale} product={product} />
               <PriceCard label="Дилерская" value={product.priceDealer} product={product} />
               {user?.role === 'owner' && (
-                <PriceCard label="Себестоимость" value={product.priceCost} product={product} />
+                <PriceCard label="Себестоимость" value={product.priceCost} product={product} sign={costSignOf(product)} />
               )}
             </div>
           </div>
@@ -489,12 +489,12 @@ function Row({ label, value }) {
   );
 }
 
-function PriceCard({ label, value, product }) {
+function PriceCard({ label, value, product, sign }) {
   if (!value && value !== 0) return null;
   return (
     <div style={{ background: '#f7f6f3', borderRadius: 8, padding: '10px 14px' }}>
       <div style={{ fontSize: 11, color: 'var(--slate)', fontWeight: 600, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 800 }}>{Number(value).toLocaleString('ru')} {signOf(product)}</div>
+      <div style={{ fontSize: 16, fontWeight: 800 }}>{Number(value).toLocaleString('ru')} {sign || signOf(product)}</div>
     </div>
   );
 }

@@ -44,6 +44,24 @@ const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBuffe
 // не отдают в журнале цен и не дают править никому другому.
 const isOwner = u => u?.role === 'owner';
 
+// Себестоимость видит только владелец. Интерфейс её и так прячет, но цифра
+// уезжала в ответе API — то есть была видна любому редактору через инструменты
+// разработчика. Поэтому вырезаем её из тела ответа, а не только из вёрстки.
+function stripCost(node, depth = 0) {
+  if (!node || typeof node !== 'object' || depth > 6) return node;
+  if (Array.isArray(node)) { node.forEach(x => stripCost(x, depth + 1)); return node; }
+  if ('priceCost' in node)    delete node.priceCost;
+  if ('costCurrency' in node) delete node.costCurrency;
+  if (node.pricesByBase && typeof node.pricesByBase === 'object') {
+    Object.values(node.pricesByBase).forEach(v => { if (v && typeof v === 'object') delete v.cost; });
+  }
+  for (const key of Object.keys(node)) {
+    const v = node[key];
+    if (v && typeof v === 'object') stripCost(v, depth + 1);
+  }
+  return node;
+}
+
 const FONTS_DIR = path.join(__dirname, '../fonts');
 
 const PRICE_FIELDS = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer', cost: 'priceCost' };
@@ -261,6 +279,15 @@ router.post('/sync-sales', async (req, res) => {
 router.use(protect, warehouse);
 
 // ── Dashboard stats ──────────────────────────────
+// Ответы админки чистим одним местом: обработчиков много, и забыть в одном
+// из них про себестоимость проще, чем кажется.
+router.use((req, res, next) => {
+  if (isOwner(req.user)) return next();
+  const send = res.json.bind(res);
+  res.json = body => send(stripCost(body));
+  next();
+});
+
 router.get('/stats', async (req, res) => {
   try {
     const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
