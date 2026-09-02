@@ -295,9 +295,21 @@ function searchRe(s) {
   return new RegExp(String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 }
 
+// Список сета рисует карточку: фото, название, цену, остаток и пару характеристик.
+// Полный товар — описание, вся галерея, ТЗ, цены по базам — весит вчетверо больше
+// и нужен только в самой карточке, а её открывают по клику и грузят отдельно.
+const BRIEF_FIELDS = [
+  'name', 'fullName', 'sku', 'brand', 'set', 'setLevel', 'color', 'category', 'dimensions',
+  'price', 'priceWholesale', 'priceDealer', 'priceCost', 'priceUndefined', 'currency',
+  'stock', 'stockByBase', 'inBase', 'inStock', 'stockStatus', 'bufferStock',
+  'isOnOrder', 'inTransit', 'inTransitQty', 'pendingReceive', 'pendingReceiveQty',
+  'productStatus', 'isKit', 'kitType', 'isSupplied', 'supplier', 'isNew', 'hasVideo',
+  'images', 'specs', 'updatedAt', 'createdAt',
+].join(' ');
+
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country } = req.query;
+    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country, brief } = req.query;
     const filter = { ...countryFilter(country) };
 
     // Если запрашиваем товары для приёмки
@@ -323,9 +335,14 @@ router.get('/products', async (req, res) => {
     const sortMap = { stock_desc: { stock: -1, createdAt: -1 }, stock_asc: { stock: 1, createdAt: -1 }, newest: { createdAt: -1 } };
     const sortObj = sortMap[sort] || { stock: -1, createdAt: -1 };
 
+    // В карточке списка видно одно фото и две характеристики — остальное только
+    // утяжеляет ответ: на сете под сотню позиций это сотни лишних килобайт.
+    const query = brief === '1'
+      ? Product.find(filter).select(BRIEF_FIELDS).slice('images', 1).slice('specs', 2).lean()
+      : Product.find(filter).populate('kitParts.product', 'name fullName price priceWholesale stock images');
+
     const [products, total] = await Promise.all([
-      Product.find(filter).sort(sortObj).skip((page - 1) * limit).limit(Number(limit))
-        .populate('kitParts.product', 'name fullName price priceWholesale stock images'),
+      query.sort(sortObj).skip((page - 1) * limit).limit(Number(limit)),
       Product.countDocuments(filter),
     ]);
     res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });

@@ -82,6 +82,9 @@ function isProductAvailable(p, country = 'KG') {
 // У труб свой каталог — прайс-лист по размерам вместо карточек с фото
 const TUBES_SET = 'dayar-tutuk';
 
+// Первая порция карточек: столько влезает на экран с запасом, дальше догружаем фоном.
+const FIRST_CHUNK = 60;
+
 // Внутри категории трубы идут линейками одного сечения: Ø8, Ø12, 20×10… Список
 // длинный и весь на одно лицо, поэтому при смене линейки ставим подзаголовок.
 const tubeSizeOf = (p) => {
@@ -1073,6 +1076,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const [priceMode, setPriceMode]         = useState(defaultMode);
   const [products,  setProducts]          = useState([]);
   const [loading,   setLoading]           = useState(true);
+  const [loadingMore, setLoadingMore]     = useState(false);   // хвост сета едет фоном
   const scrollRef = useRef(null);
   const [detailProduct, setDetailProduct] = useState(null);
   const [viewMode,  setViewMode]  = useState(() => localStorage.getItem('adminCatalogView') || 'grid');
@@ -1100,11 +1104,52 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // Сет на три сотни позиций едет несколько секунд, и всё это время страница
+  // показывала «Загрузка…». Теперь она оживает раньше: сперва прошлый снимок из
+  // памяти вкладки, следом первая порция карточек, а остальное дозагружается
+  // фоном и просто дорисовывается.
   useEffect(() => {
-    setLoading(true);
-    adminGetProducts({ ...(fetchParams || { set: setSlug, limit: 1000, page: 1 }), country })
-      .then(r => { setProducts(r.data.products || []); setLoading(false); })
-      .catch(() => setLoading(false));
+    let cancelled = false;
+    const base     = fetchParams || { set: setSlug };
+    const cacheKey = `setCache:${brandKey}:${setSlug}:${country}:${fetchParams ? JSON.stringify(fetchParams) : ''}`;
+
+    const remember = (list) => {
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(list)); }
+      catch { /* снимку не хватило места — обойдёмся без него */ }
+    };
+
+    setLoadingMore(false);
+    let shownFromCache = false;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) { setProducts(JSON.parse(cached)); shownFromCache = true; }
+    } catch { /* снимок битый — грузим как обычно */ }
+    setLoading(!shownFromCache);
+
+    (async () => {
+      try {
+        const first = await adminGetProducts({ ...base, brief: 1, page: 1, limit: FIRST_CHUNK, country });
+        if (cancelled) return;
+        const shown = first.data.products || [];
+        setProducts(shown);
+        setLoading(false);
+
+        if ((first.data.total || 0) > shown.length) {
+          setLoadingMore(true);
+          const full = await adminGetProducts({ ...base, brief: 1, page: 1, limit: 1000, country });
+          if (cancelled) return;
+          setProducts(full.data.products || []);
+          remember(full.data.products || []);
+          setLoadingMore(false);
+        } else {
+          remember(shown);
+        }
+      } catch {
+        if (!cancelled) { setLoading(false); setLoadingMore(false); }
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [brandKey, setSlug, country, fetchParams && JSON.stringify(fetchParams)]);
 
   useEffect(() => {
@@ -1162,6 +1207,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       <span style={{ color: '#c0392b', fontWeight: 600, whiteSpace: 'nowrap' }}>
         ● Нет в наличии: {stockSummary.outMod} поз · {stockSummary.outUnits} шт
       </span>
+      {loadingMore && (
+        <span style={{ color: '#aaa', fontWeight: 500, whiteSpace: 'nowrap' }} title="Считаем по уже загруженным позициям">
+          догружаем…
+        </span>
+      )}
     </div>
   );
 
