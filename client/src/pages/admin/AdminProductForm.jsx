@@ -11,6 +11,7 @@ import {
 import ImageUploader  from '../../components/ImageUploader';
 import SelectWithAdd  from '../../components/SelectWithAdd';
 import { CATEGORIES, CATEGORY_SPECS } from '../../config/categorySpecs';
+import KitEditor from './KitEditor';
 import { useAuth } from '../../context/AuthContext';
 import { CURRENCIES, CURRENCY_SIGN } from '../../utils/price';
 
@@ -86,6 +87,7 @@ const CLOUD_NAME    = 'dnbg21ef8';
 const UPLOAD_PRESET = 'Matkasym';
 
 const EMPTY = {
+  isKit: false, kitType: 'dependent', kitParts: [],
   name: '', fullName: '', sku: '',
   brand: 'matkasym-home', set: '', setLevel: '', color: '',
   category: '',
@@ -482,6 +484,10 @@ export default function AdminProductForm() {
         price:          Number(form.price) || 0,
         stock:          Number(form.stock) || 0,
         inStock:        form.stockStatus === 'in_stock',
+        kitParts:       (form.kitParts || []).map(part => ({
+          product: part.product?._id || part.product,
+          qty:     Math.max(1, Number(part.qty) || 1),
+        })),
       };
       if (isNew) await adminCreateProduct(payload);
       else       await adminUpdateProduct(id, payload);
@@ -700,6 +706,17 @@ export default function AdminProductForm() {
         <Card>
           <SH text="Фотографии" />
           <ImageUploader images={form.images} onChange={urls => set('images', urls)} />
+        </Card>
+
+        {/* ── КОМПЛЕКТ ── */}
+        <Card>
+          <SH text="Комплект" />
+          <KitEditor
+            value={{ isKit: form.isKit, kitType: form.kitType, kitParts: form.kitParts }}
+            onChange={patch => setForm(f => ({ ...f, ...patch }))}
+            currentId={id}
+            currency={CURRENCY_SIGN[form.currency] || 'сом'}
+          />
         </Card>
 
         {/* ── ХАРАКТЕРИСТИКИ ── */}

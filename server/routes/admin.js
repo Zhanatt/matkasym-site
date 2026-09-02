@@ -23,6 +23,7 @@ const ProductLaunch  = require('../models/ProductLaunch');
 const SalesRecord  = require('../models/SalesRecord');
 const SalesDoc     = require('../models/SalesDoc');
 const SalesUpload  = require('../models/SalesUpload');
+const { applyPartStatuses, recalcKitStock } = require('../lib/kits');
 const cloudinary   = require('../lib/cloudinary');
 const { uploadRawBuffer, publicIdFromUrl } = cloudinary;
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
@@ -563,7 +564,27 @@ router.patch('/products/:id', editor, async (req, res) => {
       changes.push({ field: 'Фото', from: old.images || [], to: req.body.images || [] });
     }
 
+    if (Array.isArray(req.body.kitParts)) {
+      // деталь-двойник и комплект внутри самого себя ломают расчёт остатка
+      const seen = new Set();
+      req.body.kitParts = req.body.kitParts.filter(part => {
+        const pid = String(part?.product || '');
+        if (!pid || pid === String(req.params.id) || seen.has(pid)) return false;
+        seen.add(pid);
+        return true;
+      });
+    }
+
     const p = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+
+    // Правка состава комплекта тянет за собой две вещи: детали прячутся из
+    // каталога (или возвращаются в продажу, если их убрали), а у зависимого
+    // комплекта пересчитывается остаток — по самой дефицитной детали.
+    const kitTouched = req.body.kitParts !== undefined || req.body.isKit !== undefined || req.body.kitType !== undefined;
+    if (kitTouched && (old.kitParts?.length || p.kitParts?.length || old.isKit !== p.isKit)) {
+      await applyPartStatuses(p._id, old.kitParts, p.kitParts, p.isKit, p.kitType);
+      await recalcKitStock(p);
+    }
 
     // Товар сохранён — теперь можно убирать из Cloudinary фото, которых в нём не осталось.
     if (req.body.images !== undefined) {
