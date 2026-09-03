@@ -449,6 +449,11 @@ function ProductCard({ product, priceType, currency = 'сом' }) {
   // Always exactly SPEC_ROWS rows — pad with empty if needed
   const specs = Array.from({ length: SPEC_ROWS }, (_, i) => filled[i] || { key: '', value: '' });
 
+  // Цвет годится в заливку, только если это код: в поле бывает и слово
+  // («white», «серый»), его в backgroundColor отдавать нельзя.
+  const swatch = /^#[0-9a-f]{3,8}$/i.test(String(product.color || '').trim())
+    ? product.color.trim() : null;
+
   const priceVal   = priceType !== 'none' ? (product[priceType] || 0) : null;
   const priceNum   = priceVal > 0 ? priceVal.toLocaleString('ru') : null;
   const priceLabel = PRICE_LABELS[priceType] || '';
@@ -456,7 +461,13 @@ function ProductCard({ product, priceType, currency = 'сом' }) {
   return (
     <View style={S.card}>
       {/* Image — fixed height */}
-      {noPhoto ? (
+      {/* Краски фотографировать нечего: у всех сорока карточек фото нет, зато
+          задан цвет. Показываем его плашкой — как в каталоге на сайте, где
+          такие товары рисуются заливкой. «Нет фото» на странице покраски
+          выглядело браком выгрузки, хотя товар описан полностью. */}
+      {noPhoto && swatch ? (
+        <View style={[S.noImageWrap, { backgroundColor: swatch }]} />
+      ) : noPhoto ? (
         <View style={S.noImageWrap}><Text style={S.noImageText}>нет фото</Text></View>
       ) : (
         <View style={S.imageWrap}>
