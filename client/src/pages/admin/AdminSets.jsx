@@ -82,6 +82,18 @@ function isProductAvailable(p, country = 'KG') {
 // У труб свой каталог — прайс-лист по размерам вместо карточек с фото
 const TUBES_SET = 'dayar-tutuk';
 
+// Сет услуг выгружается по одному разделу: общий PDF там смысла не имеет,
+// покраску и сварку показывают разным людям и в разных разговорах.
+// Слева — как категория называется в базе, справа — как она должна называться
+// в каталоге: «отдел-сварки» в заголовке PDF читалось бы как служебная пометка.
+const SERVICES_SET = 'onuguu-set';
+const SERVICES_PDF_CHOICES = [
+  { category: 'Покраска',              label: 'Покраска' },
+  { category: 'отдел-гибка',           label: 'Гибка' },
+  { category: 'отдел-сварки',          label: 'Сварка' },
+  { category: 'Лазерное оборудование', label: 'Лазерная резка' },
+];
+
 // Первая порция карточек: столько влезает на экран с запасом, дальше догружаем фоном.
 const FIRST_CHUNK = 60;
 
@@ -1503,7 +1515,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             {!isMobile && (
               setSlug === TUBES_SET
                 ? <TubesPdfButton products={shownProducts} />
-                : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />
+                : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} />
             )}
           </div>
 
@@ -1520,7 +1532,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               {!loading && renderStockStats(11)}
               {setSlug === TUBES_SET
                 ? <TubesPdfButton products={shownProducts} />
-                : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} />}
+                : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} />}
             </div>
           )}
 
