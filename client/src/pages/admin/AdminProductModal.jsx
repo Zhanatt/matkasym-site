@@ -238,32 +238,35 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const handleCopy = async () => {
     setCopying(true);
     try {
+      // Список отдаёт карточку кратко (одно фото, две характеристики), поэтому
+      // копию собираем из полного товара, а не из того, что пришло в списке.
+      const src = (await adminGetProduct(src._id)).data || localProduct;
       const copy = {
-        name:             (product.name     || '') + ' - копия',
-        fullName:         (product.fullName || '') + ' - копия',
+        name:             (src.name     || '') + ' - копия',
+        fullName:         (src.fullName || '') + ' - копия',
         sku:              '',
-        brand:            product.brand            || '',
-        set:              product.set              || '',
-        setLevel:         product.setLevel         || '',
-        color:            product.color            || '',
-        category:         product.category         || 'other',
-        isSupplied:       product.isSupplied       || false,
-        supplier:         product.supplier         || { company: '', contactName: '', sku: '' },
-        inTransit:        product.inTransit        || false,
-        priceCost:        product.priceCost        || 0,
-        priceWholesale:   product.priceWholesale   || 0,
-        priceDealer:      product.priceDealer      || 0,
-        price:            product.price            || 0,
-        dimensions:       product.dimensions       || '',
-        specs:            product.specs            || [],
-        description:      product.description      || '',
-        tags:             product.tags             || [],
-        images:           product.images           || [],
-        driveImages:      product.driveImages      || [],
-        productStatus:    product.productStatus    || 'for_sale',
-        developmentStage: product.developmentStage || '',
-        developmentTZ:    product.developmentTZ    || {},
-        improvementTZ:    product.improvementTZ    || {},
+        brand:            src.brand            || '',
+        set:              src.set              || '',
+        setLevel:         src.setLevel         || '',
+        color:            src.color            || '',
+        category:         src.category         || 'other',
+        isSupplied:       src.isSupplied       || false,
+        supplier:         src.supplier         || { company: '', contactName: '', sku: '' },
+        inTransit:        src.inTransit        || false,
+        priceCost:        src.priceCost        || 0,
+        priceWholesale:   src.priceWholesale   || 0,
+        priceDealer:      src.priceDealer      || 0,
+        price:            src.price            || 0,
+        dimensions:       src.dimensions       || '',
+        specs:            src.specs            || [],
+        description:      src.description      || '',
+        tags:             src.tags             || [],
+        images:           src.images           || [],
+        driveImages:      src.driveImages      || [],
+        productStatus:    src.productStatus    || 'for_sale',
+        developmentStage: src.developmentStage || '',
+        developmentTZ:    src.developmentTZ    || {},
+        improvementTZ:    src.improvementTZ    || {},
         stock:       0,
         inStock:     false,
         stockStatus: 'out_of_stock',
@@ -861,7 +864,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 return '';
               };
 
-              const specTiles = (product.specs || [])
+              const specTiles = (localProduct.specs || [])
                 .filter(s => {
                   if (!s.value || /^габарит/i.test(s.key)) return false;
                   const norm = s.key.trim().toLowerCase();
@@ -907,11 +910,11 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
             })()}
 
             {/* Описание */}
-            {product.description && (
+            {localProduct.description && (
               <div style={card}>
                 <div style={cardTitle}>Описание</div>
                 <div style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                  {product.description}
+                  {localProduct.description}
                 </div>
               </div>
             )}
