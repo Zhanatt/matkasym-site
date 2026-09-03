@@ -327,7 +327,7 @@ function searchRe(s) {
 // и нужен только в самой карточке, а её открывают по клику и грузят отдельно.
 const BRIEF_FIELDS = [
   'name', 'fullName', 'sku', 'brand', 'set', 'setLevel', 'color', 'category', 'dimensions',
-  'price', 'priceWholesale', 'priceDealer', 'priceCost', 'priceUndefined', 'currency',
+  'price', 'priceWholesale', 'priceDealer', 'priceCost', 'costCurrency', 'priceUndefined', 'currency',
   'stock', 'stockByBase', 'inBase', 'inStock', 'stockStatus', 'bufferStock',
   'isOnOrder', 'inTransit', 'inTransitQty', 'pendingReceive', 'pendingReceiveQty',
   'productStatus', 'isKit', 'kitType', 'isSupplied', 'supplier', 'isNew', 'hasVideo',
