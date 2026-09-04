@@ -82,9 +82,11 @@ function buildItem(product, publication) {
     description: internalNote(product.description)
       ? postTitle(product, 'ky')
       : String(product.description || '').trim() || postTitle(product, 'ky'),
-    // Цена в объявлении — розничная. «Договорная» остаётся там, где розничной
-    // нет: объявление без цены площадка принимает, с чужой — нет.
-    price:       product.price > 0 ? `${product.price.toLocaleString('ru-RU')} сом` : PRICE_LABEL,
+    // Цена — розничная, голым числом. Формат «38 465 сом» импорт Лалафо не
+    // принимает: toLocaleString разделяет разряды неразрывным пробелом (U+00A0),
+    // и вместе со словом «сом» в числовом поле это уже не число.
+    // Где розничной цены нет — договорная, как в исходном формате площадки.
+    price:       product.price > 0 ? String(Math.round(product.price)) : PRICE_LABEL,
     photos:      photosOf(product),
   };
 }

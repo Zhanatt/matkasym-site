@@ -19,6 +19,18 @@ export default function LalafoExportButton({ brand, set }) {
       a.download = `Лалафо_${set}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
+
+      // Товары без фото в файл не попадают — площадка на такой строке роняет
+      // импорт целиком. Молча их терять нельзя: человек должен знать, что
+      // именно не уехало и чему надо доснять фото.
+      const raw = res.headers['x-lalafo-skipped'];
+      const skipped = raw ? JSON.parse(decodeURIComponent(raw)) : [];
+      if (skipped.length) {
+        alert(
+          `Файл собран, но ${skipped.length} товар(ов) в него не вошли — у них нет фото, ` +
+          `а Лалафо без фото не принимает:\n\n• ${skipped.join('\n• ')}`
+        );
+      }
     } catch (e) {
       // Ошибку сервер шлёт JSON-ом, но responseType: 'blob' превращает её в Blob —
       // читаем текстом, иначе пользователь увидит «[object Blob]».
