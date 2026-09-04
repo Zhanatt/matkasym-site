@@ -21,11 +21,36 @@ const { postTitle } = require('../postCaption');
 const PRICE_LABEL = 'Келишим боюнча / Договорная';
 const MAX_PHOTOS  = 8;
 
+// Характеристики карточки — внутренние: там лежит и себестоимость, и логистика,
+// и поставщик. В объявление на площадку это уходить не должно ни при каких
+// условиях: «Цена EXW: 395 ¥» — закупочная цена, «Кол-во в коробке: 10» и
+// «Вес брутто» — данные для растаможки, «Страна производства» и «Бренд» выдают
+// поставщика. Клиенту всё это не адресовано, а конкуренту адресовано вполне.
+//
+// Список запретов ведём здесь, а не в месте выгрузки: объявление собирается и
+// при публикации, и при выгрузке сета — фильтр должен быть один.
+const SPEC_BLOCK = [
+  /цена|себестоим|закуп|exw/i,        // деньги закупки
+  /упаков|брутто/i,                    // «Размер упаковки», «Вес в упаковке», «Вес брутто»
+  /кол-?во в коробке|количество в пачке/i,
+  /в прайсе|артикул|бренд/i,           // «Название в прайсе (кит.)», «Артикул IKEA»
+  /страна производства/i,
+];
+
+// «Объём» бывает и свойством товара («Объём: 660 л» у бака), и объёмом коробки
+// («0.049 м³»). Первое клиенту нужно, второе нет — различаем по единице.
+const isPackingVolume = s => /объ[ёе]м|көлөмү/i.test(s.key) && /м³|m3/i.test(String(s.value));
+
+const isPublicSpec = s =>
+  s && s.key && String(s.value).trim()
+  && !SPEC_BLOCK.some(re => re.test(s.key))
+  && !isPackingVolume(s);
+
 // Характеристики строкой: «Көлөмү: 135 л. Материалы: болот». Ключи и типовые
 // значения переводим, числа и модели оставляем как есть.
 function specsLine(product) {
   return (product.specs || [])
-    .filter(s => s && s.key && String(s.value).trim())
+    .filter(isPublicSpec)
     .map(s => `${translateSpecKey(s.key, 'ky')}: ${translateSpecValue(s.value, 'ky')}`)
     .join('. ');
 }
@@ -33,6 +58,14 @@ function specsLine(product) {
 // Лалафо скачивает картинки по ссылке, поэтому трансформации Cloudinary не трогаем:
 // в выгрузку идут исходные URL, как в файлах, которые заливали руками.
 const photosOf = product => (product.images || []).filter(Boolean).slice(0, MAX_PHOTOS);
+
+// Расшифровка кода вместо описания: «TR=Тумба Рама (чёрная рама + белые ящики)
+// · 3=кол-во ящиков». Узнаём по связке «знак равенства + разделитель ·» —
+// в человеческом описании так не пишут.
+const internalNote = text => {
+  const t = String(text || '');
+  return t.includes('=') && t.includes('·');
+};
 
 function buildItem(product, publication) {
   return {
@@ -42,9 +75,16 @@ function buildItem(product, publication) {
     // Название — русское, как в каталоге: на площадке ищут по-русски
     title:       product.fullName || product.name || '',
     specs:       specsLine(product),
-    // Описание карточки на сайте уже кыргызское — берём его как есть
-    description: String(product.description || '').trim() || postTitle(product, 'ky'),
-    price:       PRICE_LABEL,
+    // Описание карточки на сайте уже кыргызское — берём его как есть.
+    // Кроме случая, когда там лежит расшифровка артикула для своих:
+    // «GK=Гардероб кофе/белый · 12=кол-во дверей». Это заметка для каталога,
+    // а не текст объявления, и клиенту она ничего не говорит.
+    description: internalNote(product.description)
+      ? postTitle(product, 'ky')
+      : String(product.description || '').trim() || postTitle(product, 'ky'),
+    // Цена в объявлении — розничная. «Договорная» остаётся там, где розничной
+    // нет: объявление без цены площадка принимает, с чужой — нет.
+    price:       product.price > 0 ? `${product.price.toLocaleString('ru-RU')} сом` : PRICE_LABEL,
     photos:      photosOf(product),
   };
 }
