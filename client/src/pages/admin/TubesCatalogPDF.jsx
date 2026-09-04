@@ -155,14 +155,18 @@ const fromName = (name) => {
 
 const num = (s) => parseFloat(String(s ?? '').replace(',', '.').replace(/[^\d.]/g, '')) || 0;
 
-const rowOf = (p, type, dict) => {
+// Режим цен из шапки каталога → поле товара. 'none' — каталог без цен:
+// такой прайс возят на переговоры, где цену называют голосом.
+const PRICE_FIELD = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer' };
+
+const rowOf = (p, type, dict, priceField) => {
   const [nSize, nWall] = fromName(p.name);
   const round = type === 'Круглая';
   const size  = (spec(p, 'диаметр трубы') || spec(p, 'размер трубы') || p.dimensions || nSize || '')
                   .replace(/\s*мм$/i, '').replace(/^[⌀Øø]\s*/, '').trim();
   const wall  = (spec(p, 'толщина стенки') || nWall || '').replace(/\s*мм$/i, '').trim();
   if (!size || !wall) return null;           // без размеров строка в прайсе бессмысленна
-  const price = Number(p.price) > 0 ? Number(p.price) : null;
+  const price = priceField && Number(p[priceField]) > 0 ? Number(p[priceField]) : null;
   return {
     key:   p._id || p.sku,
     size:  round ? `Ø ${size} мм` : `${size.replace(/[x*]/g, '×')} мм`,
@@ -197,7 +201,7 @@ const sectionPhoto = (items) => {
   return best;
 };
 
-const groupRows = (products, dict) => {
+const groupRows = (products, dict, priceField) => {
   const byType = {};
   products.forEach(p => {
     const t = typeOf(p);
@@ -206,7 +210,7 @@ const groupRows = (products, dict) => {
   return TYPE_ORDER.filter(t => byType[t]?.length).map(type => ({
     type,
     photo: sectionPhoto(byType[type]),
-    rows:  byType[type].map(p => rowOf(p, type, dict)).filter(Boolean)
+    rows:  byType[type].map(p => rowOf(p, type, dict, priceField)).filter(Boolean)
              .sort((a, b) => a.sortA - b.sortA || a.sortB - b.sortB),
   })).filter(g => g.rows.length);
 };
@@ -214,13 +218,13 @@ const groupRows = (products, dict) => {
 // Карточка не переносится по строкам — она цельная, с фото и заголовком. Поэтому
 // страницы набиваем сами: длинный тип режем ровно по месту, что осталось на листе,
 // а хвост короче MIN_ROWS не оставляем — двумя строками лист начинать некрасиво.
-const layout = (products, dict) => {
+const layout = (products, dict, priceField) => {
   const pages = [];
   let page = [], left = PAGE_BODY_H;
 
   const flush = () => { if (page.length) pages.push(page); page = []; left = PAGE_BODY_H; };
 
-  groupRows(products, dict).forEach((group, i) => {
+  groupRows(products, dict, priceField).forEach((group, i) => {
     let rest = group.rows, cont = false;
     while (rest.length) {
       const split    = page.length > 0;
@@ -332,7 +336,7 @@ const Header = ({ dict }) => (
   </View>
 );
 
-const Block = ({ block, dict, common, first }) => {
+const Block = ({ block, dict, common, first, showPrice }) => {
   const meta = dict.types[block.type] || { name: block.type, note: '' };
   return (
     <View style={[S.block, !first && S.blockSplit]} wrap={false}>
@@ -362,18 +366,25 @@ const Block = ({ block, dict, common, first }) => {
         <View style={S.th}>
           <Text style={[S.thT, S.cSize, { textAlign: 'left', paddingLeft: 3 }]}>{dict.colSize}</Text>
           <Text style={[S.thT, S.cWall]}>{dict.colWall}</Text>
-          <Text style={[S.thT, { width: 96, textAlign: 'right', paddingRight: 3 }]}>{dict.colPrice}</Text>
+          {showPrice && (
+            <Text style={[S.thT, { width: 96, textAlign: 'right', paddingRight: 3 }]}>{dict.colPrice}</Text>
+          )}
         </View>
 
         {block.rows.map(r => (
           <View key={r.key} style={S.tr}>
             <Text style={[S.tdSize, S.cSize, { paddingLeft: 3 }]}>{r.size}</Text>
             <Text style={[S.tdWall, S.cWall]}>{r.wall}</Text>
-            <View style={S.cPrice}>
-              {r.price
-                ? <><Text style={S.tdPrice}>{r.price}</Text><Text style={S.tdCur}>{dict.currency}</Text></>
-                : <Text style={S.tdAsk}>{dict.noPrice}</Text>}
-            </View>
+            {/* Колонки нет вовсе, а не пустая: «уточняйте» в каждой строке
+                выглядело бы как отсутствие цены, а не как каталог без цен.
+                Размер растянется на освободившееся место — у него flex: 1. */}
+            {showPrice && (
+              <View style={S.cPrice}>
+                {r.price
+                  ? <><Text style={S.tdPrice}>{r.price}</Text><Text style={S.tdCur}>{dict.currency}</Text></>
+                  : <Text style={S.tdAsk}>{dict.noPrice}</Text>}
+              </View>
+            )}
           </View>
         ))}
 
@@ -401,10 +412,12 @@ const PageFoot = ({ dict }) => (
   </View>
 );
 
-function TubesDocument({ products, lang }) {
+function TubesDocument({ products, lang, priceMode = 'retail' }) {
+  const priceField = PRICE_FIELD[priceMode] || null;   // null = каталог без цен
+  const showPrice  = !!priceField;
   const dict = L[lang] || L.ky;
   const common = commonSpecs(products.filter(p => typeOf(p)), lang);
-  const { pages, footerOnLast } = layout(products, dict);
+  const { pages, footerOnLast } = layout(products, dict, priceField);
 
   return (
     <Document title={dict.title} author="MATKASYM">
@@ -413,7 +426,7 @@ function TubesDocument({ products, lang }) {
           <Header dict={dict} />
           <View style={S.body}>
             {blocks.map((b, j) => (
-              <Block key={`${b.type}-${j}`} block={b} dict={dict} common={common} first={j === 0} />
+              <Block key={`${b.type}-${j}`} block={b} dict={dict} common={common} first={j === 0} showPrice={showPrice} />
             ))}
             {footerOnLast && i === pages.length - 1 && <Footer dict={dict} />}
           </View>
@@ -432,9 +445,9 @@ function TubesDocument({ products, lang }) {
 }
 
 // ── Экспорт ───────────────────────────────────────────────────────────────────
-export async function downloadTubesCatalogPDF(products, lang = 'ky') {
+export async function downloadTubesCatalogPDF(products, lang = 'ky', priceMode = 'retail') {
   const dict = L[lang] || L.ky;
-  const blob = await pdf(<TubesDocument products={products} lang={lang} />).toBlob();
+  const blob = await pdf(<TubesDocument products={products} lang={lang} priceMode={priceMode} />).toBlob();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = dict.file;

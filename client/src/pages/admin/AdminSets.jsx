@@ -1514,7 +1514,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             {/* PDF button on desktop */}
             {!isMobile && (
               setSlug === TUBES_SET
-                ? <TubesPdfButton products={shownProducts} />
+                ? <TubesPdfButton products={shownProducts} priceMode={priceMode} />
                 : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} />
             )}
           </div>
@@ -1531,7 +1531,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             }}>
               {!loading && renderStockStats(11)}
               {setSlug === TUBES_SET
-                ? <TubesPdfButton products={shownProducts} />
+                ? <TubesPdfButton products={shownProducts} priceMode={priceMode} />
                 : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} />}
             </div>
           )}

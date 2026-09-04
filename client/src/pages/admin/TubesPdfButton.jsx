@@ -8,7 +8,9 @@ const LANGS = [
   { key: 'ru', label: 'Русский' },
 ];
 
-export default function TubesPdfButton({ products }) {
+// priceMode — тот же переключатель «Розн./Опт./Дил./Без», что и в шапке сета:
+// какой прайс выбран на экране, такой и уходит в PDF.
+export default function TubesPdfButton({ products, priceMode = 'retail' }) {
   const [open,     setOpen]     = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [progress, setProgress] = useState(0);
@@ -41,7 +43,7 @@ export default function TubesPdfButton({ products }) {
     }, 250);
 
     try {
-      await downloadTubesCatalogPDF(available, lang);
+      await downloadTubesCatalogPDF(available, lang, priceMode);
       setProgress(100);
     } catch (e) {
       console.error('PDF error:', e);
