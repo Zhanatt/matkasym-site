@@ -53,6 +53,12 @@ const productSchema = new mongoose.Schema({
     qtop:     { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
   },
 
+  // Единица учёта. У большинства товаров штуки, но краску меряют килограммами,
+  // растворитель литрами: «650 шт.» на карточке краски читается как ошибка.
+  // Совпадает с единицей в номенклатуре 1С — там она стоит в конце названия
+  // («Краска RAL3000 (красная), кг») и при загрузке остатков отрезается.
+  unit: { type: String, enum: ['шт', 'кг', 'л', 'м', 'м²'], default: 'шт' },
+
   // Dimensions
   dimensions: { type: String, default: '' },  // e.g. "134x55x108 см"
 

@@ -326,7 +326,7 @@ function searchRe(s) {
 // Полный товар — описание, вся галерея, ТЗ, цены по базам — весит вчетверо больше
 // и нужен только в самой карточке, а её открывают по клику и грузят отдельно.
 const BRIEF_FIELDS = [
-  'name', 'fullName', 'sku', 'brand', 'set', 'setLevel', 'color', 'category', 'dimensions',
+  'name', 'fullName', 'sku', 'brand', 'set', 'setLevel', 'color', 'category', 'dimensions', 'unit',
   'price', 'priceWholesale', 'priceDealer', 'priceCost', 'costCurrency', 'priceUndefined', 'currency',
   'stock', 'stockByBase', 'inBase', 'inStock', 'stockStatus', 'bufferStock',
   'isOnOrder', 'inTransit', 'inTransitQty', 'pendingReceive', 'pendingReceiveQty',

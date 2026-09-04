@@ -297,6 +297,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   // обрезает images до одной штуки ради веса ответа (на сете под сотню позиций
   // это сотни лишних килобайт). Полный набор приезжает следом, в localProduct,
   // — по пропу галерея показывала бы одно фото даже там, где их десять.
+  const unit = localProduct.unit || 'шт';   // краску меряют килограммами, а не штуками
   const images = (localProduct.images || []).filter(Boolean);
   const img    = images[imgIdx] || NO_PHOTO;
   const hasColorOnly = localProduct.color && images.length === 0;
@@ -342,7 +343,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   ].filter(p => p.value > 0);
 
   const statusMeta = PRODUCT_STATUS_META[product.productStatus];
-  const stockLabel = product.stock > 0 ? `${product.stock} шт.` : (product.inStock ? 'Есть' : 'Нет');
+  const stockLabel = product.stock > 0 ? `${product.stock} ${unit}.` : (product.inStock ? 'Есть' : 'Нет');
 
   // Keyboard navigation + Escape.
   // Пока сверху открыта деталь, клавиши её — иначе Escape закрыл бы обе карточки разом.
@@ -647,7 +648,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       if (isIndependentKit) return <span style={pill('#f5f3ff', '#7c3aed')}>Комплект</span>;
                       return (
                         <span style={pill(displayInStock ? '#e8f5e9' : '#fce8e8', displayInStock ? UI.green : UI.red)}>
-                          {displayStock > 0 ? `${displayStock} шт.` : (displayInStock ? 'Есть' : 'Нет в наличии')}
+                          {displayStock > 0 ? `${displayStock} ${unit}.` : (displayInStock ? 'Есть' : 'Нет в наличии')}
                         </span>
                       );
                     })()}
@@ -740,7 +741,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                               <div style={baseRow}>
                                 <span style={{ color: UI.muted, fontSize: 13 }}>Остаток</span>
                                 <span style={{ fontSize: 16, fontWeight: 800, color: b.qty > 0 ? UI.blue : '#cbd5e1' }}>
-                                  {b.qty} шт.
+                                  {b.qty} {unit}.
                                 </span>
                               </div>
                             )}
@@ -767,7 +768,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                                 ) : (
                                   <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                     <span style={{ fontSize: 14, fontWeight: 700, color: b.buffer > 0 ? UI.ink : '#cbd5e1' }}>
-                                      {b.buffer > 0 ? `${b.buffer} шт.` : 'не задан'}
+                                      {b.buffer > 0 ? `${b.buffer} ${unit}.` : 'не задан'}
                                     </span>
                                     {canSetBuffer && (
                                       <button onClick={() => { setBufferVal(b.buffer); setBufferEditBase(b.key); }}
@@ -806,9 +807,9 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                           borderRadius: 12, padding: '11px 14px',
                         }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Итого по Кыргызстану:</span>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>{kgStock} шт.</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>{kgStock} {unit}.</span>
                           <span style={{ fontSize: 13, color: UI.muted }}>
-                            буфер {kgBuffer > 0 ? `${kgBuffer} шт.` : 'не задан'}
+                            буфер {kgBuffer > 0 ? `${kgBuffer} ${unit}.` : 'не задан'}
                           </span>
                           {below && <span style={pill('#fee2e2', UI.red)}>⚠️ ниже буфера</span>}
                         </div>

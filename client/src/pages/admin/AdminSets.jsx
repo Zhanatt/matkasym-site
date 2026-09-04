@@ -48,7 +48,9 @@ function getStockInfo(product, country = 'KG') {
     return { label: 'Не хватает деталей', hasStock: false, color: '#9ca3af', bg: '#f3f4f6', isKitMissing: true };
   }
   if (stock > 0) {
-    return { label: `${stock} шт.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+    // Единица у товара своя: краску меряют килограммами, «650 шт.» на её
+    // карточке читается как ошибка учёта.
+    return { label: `${stock} ${product.unit || 'шт'}.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
   }
   // Флаги «в пути» / «под заказ» ведутся по Кыргызстану — в казахстанском каталоге
   // остаток решает всё сам, иначе товар без остатка выглядел бы доступным.
@@ -1208,16 +1210,21 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     });
     const inMod  = models.filter(([, v]) => v.some(x => isProductAvailable(x, country))).length;
     const outMod = models.length - inMod;
-    return { inMod, outMod, inUnits, outUnits };
+    // Единицу в итоге пишем, только если она во всём сете одна. Складывать
+    // килограммы краски со штуками сварки в одно число нельзя — «5863 шт»
+    // на сете услуг было именно таким сложением.
+    const units = new Set(shown.map(p => p.unit || 'шт'));
+    const unit  = units.size === 1 ? [...units][0] : null;
+    return { inMod, outMod, inUnits, outUnits, unit };
   }, [shownProducts, models]);
 
   const renderStockStats = (fontSize) => (
     <div style={{ fontSize, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
       <span style={{ color: '#1e7e34', fontWeight: 600, whiteSpace: 'nowrap' }}>
-        ● В наличии: {stockSummary.inMod} поз · {stockSummary.inUnits} шт
+        ● В наличии: {stockSummary.inMod} поз{stockSummary.unit ? ` · ${stockSummary.inUnits} ${stockSummary.unit}` : ''}
       </span>
       <span style={{ color: '#c0392b', fontWeight: 600, whiteSpace: 'nowrap' }}>
-        ● Нет в наличии: {stockSummary.outMod} поз · {stockSummary.outUnits} шт
+        ● Нет в наличии: {stockSummary.outMod} поз{stockSummary.unit ? ` · ${stockSummary.outUnits} ${stockSummary.unit}` : ''}
       </span>
       {loadingMore && (
         <span style={{ color: '#aaa', fontWeight: 500, whiteSpace: 'nowrap' }} title="Считаем по уже загруженным позициям">
