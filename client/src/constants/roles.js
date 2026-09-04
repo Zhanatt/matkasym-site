@@ -27,3 +27,12 @@ export const canEnterAdmin = role => ADMIN_ROLES.includes(role);
 export const EDITOR_ROLES = ['owner', 'editor', 'designer'];
 
 export const canEditCatalog = role => EDITOR_ROLES.includes(role);
+
+/**
+ * Кто может выгружать сет на Лалафо. Файл уходит на внешнюю площадку от лица
+ * компании, поэтому доступ точечный: владелец, дизайнеры и назначенные флагом
+ * (canExportLalafo), а не вся роль editor — редакторов несколько.
+ * Совпадает с middleware canExportLalafo на сервере.
+ */
+export const canExportLalafo = user =>
+  ['owner', 'designer'].includes(user?.role) || !!user?.canExportLalafo;

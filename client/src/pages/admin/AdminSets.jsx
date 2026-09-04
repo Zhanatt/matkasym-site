@@ -15,7 +15,8 @@ import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
 import TubesPdfButton from './TubesPdfButton';
 import './AdminSets.css';
-import { canEditCatalog } from '../../constants/roles';
+import { canEditCatalog, canExportLalafo } from '../../constants/roles';
+import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
 import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
@@ -1085,6 +1086,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   // сам (middleware editor), здесь просто не показываем кнопку остальным:
   // складу и закупщику она бы кончилась ошибкой 403.
   const canEdit     = canEditCatalog(user?.role);
+  const canLalafo   = canExportLalafo(user);
   const accent      = accentOverride || BRAND_META[brandKey]?.accent || '#555';
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
   const [priceMode, setPriceMode]         = useState(defaultMode);
@@ -1493,6 +1495,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             }}>
               {viewMode === 'grid' ? '☰' : '⊞'}
             </button>
+
+            {!isMobile && canLalafo && (
+              <LalafoExportButton brand={brandKey} set={setSlug} />
+            )}
 
             {/* Порядок правится владельцем прямо на странице, без правки кода.
                 Только на десктопе: перетаскивание на тач-экране не работает. */}

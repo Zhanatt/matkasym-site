@@ -235,6 +235,10 @@ export const socialGetDraft        = (productId, priceMode, lang) => api.get(`/a
 });
 // Сколько раз и куда товар уже публиковали — показывается в поиске товара
 // Порядок категорий в сете — настройка витрины, правится из панели сета
+// Выгрузка сета на Лалафо — xlsx приходит файлом, поэтому responseType blob
+export const socialExportLalafoSet = (brand, set) =>
+  api.get('/admin/social/lalafo/export-set', { params: { brand, set }, responseType: 'blob' });
+
 export const adminGetSetLayout  = (brand, set) => api.get('/admin/set-layout', { params: { brand, set } });
 export const adminSaveSetLayout = (brand, set, categories, products) => api.put('/admin/set-layout', { brand, set, categories, products });
 

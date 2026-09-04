@@ -4,7 +4,7 @@ const express = require('express');
 const router  = express.Router();
 
 const { metaError } = require('../lib/metaError');
-const { protect, editor } = require('../middleware/auth');
+const { protect, editor, canExportLalafo } = require('../middleware/auth');
 const { SocialAccount, TelegramChat } = require('../models/SocialAccount');
 const PublishFlow  = require('../models/PublishFlow');
 const Publication  = require('../models/Publication');
@@ -613,6 +613,56 @@ router.get('/lalafo/export', async (req, res) => {
     }
 
     const name = `Лалафо_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+    res.send(buf);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// GET /lalafo/export-set?set=…&brand=… — выгрузить сет целиком, минуя очередь.
+//
+// Очередь наполняется публикацией по одному товару. Когда на площадку заводят
+// целую категорию, это неудобно: проще выгрузить весь сет разом. Поэтому строки
+// собираются прямо из товаров тем же кодом, что и объявление при публикации
+// (buildItem) — формат обязан совпадать, файл читает импорт Лалафо.
+//
+// Статус очереди не трогаем: это разовая выгрузка, а не отправка накопленного.
+router.get('/lalafo/export-set', canExportLalafo, async (req, res) => {
+  try {
+    const xlsx = require('xlsx');
+    const { buildItem } = require('../lib/publishers/lalafo');
+    const { set, brand } = req.query;
+    if (!set) return res.status(400).json({ message: 'Не указан сет' });
+
+    const filter = { set };
+    if (brand) filter.brand = brand;
+    const products = await Product.find(filter).sort({ category: 1, name: 1 }).lean();
+    if (!products.length) return res.status(404).json({ message: 'В сете нет товаров' });
+
+    // Детали комплектов на площадке не продаются — они часть другого товара.
+    const rows = products
+      .filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part')
+      .map(p => {
+        const i = buildItem(p);
+        const row = {
+          'Артикул': i.sku,
+          'Название': i.title,
+          'Мүнөздөмөсү (характеристики)': i.specs,
+          'Сүрөттөмөсү (описание)': i.description,
+          'Баасы (цена)': i.price,
+        };
+        LALAFO_COLUMNS.slice(5).forEach((col, idx) => { row[col] = i.photos[idx] || ''; });
+        return row;
+      });
+
+    const ws = xlsx.utils.json_to_sheet(rows, { header: LALAFO_COLUMNS });
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, 'Лалафо');
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    const name = `Лалафо_${set}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
     res.send(buf);

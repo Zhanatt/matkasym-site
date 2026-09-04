@@ -38,6 +38,13 @@ exports.editor = (req, res, next) => {
   next();
 };
 
+// Выгрузка на Лалафо: владелец, дизайнеры и точечно назначенные (canExportLalafo).
+// Роль editor сюда НЕ входит целиком — редакторов несколько, а доступ дан одному.
+exports.canExportLalafo = (req, res, next) => {
+  if (['owner', 'designer'].includes(req.user?.role) || req.user?.canExportLalafo) return next();
+  res.status(403).json({ message: 'Нет прав на выгрузку в Лалафо' });
+};
+
 // owner + editor + designer + viewer (or canViewUsers flag)
 exports.viewer = (req, res, next) => {
   if (!['owner', 'editor', 'designer', 'viewer'].includes(req.user?.role) && !req.user?.canViewUsers) {
