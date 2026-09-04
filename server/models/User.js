@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema({
   canManageContent: { type: Boolean, default: false },
   // Таргетолог: получает задачу на рекламу тестового товара и заполняет её результат (Байэл)
   canRunAds: { type: Boolean, default: false },
+  // Выгрузка сета на Лалафо. Отдельный флаг, а не роль: файл уходит на внешнюю
+  // площадку от лица компании, и доступ к нему точечный — владелец, дизайнеры
+  // и один редактор, а не все редакторы.
+  canExportLalafo: { type: Boolean, default: false },
   // Зона ответственности за буферный запас: получает алерты и видит страницу только по своим товарам
   bufferZone: { type: String, enum: ['', 'ikea', 'home', 'shaar'], default: '' },
 
