@@ -247,7 +247,9 @@ async function kyrgyzText(p) {
   xlsx.utils.book_append_sheet(wb, ws, 'Лалафо');
 
   const file = path.join(os.homedir(), 'Desktop', `Лалафо_${NUM}_${LABEL.replace(/\s+/g, '_')}.xlsx`);
-  xlsx.writeFile(wb, file);
+  // bookSST — таблица общих строк: без неё текст пишется прямо в ячейки, и
+  // чужие импортёры такой файл читают как пустой (см. routes/social.js).
+  xlsx.writeFile(wb, file, { bookSST: true });
 
   console.log(`Сет ${SET}: подходящих товаров ${products.length}, строк в файле ${rows.length}`);
   console.log(`Откуда описание: из поста ${stats['пост']}, из поста собрата ${stats['собрат']}, написано вручную ${stats['вручную']}`);

@@ -603,7 +603,10 @@ router.get('/lalafo/export', async (req, res) => {
     const ws = xlsx.utils.json_to_sheet(rows, { header: LALAFO_COLUMNS });
     const wb = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(wb, ws, 'Лалафо');
-    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    // bookSST — таблица общих строк. Без неё SheetJS пишет текст прямо в ячейки
+    // (inline strings): формально это валидный xlsx, но чужие импортёры такой
+    // файл сплошь и рядом читают как пустой — «найдено 0 объявлений, ошибок 0».
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx', bookSST: true });
 
     if (req.query.mark !== '0') {
       await LalafoItem.updateMany(
@@ -672,7 +675,10 @@ router.get('/lalafo/export-set', canExportLalafo, async (req, res) => {
     const ws = xlsx.utils.json_to_sheet(rows, { header: LALAFO_COLUMNS });
     const wb = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(wb, ws, 'Лалафо');
-    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    // bookSST — таблица общих строк. Без неё SheetJS пишет текст прямо в ячейки
+    // (inline strings): формально это валидный xlsx, но чужие импортёры такой
+    // файл сплошь и рядом читают как пустой — «найдено 0 объявлений, ошибок 0».
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx', bookSST: true });
 
     // Имя латиницей: кириллическое уезжает на площадку процентной кодировкой
     // («%D0%9B%D0%B0%D0%BB...»), и в списке загрузок его не узнать.
