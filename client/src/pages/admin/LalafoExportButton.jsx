@@ -16,7 +16,7 @@ export default function LalafoExportButton({ brand, set }) {
       const url  = URL.createObjectURL(res.data);
       const a    = document.createElement('a');
       a.href = url;
-      a.download = `Лалафо_${set}.xlsx`;
+      a.download = `Lalafo_${set}.xlsx`;   // кириллица в имени уезжает процентной кодировкой
       a.click();
       URL.revokeObjectURL(url);
 

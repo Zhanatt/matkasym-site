@@ -674,12 +674,14 @@ router.get('/lalafo/export-set', canExportLalafo, async (req, res) => {
     xlsx.utils.book_append_sheet(wb, ws, 'Лалафо');
     const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-    const name = `Лалафо_${set}.xlsx`;
+    // Имя латиницей: кириллическое уезжает на площадку процентной кодировкой
+    // («%D0%9B%D0%B0%D0%BB...»), и в списке загрузок его не узнать.
+    const name = `Lalafo_${set}.xlsx`;
     // Заголовок читает кнопка: имена в нём кириллические, поэтому кодируем.
     res.setHeader('X-Lalafo-Skipped', encodeURIComponent(JSON.stringify(skipped.map(i => i.title))));
     res.setHeader('Access-Control-Expose-Headers', 'X-Lalafo-Skipped');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+    res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
     res.send(buf);
   } catch (e) {
     res.status(500).json({ message: e.message });
