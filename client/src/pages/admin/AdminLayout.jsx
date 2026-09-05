@@ -16,11 +16,11 @@ const NAV_ALL = [
   { to: '/admin/video-schedule', label: 'Планирование съёмок', icon: '🎬', roles: ['owner','editor','viewer','navigator','designer'] },
   { to: '/admin/video-report', label: 'Отчёт по видео', icon: '📹', roles: ['owner','editor','designer'] },
   { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','navigator','warehouse','designer'] },
-  { to: '/admin/news',     label: 'Новости',             icon: '📢', roles: ['owner','editor','viewer','navigator','warehouse','designer'], badge: 'news' },
   { to: '/admin/publish',  label: 'Автопубликация',      icon: '🚀', roles: ['owner','editor','designer'] },
   { to: '/admin/shop-requests', label: 'Заявки из Telegram', icon: '🛍', roles: ['owner','editor','viewer','navigator','designer'] },
+  // Аудит и его результаты — один пункт меню: это две вкладки одной работы,
+  // а не два разных раздела. Кто какую вкладку видит, решает сама страница.
   { to: '/admin/review',   label: 'Аудит товаров',       icon: '✅', roles: ['owner','editor','viewer','navigator','designer'] },
-  { to: '/admin/review/results', label: 'Результаты аудита', icon: '📊', roles: ['owner','editor','designer'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer','designer'], badge: 'pending' },
   { to: '/admin/tech-requests', label: 'Заявки на техлист', icon: '📋', roles: ['owner','editor','viewer','navigator','designer'], badge: 'tech_requests' },
   { to: '/admin/history',     label: 'История',           icon: '📜', roles: ['owner','editor','warehouse','designer'] },

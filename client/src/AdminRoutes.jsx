@@ -27,6 +27,7 @@ import AdminPublish         from './pages/admin/AdminPublish';
 import AdminPublishFlow     from './pages/admin/AdminPublishFlow';
 import AdminPublishAccounts from './pages/admin/AdminPublishAccounts';
 import AdminPublishHistory  from './pages/admin/AdminPublishHistory';
+import AdminReviewLayout from './pages/admin/AdminReviewLayout';
 import AdminProductReview from './pages/admin/AdminProductReview';
 import AdminReviewResults from './pages/admin/AdminReviewResults';
 import AdminReviewVotes   from './pages/admin/AdminReviewVotes';
@@ -78,9 +79,13 @@ export default function AdminRoutes() {
         <Route path="publish/accounts"  element={<AdminPublishAccounts />} />
         <Route path="publish/history"   element={<AdminPublishHistory />} />
         <Route path="shop-requests" element={<AdminShopRequests />} />
-        <Route path="review" element={<AdminProductReview />} />
-        <Route path="review/results" element={<AdminReviewResults />} />
-        <Route path="review/votes" element={<AdminReviewVotes />} />
+        {/* Аудит одним разделом: вкладки вместо двух пунктов меню.
+            Адреса прежние — старые ссылки и закладки продолжают работать. */}
+        <Route path="review" element={<AdminReviewLayout />}>
+          <Route index element={<AdminProductReview />} />
+          <Route path="results" element={<AdminReviewResults />} />
+          <Route path="votes" element={<AdminReviewVotes />} />
+        </Route>
         <Route path="receive-alerts" element={<AdminReceiveAlerts />} />
         <Route path="pending-receive" element={<AdminPendingReceive />} />
         <Route path="video-schedule" element={<AdminVideoSchedule />} />
