@@ -12,7 +12,6 @@ const NAV_ALL = [
   { to: '/admin/pending-receive', label: 'Поступления', icon: '📦', roles: ['owner','editor','warehouse','viewer','navigator','purchaser','designer'], badge: 'pending_receive' },
   { to: '/admin/buffer-stock', label: 'Буферный запас', icon: '📉', roles: ['owner','editor','designer'] },
   { to: '/admin/nomenclature', label: 'Номенклатура для 1С', icon: '🧾', roles: ['owner','editor','viewer'] },
-  { to: '/admin/frontmen', label: 'Фронтмены и дизайнеры', icon: '👤', roles: ['owner','editor','viewer','navigator','designer'] },
   { to: '/admin/video-schedule', label: 'Планирование съёмок', icon: '🎬', roles: ['owner','editor','viewer','navigator','designer'] },
   { to: '/admin/video-report', label: 'Отчёт по видео', icon: '📹', roles: ['owner','editor','designer'] },
   { to: '/admin/suppliers',label: 'Поставщики',          icon: '🤝', roles: ['owner','navigator','warehouse','designer'] },

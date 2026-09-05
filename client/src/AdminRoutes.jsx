@@ -28,6 +28,7 @@ import AdminPublishFlow     from './pages/admin/AdminPublishFlow';
 import AdminPublishAccounts from './pages/admin/AdminPublishAccounts';
 import AdminPublishHistory  from './pages/admin/AdminPublishHistory';
 import AdminReviewLayout from './pages/admin/AdminReviewLayout';
+import AdminCatalogLayout from './pages/admin/AdminCatalogLayout';
 import AdminProductReview from './pages/admin/AdminProductReview';
 import AdminReviewResults from './pages/admin/AdminReviewResults';
 import AdminReviewVotes   from './pages/admin/AdminReviewVotes';
@@ -57,8 +58,14 @@ export default function AdminRoutes() {
         <Route path="products/new" element={<AdminProductForm />} />
         <Route path="products/:id" element={<AdminProductView />} />
         <Route path="products/:id/edit" element={<AdminProductForm />} />
-        <Route path="sets" element={<AdminSets />} />
-        <Route path="frontmen" element={<AdminFrontmen />} />
+        {/* Сеты и закреплённые за ними люди — вкладками одного раздела:
+            меню стало слишком длинным, а работа это одна. */}
+        <Route path="sets" element={<AdminCatalogLayout />}>
+          <Route index element={<AdminSets />} />
+          <Route path="frontmen" element={<AdminFrontmen />} />
+        </Route>
+        {/* Прежний адрес живёт: на него есть ссылки и закладки. */}
+        <Route path="frontmen" element={<Navigate to="/admin/sets/frontmen" replace />} />
         <Route path="suppliers" element={<AdminSuppliers />} />
         <Route path="out-of-stock" element={<AdminOutOfStock />} />
         <Route path="buffer-stock" element={<AdminBufferStock />} />
