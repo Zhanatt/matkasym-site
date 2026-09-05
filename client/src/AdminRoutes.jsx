@@ -29,6 +29,9 @@ import AdminPublishAccounts from './pages/admin/AdminPublishAccounts';
 import AdminPublishHistory  from './pages/admin/AdminPublishHistory';
 import AdminReviewLayout from './pages/admin/AdminReviewLayout';
 import AdminCatalogLayout from './pages/admin/AdminCatalogLayout';
+import AdminVideoLayout from './pages/admin/AdminVideoLayout';
+import AdminSalesLayout from './pages/admin/AdminSalesLayout';
+import AdminSupplyLayout from './pages/admin/AdminSupplyLayout';
 import AdminProductReview from './pages/admin/AdminProductReview';
 import AdminReviewResults from './pages/admin/AdminReviewResults';
 import AdminReviewVotes   from './pages/admin/AdminReviewVotes';
@@ -66,7 +69,7 @@ export default function AdminRoutes() {
         </Route>
         {/* Прежний адрес живёт: на него есть ссылки и закладки. */}
         <Route path="frontmen" element={<Navigate to="/admin/sets/frontmen" replace />} />
-        <Route path="suppliers" element={<AdminSuppliers />} />
+
         <Route path="out-of-stock" element={<AdminOutOfStock />} />
         <Route path="buffer-stock" element={<AdminBufferStock />} />
         <Route path="nomenclature" element={<AdminNomenclature />} />
@@ -76,9 +79,11 @@ export default function AdminRoutes() {
         <Route path="all-catalog"  element={<AdminAllCatalog />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="history" element={<AdminHistory />} />
-        <Route path="sales-chart"           element={<AdminSalesChart />} />
-        <Route path="sales-chart/:setSlug" element={<AdminSetSalesChart />} />
-        <Route path="agent-sales"           element={<AdminAgentSales />} />
+        <Route element={<AdminSalesLayout />}>
+          <Route path="sales-chart"          element={<AdminSalesChart />} />
+          <Route path="sales-chart/:setSlug" element={<AdminSetSalesChart />} />
+          <Route path="agent-sales"          element={<AdminAgentSales />} />
+        </Route>
         <Route path="news" element={<AdminNews />} />
         <Route path="news/create" element={<AdminNewsCreate />} />
         <Route path="publish"           element={<AdminPublish />} />
@@ -94,10 +99,17 @@ export default function AdminRoutes() {
           <Route path="votes" element={<AdminReviewVotes />} />
         </Route>
         <Route path="receive-alerts" element={<AdminReceiveAlerts />} />
-        <Route path="pending-receive" element={<AdminPendingReceive />} />
-        <Route path="video-schedule" element={<AdminVideoSchedule />} />
-        <Route path="video-report" element={<AdminVideoReport />} />
-        <Route path="video-report/:frontmanId" element={<AdminVideoReportDetail />} />
+        {/* Поступления и поставщики — вкладки одного раздела. Маршрут без
+            своего пути: адреса остаются прежними, меняется только обрамление. */}
+        <Route element={<AdminSupplyLayout />}>
+          <Route path="pending-receive" element={<AdminPendingReceive />} />
+          <Route path="suppliers"       element={<AdminSuppliers />} />
+        </Route>
+        <Route element={<AdminVideoLayout />}>
+          <Route path="video-schedule" element={<AdminVideoSchedule />} />
+          <Route path="video-report" element={<AdminVideoReport />} />
+          <Route path="video-report/:frontmanId" element={<AdminVideoReportDetail />} />
+        </Route>
       </Route>
       {/* Любой другой путь ведёт в админку */}
       <Route path="*" element={<Navigate to="/admin" replace />} />
