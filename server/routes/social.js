@@ -645,17 +645,27 @@ router.get('/lalafo/export-set', canExportLalafo, async (req, res) => {
     if (!products.length) return res.status(404).json({ message: 'В сете нет товаров' });
 
     // Детали комплектов на площадке не продаются — они часть другого товара.
+    // Объявление на товар, которого нет, — это звонок клиента и отказ.
+    // Правило доступности то же, что у каталога в PDF: остаток, «есть» или
+    // «под заказ» (его как раз и возят под клиента). «В пути» не считается —
+    // товара на складе ещё нет.
+    const available = p =>
+      p.inStock || p.stock > 0 || p.isOnOrder || p.productStatus === 'test_sale';
+
     const items = products
       .filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part')
-      .map(p => buildItem(p));
+      .map(p => ({ ...buildItem(p), available: available(p) }));
 
-    // Лалафо требует хотя бы одно фото на объявление и на строке без него
-    // роняет весь импорт файла целиком («Failed to save items to database»).
-    // Поэтому такие строки не выгружаем, но и не прячем: их список уходит
-    // в заголовок ответа, кнопка показывает его после скачивания.
-    const skipped = items.filter(i => !i.photos.length);
+    // Не выгружаем, но и не прячем: список уходит в заголовке ответа, кнопка
+    // показывает его после скачивания. Причин две:
+    // · нет фото — Лалафо требует минимум одно и без него роняет весь импорт;
+    // · нет в наличии — по просьбе владельца такие объявления не размещаем.
+    const skipped = items
+      .filter(i => !i.photos.length || !i.available)
+      .map(i => `${i.title} — ${!i.available ? 'нет в наличии' : 'нет фото'}`);
+
     const rows = items
-      .filter(i => i.photos.length)
+      .filter(i => i.photos.length && i.available)
       .map(i => {
         const row = {
           'Артикул': i.sku,
@@ -669,7 +679,7 @@ router.get('/lalafo/export-set', canExportLalafo, async (req, res) => {
       });
 
     if (!rows.length) {
-      return res.status(404).json({ message: 'Ни у одного товара сета нет фото — выгружать нечего' });
+      return res.status(404).json({ message: 'Выгружать нечего: у товаров сета либо нет фото, либо нет наличия' });
     }
 
     const ws = xlsx.utils.json_to_sheet(rows, { header: LALAFO_COLUMNS });
@@ -684,7 +694,7 @@ router.get('/lalafo/export-set', canExportLalafo, async (req, res) => {
     // («%D0%9B%D0%B0%D0%BB...»), и в списке загрузок его не узнать.
     const name = `Lalafo_${set}.xlsx`;
     // Заголовок читает кнопка: имена в нём кириллические, поэтому кодируем.
-    res.setHeader('X-Lalafo-Skipped', encodeURIComponent(JSON.stringify(skipped.map(i => i.title))));
+    res.setHeader('X-Lalafo-Skipped', encodeURIComponent(JSON.stringify(skipped)));
     res.setHeader('Access-Control-Expose-Headers', 'X-Lalafo-Skipped');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${name}"`);

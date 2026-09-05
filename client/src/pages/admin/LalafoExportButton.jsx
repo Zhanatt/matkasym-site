@@ -27,8 +27,7 @@ export default function LalafoExportButton({ brand, set }) {
       const skipped = raw ? JSON.parse(decodeURIComponent(raw)) : [];
       if (skipped.length) {
         alert(
-          `Файл собран, но ${skipped.length} товар(ов) в него не вошли — у них нет фото, ` +
-          `а Лалафо без фото не принимает:\n\n• ${skipped.join('\n• ')}`
+          `Файл собран. В него не вошли ${skipped.length} товар(ов):\n\n• ${skipped.join('\n• ')}`
         );
       }
     } catch (e) {
