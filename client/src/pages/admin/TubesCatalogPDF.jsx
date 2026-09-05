@@ -84,7 +84,9 @@ const L = {
   },
 };
 
-const TYPE_ORDER = ['Круглая', 'Квадратная', 'Прямоугольная', 'Овальная'];
+// Порядок разделов каталога задан владельцем: круглая → овальная → квадратная
+// → прямоугольная. По нему же нумеруются секции.
+const TYPE_ORDER = ['Круглая', 'Овальная', 'Квадратная', 'Прямоугольная'];
 
 // Характеристики в каталоге читаются как свойства товара, а не как строки базы:
 // «Шов: Нет» превращается в «Бесшовная».
@@ -181,7 +183,10 @@ const rowOf = (p, type, dict, priceField) => {
 const ROW_H        = 17;
 const BLOCK_CHROME = 44;   // шапка таблицы и отступ под карточкой
 const BLOCK_SPLIT  = 14;   // разделитель, если карточка не первая на листе
-const BLOCK_MIN_H  = 214;  // колонка с фото и свойствами трубы
+// Колонка с фото и свойствами трубы. Растёт вместе с photoWrap: если оставить
+// прежнюю высоту, раскладка посчитает карточку ниже, чем она есть, и последняя
+// на листе налезет на колонтитул.
+const BLOCK_MIN_H  = 280;
 const MIN_ROWS     = 4;    // хвост короче уже не выглядит таблицей
 const FOOTER_H     = 96;
 const PAGE_BODY_H  = 700;  // A4 за вычетом шапки и колонтитула
@@ -281,7 +286,7 @@ const S = StyleSheet.create({
   typeName:   { color: INK, fontSize: 11.5, fontWeight: 700, letterSpacing: 0.5, lineHeight: 1.2 },
   contMark:   { color: GRAY_SOFT, fontSize: 7.5, fontWeight: 400, letterSpacing: 0.4, marginTop: 2 },
   typeNote:   { color: GRAY, fontSize: 7.5, marginTop: 5, lineHeight: 1.45 },
-  photoWrap:  { marginTop: 9, backgroundColor: PHOTO_BG, borderRadius: 3, padding: 8, height: 84 },
+  photoWrap:  { marginTop: 9, backgroundColor: PHOTO_BG, borderRadius: 3, padding: 10, height: 150 },
   photo:      { width: '100%', height: '100%', objectFit: 'contain' },
 
   table:      { flex: 1 },
