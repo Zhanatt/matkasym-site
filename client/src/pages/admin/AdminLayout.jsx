@@ -8,18 +8,15 @@ import './Admin.css';
 
 const NAV_ALL = [
   { to: '/admin',          label: 'Дашборд',             icon: '◻', end: true, roles: ['owner','editor','viewer','navigator','warehouse','designer'] },
-  { to: '/admin/sets',     label: 'Каталог по сетам',    icon: '🗂', roles: ['owner','editor','viewer','navigator','designer'] },
-  { to: '/admin/pending-receive', label: 'Поступления и поставщики', icon: '📦', roles: ['owner','editor','warehouse','viewer','navigator','purchaser','designer'], badge: 'pending_receive' },
-  { to: '/admin/buffer-stock', label: 'Буферный запас', icon: '📉', roles: ['owner','editor','designer'] },
-  { to: '/admin/nomenclature', label: 'Номенклатура для 1С', icon: '🧾', roles: ['owner','editor','viewer'] },
+  { to: '/admin/sets',     label: 'Каталог',             icon: '🗂', roles: ['owner','editor','viewer','navigator','designer'] },
+  { to: '/admin/pending-receive', label: 'Склад', icon: '📦', roles: ['owner','editor','warehouse','viewer','navigator','purchaser','designer'], badge: 'pending_receive' },
   { to: '/admin/video-schedule', label: 'Съёмки', icon: '🎬', roles: ['owner','editor','viewer','navigator','designer'] },
   { to: '/admin/publish',  label: 'Автопубликация',      icon: '🚀', roles: ['owner','editor','designer'] },
-  { to: '/admin/shop-requests', label: 'Заявки из Telegram', icon: '🛍', roles: ['owner','editor','viewer','navigator','designer'] },
+  { to: '/admin/shop-requests', label: 'Заявки', icon: '🛍', roles: ['owner','editor','viewer','navigator','designer'], badge: 'tech_requests' },
   // Аудит и его результаты — один пункт меню: это две вкладки одной работы,
   // а не два разных раздела. Кто какую вкладку видит, решает сама страница.
   { to: '/admin/review',   label: 'Аудит товаров',       icon: '✅', roles: ['owner','editor','viewer','navigator','designer'] },
   { to: '/admin/users',     label: 'Пользователи',       icon: '👥', roles: ['owner', 'editor', 'viewer','designer'], badge: 'pending' },
-  { to: '/admin/tech-requests', label: 'Заявки на техлист', icon: '📋', roles: ['owner','editor','viewer','navigator','designer'], badge: 'tech_requests' },
   { to: '/admin/history',     label: 'История',           icon: '📜', roles: ['owner','editor','warehouse','designer'] },
   { to: '/admin/sales-chart', label: 'Продажи', icon: '📈', roles: ['owner','editor','viewer','designer'] },
 ];

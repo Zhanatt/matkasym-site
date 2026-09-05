@@ -32,6 +32,7 @@ import AdminCatalogLayout from './pages/admin/AdminCatalogLayout';
 import AdminVideoLayout from './pages/admin/AdminVideoLayout';
 import AdminSalesLayout from './pages/admin/AdminSalesLayout';
 import AdminSupplyLayout from './pages/admin/AdminSupplyLayout';
+import AdminRequestsLayout from './pages/admin/AdminRequestsLayout';
 import AdminProductReview from './pages/admin/AdminProductReview';
 import AdminReviewResults from './pages/admin/AdminReviewResults';
 import AdminReviewVotes   from './pages/admin/AdminReviewVotes';
@@ -63,20 +64,18 @@ export default function AdminRoutes() {
         <Route path="products/:id/edit" element={<AdminProductForm />} />
         {/* Сеты и закреплённые за ними люди — вкладками одного раздела:
             меню стало слишком длинным, а работа это одна. */}
-        <Route path="sets" element={<AdminCatalogLayout />}>
-          <Route index element={<AdminSets />} />
-          <Route path="frontmen" element={<AdminFrontmen />} />
+        {/* Каталог: сеты, люди на них, плоский список карточек и номенклатура
+            для 1С. Обёртка без своего пути — адреса страниц не меняются. */}
+        <Route element={<AdminCatalogLayout />}>
+          <Route path="sets" element={<AdminSets />} />
+          <Route path="sets/frontmen" element={<AdminFrontmen />} />
+          <Route path="all-catalog"  element={<AdminAllCatalog />} />
+          <Route path="nomenclature" element={<AdminNomenclature />} />
         </Route>
         {/* Прежний адрес живёт: на него есть ссылки и закладки. */}
         <Route path="frontmen" element={<Navigate to="/admin/sets/frontmen" replace />} />
 
-        <Route path="out-of-stock" element={<AdminOutOfStock />} />
-        <Route path="buffer-stock" element={<AdminBufferStock />} />
-        <Route path="nomenclature" element={<AdminNomenclature />} />
-        <Route path="tech-requests"     element={<AdminTechRequests />} />
-        <Route path="tech-requests/new" element={<AdminTechRequestForm />} />
-        <Route path="tech-requests/:id" element={<AdminTechRequestDetail />} />
-        <Route path="all-catalog"  element={<AdminAllCatalog />} />
+
         <Route path="users" element={<AdminUsers />} />
         <Route path="history" element={<AdminHistory />} />
         <Route element={<AdminSalesLayout />}>
@@ -90,7 +89,12 @@ export default function AdminRoutes() {
         <Route path="publish/flow"      element={<AdminPublishFlow />} />
         <Route path="publish/accounts"  element={<AdminPublishAccounts />} />
         <Route path="publish/history"   element={<AdminPublishHistory />} />
-        <Route path="shop-requests" element={<AdminShopRequests />} />
+        <Route element={<AdminRequestsLayout />}>
+          <Route path="shop-requests"     element={<AdminShopRequests />} />
+          <Route path="tech-requests"     element={<AdminTechRequests />} />
+          <Route path="tech-requests/new" element={<AdminTechRequestForm />} />
+          <Route path="tech-requests/:id" element={<AdminTechRequestDetail />} />
+        </Route>
         {/* Аудит одним разделом: вкладки вместо двух пунктов меню.
             Адреса прежние — старые ссылки и закладки продолжают работать. */}
         <Route path="review" element={<AdminReviewLayout />}>
@@ -98,11 +102,13 @@ export default function AdminRoutes() {
           <Route path="results" element={<AdminReviewResults />} />
           <Route path="votes" element={<AdminReviewVotes />} />
         </Route>
-        <Route path="receive-alerts" element={<AdminReceiveAlerts />} />
         {/* Поступления и поставщики — вкладки одного раздела. Маршрут без
             своего пути: адреса остаются прежними, меняется только обрамление. */}
         <Route element={<AdminSupplyLayout />}>
           <Route path="pending-receive" element={<AdminPendingReceive />} />
+          <Route path="receive-alerts"  element={<AdminReceiveAlerts />} />
+          <Route path="out-of-stock"    element={<AdminOutOfStock />} />
+          <Route path="buffer-stock"    element={<AdminBufferStock />} />
           <Route path="suppliers"       element={<AdminSuppliers />} />
         </Route>
         <Route element={<AdminVideoLayout />}>
