@@ -24,7 +24,7 @@ export default function AdminNoSet() {
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [brandSets, setBrandSets] = useState({});
-  const [brand,   setBrand]   = useState('');
+  const [brand,   setBrand]   = useState('matkasym-home');   // куда кладём, а не фильтр
   const [target,  setTarget]  = useState('');      // сет, куда кладём
   const [saving,  setSaving]  = useState(null);    // id товара в работе
   const [undo,    setUndo]    = useState(null);    // { product, prevSet }
@@ -37,12 +37,13 @@ export default function AdminNoSet() {
       adminGetBrands(),
     ])
       .then(([p, b]) => {
-        const list = p.data.products || [];
-        setItems(list);
-        setBrand(list[0]?.brand || 'matkasym-home');
+        setItems(p.data.products || []);
         const map = {};
         (b.data || []).forEach(x => {
-          map[x.key] = (x.sets || []).map(s => ({ key: s.key, label: s.labelRu || s.label || s.key }));
+          // Берём label — имя сета как оно есть («ACHYK ASMAN»). labelRu не трогаем:
+          // это перевод для витрины, а сет — имя собственное; в служебном списке
+          // «Открытое небо» вперемешку с «TAZA KIYIM» только путает.
+          map[x.key] = (x.sets || []).map(s => ({ key: s.key, label: s.label || s.key }));
         });
         setBrandSets(map);
       })
@@ -53,25 +54,22 @@ export default function AdminNoSet() {
   // Сет принадлежит бренду: показывать чужие — тот же способ потерять товар.
   useEffect(() => { setTarget(''); }, [brand]);
 
-  const brands = useMemo(() => {
-    const c = {};
-    items.forEach(p => { c[p.brand] = (c[p.brand] || 0) + 1; });
-    return Object.entries(c).sort((a, b) => b[1] - a[1]);
-  }, [items]);
-
+  // Список по бренду не режем: разобрать надо все, а бренд наверху — это куда
+  // кладём. Товар может уехать в другой бренд, если его туда и заводили.
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return items
-      .filter(p => p.brand === brand)
-      .filter(p => !q || (p.fullName || p.name || '').toLowerCase().includes(q)
-                      || (p.sku || '').toLowerCase().includes(q));
-  }, [items, brand, search]);
+    if (!q) return items;
+    return items.filter(p => (p.fullName || p.name || '').toLowerCase().includes(q)
+                          || (p.sku || '').toLowerCase().includes(q));
+  }, [items, search]);
 
   const assign = async (p) => {
     if (!target || saving) return;
     setSaving(p._id);
     try {
-      await adminUpdateProduct(p._id, { set: target });
+      // Бренд пишем вместе с сетом: сет принадлежит бренду, и товар, оставшийся
+      // в прежнем, снова выпал бы из каталога — уже по другой причине.
+      await adminUpdateProduct(p._id, { brand, set: target });
       setItems(prev => prev.filter(x => x._id !== p._id));
       setUndo({ product: p });
     } catch (e) {
@@ -85,7 +83,7 @@ export default function AdminNoSet() {
     const p = undo.product;
     setUndo(null);
     try {
-      await adminUpdateProduct(p._id, { set: '' });
+      await adminUpdateProduct(p._id, { brand: p.brand, set: '' });
       setItems(prev => [p, ...prev]);
     } catch { /* вернём при следующей загрузке */ }
   };
@@ -97,7 +95,7 @@ export default function AdminNoSet() {
       <h1 className="admin-page-title">Товары без сета</h1>
       <div style={{ fontSize: 13, color: 'var(--admin-muted)', marginBottom: 16 }}>
         Такой товар не попадает в каталог по сетам — его не видно ни в выгрузках, ни на витрине.
-        Выберите сет и нажимайте на товары: каждый уходит в него сразу.
+        Выберите бренд и сет, потом нажимайте на товары — каждый уходит туда сразу. Если сет чужого бренда, товар переедет и в него.
       </div>
 
       {/* Панель липкая: на телефоне список длинный, а выбор сета нужен всё время */}
@@ -106,13 +104,14 @@ export default function AdminNoSet() {
         padding: '10px 0', marginBottom: 10,
       }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {brands.map(([b, n]) => (
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#8b98a5' }}>Куда кладём:</span>
+          {Object.keys(BRAND_LABEL).map(b => (
             <button key={b} onClick={() => setBrand(b)} style={{
               padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
               border: `1.5px solid ${brand === b ? '#3463A3' : '#e0e0e0'}`,
               background: brand === b ? '#eef2f7' : '#fff',
               color: brand === b ? '#3463A3' : '#555',
-            }}>{BRAND_LABEL[b] || b} — {n}</button>
+            }}>{BRAND_LABEL[b]}</button>
           ))}
         </div>
 
@@ -168,8 +167,15 @@ export default function AdminNoSet() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#111', lineHeight: 1.3 }}>
                   {p.fullName || p.name}
                 </div>
-                <div style={{ fontSize: 11, color: '#aab3bd', marginTop: 2 }}>
-                  {p.sku || 'без артикула'} · {p.stock > 0 ? `${p.stock} ${p.unit || 'шт'}.` : 'нет остатка'}
+                <div style={{ fontSize: 11, color: '#aab3bd', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <span>{p.sku || 'без артикула'} · {p.stock > 0 ? `${p.stock} ${p.unit || 'шт'}.` : 'нет остатка'}</span>
+                  {/* Сейчас товар в этом бренде. Если кладём в другой — он туда
+                      и переедет, и это должно быть видно до нажатия. */}
+                  {p.brand !== brand && (
+                    <span style={{ color: '#b45309', fontWeight: 700 }}>
+                      {BRAND_LABEL[p.brand] || p.brand} → {BRAND_LABEL[brand]}
+                    </span>
+                  )}
                 </div>
               </div>
 

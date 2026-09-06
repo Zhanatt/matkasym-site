@@ -162,7 +162,8 @@ export default function AdminDashboard() {
       .then(r => {
         const map = {};
         (r.data || []).forEach(b => {
-          map[b.key] = (b.sets || []).map(x => ({ key: x.key, label: x.labelRu || x.label || x.key }));
+          // Имя сета как есть: labelRu — перевод для витрины, а не название
+          map[b.key] = (b.sets || []).map(x => ({ key: x.key, label: x.label || x.key }));
         });
         setBrandSets(map);
       })
