@@ -29,6 +29,7 @@ import AdminPublishAccounts from './pages/admin/AdminPublishAccounts';
 import AdminPublishHistory  from './pages/admin/AdminPublishHistory';
 import AdminReviewLayout from './pages/admin/AdminReviewLayout';
 import AdminCatalogLayout from './pages/admin/AdminCatalogLayout';
+import AdminNoSet from './pages/admin/AdminNoSet';
 import AdminVideoLayout from './pages/admin/AdminVideoLayout';
 import AdminSalesLayout from './pages/admin/AdminSalesLayout';
 import AdminSupplyLayout from './pages/admin/AdminSupplyLayout';
@@ -71,6 +72,7 @@ export default function AdminRoutes() {
           <Route path="sets/frontmen" element={<AdminFrontmen />} />
           <Route path="all-catalog"  element={<AdminAllCatalog />} />
           <Route path="nomenclature" element={<AdminNomenclature />} />
+          <Route path="no-set"       element={<AdminNoSet />} />
         </Route>
         {/* Прежний адрес живёт: на него есть ссылки и закладки. */}
         <Route path="frontmen" element={<Navigate to="/admin/sets/frontmen" replace />} />

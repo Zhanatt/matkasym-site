@@ -355,7 +355,10 @@ router.get('/products', async (req, res) => {
       filter.$or = [{ name: re }, { fullName: re }, { sku: re }];
     }
     if (brand)         filter.brand         = brand;
-    if (set)           filter.set           = set;
+    // '__none__' — товары без сета. Такие не попадают в каталог по сетам и
+    // теряются; для их разбора есть отдельная страница.
+    if (set === '__none__') filter.set = { $in: ['', null] };
+    else if (set)      filter.set           = set;
     if (set === 'zhashyl-omur') console.log('[DEBUG] zhashyl-omur query, filter:', filter);
     if (category)      filter.category      = category;
     if (inStock !== undefined) filter.inStock = inStock === 'true';

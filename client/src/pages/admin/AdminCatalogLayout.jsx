@@ -10,6 +10,7 @@ const TABS = [
   { to: '/admin/sets',          label: 'Сеты', end: true },
   { to: '/admin/sets/frontmen', label: 'Фронтмены и дизайнеры' },
   { to: '/admin/all-catalog',   label: 'Весь каталог' },
+  { to: '/admin/no-set',        label: 'Без сета' },
   { to: '/admin/nomenclature',  label: 'Номенклатура для 1С',
     roles: ['owner', 'editor', 'viewer'] },
 ];

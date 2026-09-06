@@ -691,7 +691,7 @@ export default function AdminDashboard() {
           забывают. Показываем на дашборде, а не ждём, пока кто-то поставит
           фильтр во «Всём каталоге». */}
       {stats?.noSet > 0 && (
-        <Link to="/admin/all-catalog?set=__none__" style={{ textDecoration: 'none' }}>
+        <Link to="/admin/no-set" style={{ textDecoration: 'none' }}>
           <div style={{
             marginBottom: 20, padding: '12px 18px', borderRadius: 10,
             background: '#fffbeb', border: '1.5px solid #fcd34d',
