@@ -160,6 +160,7 @@ export default function AdminAllCatalog() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlStatus = searchParams.get('productStatus') || '';
+  // ?set=__none__ — так приходят с дашборда по предупреждению «товары без сета»
 
   const [products,      setProducts]      = useState([]);
   const [detailProduct, setDetailProduct] = useState(null);
@@ -176,7 +177,7 @@ export default function AdminAllCatalog() {
 
   // Filters
   const [fBrand,    setFBrand]    = useState('');
-  const [fSet,      setFSet]      = useState('');
+  const [fSet,      setFSet]      = useState(searchParams.get('set') || '');
   const [fCategory, setFCategory] = useState('');
   const [fStock,    setFStock]    = useState(''); // '' | 'in' | 'out'
   const [fStatus,   setFStatus]   = useState(urlStatus);

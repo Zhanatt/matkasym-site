@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import { signOf } from '../../utils/price';
 import * as pdfjsLib from 'pdfjs-dist';
-import { adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload } from '../../api/index';
+import { adminGetBrands, adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 import { canEditCatalog } from '../../constants/roles';
 
@@ -111,6 +111,10 @@ export default function AdminDashboard() {
   // Товары из выгрузки, которых нет в каталоге — ждут подтверждения
   const [newItems,      setNewItems]      = useState(null);   // { base, items: [{name, stock, buffer, isGroup, checked}] }
   const [newItemsBrand, setNewItemsBrand] = useState('matkasym-home');
+  // Сет обязателен: без него карточка проваливается в «Без сета», где её никто
+  // не видит. Так за месяцы накопилось полторы сотни товаров, часть с остатком.
+  const [newItemsSet,   setNewItemsSet]   = useState('');
+  const [brandSets,     setBrandSets]     = useState({});   // { бренд: [{key,label}] }
   const [addingItems,   setAddingItems]   = useState(false);
   const [priceLoading,  setPriceLoading]  = useState(null);
   const [photoLoading,       setPhotoLoading]       = useState(false);
@@ -152,13 +156,30 @@ export default function AdminDashboard() {
     }
   };
 
+  // Справочник сетов по брендам — для выпадашки в окне подтверждения.
+  useEffect(() => {
+    adminGetBrands()
+      .then(r => {
+        const map = {};
+        (r.data || []).forEach(b => {
+          map[b.key] = (b.sets || []).map(x => ({ key: x.key, label: x.labelRu || x.label || x.key }));
+        });
+        setBrandSets(map);
+      })
+      .catch(() => setBrandSets({}));
+  }, []);
+
+  // Сменили бренд — прежний сет к нему уже не относится.
+  useEffect(() => { setNewItemsSet(''); }, [newItemsBrand]);
+
   const handleAddNewItems = async () => {
     const items = newItems.items.filter(i => i.checked);
     if (!items.length) { setNewItems(null); return; }
     setAddingItems(true);
     try {
       const r = await adminConfirmStockItems(newItems.base, items.map(i => ({
-        name: i.name, stock: i.stock, buffer: i.buffer, brand: newItemsBrand,
+        name: i.name, stock: i.stock, buffer: i.buffer,
+        brand: newItemsBrand, set: newItemsSet,
       })));
       setSyncResult({ ok: true, msg: `✅ Добавлено товаров: ${r.data.added}${r.data.skipped ? `, пропущено: ${r.data.skipped}` : ''}` });
       setNewItems(null);
@@ -610,6 +631,18 @@ export default function AdminDashboard() {
                 <option value="matkasym-shaar">SHAAR</option>
                 <option value="matkasym-kyzmat">KYZMAT</option>
               </select>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>Сет:</span>
+              <select value={newItemsSet} onChange={e => setNewItemsSet(e.target.value)}
+                style={{
+                  padding: '7px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  border: `1.5px solid ${newItemsSet ? '#e0e0e0' : '#f0a0a0'}`,
+                  background: newItemsSet ? '#fff' : '#fff5f5',
+                }}>
+                <option value="">— выберите сет —</option>
+                {(brandSets[newItemsBrand] || []).map(x => (
+                  <option key={x.key} value={x.key}>{x.label}</option>
+                ))}
+              </select>
               <span style={{ flex: 1 }} />
               <button onClick={() => setNewItems(n => ({ ...n, items: n.items.map(i => ({ ...i, checked: true })) }))}
                 style={{ padding: '6px 12px', borderRadius: 8, border: '1.5px solid #e5e5e5', background: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Отметить все</button>
@@ -638,17 +671,44 @@ export default function AdminDashboard() {
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center', marginTop: 14 }}>
-              <span style={{ fontSize: 12.5, color: '#888', marginRight: 'auto' }}>
-                Отмечено: <b style={{ color: '#111' }}>{newItems.items.filter(i => i.checked).length}</b> из {newItems.items.length}
+              <span style={{ fontSize: 12.5, color: newItemsSet ? '#888' : '#c0392b', marginRight: 'auto' }}>
+                {newItemsSet
+                  ? <>Отмечено: <b style={{ color: '#111' }}>{newItems.items.filter(i => i.checked).length}</b> из {newItems.items.length}</>
+                  : 'Выберите сет — без него товар попадёт в «Без сета», и его никто не увидит'}
               </span>
               <button onClick={() => setNewItems(null)} disabled={addingItems}
                 style={{ padding: '9px 16px', borderRadius: 9, border: '1.5px solid #e5e5e5', background: '#fff', color: '#555', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Не добавлять</button>
-              <button onClick={handleAddNewItems} disabled={addingItems || !newItems.items.some(i => i.checked)}
-                style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: '#2d7a3a', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: addingItems ? 'wait' : 'pointer', opacity: addingItems || !newItems.items.some(i => i.checked) ? .5 : 1 }}>
+              <button onClick={handleAddNewItems}
+                disabled={addingItems || !newItemsSet || !newItems.items.some(i => i.checked)}
+                style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: '#2d7a3a', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: addingItems ? 'wait' : 'pointer', opacity: addingItems || !newItemsSet || !newItems.items.some(i => i.checked) ? .5 : 1 }}>
                 {addingItems ? 'Добавляю…' : 'Добавить в каталог'}</button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Товары без сета: в каталог по сетам они не попадают, поэтому о них
+          забывают. Показываем на дашборде, а не ждём, пока кто-то поставит
+          фильтр во «Всём каталоге». */}
+      {stats?.noSet > 0 && (
+        <Link to="/admin/all-catalog?set=__none__" style={{ textDecoration: 'none' }}>
+          <div style={{
+            marginBottom: 20, padding: '12px 18px', borderRadius: 10,
+            background: '#fffbeb', border: '1.5px solid #fcd34d',
+            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          }}>
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>
+              Товаров без сета: {stats.noSet}
+            </span>
+            <span style={{ fontSize: 12.5, color: '#a16207' }}>
+              они не попадают в каталог по сетам — их не видно ни в выгрузках, ни на витрине
+            </span>
+            <span style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>
+              Разобрать →
+            </span>
+          </div>
+        </Link>
       )}
 
       {/* Результат загрузки остатков */}

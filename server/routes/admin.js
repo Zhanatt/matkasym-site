@@ -294,7 +294,7 @@ router.get('/stats', async (req, res) => {
     // banned — бывшие сотрудники админки, их тоже считаем в общем списке пользователей
     const adminRoles = [...ADMIN_ROLES, 'banned'];
 
-    const [products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen] = await Promise.all([
+    const [products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen, noSet] = await Promise.all([
       Product.countDocuments(),
       Product.countDocuments({ inStock: false }),
       Brand.countDocuments(),
@@ -304,8 +304,11 @@ router.get('/stats', async (req, res) => {
       Product.countDocuments({ productStatus: 'discontinued' }),
       Product.countDocuments({ category: 'Неликвид' }),
       Frontman.countDocuments(),
+      // Товары без сета: в каталог по сетам они не попадают, поэтому их не видно
+      // и о них забывают. Считаем, чтобы вывести предупреждение на дашборд.
+      Product.countDocuments({ $or: [{ set: '' }, { set: null }, { set: { $exists: false } }] }),
     ]);
-    res.json({ products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen });
+    res.json({ products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen, noSet });
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }
@@ -1810,6 +1813,13 @@ router.post('/confirm-stock-items', editor, async (req, res) => {
   const { base, items } = req.body;
   if (!isBaseKey(base)) return res.status(400).json({ error: `Неизвестная база 1С: ${base}` });
   if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Нет товаров для добавления' });
+  // Сет обязателен. Без него карточка попадает в «Без сета» — раздел, куда никто
+  // не заходит: так за месяцы накопилось полторы сотни товаров, у половины с
+  // остатком на складе. Проверяем и здесь, а не только в форме: поля «сет» в ней
+  // раньше вовсе не было, и товары создавались пустыми.
+  if (items.some(i => !String(i.set || '').trim())) {
+    return res.status(400).json({ error: 'У товара не указан сет — без него он потеряется в каталоге' });
+  }
 
   try {
     // Не создаём дубли: товар мог появиться между загрузкой и подтверждением
