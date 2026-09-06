@@ -135,6 +135,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const [brands,     setBrands]     = useState([]);      // [{key,label,sets:[{key,label}]}]
   const [categories, setCategories] = useState([]);
   const [placing,    setPlacing]    = useState(null);    // какое поле сейчас пишем
+  const [newCat,     setNewCat]     = useState(false);   // вписываем категорию вручную
   const canEditPlacement = canEditCatalog(user?.role);
 
   // Подгружаем полные данные товара (techSheet и др. могут отсутствовать в списке)
@@ -675,21 +676,49 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                           .map(x => <option key={x.key} value={x.key}>{x.label}</option>)}
                       </select>
 
-                      {/* Категория — свободная строка: список подсказывает то, что
-                          уже заведено в бренде, но вписать можно и своё. */}
-                      <input
-                        list="placement-categories"
-                        defaultValue={localProduct.category || ''}
-                        disabled={!!placing}
-                        placeholder="категория"
-                        onBlur={e => {
-                          const v = e.target.value.trim();
-                          if (v !== (localProduct.category || '')) savePlacement({ category: v }, 'category');
-                        }}
-                        style={selectStyle} />
-                      <datalist id="placement-categories">
-                        {categories.map(c => <option key={c} value={c} />)}
-                      </datalist>
+                      {/* Категория — обычный список, а не поле с подсказками:
+                          подсказки браузер фильтрует по уже введённому тексту, и
+                          у товара с категорией «other» в выпадашке был ровно один
+                          пункт — «other». Чтобы увидеть остальные пятьдесят,
+                          пришлось бы сначала стереть значение.
+                          Категория всё же свободная строка, поэтому последним
+                          пунктом можно вписать новую. */}
+                      {newCat ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <input
+                            autoFocus
+                            defaultValue=""
+                            disabled={!!placing}
+                            placeholder="новая категория"
+                            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                            onBlur={e => {
+                              const v = e.target.value.trim();
+                              setNewCat(false);
+                              if (v && v !== (localProduct.category || '')) savePlacement({ category: v }, 'category');
+                            }}
+                            style={{ ...selectStyle, flex: 1 }} />
+                          <button onClick={() => setNewCat(false)}
+                            style={{ ...selectStyle, width: 'auto', cursor: 'pointer', color: UI.muted }}>Отмена</button>
+                        </div>
+                      ) : (
+                        <select
+                          value={localProduct.category || ''}
+                          disabled={!!placing}
+                          onChange={e => {
+                            if (e.target.value === '__new__') { setNewCat(true); return; }
+                            savePlacement({ category: e.target.value }, 'category');
+                          }}
+                          style={selectStyle}>
+                          <option value="">— категория не выбрана —</option>
+                          {/* Текущая категория может быть не из этого бренда —
+                              показываем её отдельно, иначе список выглядел бы пустым */}
+                          {localProduct.category && !categories.includes(localProduct.category) && (
+                            <option value={localProduct.category}>{localProduct.category}</option>
+                          )}
+                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                          <option value="__new__">➕ Новая категория…</option>
+                        </select>
+                      )}
                     </div>
 
                     {!localProduct.set && (
