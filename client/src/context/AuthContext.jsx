@@ -36,12 +36,46 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { checkAuth(); }, []);
 
-  // Heartbeat every 60 s when logged in
+  // Отметка активности раз в минуту — но только когда сайтом действительно
+  // пользуются. Раньше стук шёл всегда, пока человек залогинен, и вкладка,
+  // забытая открытой на фоне, всю неделю писалась как «активен сегодня»:
+  // и время в журнале копилось, и «был в сети» врал.
+  //
+  // Условий два. Вкладка на экране — фоновая по определению не используется.
+  // И было касание за последние пять минут: открытая, но брошенная вкладка
+  // видима и при этом простаивает.
+  const IDLE_MS = 5 * 60_000;
+  const lastActiveRef = useRef(Date.now());
+
   useEffect(() => {
     if (!user) { clearInterval(hbRef.current); return; }
-    heartbeat().catch(() => {});
-    hbRef.current = setInterval(() => heartbeat().catch(() => {}), 60_000);
-    return () => clearInterval(hbRef.current);
+
+    const touch = () => { lastActiveRef.current = Date.now(); };
+    const inUse = () =>
+      document.visibilityState === 'visible' &&
+      Date.now() - lastActiveRef.current < IDLE_MS;
+
+    const beat = () => { if (inUse()) heartbeat().catch(() => {}); };
+
+    // Слушаем то, что означает работу руками. passive — чтобы не тормозить
+    // прокрутку: обработчик только запоминает время.
+    const EVENTS = ['mousedown', 'mousemove', 'keydown', 'wheel', 'touchstart', 'scroll'];
+    EVENTS.forEach(e => window.addEventListener(e, touch, { passive: true }));
+
+    // Вернулись на вкладку — это тоже действие, и отметиться надо сразу,
+    // не дожидаясь следующей минуты.
+    const onVisible = () => { if (document.visibilityState === 'visible') { touch(); beat(); } };
+    document.addEventListener('visibilitychange', onVisible);
+
+    touch();
+    beat();
+    hbRef.current = setInterval(beat, 60_000);
+
+    return () => {
+      clearInterval(hbRef.current);
+      EVENTS.forEach(e => window.removeEventListener(e, touch));
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [!!user]);
 
   const saveLogin = (token, userData) => {

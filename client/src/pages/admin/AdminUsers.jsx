@@ -66,6 +66,35 @@ const ROLE_LABELS = {
   user:      '👤 Пользователь',
 };
 
+// Один человек заводится по нескольку раз: то с опечаткой в почте
+// («…@gmali.com» вместо «@gmail.com»), то под другим написанием имени.
+// Ищем такие пары по двум признакам.
+//
+// Почта — по левой части до собаки, без точек и дефисов и без хвостовых цифр;
+// домен отбрасываем целиком, потому что опечатка чаще всего именно в нём.
+const emailKey = e => String(e || '').toLowerCase().split('@')[0]
+  .replace(/[.\-_]/g, '').replace(/\d+$/, '');
+
+// Имя — без регистра, «ё» и лишних пробелов. Латиницу и кириллицу не сводим:
+// «aseda» и «Аседа» технически разные строки, но и глазами это видно.
+const nameKey = n => String(n || '').toLowerCase()
+  .replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+
+// Помечаем тех, у кого совпал хотя бы один ключ с кем-то ещё.
+function findDuplicates(users) {
+  const byEmail = {}, byName = {};
+  users.forEach(u => {
+    const ek = emailKey(u.email), nk = nameKey(u.name);
+    if (ek) (byEmail[ek] ||= []).push(u._id);
+    if (nk) (byName[nk] ||= []).push(u._id);
+  });
+  const dup = new Set();
+  [byEmail, byName].forEach(map => {
+    Object.values(map).forEach(ids => { if (ids.length > 1) ids.forEach(id => dup.add(id)); });
+  });
+  return dup;
+}
+
 function ActivityBadge({ days }) {
   if (days === 0) return <span style={{ background: '#dcfce7', color: '#16a34a', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>Сегодня</span>;
   if (days === 1) return <span style={{ background: '#dbeafe', color: '#2563eb', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>Вчера</span>;
@@ -84,6 +113,7 @@ export default function AdminUsers() {
   const [saving, setSaving] = useState(null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('activity');
+  const [roleFilter, setRoleFilter] = useState('all');   // 'all' | 'dups' | роль
   const [selectedUser, setSelectedUser] = useState(null);
   const [activityData, setActivityData] = useState(null);
   const [activityLoading, setActivityLoading] = useState(false);
@@ -117,14 +147,29 @@ export default function AdminUsers() {
     loadActivity(u._id);
   };
 
+  const activeUsers = useMemo(() => users.filter(u => !u.isPending), [users]);
+  const duplicates  = useMemo(() => findDuplicates(activeUsers), [activeUsers]);
+
+  // Сколько людей в каждой роли — числа сразу на кнопках фильтра, чтобы не
+  // пересчитывать глазами.
+  const roleCounts = useMemo(() => {
+    const c = {};
+    activeUsers.forEach(u => { c[u.role] = (c[u.role] || 0) + 1; });
+    return c;
+  }, [activeUsers]);
+
   const filteredUsers = useMemo(() => {
-    let result = users.filter(u => !u.isPending);
+    let result = activeUsers;
+
+    if (roleFilter === 'dups')      result = result.filter(u => duplicates.has(u._id));
+    else if (roleFilter !== 'all')  result = result.filter(u => u.role === roleFilter);
 
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(u =>
         (u.name || '').toLowerCase().includes(q) ||
-        (u.email || '').toLowerCase().includes(q)
+        (u.email || '').toLowerCase().includes(q) ||
+        (ROLE_LABELS[u.role] || u.role || '').toLowerCase().includes(q)
       );
     }
 
@@ -141,8 +186,15 @@ export default function AdminUsers() {
       result.sort((a, b) => daysSinceLastSeen(b.lastSeen) - daysSinceLastSeen(a.lastSeen));
     }
 
+    // В режиме «похожие» сортировка по активности бесполезна: пары надо видеть
+    // рядом, иначе их придётся выискивать по всему списку.
+    if (roleFilter === 'dups') {
+      result = [...result].sort((a, b) =>
+        (nameKey(a.name) || emailKey(a.email)).localeCompare(nameKey(b.name) || emailKey(b.email), 'ru'));
+    }
+
     return result;
-  }, [users, search, sortBy]);
+  }, [activeUsers, duplicates, search, sortBy, roleFilter]);
 
   const pending = users.filter(u => u.isPending);
 
@@ -207,6 +259,7 @@ export default function AdminUsers() {
     const avatarColor = u.isPending ? AVATAR_COLORS.pending : AVATAR_COLORS[u.role] || '#888';
     const isSelf = u._id === me?._id;
     const days = daysSinceLastSeen(u.lastSeen);
+    const isDuplicate = duplicates.has(u._id);
 
     return (
       <div key={u._id} style={{
@@ -245,6 +298,12 @@ export default function AdminUsers() {
           <div style={{ fontWeight: 700, fontSize: 14, color: '#000', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {u.name}
             {isSelf && <span style={{ fontSize: 10, background: '#e8e8e8', color: '#555', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>Это вы</span>}
+            {isDuplicate && (
+              <span title="Есть аккаунт с таким же именем или похожей почтой"
+                style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+                ⚠️ похожий есть
+              </span>
+            )}
             {online && <span style={{ fontSize: 10, background: '#e6f4ea', color: '#2d7a3a', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>● онлайн</span>}
             {u.telegramChatId && (
               <span title="Telegram подключён" style={{
@@ -403,6 +462,40 @@ export default function AdminUsers() {
           <option value="inactive">😴 Неактивные первые</option>
         </select>
       </div>
+
+      {/* Фильтр по ролям: со списком на восемь десятков человек прокрутка
+          перестаёт работать как способ что-то найти. */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' }}>
+        {[
+          { key: 'all',  label: `Все — ${activeUsers.length}` },
+          ...Object.keys(ROLE_LABELS)
+            .filter(r => roleCounts[r])
+            .map(r => ({ key: r, label: `${ROLE_LABELS[r]} — ${roleCounts[r]}` })),
+          ...(duplicates.size ? [{ key: 'dups', label: `⚠️ Похожие — ${duplicates.size}`, warn: true }] : []),
+        ].map(chip => {
+          const on = roleFilter === chip.key;
+          return (
+            <button key={chip.key} onClick={() => setRoleFilter(chip.key)} style={{
+              padding: '6px 12px', borderRadius: 9, cursor: 'pointer',
+              fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+              border: `1.5px solid ${on ? (chip.warn ? '#d97706' : '#3463A3') : 'var(--admin-line)'}`,
+              background: on ? (chip.warn ? '#fef3c7' : '#eef2f7') : '#fff',
+              color: on ? (chip.warn ? '#92400e' : '#3463A3') : '#555',
+            }}>{chip.label}</button>
+          );
+        })}
+      </div>
+
+      {roleFilter === 'dups' && (
+        <div style={{
+          background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
+          padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#92400e', lineHeight: 1.5,
+        }}>
+          Аккаунты, у которых совпало имя или почта до собаки — похоже, один и тот же человек
+          завёлся дважды. Это подсказка, а не приговор: однофамильцы сюда тоже попадут.
+          Прежде чем удалять, посмотрите, с какого заходили последним.
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div style={{ marginBottom: 28 }}>
