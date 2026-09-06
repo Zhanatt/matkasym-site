@@ -2,13 +2,22 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock, adminGetProduct } from '../../api';
+import { canEditCatalog } from '../../constants/roles';
+import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock, adminGetProduct, adminGetBrands, adminGetFacets, adminUpdateProduct } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
 import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
 
 const NO_PHOTO = '/logos/no-photo.png';
+
+// Поля блока «Размещение в каталоге»: одинаковые селект и ввод, крупные —
+// карточку открывают и с телефона.
+const selectStyle = {
+  width: '100%', padding: '9px 11px', borderRadius: 10,
+  border: '1.5px solid #e3e8ee', background: '#fff',
+  fontSize: 13, fontWeight: 600, color: '#111', outline: 'none',
+};
 
 // Прайсы баз 1С (зеркалит server/lib/stockBases.js). Набор цен у баз разный.
 const PRICE_BASES = [
@@ -120,12 +129,51 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const [partPreview, setPartPreview] = useState(null); // деталь комплекта, открытая своей карточкой
   const [loadingPart, setLoadingPart] = useState(null); // id детали, которая грузится
 
+  // Размещение товара в каталоге — бренд, сет, категория. Правится прямо здесь:
+  // раньше ради смены сета надо было открыть форму редактирования, найти поле
+  // среди трёх десятков других и сохранить всю карточку.
+  const [brands,     setBrands]     = useState([]);      // [{key,label,sets:[{key,label}]}]
+  const [categories, setCategories] = useState([]);
+  const [placing,    setPlacing]    = useState(null);    // какое поле сейчас пишем
+  const canEditPlacement = canEditCatalog(user?.role);
+
   // Подгружаем полные данные товара (techSheet и др. могут отсутствовать в списке)
   useEffect(() => {
     if (!product?._id) return;
     setImgIdx(0);   // иначе на новом товаре откроется фото под старым номером
     adminGetProduct(product._id).then(r => setLocalProduct(prev => ({ ...prev, ...r.data }))).catch(() => {});
   }, [product?._id]);
+  useEffect(() => {
+    if (!canEditPlacement) return;
+    adminGetBrands()
+      .then(r => setBrands((r.data || []).map(b => ({
+        key: b.key, label: b.label || b.key,
+        // label — имя сета как есть; labelRu это перевод для витрины
+        sets: (b.sets || []).map(x => ({ key: x.key, label: x.label || x.key })),
+      }))))
+      .catch(() => setBrands([]));
+  }, [canEditPlacement]);
+
+  // Категории подсказываем те, что уже есть в этом бренде: список свободный,
+  // и без подсказки одна и та же категория заводится в трёх написаниях.
+  useEffect(() => {
+    if (!canEditPlacement || !localProduct.brand) return;
+    adminGetFacets({ brand: localProduct.brand })
+      .then(r => setCategories(r.data.categories || []))
+      .catch(() => setCategories([]));
+  }, [canEditPlacement, localProduct.brand]);
+
+  const savePlacement = async (patch, field) => {
+    setPlacing(field);
+    try {
+      const res = await adminUpdateProduct(localProduct._id, patch);
+      setLocalProduct(prev => ({ ...prev, ...res.data }));
+      onSaved && onSaved(res.data);
+    } catch (e) {
+      alert('Не удалось сохранить: ' + (e.response?.data?.error || e.message));
+    } finally { setPlacing(null); }
+  };
+
   const canSetBuffer = user?.role === 'owner' || user?.canSetBufferStock;
   const [bufferEditBase, setBufferEditBase] = useState(null); // ключ базы, у которой правят буфер
   const [bufferVal, setBufferVal] = useState(0);
@@ -596,6 +644,61 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     </>
                   )}
                 </div>
+
+                {/* Размещение в каталоге — под фото, чтобы правилось на месте.
+                    Каждое поле сохраняется сразу: это одно значение, а не форма,
+                    и лишняя кнопка «Сохранить» тут только добавляет шаг. */}
+                {canEditPlacement && (
+                  <div style={{ marginTop: 12, borderTop: `1px solid ${UI.lineSoft}`, paddingTop: 12 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: UI.label, marginBottom: 8 }}>
+                      Размещение в каталоге
+                      {placing && <span style={{ color: '#9bb3d4', fontWeight: 500 }}> · сохраняю…</span>}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <select
+                        value={localProduct.brand || ''}
+                        disabled={!!placing}
+                        onChange={e => savePlacement({ brand: e.target.value, set: '' }, 'brand')}
+                        style={selectStyle}>
+                        <option value="">— бренд —</option>
+                        {brands.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
+                      </select>
+
+                      <select
+                        value={localProduct.set || ''}
+                        disabled={!!placing || !localProduct.brand}
+                        onChange={e => savePlacement({ set: e.target.value }, 'set')}
+                        style={{ ...selectStyle, borderColor: localProduct.set ? UI.line : '#f0a0a0' }}>
+                        <option value="">— сет не выбран —</option>
+                        {(brands.find(b => b.key === localProduct.brand)?.sets || [])
+                          .map(x => <option key={x.key} value={x.key}>{x.label}</option>)}
+                      </select>
+
+                      {/* Категория — свободная строка: список подсказывает то, что
+                          уже заведено в бренде, но вписать можно и своё. */}
+                      <input
+                        list="placement-categories"
+                        defaultValue={localProduct.category || ''}
+                        disabled={!!placing}
+                        placeholder="категория"
+                        onBlur={e => {
+                          const v = e.target.value.trim();
+                          if (v !== (localProduct.category || '')) savePlacement({ category: v }, 'category');
+                        }}
+                        style={selectStyle} />
+                      <datalist id="placement-categories">
+                        {categories.map(c => <option key={c} value={c} />)}
+                      </datalist>
+                    </div>
+
+                    {!localProduct.set && (
+                      <div style={{ fontSize: 11, color: '#c0392b', marginTop: 6, lineHeight: 1.45 }}>
+                        Без сета товар не попадает в каталог по сетам — его не видно ни в выгрузках, ни на витрине.
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {images.length > 1 && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
