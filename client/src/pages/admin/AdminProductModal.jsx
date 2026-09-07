@@ -9,6 +9,13 @@ import { getImageFile, prefetchImageFile, saveImageFiles } from '../../utils/sav
 import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
 
+// Прайсы, которые комплект складывает по деталям. Порядок тот же, что в шапке.
+const KIT_TIERS = [
+  { key: 'price',          label: 'Розница'   },
+  { key: 'priceWholesale', label: 'Опт'       },
+  { key: 'priceDealer',    label: 'Дилерская' },
+];
+
 const NO_PHOTO = '/logos/no-photo.png';
 
 // Поля блока «Размещение в каталоге»: одинаковые селект и ввод, крупные —
@@ -393,10 +400,31 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     }
   };
 
+  // Комплект стоит столько, сколько стоят его детали. Считаем сумму прямо здесь,
+  // а не ждём ближайшего сохранения: у заведённых раньше комплектов в базе лежит
+  // цена, проставленная руками, — обычно это цена одной детали.
+  const kitSums = (() => {
+    const parts = localProduct.kitParts || [];
+    if (!localProduct.isKit || localProduct.kitType === 'independent' || !parts.length) return null;
+    if (parts.some(part => !part.product)) return null;   // деталь потеряна — не выдумываем
+    const by = field => parts.reduce((sum, part) => sum + ((part.product?.[field]) || 0) * (part.qty || 1), 0);
+    return Object.fromEntries(KIT_TIERS.map(tier => [tier.key, by(tier.key)]));
+  })();
+
+  // Пустой прайс деталей цену комплекта не заменяет — ровно как на сервере
+  // (server/lib/kits.js): нечего складывать, значит цена остаётся ручной.
+  const kitPrice = field => (kitSums && kitSums[field] > 0 ? kitSums[field] : product[field]);
+
+  // Цену в базе пересчитывает сохранение. Пока его не было, каталог, PDF и посты
+  // показывают прежнюю цифру — про это честно предупреждаем.
+  const kitPriceStale = !!kitSums && KIT_TIERS.some(
+    tier => kitSums[tier.key] > 0 && kitSums[tier.key] !== (product[tier.key] || 0),
+  );
+
   const prices = [
-    { label: 'Розничная',     value: product.price },
-    { label: 'Оптовая',       value: product.priceWholesale },
-    { label: 'Дилерская',     value: product.priceDealer },
+    { label: 'Розничная',     value: kitPrice('price') },
+    { label: 'Оптовая',       value: kitPrice('priceWholesale') },
+    { label: 'Дилерская',     value: kitPrice('priceDealer') },
     // Себестоимость — только владельцу
     ...(user?.role === 'owner'
       ? [{ label: 'Себестоимость', value: product.priceCost, sign: costSignOf(product) }]
@@ -829,7 +857,17 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     <div style={{ ...cardTitle, marginBottom: 4 }}>Цены на сайте</div>
                     <div style={{ fontSize: 12, color: UI.label, marginBottom: 12 }}>
                       их показывают каталог, PDF и посты
+                      {kitSums && ' · сумма по деталям комплекта'}
                     </div>
+                    {kitPriceStale && (
+                      <div style={{
+                        background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10,
+                        padding: '8px 11px', marginBottom: 12, fontSize: 11.5, color: '#9a3412', lineHeight: 1.5,
+                      }}>
+                        В базе пока прежняя цена — каталог, PDF и посты покажут её.
+                        Сохраните карточку, чтобы записать сумму по деталям.
+                      </div>
+                    )}
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(auto-fit, minmax(150px,1fr))', gap: 10 }}>
                       {prices.map(p => (
                         <div key={p.label} style={{ background: '#f8fafc', border: `1px solid ${UI.lineSoft}`, borderRadius: 12, padding: '10px 14px' }}>
@@ -1123,7 +1161,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       ⚠️ Не хватает деталей для сборки комплекта
                     </div>
                   )}
-                  <div style={{ display: 'grid', gap: 10, gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                  <div style={{ display: 'grid', gap: 10, gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(360px, 1fr))' }}>
                     {localProduct.kitParts.map((part, i) => {
                       const p = part.product;
                       if (!p) return null;
@@ -1151,11 +1189,22 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                               {loadingPart === p._id ? 'Открываем…' : <>{available} шт{isMissing && ` (нужно ${needed})`}</>}
                             </div>
                           </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>
-                              {p.price?.toLocaleString('ru')} {signOf(p)}
-                            </div>
-                            {needed > 1 && <div style={{ fontSize: 11, color: UI.muted, marginTop: 2 }}>× {needed} шт</div>}
+                          {/* Деньги по детали — все три прайса, каждый уже умножен на
+                              количество в комплекте: так столбец сходится с итогом. */}
+                          <div style={{ flexShrink: 0, minWidth: 132 }}>
+                            {KIT_TIERS.map(tier => (
+                              <div key={tier.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0' }}>
+                                <span style={{ fontSize: 11.5, color: UI.muted }}>{tier.label}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: UI.ink, whiteSpace: 'nowrap' }}>
+                                  {((p[tier.key] || 0) * needed).toLocaleString('ru')} {signOf(p)}
+                                </span>
+                              </div>
+                            ))}
+                            {needed > 1 && (
+                              <div style={{ fontSize: 10.5, color: UI.muted, marginTop: 3, textAlign: 'right' }}>
+                                × {needed} шт в комплекте
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -1179,11 +1228,10 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                             {partsStock.toLocaleString('ru')} шт
                           </span>
                         </div>
-                        {[
-                          { key: 'price',          label: 'Розница'   },
-                          { key: 'priceWholesale', label: 'Опт'       },
-                          { key: 'priceDealer',    label: 'Дилерская' },
-                        ].map(tier => (
+                        <div style={{ fontSize: 12.5, color: hasMissing ? UI.red : '#16a34a', fontWeight: 700, marginBottom: 2 }}>
+                          Итого за комплект
+                        </div>
+                        {KIT_TIERS.map(tier => (
                           <div key={tier.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
                             <span style={{ fontSize: 12.5, color: UI.muted }}>{tier.label}</span>
                             <span style={{ fontSize: 14, fontWeight: 700, color: UI.ink }}>
