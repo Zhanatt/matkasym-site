@@ -289,7 +289,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     try {
       // Список отдаёт карточку кратко (одно фото, две характеристики), поэтому
       // копию собираем из полного товара, а не из того, что пришло в списке.
-      const src = (await adminGetProduct(src._id)).data || localProduct;
+      const src = (await adminGetProduct(localProduct._id)).data || localProduct;
       const copy = {
         name:             (src.name     || '') + ' - копия',
         fullName:         (src.fullName || '') + ' - копия',
@@ -324,7 +324,8 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
       const res = await adminCreateProduct(copy);
       document.body.style.overflow = '';
       navigate(`/admin/products/${res.data._id}/edit`, { replace: true });
-    } catch {
+    } catch (e) {
+      alert('Ошибка: ' + (e.response?.data?.error || e.message));
       setCopying(false);
     }
   };
