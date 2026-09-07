@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   adminGetProduct, adminCreateProduct, adminUpdateProduct,
@@ -455,6 +455,22 @@ export default function AdminProductForm() {
     try { await adminCreateCustomCategory({ value, label }); } catch {}
   };
 
+  // Зависимый комплект с деталями цены себе не выбирает: сервер складывает их
+  // по составу (server/lib/kits.js), а руками введённое всё равно перезатрётся.
+  const kitPriced = !!form.isKit && form.kitType !== 'independent' && (form.kitParts?.length > 0);
+
+  // Запираем не все цены разом, а только те, что реально есть у деталей.
+  // У детали прайс заполнен не всегда: пустую сумму сервер не пишет, и такую
+  // цену комплекта по-прежнему ставят руками.
+  const kitPartSums = useMemo(() => {
+    if (!kitPriced) return {};
+    const sum = field => (form.kitParts || []).reduce((n, part) => {
+      const info = typeof part.product === 'object' && part.product ? part.product : null;
+      return n + ((info?.[field]) || 0) * (part.qty || 1);
+    }, 0);
+    return { price: sum('price'), priceWholesale: sum('priceWholesale'), priceDealer: sum('priceDealer') };
+  }, [kitPriced, form.kitParts]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isNew && (!id || id === 'undefined' || id === 'null')) {
@@ -717,6 +733,10 @@ export default function AdminProductForm() {
             onChange={patch => setForm(f => ({ ...f, ...patch }))}
             currentId={id}
             currency={CURRENCY_SIGN[form.currency] || 'сом'}
+            meta={{
+              brand: form.brand, set: form.set, setLevel: form.setLevel,
+              category: form.category, currency: form.currency,
+            }}
           />
         </Card>
 
@@ -915,18 +935,28 @@ export default function AdminProductForm() {
                   </div>
                 </div>
               )}
-              <div className="admin-form-group">
-                <label>Оптовая</label>
-                <input type="number" min="0" value={form.priceWholesale} onChange={e => set('priceWholesale', e.target.value)} placeholder="0" />
-              </div>
-              <div className="admin-form-group">
-                <label>Дилерская</label>
-                <input type="number" min="0" value={form.priceDealer} onChange={e => set('priceDealer', e.target.value)} placeholder="0" />
-              </div>
-              <div className="admin-form-group">
-                <label>Розничная</label>
-                <input type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} placeholder="0" />
-              </div>
+              {[
+                { key: 'priceWholesale', label: 'Оптовая'   },
+                { key: 'priceDealer',    label: 'Дилерская' },
+                { key: 'price',          label: 'Розничная' },
+              ].map(f => (
+                <div className="admin-form-group" key={f.key}>
+                  <label>
+                    {f.label}
+                    {kitPartSums[f.key] > 0 && <span style={{ fontSize: 10, color: '#888', fontWeight: 400 }}> (по деталям)</span>}
+                  </label>
+                  <input type="number" min="0" value={form[f.key]} onChange={e => set(f.key, e.target.value)}
+                    placeholder="0" readOnly={kitPartSums[f.key] > 0}
+                    title={kitPartSums[f.key] > 0 ? 'Считается как сумма деталей комплекта' : undefined}
+                    style={kitPartSums[f.key] > 0 ? { background: '#f2f4f7', color: '#6b7684', cursor: 'not-allowed' } : undefined} />
+                </div>
+              ))}
+            </div>
+          )}
+          {!form.priceUndefined && kitPriced && (
+            <div style={{ marginTop: 10, fontSize: 12, color: '#6b7684' }}>
+              Цены зависимого комплекта складываются из деталей и пересчитываются при сохранении —
+              состав правят в блоке «Комплект». Прайс, которого у деталей нет, остаётся ручным.
             </div>
           )}
         </Card>

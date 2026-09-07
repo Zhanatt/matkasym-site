@@ -1161,14 +1161,39 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       );
                     })}
                   </div>
-                  {localProduct.kitType !== 'independent' && (
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, color: hasMissing ? UI.red : '#16a34a', fontWeight: 700 }}>Итого</span>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: UI.ink }}>
-                        {localProduct.kitParts.reduce((sum, part) => sum + (part.product?.price || 0) * (part.qty || 1), 0).toLocaleString('ru')} {signOf(localProduct)}
-                      </span>
-                    </div>
-                  )}
+                  {/* Свод по деталям. У независимого комплекта его не показывают:
+                      там детали продаются порознь и в сумму не складываются. */}
+                  {localProduct.kitType !== 'independent' && (() => {
+                    const sumBy = field => localProduct.kitParts
+                      .reduce((sum, part) => sum + ((part.product?.[field]) || 0) * (part.qty || 1), 0);
+                    const partsStock = localProduct.kitParts
+                      .reduce((sum, part) => sum + ((part.product?.stock) || 0), 0);
+                    const sign = signOf(localProduct);
+                    return (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 13, color: hasMissing ? UI.red : '#16a34a', fontWeight: 700 }}>
+                            Всего деталей на складе
+                          </span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>
+                            {partsStock.toLocaleString('ru')} шт
+                          </span>
+                        </div>
+                        {[
+                          { key: 'price',          label: 'Розница'   },
+                          { key: 'priceWholesale', label: 'Опт'       },
+                          { key: 'priceDealer',    label: 'Дилерская' },
+                        ].map(tier => (
+                          <div key={tier.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
+                            <span style={{ fontSize: 12.5, color: UI.muted }}>{tier.label}</span>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: UI.ink }}>
+                              {sumBy(tier.key).toLocaleString('ru')} {sign}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}

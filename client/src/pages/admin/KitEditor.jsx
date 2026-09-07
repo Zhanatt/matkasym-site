@@ -1,11 +1,23 @@
 // Состав комплекта: карточка-комплект (стул ANTILOP) собирается из карточек-деталей
 // (сиденье, ножки, поднос). Раньше состав прописывали скриптом — здесь то же самое
 // руками: поиск по каталогу, количество на комплект, удаление.
+//
+// Отсюда же заводят материнскую карточку — отдельный комплект, который соберёт
+// выбранные детали в себе и посчитает по ним остаток и три цены.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { adminGetProducts } from '../../api/index';
+import { useNavigate } from 'react-router-dom';
+import { adminGetProducts, adminCreateProduct } from '../../api/index';
 import { cloudinaryOpt } from '../../utils/drive';
 
 const NO_PHOTO = '/logos/no-photo.png';
+
+// Три прайса, которые складываются по деталям. Себестоимости здесь нет: её
+// видит только владелец, и в состав комплекта она не входит.
+const PRICE_TIERS = [
+  { key: 'price',          label: 'Розница'   },
+  { key: 'priceWholesale', label: 'Опт'       },
+  { key: 'priceDealer',    label: 'Дилерская' },
+];
 
 const partId = part => String(part?.product?._id || part?.product || '');
 
@@ -13,13 +25,20 @@ const partId = part => String(part?.product?._id || part?.product || '');
 // (сразу после добавления) — карточке нужен объект, серверу id.
 const partInfo = part => (typeof part?.product === 'object' && part.product ? part.product : null);
 
-export default function KitEditor({ value, onChange, currentId, currency = 'сом' }) {
+export default function KitEditor({ value, onChange, currentId, currency = 'сом', meta = {} }) {
   const { isKit = false, kitType = 'dependent', kitParts = [] } = value || {};
   const [picking, setPicking] = useState(false);
   const [query, setQuery]     = useState('');
   const [found, setFound]     = useState([]);
   const [loading, setLoading] = useState(false);
   const timer = useRef(null);
+  const navigate = useNavigate();
+
+  // Материнская карточка
+  const [motherName, setMotherName] = useState('');
+  const [spawning, setSpawning]     = useState(false);
+  const [spawned, setSpawned]       = useState(null);
+  const [spawnError, setSpawnError] = useState('');
 
   const chosen = useMemo(() => new Set(kitParts.map(partId)), [kitParts]);
 
@@ -62,10 +81,50 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
     return counts.some(c => c === null) ? null : Math.min(...counts);
   }, [kitParts, kitType]);
 
-  const partsSum = useMemo(() => kitParts.reduce((sum, part) => {
-    const info = partInfo(part);
-    return sum + (info?.price || 0) * (part.qty || 1);
-  }, 0), [kitParts]);
+  // Сумма деталей по каждому прайсу: цена детали на её количество в комплекте.
+  const partsSums = useMemo(() => Object.fromEntries(PRICE_TIERS.map(tier => [
+    tier.key,
+    kitParts.reduce((sum, part) => sum + ((partInfo(part)?.[tier.key]) || 0) * (part.qty || 1), 0),
+  ])), [kitParts]);
+
+  // Сколько деталей лежит на складе всего. Это справка, а не остаток комплекта:
+  // комплектов соберётся столько, сколько даст самая дефицитная деталь.
+  const partsStock = useMemo(
+    () => kitParts.reduce((sum, part) => sum + ((partInfo(part)?.stock) || 0), 0),
+    [kitParts],
+  );
+
+  // Материнская карточка — новый комплект из тех же деталей. Текущую карточку
+  // не трогаем: пользователь сам решит, оставлять ли состав и здесь.
+  const spawnMother = async () => {
+    const name = motherName.trim();
+    if (!name || !kitParts.length || spawning) return;
+    setSpawning(true);
+    setSpawnError('');
+    try {
+      const { data } = await adminCreateProduct({
+        name,
+        fullName: name,
+        isKit: true,
+        kitType,
+        kitParts: kitParts.map(part => ({ product: partId(part), qty: Math.max(1, Number(part.qty) || 1) })),
+        // Цены модель требует при создании, поэтому кладём посчитанные суммы
+        // сразу — сервер всё равно пересчитает их по составу.
+        ...partsSums,
+        brand:    meta.brand    || '',
+        set:      meta.set      || '',
+        setLevel: meta.setLevel || '',
+        category: meta.category || 'other',
+        ...(meta.currency ? { currency: meta.currency } : {}),
+      });
+      setSpawned(data);
+      setMotherName('');
+    } catch (e) {
+      setSpawnError(e.response?.data?.error || e.message || 'Не удалось создать карточку');
+    } finally {
+      setSpawning(false);
+    }
+  };
 
   return (
     <div>
@@ -187,18 +246,80 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
           {kitParts.length > 0 && (
             <div style={{ marginTop: 14, padding: '10px 12px', background: '#f7f8fa', borderRadius: 8,
                           fontSize: 12.5, color: '#3d4653', lineHeight: 1.7 }}>
-              {kitType === 'dependent' && (
-                <div>
-                  Соберётся комплектов: <b>{buildable === null ? '—' : buildable}</b>
-                  <span style={{ color: '#98a2af' }}> — по самой дефицитной детали, пересчитается при сохранении</span>
+              {/* У независимого комплекта ни остатка, ни цены по деталям не бывает:
+                  доску и крючки покупают порознь, комплект — витрина. */}
+              {kitType === 'dependent' ? (
+                <>
+                  <div>
+                    Соберётся комплектов: <b>{buildable === null ? '—' : buildable}</b>
+                    <span style={{ color: '#98a2af' }}> — по самой дефицитной детали, пересчитается при сохранении</span>
+                  </div>
+                  <div>
+                    Всего деталей на складе: <b>{partsStock.toLocaleString('ru')} шт</b>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 6, paddingTop: 6,
+                                borderTop: '1px solid #e6e9ee' }}>
+                    {PRICE_TIERS.map(tier => (
+                      <span key={tier.key}>
+                        {tier.label}: <b>{partsSums[tier.key].toLocaleString('ru')} {currency}</b>
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ color: '#98a2af' }}>
+                    Суммы деталей подставятся в цены комплекта при сохранении.
+                    Нулевую сумму не подставляем — такую цену комплекта ставят руками.
+                  </div>
+                  <div style={{ color: '#98a2af' }}>
+                    Детали пропадут из каталога: они продаются в составе комплекта, а не сами по себе.
+                  </div>
+                </>
+              ) : (
+                <div style={{ color: '#98a2af' }}>
+                  Детали останутся в каталоге: у независимого комплекта их покупают и порознь.
+                  Остаток и цена по ним не считаются.
                 </div>
               )}
-              <div>Детали суммой: <b>{partsSum.toLocaleString('ru')} {currency}</b></div>
-              <div style={{ color: '#98a2af' }}>
-                {kitType === 'dependent'
-                  ? 'Детали пропадут из каталога: они продаются в составе комплекта, а не сами по себе.'
-                  : 'Детали останутся в каталоге: у независимого комплекта их покупают и порознь.'}
-              </div>
+            </div>
+          )}
+
+          {kitParts.length > 0 && (
+            <div style={{ marginTop: 12, border: '1.5px dashed #b9c4d2', borderRadius: 8, padding: 12 }}>
+              {spawned ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#2f9e44' }}>
+                    ✓ Материнская карточка «{spawned.name}» создана
+                  </span>
+                  <button type="button" onClick={() => navigate(`/admin/products/${spawned._id}/edit`)}
+                    style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                             background: '#3463A3', color: '#fff', fontWeight: 600, fontSize: 13 }}>
+                    Открыть →
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>Материнская карточка</div>
+                  <div style={{ fontSize: 11.5, color: '#6b7684', lineHeight: 1.5, marginBottom: 9 }}>
+                    Отдельная карточка, которая соберёт эти детали в себе: остаток и три цены
+                    посчитаются по ним. Текущую карточку она не меняет — состав останется и здесь.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <input value={motherName} onChange={e => setMotherName(e.target.value)}
+                      placeholder="Название материнской карточки"
+                      style={{ flex: '1 1 220px', minWidth: 0, padding: '7px 10px',
+                               border: '1.5px solid #e3e7ec', borderRadius: 6, fontSize: 13 }} />
+                    <button type="button" onClick={spawnMother} disabled={spawning || !motherName.trim()}
+                      style={{ padding: '7px 14px', borderRadius: 8, cursor: motherName.trim() ? 'pointer' : 'default',
+                               border: '1.5px solid #3463A3', background: '#fff', color: '#3463A3',
+                               fontWeight: 600, fontSize: 13, opacity: spawning || !motherName.trim() ? 0.5 : 1 }}>
+                      {spawning ? 'Создаём…' : '+ Создать из этих деталей'}
+                    </button>
+                  </div>
+                  {spawnError && (
+                    <div style={{ marginTop: 7, fontSize: 12, color: '#d64545' }}>{spawnError}</div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </>

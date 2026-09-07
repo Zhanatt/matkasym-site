@@ -23,7 +23,10 @@ const ProductLaunch  = require('../models/ProductLaunch');
 const SalesRecord  = require('../models/SalesRecord');
 const SalesDoc     = require('../models/SalesDoc');
 const SalesUpload  = require('../models/SalesUpload');
-const { applyPartStatuses, recalcKitStock } = require('../lib/kits');
+const { applyPartStatuses, recalcKit } = require('../lib/kits');
+// Что показываем про деталь комплекта: свод по трём прайсам собирают и карточка,
+// и редактор состава, поэтому дилерская цена нужна здесь наравне с оптовой.
+const KIT_PART_FIELDS = 'name fullName price priceWholesale priceDealer stock images';
 const cloudinary   = require('../lib/cloudinary');
 const { uploadRawBuffer, publicIdFromUrl } = cloudinary;
 const { sendBufferStockAlerts, sendTelegramMessage, sendTelegramPhoto } = require('../lib/telegram');
@@ -372,7 +375,7 @@ router.get('/products', async (req, res) => {
     // утяжеляет ответ: на сете под сотню позиций это сотни лишних килобайт.
     const query = brief === '1'
       ? Product.find(filter).select(BRIEF_FIELDS).slice('images', 1).slice('specs', 2).lean()
-      : Product.find(filter).populate('kitParts.product', 'name fullName price priceWholesale stock images');
+      : Product.find(filter).populate('kitParts.product', KIT_PART_FIELDS);
 
     const [products, total] = await Promise.all([
       query.sort(sortObj).skip((page - 1) * limit).limit(Number(limit)),
@@ -489,7 +492,7 @@ router.get('/products/:id', async (req, res) => {
   if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
   try {
     const product = await Product.findById(req.params.id)
-      .populate('kitParts.product', 'name fullName price priceWholesale stock images');
+      .populate('kitParts.product', KIT_PART_FIELDS);
     if (!product) return res.status(404).json({ error: 'Товар не найден' });
     res.json(product);
   } catch (e) {
@@ -544,6 +547,18 @@ router.patch('/products/:id/buffer-stock', async (req, res) => {
 router.post('/products', editor, async (req, res) => {
   try {
     const p = await Product.create(req.body);
+
+    // Материнскую карточку заводят сразу с деталями. Правку состава разбирает
+    // PATCH, а создание до сих пор не разбирал никто: детали оставались в
+    // каталоге, а у комплекта висели нули вместо остатка и цен.
+    let created = p;
+    if (p.isKit && p.kitParts?.length) {
+      await applyPartStatuses(p._id, [], p.kitParts, p.isKit, p.kitType);
+      // recalcKit пишет мимо документа (updateOne), поэтому в ответ отдаём
+      // перечитанную карточку — иначе клиент увидит нули, которые уже неверны.
+      if (await recalcKit(p)) created = await Product.findById(p._id);
+    }
+
     await ProductLog.create({
       action: 'added',
       productId: p._id,
@@ -561,7 +576,7 @@ router.post('/products', editor, async (req, res) => {
       changedBy: { id: req.user._id, name: req.user.name, email: req.user.email },
     });
 
-    res.status(201).json(p);
+    res.status(201).json(created);
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
@@ -633,7 +648,7 @@ router.patch('/products/:id', editor, async (req, res) => {
     const kitTouched = req.body.kitParts !== undefined || req.body.isKit !== undefined || req.body.kitType !== undefined;
     if (kitTouched && (old.kitParts?.length || p.kitParts?.length || old.isKit !== p.isKit)) {
       await applyPartStatuses(p._id, old.kitParts, p.kitParts, p.isKit, p.kitType);
-      await recalcKitStock(p);
+      await recalcKit(p);
     }
 
     // Товар сохранён — теперь можно убирать из Cloudinary фото, которых в нём не осталось.
