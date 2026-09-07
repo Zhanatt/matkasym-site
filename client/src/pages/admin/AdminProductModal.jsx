@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { canEditCatalog } from '../../constants/roles';
 import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddStock, adminSetBufferStock, adminGetProduct, adminGetBrands, adminGetFacets, adminUpdateProduct } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
-import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
+import { getImageFile, prefetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
 
@@ -372,9 +372,20 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     }
   };
 
+  // Файл текущего фото тянем заранее, ещё до нажатия «скачать». На iOS шторка
+  // «Поделиться» открывается, только пока свежо касание пользователя: если между
+  // нажатием и вызовом успела пройти загрузка на пару мегабайт, система считает
+  // жест протухшим и молча подсовывает обычное скачивание — в «Файлы» и «Диск»,
+  // мимо галереи. С готовым файлом вызов происходит сразу.
+  useEffect(() => {
+    if (!img || img === NO_PHOTO) return;
+    prefetchImageFile(img, `${product.name || 'photo'}_${imgIdx + 1}`);
+  }, [img, imgIdx, product.name]);
+
   const downloadImage = async (url, index) => {
     try {
-      const file = await fetchImageFile(url, `${product.name || 'photo'}_${index + 1}`);
+      const file = await getImageFile(url, `${product.name || 'photo'}_${index + 1}`);
+      if (!file) throw new Error('нет файла');
       await saveImageFiles([file]);
     } catch {
       window.open(url, '_blank');

@@ -3,10 +3,18 @@
 // folder — so on touch devices we hand the file to the system share sheet instead:
 // there it's "Save to Google Photos" on Android and "Save Image" on iOS.
 
-// Strip Cloudinary transforms to get the original full-resolution URL
+// Убираем трансформации Cloudinary — нужен оригинал во весь размер, но просим
+// его сжать: f_auto отдаёт формат, который понимает браузер, q_auto подбирает
+// качество. Размер картинки не меняется, а весит она в разы меньше исходного
+// PNG — это решает не только ожидание, но и главное: на iOS кнопка «Поделиться»
+// работает лишь пока свежо касание пользователя, и загрузка на три мегабайта
+// съедала это время. Из-за неё телефон предлагал «Файлы» и «Диск» вместо
+// «Сохранить изображение».
 export const imgOriginal = (url) => {
   if (!url) return url;
-  if (url.includes('cloudinary.com')) return url.replace(/\/upload\/[^/]+\//, '/upload/');
+  if (url.includes('cloudinary.com')) {
+    return url.replace(/\/upload\/[^/]+\//, '/upload/').replace('/upload/', '/upload/f_auto,q_auto:good/');
+  }
   return url;
 };
 
@@ -32,6 +40,26 @@ const saveToDisk = (file) => {
   a.click();
   // Revoking straight away can cut the download short in some browsers
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+};
+
+// Держим уже скачанные файлы: карточку открывают, смотрят фото и только потом
+// жмут «скачать». К этому моменту файл обычно уже лежит здесь, и «Поделиться»
+// вызывается сразу — жест не успевает протухнуть.
+const cache = new Map();
+
+// Больше держать незачем: за раз смотрят одну карточку, а файлы это байты
+// в памяти вкладки. Выкидываем самый старый.
+const CACHE_MAX = 12;
+
+export const prefetchImageFile = (url, base) => {
+  if (!url || cache.has(url)) return;
+  cache.set(url, fetchImageFile(url, base).catch(() => { cache.delete(url); return null; }));
+  if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+};
+
+export const getImageFile = (url, base) => {
+  if (!cache.has(url)) prefetchImageFile(url, base);
+  return cache.get(url) || fetchImageFile(url, base);
 };
 
 // Phones get the share sheet, desktop keeps the plain download

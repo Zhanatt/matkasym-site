@@ -4,7 +4,7 @@ import { adminGetProduct, adminTZPdf } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 import { CATEGORIES } from '../../config/categorySpecs';
 import { cloudinaryOpt } from '../../utils/drive';
-import { fetchImageFile, saveImageFiles } from '../../utils/saveImage';
+import { fetchImageFile, getImageFile, prefetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { CRM_STAGES } from './AdminProductForm';
 import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
@@ -57,7 +57,7 @@ export default function AdminProductView() {
 
   const downloadImage = async (url, index) => {
     try {
-      const file = await fetchImageFile(url, `${product.name || 'photo'}_${index + 1}`);
+      const file = await getImageFile(url, `${product.name || 'photo'}_${index + 1}`);
       await saveImageFiles([file]);
     } catch {
       window.open(url, '_blank');
