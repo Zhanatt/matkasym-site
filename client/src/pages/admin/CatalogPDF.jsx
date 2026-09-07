@@ -384,7 +384,32 @@ const CATEGORY_LABELS = {
   'ladder':               'стремянка',
   'industrial-shelf':     'промышленный стеллаж',
   'storage-tumba':        'тумба',
-  'other':                'товар для дома',
+  'ac-basket':            'корзина для кондиционера',
+  'ac-mount':             'кронштейн для кондиционера',
+  'appliances':           'бытовая техника',
+  'clothing-racks':       'вешалка для одежды',
+  'cosmetics-storage':    'хранение косметики',
+  'electric-panel-floor': 'напольный электрощит',
+  'electric-panel-mount': 'настенный электрощит',
+  'electric-panel-outdoor':'уличный электрощит',
+  'electric-panel-plumbing':'сантехнический щит',
+  'fan-barrier':          'фан-барьер',
+  'floor-hanger':         'напольная вешалка',
+  'home-decor':           'декор для дома',
+  'ironing-board-ext':    'насадка для гладильной доски',
+  'jewelry-storage':      'хранение украшений',
+  'kids':                 'детские товары',
+  'mosquito-nets':        'москитная сетка',
+  'play-tents':           'игровая палатка',
+  'shelf-corner':         'угловая полка',
+  'shoe-racks':           'полка для обуви',
+  'stools':               'табурет',
+  'storage':              'хранение',
+  'tv-mount':             'кронштейн для ТВ',
+  'waste-bin':            'урна',
+  // «other» — это «категорию не выбрали». Печатать вместо неё «товар для дома»
+  // значит выдумывать: в SHAAR так подписывались уличные урны. Оставляем пусто.
+  'other':                '',
 };
 
 // ── Cover images (Cloudinary URLs with optimization for react-pdf) ───────────
@@ -437,7 +462,12 @@ const SPEC_ROWS = 4;
 function ProductCard({ product, priceType, currency = 'сом' }) {
   const imageUrl = pdfImg(product.images?.[0]);
   const noPhoto  = !imageUrl;
-  const catLabel = CATEGORY_LABELS[product.category] || 'товар для дома';
+  // Над названием — категория товара. Словарь ниже переводит старые
+  // слаги («bbq-grill» → «мангал»), но большинство категорий давно записаны
+  // по-русски и в словаре их нет. Раньше всё незнакомое становилось «товаром
+  // для дома»: сортировочная урна в каталоге SHAAR подписывалась именно так.
+  // Своя категория товара всегда точнее любой замены.
+  const catLabel = CATEGORY_LABELS[product.category] || product.category || '';
 
   // Build spec list (dimensions + color + specs), max SPEC_ROWS
   const rawSpecs = (product.specs || []).filter(s => s.value);
