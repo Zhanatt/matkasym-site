@@ -14,9 +14,10 @@ const { uploadRawBuffer } = require('./cloudinary');
 const { sendBufferStockAlerts } = require('./telegram');
 const { zoneOf } = require('./bufferZones');
 const {
-  BASES, BASE_KEYS, isBaseKey, parseStockRows, looksLikeGroup, detectColumns, findSkuColumn,
-  STOCK_SUM_BASES, normName, normSku, normNameLoose, toInt, crossedBuffer,
+  BASES, BASE_KEYS, isBaseKey, parseStockRows, parseTurnoverRows, looksLikeGroup, detectColumns, findSkuColumn,
+  STOCK_SUM_BASES, normName, normSku, normNameLoose, toInt, crossedBuffer, PRICE_TYPES,
 } = require('./stockBases');
+const { keyOfName } = require('./tubes');
 
 // ── Make-in: старый формат выгрузки ─────────────────────────────────────────
 // Шапка ищется по строке, где в колонке A стоит «Товар»:
@@ -72,6 +73,17 @@ function looksLikeMakein(rows) {
   return false;
 }
 
+// Похоже ли на оборотную ведомость по ТМЗ (отчёт склада трубопроката):
+// в шапке «Наименование» и группа «Сальдо на конец периода».
+function looksLikeTurnover(rows) {
+  for (let ri = 0; ri < Math.min(rows.length, 20); ri++) {
+    const row = rows[ri] || [];
+    if (String(row[0] || '').trim().toLowerCase() !== 'наименование') continue;
+    return row.some(c => /сальдо\s+на\s+конец/i.test(String(c || '')));
+  }
+  return false;
+}
+
 /**
  * Какой базе принадлежит выгрузка. Нужно там, где базу не выбирают руками
  * (файл, присланный боту): у каждой базы своя шапка и свои склады.
@@ -85,6 +97,7 @@ function detectBase(rows) {
   if (detectColumns(rows, BASES.matkasym)) hit.push('matkasym');
   if (looksLikeMakein(rows))               hit.push('makein');
   if (detectColumns(rows, BASES.qtop))     hit.push('qtop');
+  if (looksLikeTurnover(rows))             hit.push('tubes');
   return hit.length === 1 ? hit[0] : '';
 }
 
@@ -111,7 +124,18 @@ async function applyStockUpload(buffer, baseKey, user) {
 
   // Make-in разбираем прежним парсером — формат его выгрузки не менялся
   let stockMap, warehouses = [], looseMap = new Map(), skuMap = new Map(), hasSku = false;
-  if (BASES[baseKey].legacyParser) {
+  // Трубы связываются по геометрии («Круглая|25|0.9»), а не по имени: в 1С они
+  // называются «ПФ Труба Ф25*0,9мм», в каталоге — «Труба круглая 25×0,9».
+  const tubeMap = new Map();
+  if (BASES[baseKey].report === 'turnover') {
+    ({ stockMap } = parseTurnoverRows(rows, normName));
+    warehouses = ['Склад трубопроката'];
+    for (const row of stockMap.values()) {
+      const key = keyOfName(row.name);
+      if (key && !tubeMap.has(key)) tubeMap.set(key, row);
+      if (!looseMap.has(normNameLoose(row.name))) looseMap.set(normNameLoose(row.name), row);
+    }
+  } else if (BASES[baseKey].legacyParser) {
     const { colOsn, colKomm, minOsn, minKomm, dataStart, skuCol } = detectStockColumns(rows);
     const hasBufferCols = minOsn !== null || minKomm !== null;
     hasSku = skuCol >= 0;
@@ -138,14 +162,23 @@ async function applyStockUpload(buffer, baseKey, user) {
     ({ stockMap, looseMap, skuMap, hasSku, warehouses } = parseStockRows(rows, baseKey, normName));
   }
 
-  const products = await Product.find({}, '_id fullName name sku skuByBase category price priceWholesale stock stockByBase inBase bufferStock bufferByBase brand supplier.company isKit kitType kitParts');
+  // База труб обслуживает только свой сет: остальной каталог она не видит и,
+  // главное, не обнуляет — иначе один файл на 20 строк прошёлся бы по всем 1442.
+  const scope = BASES[baseKey].set ? { set: BASES[baseKey].set } : {};
+  const products = await Product.find(scope, '_id fullName name sku skuByBase category price priceWholesale priceCost stock stockByBase inBase bufferStock bufferByBase brand supplier.company isKit kitType kitParts');
 
   // Товар из выгрузки ищем по артикулу, а не по названию: в разных базах 1С одну
   // и ту же позицию пишут по-разному («Эко мангал R10» / «Эко мангал R 10»), и остаток
   // уезжал на карточку-дубликат. Имя остаётся запасным вариантом — по нему связь
   // и устанавливается в первый раз, пока артикул у товара ещё не записан.
   let bySku = 0, byName = 0, byLoose = 0, skuLearned = 0;
+  let byTube = 0;
   const findRow = p => {
+    if (tubeMap.size) {
+      const key = keyOfName(p.fullName || p.name || '');
+      const r = key && tubeMap.get(key);
+      if (r) { byTube++; return r; }
+    }
     if (hasSku) {
       const own = normSku(p.skuByBase?.[baseKey]);
       if (own) { const r = skuMap.get(own); if (r) { bySku++; return r; } }
@@ -159,7 +192,7 @@ async function applyStockUpload(buffer, baseKey, user) {
     if (loose) { byLoose++; return loose; }
     return undefined;
   };
-  let matched = 0, zeroed = 0, buffersUpdated = 0;
+  let matched = 0, zeroed = 0, buffersUpdated = 0, pricesUpdated = 0;
   const notFoundRows = [];
   const stockLogDocs = [];
   const bufferAlerts = [];
@@ -238,7 +271,22 @@ async function applyStockUpload(buffer, baseKey, user) {
         bufferAlerts.push({ name: p.fullName || p.name, sku: p.sku, stock: newStock, bufferStock: newBuffer, zone: zoneOf(p) });
       }
     }
+    // «Цена» оборотной ведомости — средняя себестоимость метра. Ноль не пишем:
+    // в ведомости он значит «за период не двигалось», а не «стало бесплатно».
+    const priceSet = {};
+    const priceField = BASES[baseKey].priceField;
+    if (row && priceField && row.price > 0) {
+      priceSet[`pricesByBase.${baseKey}.${priceField}`] = row.price;
+      const legacy = PRICE_TYPES[priceField]?.legacyField;
+      if (legacy && BASES[baseKey].country === 'KG') priceSet[legacy] = row.price;
+      pricesUpdated++;
+    }
+    // Единица учёта базы: остаток труб 1С ведёт в метрах, и «786 шт» на карточке
+    // читалось бы как 786 труб вместо 131.
+    if (row && BASES[baseKey].unit) priceSet.unit = BASES[baseKey].unit;
+
     return { updateOne: { filter: { _id: p._id }, update: { $set: {
+      ...priceSet,
       stock: newStock, inStock, stockStatus: inStock ? 'in_stock' : 'out_of_stock',
       bufferStock: newBuffer,
       [`bufferByBase.${baseKey}`]: bufByBase[baseKey],
@@ -332,7 +380,12 @@ async function applyStockUpload(buffer, baseKey, user) {
   const known = new Set();
   const knownLoose = new Set();
   const knownSku = new Set();
+  const knownTubes = new Set();
   for (const p of products) {
+    if (tubeMap.size) {
+      const k = keyOfName(p.fullName || p.name || '');
+      if (k) knownTubes.add(k);
+    }
     known.add(normName(p.fullName || p.name || ''));
     knownLoose.add(normNameLoose(p.fullName || p.name || ''));
     if (p.name) { known.add(normName(p.name)); knownLoose.add(normNameLoose(p.name)); }
@@ -348,6 +401,8 @@ async function applyStockUpload(buffer, baseKey, user) {
   const newItems = [];
   for (const [key, row] of stockMap) {
     if (known.has(key) || !row.stock) continue;
+    // Труба уже есть в каталоге под своим именем — «новой» её считать нельзя
+    if (tubeMap.size && knownTubes.has(keyOfName(row.name || ''))) continue;
     if (knownLoose.has(normNameLoose(row.name || key))) continue;
     if (row.sku && knownSku.has(normSku(row.sku))) continue;
     const rawName = row.name || key;
@@ -360,14 +415,15 @@ async function applyStockUpload(buffer, baseKey, user) {
   }
   newItems.sort((a, b) => b.stock - a.stock);
 
-  console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} (sku=${bySku} name=${byName} loose=${byLoose}) skuLearned=${skuLearned} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
+  console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} (sku=${bySku} name=${byName} loose=${byLoose} tube=${byTube}) prices=${pricesUpdated} skuLearned=${skuLearned} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
 
   return {
     success: true, base: baseKey, baseLabel: BASES[baseKey].label, warehouses,
     matched, zeroed, total: matched + zeroed, buffersUpdated, kitsUpdated, excelBase64,
     newItems,
     // Как именно сошлись товары — видно, работает ли связь по артикулу
-    matchedBy: { sku: bySku, name: byName, looseName: byLoose },
+    matchedBy: { sku: bySku, name: byName, looseName: byLoose, tube: byTube },
+    pricesUpdated, unit: BASES[baseKey].unit || 'шт',
     hasSkuColumn: hasSku, skuLearned,
   };
 }

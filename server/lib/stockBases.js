@@ -59,6 +59,25 @@ const BASES = {
       { group: /краски\s+и\s+растворители/i, warehouses: [/склад\s+сырья/i] },
     ],
   },
+  // Трубы лежат на своём складе трубопроката, и отчёт по ним другой —
+  // «Оборотная ведомость по ТМЗ»: остаток берётся из сальдо на конец периода,
+  // цена там же (средняя себестоимость метра), поэтому отдельных кнопок прайса
+  // у базы нет — остаток и цена приходят одним файлом.
+  //
+  // Остаток труб ведётся в метрах, а не в штуках: 26 113 м — это 4352
+  // шестиметровых хлыста, и на складе считают именно так.
+  tubes: {
+    key:        'tubes',
+    label:      'Matkasym Трубы',
+    country:    'KG',
+    currency:   'KGS',
+    priceTypes: [],
+    report:     'turnover',
+    unit:       'м',
+    set:        'dayar-tutuk',   // база обслуживает только сет труб
+    priceField: 'cost',          // «Цена» ведомости — средняя себестоимость метра
+    matchBy:    'tube',          // связь по геометрии, а не по имени
+  },
   qtop: {
     key:        'qtop',
     label:      'Matkasym KZ',
@@ -337,6 +356,68 @@ function parseStockRows(rows, baseKey, normName) {
 }
 
 /**
+ * Разбирает «Оборотную ведомость по ТМЗ» — отчёт по складу трубопроката.
+ *
+ * Шапка трёхэтажная и колонки в ней не на фиксированных местах:
+ *   строка N   — периоды:    «Наименование» | «ЕИ» | «Сальдо на начало периода» | «Сальдо на конец периода»
+ *   строка N+1 — стороны:    «Дебет» | «Кредит»
+ *   строка N+2 — показатели: «Количество» | «Цена» | «Сумма»
+ * Нужен дебет сальдо НА КОНЕЦ периода: это остаток на складе сегодня.
+ * Количество — метры, цена — средняя себестоимость метра.
+ *
+ * → { stockMap, rowsRead } — записи { stock, price, name }
+ */
+function parseTurnoverRows(rows, normName) {
+  const lower = v => String(v ?? '').trim().toLowerCase();
+
+  let headRow = -1;
+  for (let ri = 0; ri < Math.min(rows.length, 20); ri++) {
+    if (lower((rows[ri] || [])[0]) === 'наименование') { headRow = ri; break; }
+  }
+  if (headRow < 0) {
+    throw new Error('Не похоже на оборотную ведомость: не найдена строка шапки со словом «Наименование»');
+  }
+
+  // Границы группы «Сальдо на конец периода» — до следующей группы шапки
+  const head = rows[headRow] || [];
+  const groupCols = head.map((c, i) => (i > 0 && lower(c) ? i : -1)).filter(i => i > 0);
+  const gStart = groupCols.find(i => /сальдо\s+на\s+конец/.test(lower(head[i])));
+  if (gStart === undefined) throw new Error('В ведомости нет колонок «Сальдо на конец периода»');
+  const gEnd = groupCols.find(i => i > gStart) ?? head.length;
+
+  // Внутри неё — дебет (остаток), кредит игнорируем
+  const sides = rows[headRow + 1] || [];
+  let dStart = -1;
+  for (let c = gStart; c < gEnd; c++) if (lower(sides[c]) === 'дебет') { dStart = c; break; }
+  if (dStart < 0) throw new Error('В «Сальдо на конец периода» не найден «Дебет»');
+  let dEnd = gEnd;
+  for (let c = dStart + 1; c < gEnd; c++) if (lower(sides[c])) { dEnd = c; break; }
+
+  const metrics = rows[headRow + 2] || [];
+  let qtyCol = -1, priceCol = -1;
+  for (let c = dStart; c < dEnd; c++) {
+    if (qtyCol < 0   && lower(metrics[c]) === 'количество') qtyCol = c;
+    if (priceCol < 0 && lower(metrics[c]) === 'цена')       priceCol = c;
+  }
+  if (qtyCol < 0) throw new Error('В «Сальдо на конец периода» не найдена колонка «Количество»');
+
+  const stockMap = new Map();
+  let rowsRead = 0;
+  for (let i = headRow + 3; i < rows.length; i++) {
+    const row = rows[i] || [];
+    const name = String(row[0] ?? '').trim();
+    if (!name || /^итого/i.test(name)) continue;
+
+    // Метры округляем вниз: половину метра на складе не отпускают
+    const stock = Math.max(0, Math.floor(toNum(row[qtyCol])));
+    const price = priceCol >= 0 ? Math.round(toNum(row[priceCol]) * 100) / 100 : 0;
+    stockMap.set(normName(name), { stock, price, buffer: 0, name, raw: name, sku: '' });
+    rowsRead++;
+  }
+  return { stockMap, rowsRead, qtyCol, priceCol, headRow };
+}
+
+/**
  * Разбирает выгрузку прайса: ищет шапку (колонка с номенклатурой) и колонку нужного
  * типа цены по её названию из 1С. Формат прайсов у баз отличается, поэтому колонки
  * не зашиты, а ищутся — как и у остатков.
@@ -378,7 +459,7 @@ function parsePriceRows(rows, priceType, normName) {
 }
 
 module.exports = {
-  BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
+  BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, parseTurnoverRows, stripUnit, looksLikeGroup,
   normSku, normNameLoose, normName, toInt, crossedBuffer, detectColumns, findSkuColumn,
   COUNTRIES, basesOfCountry, STOCK_SUM_BASES,
   PRICE_TYPES, PRICE_TYPE_KEYS, isPriceType, currencyOf, CURRENCY_SIGN, signOf, fmtMoney,

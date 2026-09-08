@@ -50,6 +50,7 @@ const productSchema = new mongoose.Schema({
   pricesByBase: {
     makein:   { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
     matkasym: { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
+    tubes:    { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
     qtop:     { retail: { type: Number, default: 0 }, wholesale: { type: Number, default: 0 }, dealer: { type: Number, default: 0 }, cost: { type: Number, default: 0 }, export: { type: Number, default: 0 } },
   },
 
@@ -94,6 +95,7 @@ const productSchema = new mongoose.Schema({
   stockByBase: {
     makein:   { type: Number, default: 0 },
     matkasym: { type: Number, default: 0 },
+    tubes:    { type: Number, default: 0 },  // склад трубопроката, остаток в метрах
     qtop:     { type: Number, default: 0 },  // Казахстан — отдельный каталог, в stock не суммируется
   },
   // Артикул товара в каждой базе 1С. Названия в базах расходятся («Эко мангал R10»
@@ -103,6 +105,7 @@ const productSchema = new mongoose.Schema({
   skuByBase: {
     makein:   { type: String, default: '' },
     matkasym: { type: String, default: '' },
+    tubes:    { type: String, default: '' },
     qtop:     { type: String, default: '' },
   },
   // Заведён ли товар в номенклатуре базы (был в последней выгрузке).
@@ -110,6 +113,7 @@ const productSchema = new mongoose.Schema({
   inBase: {
     makein:   { type: Boolean, default: false },
     matkasym: { type: Boolean, default: false },
+    tubes:    { type: Boolean, default: false },
     qtop:     { type: Boolean, default: false },
   },
   bufferStock:   { type: Number, default: 0 },  // минимальный (буферный) запас — сумма по базам Кыргызстана
@@ -118,6 +122,7 @@ const productSchema = new mongoose.Schema({
   bufferByBase: {
     makein:   { type: Number, default: 0 },
     matkasym: { type: Number, default: 0 },
+    tubes:    { type: Number, default: 0 },
     qtop:     { type: Number, default: 0 },
   },
   stockStatus:      { type: String, enum: ['in_stock', 'out_of_stock', 'expected'], default: 'in_stock' },

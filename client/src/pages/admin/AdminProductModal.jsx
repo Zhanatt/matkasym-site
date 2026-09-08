@@ -8,6 +8,7 @@ import { cloudinaryOpt } from '../../utils/drive';
 import { getImageFile, prefetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
+import { isTubes, pipesLabel } from '../../utils/tubes';
 
 // Прайсы, которые комплект складывает по деталям. Порядок тот же, что в шапке.
 const KIT_TIERS = [
@@ -30,6 +31,7 @@ const selectStyle = {
 const PRICE_BASES = [
   { key: 'makein',   label: 'Make-in',     icon: '📦', hint: 'Кыргызстан', priceTypes: ['retail', 'wholesale', 'dealer', 'cost'] },
   { key: 'matkasym', label: 'Matkasym',    icon: '🏠', hint: 'Кыргызстан', priceTypes: ['retail', 'dealer', 'wholesale', 'cost', 'export'] },
+  { key: 'tubes',    label: 'Matkasym Трубы', icon: '🧱', hint: 'Склад трубопроката', priceTypes: ['cost'] },
   { key: 'qtop',     label: 'Matkasym KZ', icon: '🇰🇿', hint: 'Казахстан',  priceTypes: ['retail', 'wholesale', 'cost'], kz: true },
 ];
 const PRICE_LABEL = { retail: 'розн.', wholesale: 'опт.', dealer: 'дилер.', cost: 'закуп.', export: 'экспорт' };
@@ -355,6 +357,9 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   // это сотни лишних килобайт). Полный набор приезжает следом, в localProduct,
   // — по пропу галерея показывала бы одно фото даже там, где их десять.
   const unit = localProduct.unit || 'шт';   // краску меряют килограммами, а не штуками
+  // Трубы: рядом с метрами — сколько это шестиметровых хлыстов
+  const tubes = isTubes(localProduct);
+  const pipes = m => (tubes && m > 0 ? ` · ${pipesLabel(m)}` : '');
   const images = (localProduct.images || []).filter(Boolean);
   const img    = images[imgIdx] || NO_PHOTO;
   const hasColorOnly = localProduct.color && images.length === 0;
@@ -841,7 +846,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       if (isIndependentKit) return <span style={pill('#f5f3ff', '#7c3aed')}>Комплект</span>;
                       return (
                         <span style={pill(displayInStock ? '#e8f5e9' : '#fce8e8', displayInStock ? UI.green : UI.red)}>
-                          {displayStock > 0 ? `${displayStock} ${unit}.` : (displayInStock ? 'Есть' : 'Нет в наличии')}
+                          {displayStock > 0 ? `${displayStock} ${unit}.${pipes(displayStock)}` : (displayInStock ? 'Есть' : 'Нет в наличии')}
                         </span>
                       );
                     })()}
@@ -954,6 +959,11 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                                 <span style={{ color: UI.muted, fontSize: 13 }}>Остаток</span>
                                 <span style={{ fontSize: 16, fontWeight: 800, color: b.qty > 0 ? UI.blue : '#cbd5e1' }}>
                                   {b.qty} {unit}.
+                                  {tubes && b.qty > 0 && (
+                                    <span style={{ fontSize: 12.5, fontWeight: 600, color: UI.muted, marginLeft: 6 }}>
+                                      {pipesLabel(b.qty)}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                             )}
@@ -1019,7 +1029,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                           borderRadius: 12, padding: '11px 14px',
                         }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Итого по Кыргызстану:</span>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>{kgStock} {unit}.</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>{kgStock} {unit}.{pipes(kgStock)}</span>
                           <span style={{ fontSize: 13, color: UI.muted }}>
                             буфер {kgBuffer > 0 ? `${kgBuffer} ${unit}.` : 'не задан'}
                           </span>

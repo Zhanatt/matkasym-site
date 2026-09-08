@@ -16,6 +16,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 const STOCK_BASES = [
   { key: 'makein',   label: 'Make-in',     priceTypes: ['retail', 'wholesale', 'dealer', 'cost'] },
   { key: 'matkasym', label: 'Matkasym',    priceTypes: ['retail', 'dealer', 'wholesale', 'cost', 'export'] },
+  // Трубы: отчёт другой («Оборотная ведомость по ТМЗ»), и остаток с ценой
+  // приходят одним файлом — отдельных кнопок прайса у базы нет.
+  { key: 'tubes',    label: 'Matkasym Трубы', priceTypes: [],
+    hint: 'Оборотная ведомость по ТМЗ: остаток берётся из сальдо на конец периода, в метрах; цена оттуда же идёт в закупочную' },
   { key: 'qtop',     label: 'Matkasym KZ', priceTypes: ['retail', 'wholesale', 'cost'] },
 ];
 
@@ -561,7 +565,7 @@ export default function AdminDashboard() {
               value={stockBase}
               onChange={e => setStockBase(e.target.value)}
               disabled={syncLoading}
-              title="Из какой базы 1С выгружены остатки"
+              title={STOCK_BASES.find(b => b.key === stockBase)?.hint || 'Из какой базы 1С выгружены остатки'}
               style={{
                 padding: '9px 12px', borderRadius: 8, border: '1.5px solid #2d7a3a',
                 color: '#2d7a3a', fontWeight: 700, fontSize: 14, background: '#fff',
@@ -725,6 +729,12 @@ export default function AdminDashboard() {
               ? (syncResult.msg || <>
                   ✅ Остатки базы <b>{syncResult.baseLabel}</b> обновлены — совпало: {syncResult.matched}, обнулено: {syncResult.zeroed}
                   {syncResult.buffersUpdated > 0 && `, буфер обновлён у ${syncResult.buffersUpdated}`}
+                  {syncResult.pricesUpdated > 0 && `, цена обновлена у ${syncResult.pricesUpdated}`}
+                  {syncResult.unit === 'м' && (
+                    <div style={{ fontSize: 12, fontWeight: 500, opacity: .75, marginTop: 4 }}>
+                      Остаток труб записан в метрах — на карточке рядом стоит число шестиметровых хлыстов
+                    </div>
+                  )}
                   {syncResult.warehouses?.length > 0 && (
                     <div style={{ fontSize: 12, fontWeight: 500, opacity: .75, marginTop: 4 }}>
                       Склады: {syncResult.warehouses.join(' + ')}

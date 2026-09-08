@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
+import { isTubes, pipesLabel } from '../../utils/tubes';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useFrontmen } from '../../context/FrontmenContext';
@@ -51,7 +52,10 @@ function getStockInfo(product, country = 'KG') {
   if (stock > 0) {
     // Единица у товара своя: краску меряют килограммами, «650 шт.» на её
     // карточке читается как ошибка учёта.
-    return { label: `${stock} ${product.unit || 'шт'}.`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
+    // Трубы 1С считает метрами — рядом ставим число шестиметровых хлыстов,
+    // иначе «19825 м» читается как склад из двадцати тысяч труб.
+    const tail = isTubes(product) ? ` · ${pipesLabel(stock)}` : '';
+    return { label: `${stock} ${product.unit || 'шт'}.${tail}`, hasStock: true, color: '#2d7a3a', bg: '#e8f5e9' };
   }
   // Флаги «в пути» / «под заказ» ведутся по Кыргызстану — в казахстанском каталоге
   // остаток решает всё сам, иначе товар без остатка выглядел бы доступным.
