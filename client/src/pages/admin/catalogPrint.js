@@ -186,6 +186,42 @@ const css = `
 
 @page { size: A4; margin: 0; }
 
+/* Панель поверх каталога. На бумагу не идёт — при печати её нет.
+   Без неё на открытой вкладке не за что взяться: если диалог печати не
+   появился или его закрыли, страница выглядела тупиком. */
+.bar {
+  position: fixed;
+  bottom: 16px; right: 16px;
+  z-index: 99;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(20, 24, 28, .92);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .28);
+  font-family: Roboto, Arial, sans-serif;
+}
+.bar b {
+  font-size: 12px;
+  font-weight: 500;
+  color: #cbd3d8;
+  padding-right: 2px;
+}
+.bar button {
+  border: 0;
+  border-radius: 7px;
+  padding: 8px 14px;
+  background: ${RED};
+  color: #fff;
+  font: 700 13px Roboto, Arial, sans-serif;
+  cursor: pointer;
+}
+.bar button:hover { filter: brightness(1.08); }
+.bar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+@media print { .bar { display: none !important; } }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
@@ -400,7 +436,12 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
 <base href="${location.origin}/">
 <title>Каталог — ${esc(setName)}</title>
 <style>${css}</style>
-</head><body>${buildPages(groups, setName, priceType, currency, headFromGroups)}</body></html>`;
+</head><body>
+<div class="bar">
+  <b>Поля — «Нет», фоновая графика — включена</b>
+  <button type="button" onclick="window.print()">Сохранить PDF</button>
+</div>
+${buildPages(groups, setName, priceType, currency, headFromGroups)}</body></html>`;
 
   if (mode === 'html') {
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
