@@ -165,10 +165,14 @@ const S = StyleSheet.create({
   },
 
   // ── Image — fixed 263 × 193 ────────────────────────────────────────────────
+  // Снимок вписывается в кадр целиком, и у вертикальных фото по бокам остаётся
+  // пустое поле. На белом оно читалось как незаполненная карточка — на общем
+  // светлом фоне поле выглядит студийным задником, и все карточки на полосе
+  // становятся похожи друг на друга независимо от пропорций исходника.
   imageWrap: {
     width: 263,
     height: 193,
-    backgroundColor: WHITE,
+    backgroundColor: BG_SPEC,
     borderBottomWidth: 0.75,
     borderBottomColor: HAIRLINE,
   },
@@ -180,7 +184,7 @@ const S = StyleSheet.create({
   noImageWrap: {
     width: 263,
     height: 193,
-    backgroundColor: '#F2F3F5',
+    backgroundColor: BG_SPEC,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 0.75,
@@ -211,6 +215,17 @@ const S = StyleSheet.create({
     fontWeight: 500,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  // Артикул — единственная строка, по которой из каталога можно сделать заказ,
+  // поэтому он вытесняет категорию: та повторялась на полосе по четыре раза,
+  // а сет и так написан в шапке.
+  kickerSku: {
+    height: 10,
+    fontSize: 7,
+    color: GRAY,
+    fontWeight: 500,
+    letterSpacing: 0.5,
     marginBottom: 2,
   },
 
@@ -286,6 +301,102 @@ const S = StyleSheet.create({
     fontWeight: 500,
     width: '45%',
     textAlign: 'right',
+  },
+
+  // ── Титул раздела ──────────────────────────────────────────────────────────
+  // Занимает ту же ячейку 263 × 355, что и товар: сетка 2 × 2 не ломается, а
+  // разделы наконец видно — раньше смену сета выдавало только слово в шапке.
+  sectionCard: {
+    width: 263,
+    height: 355,
+    backgroundColor: RED,
+    paddingHorizontal: 22,
+    paddingVertical: 26,
+    justifyContent: 'flex-end',
+  },
+  sectionKicker: {
+    fontSize: 7.5,
+    color: WHITE,
+    opacity: 0.75,
+    fontWeight: 500,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  sectionName: {
+    fontSize: 21,
+    color: WHITE,
+    fontWeight: 700,
+    lineHeight: 1.15,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  sectionRule: {
+    width: 44,
+    height: 2.5,
+    backgroundColor: WHITE,
+    marginTop: 14,
+    marginBottom: 10,
+  },
+  sectionCount: {
+    fontSize: 8,
+    color: WHITE,
+    opacity: 0.8,
+    fontWeight: 400,
+  },
+
+  // ── Содержание ─────────────────────────────────────────────────────────────
+  tocPage: {
+    fontFamily: 'Roboto',
+    backgroundColor: WHITE,
+    paddingTop: 54,
+    paddingHorizontal: 56,
+    paddingBottom: 40,
+  },
+  tocTitle: {
+    fontSize: 26,
+    fontWeight: 700,
+    color: INK,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  tocRule: {
+    width: 44,
+    height: 2.5,
+    backgroundColor: RED,
+    marginTop: 12,
+    marginBottom: 26,
+  },
+  tocRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingVertical: 9,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
+  },
+  tocName: {
+    fontSize: 10.5,
+    fontWeight: 500,
+    color: INK,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  tocCount: {
+    fontSize: 8,
+    color: STEEL,
+    marginLeft: 8,
+  },
+  tocDots: {
+    flex: 1,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
+    marginHorizontal: 8,
+    marginBottom: 3,
+  },
+  tocPageNum: {
+    fontSize: 10.5,
+    fontWeight: 700,
+    color: RED,
   },
 
   // ── Page footer ────────────────────────────────────────────────────────────
@@ -457,6 +568,7 @@ const PRICE_LABELS = {
 };
 
 const SPEC_ROWS = 4;
+const PER_PAGE  = 4;   // карточек на полосе, сетка 2 × 2
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ product, priceType, currency = 'сом' }) {
@@ -476,8 +588,12 @@ function ProductCard({ product, priceType, currency = 'сом' }) {
   if (product.color && product.color !== '') filled.push({ key: 'Цвет', value: product.color });
   rawSpecs.forEach(s => { if (!filled.find(a => a.key === s.key)) filled.push(s); });
 
-  // Always exactly SPEC_ROWS rows — pad with empty if needed
-  const specs = Array.from({ length: SPEC_ROWS }, (_, i) => filled[i] || { key: '', value: '' });
+  // Строк ровно столько, сколько фактов. Раньше список добивался пустышками до
+  // SPEC_ROWS: у товара с одной характеристикой под ней оставались три пустые
+  // полосы с зеброй и разделителями — карточка читалась как сломанная таблица.
+  // Высота тела карточки фиксирована, поэтому сетка держится и без них: место,
+  // которое строки не заняли, остаётся белым.
+  const specs = filled.slice(0, SPEC_ROWS);
 
   // Цвет годится в заливку, только если это код: в поле бывает и слово
   // («white», «серый»), его в backgroundColor отдавать нельзя.
@@ -507,26 +623,25 @@ function ProductCard({ product, priceType, currency = 'сом' }) {
 
       {/* Body — fixed height */}
       <View style={S.cardBody}>
-        <Text style={S.kicker}>{catLabel}</Text>
+        {product.sku
+          ? <Text style={S.kickerSku}>{product.sku}</Text>
+          : <Text style={S.kicker}>{catLabel}</Text>}
 
         <View style={S.nameWrap}>
           <Text style={S.productName}>{product.name || product.fullName}</Text>
         </View>
 
-        {/* Price — always shown (blank if none) */}
-        <View style={S.priceBlock}>
-          {priceType !== 'none' ? (
-            <>
-              <Text style={S.priceLabel}>{priceLabel}</Text>
-              <Text style={S.priceValue}>
-                {priceNum || '—'}{priceNum ? ' ' : ''}
-                {priceNum && <Text style={S.priceSom}>{currency}</Text>}
-              </Text>
-            </>
-          ) : (
-            <Text style={S.priceLabel}> </Text>
-          )}
-        </View>
+        {/* Плашка цены — только когда цена есть. Пустая розовая полоса была самым
+            насыщенным пятном на полосе и не несла ничего: в выгрузке без цен
+            фирменный красный уходил на пустоту. */}
+        {priceNum && (
+          <View style={S.priceBlock}>
+            <Text style={S.priceLabel}>{priceLabel}</Text>
+            <Text style={S.priceValue}>
+              {priceNum} <Text style={S.priceSom}>{currency}</Text>
+            </Text>
+          </View>
+        )}
 
         {/* Always exactly SPEC_ROWS rows */}
         {specs.map((s, i) => (
@@ -540,9 +655,84 @@ function ProductCard({ product, priceType, currency = 'сом' }) {
   );
 }
 
+// ── Титул раздела ─────────────────────────────────────────────────────────────
+function SectionCard({ name, count }) {
+  return (
+    <View style={S.sectionCard}>
+      <Text style={S.sectionKicker}>Раздел</Text>
+      <Text style={S.sectionName}>{name}</Text>
+      <View style={S.sectionRule} />
+      <Text style={S.sectionCount}>{count} {plural(count, 'позиция', 'позиции', 'позиций')}</Text>
+    </View>
+  );
+}
+
+function plural(n, one, few, many) {
+  const d10 = n % 10, d100 = n % 100;
+  if (d10 === 1 && d100 !== 11) return one;
+  if (d10 >= 2 && d10 <= 4 && (d100 < 10 || d100 >= 20)) return few;
+  return many;
+}
+
+// ── Содержание ────────────────────────────────────────────────────────────────
+function TocPage({ sections, setName }) {
+  return (
+    <Page size="A4" style={S.tocPage}>
+      <Text style={S.tocTitle}>{setName}</Text>
+      <View style={S.tocRule} />
+      {sections.map((sec, i) => (
+        <View key={i} style={S.tocRow}>
+          <Text style={S.tocName}>{sec.name}</Text>
+          <Text style={S.tocCount}>{sec.count} {plural(sec.count, 'позиция', 'позиции', 'позиций')}</Text>
+          <View style={S.tocDots} />
+          <Text style={S.tocPageNum}>{sec.page}</Text>
+        </View>
+      ))}
+      <View style={S.pageFooter} fixed>
+        <Text style={S.pageNum} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+      </View>
+    </Page>
+  );
+}
+
+// Раскладка каталога одним потоком: раньше каждый сет резался по четыре отдельно
+// от остальных, поэтому последняя полоса КАЖДОГО сета оставалась недобранной —
+// на двадцати четырёх сетах это около десяти полос впустую. Теперь сеты текут
+// подряд, а границу между ними держит карточка-титул.
+function buildSlots(groups) {
+  const slots = [];
+  const sections = [];
+
+  groups.forEach(group => {
+    if (!group.products.length) return;
+
+    // Плоский список без имени раздела (выгрузка одного сета) титула не требует.
+    if (group.groupName) {
+      // Титул последним на полосе — висячий заголовок: раздел начался, а товара
+      // под ним уже нет. Двигаем на следующую полосу.
+      if (slots.length % PER_PAGE === PER_PAGE - 1) slots.push(null);
+      sections.push({ name: group.groupName, count: group.products.length, slotIndex: slots.length });
+      slots.push({ kind: 'section', name: group.groupName, count: group.products.length });
+    }
+    group.products.forEach(product => slots.push({ kind: 'product', product }));
+  });
+
+  return { slots, sections };
+}
+
 // ── Content Page ──────────────────────────────────────────────────────────────
-function ContentPage({ products, setName, pageIndex, priceType, currency }) {
-  const logoLeft = pageIndex % 2 === 0;
+function ContentPage({ slots, setName, pageNumber, priceType, currency }) {
+  // Логотип уходит к внешнему краю разворота — по НАСТОЯЩЕМУ номеру полосы.
+  // Прежний счётчик считал только полосы с товаром и обложку не учитывал, так
+  // что с чётностью разворота он мог и не совпадать.
+  const logoLeft = pageNumber % 2 === 0;
+
+  const cell = (slot, i) => {
+    if (!slot) return null;
+    return slot.kind === 'section'
+      ? <SectionCard key={i} name={slot.name} count={slot.count} />
+      : <ProductCard key={i} product={slot.product} priceType={priceType} currency={currency} />;
+  };
   return (
     <Page size="A4" style={S.contentPage}>
       {/* Header — alternates logo side per page */}
@@ -564,12 +754,12 @@ function ContentPage({ products, setName, pageIndex, priceType, currency }) {
       {/* 2×2 grid — explicit rows to avoid flexWrap issues in react-pdf */}
       <View style={S.grid}>
         <View style={S.gridRow}>
-          {products[0] && <ProductCard product={products[0]} priceType={priceType} currency={currency} />}
-          {products[1] && <ProductCard product={products[1]} priceType={priceType} currency={currency} />}
+          {cell(slots[0], 0)}
+          {cell(slots[1], 1)}
         </View>
         <View style={S.gridRow}>
-          {products[2] && <ProductCard product={products[2]} priceType={priceType} currency={currency} />}
-          {products[3] && <ProductCard product={products[3]} priceType={priceType} currency={currency} />}
+          {cell(slots[2], 2)}
+          {cell(slots[3], 3)}
         </View>
       </View>
 
@@ -587,31 +777,45 @@ function ContentPage({ products, setName, pageIndex, priceType, currency }) {
 // ── Document ──────────────────────────────────────────────────────────────────
 // groups: [{ groupName: string|null, products: Product[] }, ...]
 function CatalogDocument({ groups, setName, priceType, brand = 'home', currency = 'сом' }) {
-  const PER_PAGE = 4;
-  let pageCounter = 0;
+  const { slots, sections } = buildSlots(groups);
+
+  const pages = [];
+  for (let i = 0; i < slots.length; i += PER_PAGE) pages.push(slots.slice(i, i + PER_PAGE));
+
+  // Содержание есть, только когда разделов больше одного: на выгрузке одного
+  // сета оно вырождается в единственную строку.
+  const hasToc = sections.length > 1;
+  const firstContentPage = hasToc ? 3 : 2;   // обложка — 1
+
+  const tocRows = sections.map(sec => ({
+    ...sec,
+    page: firstContentPage + Math.floor(sec.slotIndex / PER_PAGE),
+  }));
+
+  // Шапка полосы называет раздел, действующий к её концу: если новый раздел
+  // начался в первой ячейке, вся полоса уже про него, а не про предыдущий.
+  const sectionAt = lastSlot => {
+    let current = null;
+    for (const sec of sections) {
+      if (sec.slotIndex <= lastSlot) current = sec.name; else break;
+    }
+    return current;
+  };
 
   return (
     <Document title={`Каталог — ${setName}`} author={`MATKASYM ${brand.toUpperCase()}`}>
       <CoverPage brand={brand} />
-      {groups.map((group, groupIdx) => {
-        const pages = [];
-        for (let i = 0; i < group.products.length; i += PER_PAGE) {
-          pages.push(group.products.slice(i, i + PER_PAGE));
-        }
-        return pages.map((chunk, pageIdx) => {
-          const currentPage = pageCounter++;
-          return (
-            <ContentPage
-              key={`${groupIdx}-${pageIdx}`}
-              products={chunk}
-              setName={group.groupName || setName}
-              pageIndex={currentPage}
-              priceType={priceType}
-              currency={currency}
-            />
-          );
-        });
-      })}
+      {hasToc && <TocPage sections={tocRows} setName={setName} />}
+      {pages.map((chunk, pageIdx) => (
+        <ContentPage
+          key={pageIdx}
+          slots={chunk}
+          setName={sectionAt(pageIdx * PER_PAGE + chunk.length - 1) || setName}
+          pageNumber={firstContentPage + pageIdx}
+          priceType={priceType}
+          currency={currency}
+        />
+      ))}
       <BackCoverPage brand={brand} />
     </Document>
   );
