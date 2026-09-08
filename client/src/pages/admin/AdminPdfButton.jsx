@@ -17,6 +17,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [picking,   setPicking]   = useState(false);
+  const [outMode,   setOutMode]   = useState('print');
   const priceType = PRICE_MODE_TO_TYPE[priceMode] || 'price';
   const timerRef = useRef(null);
 
@@ -79,7 +80,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
                 : allProducts.some(p => p.brand === 'matkasym-shaar') ? 'shaar' : 'home';
 
     try {
-      await printCatalog(pdfGroups, title, priceType, brand, currency, { headFromGroups: false });
+      await printCatalog(pdfGroups, title, priceType, brand, currency, { headFromGroups: false, mode: outMode });
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {
@@ -137,7 +138,19 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
         </div>
       </div>
     )}
-    <button
+    <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+      <select
+        value={outMode}
+        onChange={e => setOutMode(e.target.value)}
+        disabled={loading}
+        title="PDF открывает диалог печати, HTML скачивается файлом сразу"
+        style={{ padding: '5px 8px', borderRadius: 6, border: '1.5px solid #e0e0e0',
+          fontSize: 12, background: '#fff', cursor: 'pointer', outline: 'none' }}
+      >
+        <option value="print">PDF</option>
+        <option value="html">HTML</option>
+      </select>
+      <button
         onClick={() => (choices?.length ? setPicking(true) : handleClick())}
         disabled={loading}
         style={{
@@ -159,9 +172,10 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           }} />
         )}
         <span style={{ position: 'relative', zIndex: 1 }}>
-          {loading ? `⏳ ${Math.round(progress)}%` : '📄 PDF'}
+          {loading ? `⏳ ${Math.round(progress)}%` : (outMode === 'html' ? '📄 HTML' : '📄 PDF')}
         </span>
       </button>
+    </div>
     </>
   );
 }

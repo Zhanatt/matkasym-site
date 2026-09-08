@@ -196,12 +196,14 @@ html, body {
   print-color-adjust: exact;
 }
 
-/* Полоса чуть уже 595 pt: при ровном значении Chrome иногда выбрасывает
-   лишнюю пустую страницу из-за округления. */
+/* Полоса чуть меньше листа. При ровном A4 движки печати из-за округления
+   считают её на волос выше листа и вставляют между полными полосами пустые —
+   на телефоне это было видно особенно. Запас снизу не виден: нижний ряд
+   карточек кончается заметно выше. */
 .page {
   position: relative;
-  width: ${PAGE_W - 0.1}pt;
-  height: ${PAGE_H - 0.5}pt;
+  width: 209.9mm;
+  height: 296.4mm;
   padding: 0 ${PAGE_W - MARGIN_L - COL_W * 2 - GUTTER}pt 0 ${MARGIN_L}pt;
   overflow: hidden;
   break-after: page;
@@ -236,7 +238,13 @@ html, body {
   row-gap: 0;
 }
 
-.card { width: ${COL_W}pt; }
+/* Жёсткая высота — страховка: что бы ни пришло в данных, карточка не вылезет
+   за свою ячейку и не сломает полосу. */
+.card {
+  width: ${COL_W}pt;
+  height: ${CARD_PITCH}pt;
+  overflow: hidden;
+}
 .card--empty { visibility: hidden; }
 
 /* ── Снимок ──────────────────────────────────────────────────────────────── */
@@ -294,7 +302,19 @@ html, body {
   border-bottom: 1.5pt solid ${RULE};
 }
 .kicker { font-size: 7pt; line-height: 1.35; }
-.name   { font-size: 15pt; font-weight: 700; line-height: 1.15; margin-top: 1pt; }
+/* Не больше двух строк: названия в базе бывают в четыре строки
+   («Кронштейн P4 для телевизоров и мониторов 32-65 дюймов настенный»), и такая
+   карточка выталкивала характеристики за пределы полосы. */
+.name {
+  font-size: 15pt;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-top: 1pt;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 .head-r { flex: 0 0 auto; text-align: left; }
 .plabel { font-size: 6.5pt; line-height: 1.35; margin-bottom: 1pt; }
@@ -322,7 +342,7 @@ html, body {
   font-size: 10.3pt;
 }
 .row .k { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row .v { flex: 0 0 auto; font-weight: 500; text-align: right; }
+.row .v { flex: 0 0 auto; font-weight: 500; text-align: right; white-space: nowrap; }
 `;
 
 // ── Сборка документа ──────────────────────────────────────────────────────────
@@ -360,11 +380,18 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
 }
 
 /**
- * Открывает каталог отдельной вкладкой и вызывает печать: в диалоге Chrome
- * выбирают «Сохранить как PDF». Поля должны стоять «Нет», фоновая графика —
- * включена, иначе красная плашка цены напечатается белой.
+ * Собирает каталог и отдаёт его одним из двух способов:
+ *
+ *   mode: 'print' — открывает отдельной вкладкой и вызывает печать; в диалоге
+ *     выбирают «Сохранить как PDF». Поля поставить «Нет», фоновую графику
+ *     включить, иначе красная плашка цены напечатается белой.
+ *
+ *   mode: 'html'  — сразу скачивает файлом, без диалога. Внутри стоит <base>
+ *     на адрес сайта, поэтому шрифты, знак и снимки подтягиваются и в
+ *     скачанном файле; открыть его можно в любом браузере и оттуда же напечатать.
  */
-export async function printCatalog(groups, setName, priceType = 'price', brand = 'home', currency = 'сом', { headFromGroups = true } = {}) {
+export async function printCatalog(groups, setName, priceType = 'price', brand = 'home', currency = 'сом',
+                                   { headFromGroups = true, mode = 'print' } = {}) {
   // <base> обязателен: окно открывается как about:blank, и без него относительные
   // пути к шрифтам и логотипу разрешаются не от адреса сайта — печать уходит
   // системным шрифтом и без знака.
@@ -374,6 +401,17 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
 <title>Каталог — ${esc(setName)}</title>
 <style>${css}</style>
 </head><body>${buildPages(groups, setName, priceType, currency, headFromGroups)}</body></html>`;
+
+  if (mode === 'html') {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `matkasym-catalog-${setName.toLowerCase().replace(/\s+/g, '-')}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
 
   const win = window.open('', '_blank');
   if (!win) throw new Error('Браузер заблокировал новое окно — разрешите всплывающие окна для сайта');

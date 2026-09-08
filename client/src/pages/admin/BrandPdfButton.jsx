@@ -6,6 +6,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [priceType, setPriceType] = useState('price');
+  const [outMode,   setOutMode]   = useState('print');
   const timerRef = useRef(null);
 
   const handleClick = async () => {
@@ -73,7 +74,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const brand = brandKey === 'matkasym-kyzmat' ? 'kyzmat'
                   : brandKey === 'matkasym-shaar' ? 'shaar' : 'home';
 
-      await printCatalog(pdfGroups, brandLabel, priceType, brand, currency);
+      await printCatalog(pdfGroups, brandLabel, priceType, brand, currency, { mode: outMode });
 
       clearInterval(timerRef.current);
       setProgress(100);
@@ -101,6 +102,18 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
         <option value="none">Без цены</option>
       </select>
 
+      <select
+        value={outMode}
+        onChange={e => setOutMode(e.target.value)}
+        disabled={loading}
+        title="PDF открывает диалог печати, HTML скачивается файлом сразу"
+        style={{ padding: '5px 8px', borderRadius: 6, border: '1.5px solid #e0e0e0',
+          fontSize: 12, background: '#fff', cursor: 'pointer', outline: 'none' }}
+      >
+        <option value="print">PDF</option>
+        <option value="html">HTML</option>
+      </select>
+
       <button
         onClick={handleClick}
         disabled={loading}
@@ -122,7 +135,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
           }} />
         )}
         <span style={{ position: 'relative', zIndex: 1 }}>
-          {loading ? `⏳ ${Math.round(progress)}%` : '📄 PDF'}
+          {loading ? `⏳ ${Math.round(progress)}%` : (outMode === 'html' ? '📄 HTML' : '📄 PDF')}
         </span>
       </button>
     </div>
