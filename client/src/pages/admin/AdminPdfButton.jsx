@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { printCatalog } from './catalogPrint';
+import { printCatalog, fitsCatalog } from './catalogPrint';
 
 const PRICE_MODE_TO_TYPE = {
   retail: 'price',
@@ -47,21 +47,21 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           // items is array of [name, variants] — extract first variant (primary product)
           const groupProducts = items
             .map(([, variants]) => variants[0])
-            .filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.productStatus === 'test_sale');
+            .filter(fitsCatalog);
           return { groupName, products: groupProducts };
         })
         .filter(g => g.products.length > 0);
 
       if (pdfGroups.length === 0) {
-        alert(pick ? `В разделе «${pick.label}» нет товаров в наличии` : 'Нет товаров в наличии для выгрузки');
+        alert(pick ? `В разделе «${pick.label}» нечего выгружать: нужны фото и остаток` : 'Нечего выгружать: в каталог идут только товары с фотографией и остатком, детали комплектов в него не входят');
         setLoading(false);
         return;
       }
     } else {
       // No groups — use flat list filtered by availability
-      const availableProducts = products.filter(p => p.inStock || p.stock > 0 || p.isOnOrder || p.productStatus === 'test_sale');
+      const availableProducts = products.filter(fitsCatalog);
       if (availableProducts.length === 0) {
-        alert('Нет доступных товаров для выгрузки');
+        alert('Нечего выгружать: в каталог идут только товары с фотографией и остатком, детали комплектов в него не входят');
         setLoading(false);
         return;
       }

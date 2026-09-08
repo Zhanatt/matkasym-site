@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { adminGetProducts } from '../../api/index';
-import { printCatalog } from './catalogPrint';
+import { printCatalog, fitsCatalog } from './catalogPrint';
 
 export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Каталог', currency = 'сом' }) {
   const [loading,   setLoading]   = useState(false);
@@ -21,15 +21,10 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const res = await adminGetProducts({ brand: brandKey, limit: 5000 });
       const allProducts = res.data.products || [];
 
-      // «В пути» в выгрузку не идёт: товара ещё нет на складе, продавать по
-      // каталогу нечего. Позиция с остатком остаётся — её берут stock/inStock,
-      // даже если сверху едет ещё партия.
-      const availableProducts = allProducts.filter(p =>
-        p.inStock || p.stock > 0 || p.isOnOrder || p.productStatus === 'test_sale'
-      );
+      const availableProducts = allProducts.filter(fitsCatalog);
 
       if (availableProducts.length === 0) {
-        alert('Нет доступных товаров для выгрузки');
+        alert('Нечего выгружать: в каталог идут только товары с фотографией и остатком, детали комплектов в него не входят');
         clearInterval(timerRef.current);
         setLoading(false);
         setProgress(0);
