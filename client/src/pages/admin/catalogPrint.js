@@ -291,20 +291,35 @@ html, body {
 `;
 
 // ── Сборка документа ──────────────────────────────────────────────────────────
-// Каждый сет начинается с новой полосы — так свёрстан макет.
-function buildPages(groups, setName, priceType, currency) {
-  const pages = [];
-  let pageNumber = 1;
-
+// Товары идут одним потоком: раздел полосу не рвёт. Так свёрстан макет — в шапке
+// стоит сет, а категория подписана кикером над названием, и на одной полосе
+// спокойно соседствуют гладильные доски, корзины и вешалки.
+//
+// Пока каждый раздел начинался с новой полосы, категория из двух товаров
+// («Тумбы») занимала целую полосу с пустым нижним рядом, а из одного («Сейф») —
+// полосу почти пустую. На двадцати четырёх сетах так терялось около десяти полос.
+// headFromGroups — чем подписана шапка полосы:
+//   true  — именем группы: так выгружают бренд целиком, и группы там сеты;
+//   false — общим названием: так выгружают один сет, а группы в нём категории.
+// В шапке всегда должен стоять сет: категорию читают кикером над названием.
+// Иначе полоса с двумя тумбами и одним стеллажом подписывалась «Стеллажи».
+function buildPages(groups, setName, priceType, currency, headFromGroups) {
+  const stream = [];
   groups.forEach(group => {
-    const items = group.products || [];
-    for (let i = 0; i < items.length; i += PER_PAGE) {
-      const chunk = items.slice(i, i + PER_PAGE);
-      while (chunk.length < PER_PAGE) chunk.push(null);
-      pages.push(pageHtml(chunk, group.groupName || setName, pageNumber, priceType, currency));
-      pageNumber += 1;
-    }
+    const section = headFromGroups ? (group.groupName || setName) : setName;
+    (group.products || []).forEach(product => stream.push({ product, section }));
   });
+
+  const pages = [];
+  for (let i = 0; i < stream.length; i += PER_PAGE) {
+    const chunk = stream.slice(i, i + PER_PAGE);
+    // Раздел, действующий к концу полосы: если новый начался в первой карточке,
+    // вся полоса уже про него.
+    const section = chunk[chunk.length - 1].section;
+    const cards = chunk.map(x => x.product);
+    while (cards.length < PER_PAGE) cards.push(null);
+    pages.push(pageHtml(cards, section, pages.length + 1, priceType, currency));
+  }
 
   return pages.join('');
 }
@@ -314,7 +329,7 @@ function buildPages(groups, setName, priceType, currency) {
  * выбирают «Сохранить как PDF». Поля должны стоять «Нет», фоновая графика —
  * включена, иначе красная плашка цены напечатается белой.
  */
-export async function printCatalog(groups, setName, priceType = 'price', brand = 'home', currency = 'сом') {
+export async function printCatalog(groups, setName, priceType = 'price', brand = 'home', currency = 'сом', { headFromGroups = true } = {}) {
   // <base> обязателен: окно открывается как about:blank, и без него относительные
   // пути к шрифтам и логотипу разрешаются не от адреса сайта — печать уходит
   // системным шрифтом и без знака.
@@ -323,7 +338,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
 <base href="${location.origin}/">
 <title>Каталог — ${esc(setName)}</title>
 <style>${css}</style>
-</head><body>${buildPages(groups, setName, priceType, currency)}</body></html>`;
+</head><body>${buildPages(groups, setName, priceType, currency, headFromGroups)}</body></html>`;
 
   const win = window.open('', '_blank');
   if (!win) throw new Error('Браузер заблокировал новое окно — разрешите всплывающие окна для сайта');

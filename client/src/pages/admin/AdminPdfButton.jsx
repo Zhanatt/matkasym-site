@@ -79,7 +79,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
                 : allProducts.some(p => p.brand === 'matkasym-shaar') ? 'shaar' : 'home';
 
     try {
-      await printCatalog(pdfGroups, title, priceType, brand, currency);
+      await printCatalog(pdfGroups, title, priceType, brand, currency, { headFromGroups: false });
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {
