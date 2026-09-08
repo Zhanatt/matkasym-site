@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { downloadCatalogPDF } from './CatalogPDF';
+import { printCatalog } from './catalogPrint';
 
 const PRICE_MODE_TO_TYPE = {
   retail: 'price',
@@ -79,7 +79,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
                 : allProducts.some(p => p.brand === 'matkasym-shaar') ? 'shaar' : 'home';
 
     try {
-      await downloadCatalogPDF(pdfGroups, title, priceType, brand, currency);
+      await printCatalog(pdfGroups, title, priceType, brand, currency);
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {

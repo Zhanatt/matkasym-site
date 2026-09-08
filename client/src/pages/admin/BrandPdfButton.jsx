@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { adminGetProducts } from '../../api/index';
-import { downloadCatalogPDF } from './CatalogPDF';
+import { printCatalog } from './catalogPrint';
 
 export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Каталог', currency = 'сом' }) {
   const [loading,   setLoading]   = useState(false);
@@ -78,7 +78,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const brand = brandKey === 'matkasym-kyzmat' ? 'kyzmat'
                   : brandKey === 'matkasym-shaar' ? 'shaar' : 'home';
 
-      await downloadCatalogPDF(pdfGroups, brandLabel, priceType, brand, currency);
+      await printCatalog(pdfGroups, brandLabel, priceType, brand, currency);
 
       clearInterval(timerRef.current);
       setProgress(100);
