@@ -82,13 +82,16 @@ const CATEGORY_LABELS = {
  * Не берём:
  *  · детали зависимого комплекта (kit_part) — их продают в составе комплекта,
  *    а не порознь; парта и стул уже показаны карточкой «ALA-TOO парта, стул»;
- *  · товары без фотографии — пустой кадр посреди полосы читается как брак;
  *  · товары «в пути»: на складе их ещё нет, продавать по каталогу нечего.
+ *
+ * Фотография в каталог не пропуск: без снимка лежит каждый восьмой товар с
+ * остатком (краски, стеллажи ADIK, щиты), и требование фото вычёркивало их из
+ * выгрузки целиком. Товар с остатком в каталоге нужен — вместо пустого кадра
+ * ему рисуется заглушка «фото готовится».
  */
 export const fitsCatalog = p =>
   Boolean(p)
   && p.productStatus !== 'kit_part'
-  && Boolean(p.images?.[0])
   && (p.inStock || p.stock > 0 || p.isOnOrder || p.productStatus === 'test_sale');
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
@@ -132,7 +135,9 @@ function cardHtml(product, priceType, currency) {
 
   return `
     <div class="card">
-      <div class="shot">${img ? `<img src="${esc(img)}" alt="">` : ''}</div>
+      <div class="shot">${img
+        ? `<img src="${esc(img)}" alt="">`
+        : '<div class="shot-none">фото готовится</div>'}</div>
       <div class="swatches">${
         swatches.map(hex => `<span class="sw" style="background:${hex}"></span>`).join('')
       }</div>
@@ -247,6 +252,20 @@ html, body {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+/* Товар без снимка. Пустой кадр читается как брак печати, поэтому место
+   занимает спокойная заглушка — в высоту кадра, чтобы полоса не поехала. */
+.shot-none {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.75pt dashed ${RULE};
+  border-radius: 6pt;
+  color: ${RULE};
+  font-size: 9pt;
+  letter-spacing: .3pt;
 }
 
 /* ── Кружки-образцы цвета ────────────────────────────────────────────────── */

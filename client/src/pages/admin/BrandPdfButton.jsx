@@ -24,7 +24,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const availableProducts = allProducts.filter(fitsCatalog);
 
       if (availableProducts.length === 0) {
-        alert('Нечего выгружать: в каталог идут только товары с фотографией и остатком, детали комплектов в него не входят');
+        alert('Нечего выгружать: в каталог идут товары с остатком, детали комплектов в него не входят');
         clearInterval(timerRef.current);
         setLoading(false);
         setProgress(0);

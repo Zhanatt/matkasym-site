@@ -53,7 +53,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
         .filter(g => g.products.length > 0);
 
       if (pdfGroups.length === 0) {
-        alert(pick ? `В разделе «${pick.label}» нечего выгружать: нужны фото и остаток` : 'Нечего выгружать: в каталог идут только товары с фотографией и остатком, детали комплектов в него не входят');
+        alert(pick ? `В разделе «${pick.label}» нет товаров с остатком` : 'Нечего выгружать: в каталог идут товары с остатком, детали комплектов в него не входят');
         setLoading(false);
         return;
       }
@@ -61,7 +61,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
       // No groups — use flat list filtered by availability
       const availableProducts = products.filter(fitsCatalog);
       if (availableProducts.length === 0) {
-        alert('Нечего выгружать: в каталог идут только товары с фотографией и остатком, детали комплектов в него не входят');
+        alert('Нечего выгружать: в каталог идут товары с остатком, детали комплектов в него не входят');
         setLoading(false);
         return;
       }
