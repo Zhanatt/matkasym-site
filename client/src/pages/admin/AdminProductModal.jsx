@@ -407,13 +407,34 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     const parts = localProduct.kitParts || [];
     if (!localProduct.isKit || localProduct.kitType === 'independent' || !parts.length) return null;
     if (parts.some(part => !part.product)) return null;   // деталь потеряна — не выдумываем
-    const by = field => parts.reduce((sum, part) => sum + ((part.product?.[field]) || 0) * (part.qty || 1), 0);
+    // Складываем прайс, только когда он заведён у каждой детали. Ноль у одной
+    // детали — не «бесплатно», а «цену ещё не завели»: неполная сумма занизила
+    // бы комплект (парта + стул без розницы = цена одной парты). Такой прайс
+    // отдаём как null — его не показывают и не пишут в базу. Если цены нет ни
+    // у одной детали, складывать нечего: 0, и остаётся ручная цена комплекта.
+    const by = field => {
+      const priced = parts.filter(part => ((part.product?.[field]) || 0) > 0);
+      if (!priced.length) return 0;
+      if (priced.length !== parts.length) return null;
+      return parts.reduce((sum, part) => sum + part.product[field] * (part.qty || 1), 0);
+    };
     return Object.fromEntries(KIT_TIERS.map(tier => [tier.key, by(tier.key)]));
   })();
 
   // Пустой прайс деталей цену комплекта не заменяет — ровно как на сервере
   // (server/lib/kits.js): нечего складывать, значит цена остаётся ручной.
-  const kitPrice = field => (kitSums && kitSums[field] > 0 ? kitSums[field] : product[field]);
+  // Неполная сумма (null) цену не заменяет и сама не показывается: прежняя
+  // цифра в базе — это обычно цена одной детали, показать её значит соврать.
+  const kitPrice = field => {
+    if (!kitSums) return product[field];
+    if (kitSums[field] === null) return null;
+    return kitSums[field] > 0 ? kitSums[field] : product[field];
+  };
+
+  // Прайсы, у которых цена собрана не у всех деталей, — их не показываем.
+  const kitTiersUnpriced = kitSums
+    ? KIT_TIERS.filter(tier => kitSums[tier.key] === null)
+    : [];
 
   // Цену в базе пересчитывает сохранение. Пока его не было, каталог, PDF и посты
   // показывают прежнюю цифру — про это честно предупреждаем.
@@ -852,13 +873,22 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 {/* Цены сайта. Показываем всегда: прайс базы 1С покрывает не все типы цен
                     (розничной может не быть ни в одной базе), а каталог, PDF и посты
                     читают именно эти поля — прятать их за карточками баз нельзя. */}
-                {prices.length > 0 && !isIndependentKit && country !== 'KZ' && (
+                {(prices.length > 0 || kitTiersUnpriced.length > 0) && !isIndependentKit && country !== 'KZ' && (
                   <div style={card}>
                     <div style={{ ...cardTitle, marginBottom: 4 }}>Цены на сайте</div>
                     <div style={{ fontSize: 12, color: UI.label, marginBottom: 12 }}>
                       их показывают каталог, PDF и посты
                       {kitSums && ' · сумма по деталям комплекта'}
                     </div>
+                    {kitTiersUnpriced.length > 0 && (
+                      <div style={{
+                        background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+                        padding: '8px 11px', marginBottom: 12, fontSize: 11.5, color: UI.red, lineHeight: 1.5,
+                      }}>
+                        {kitTiersUnpriced.map(t => t.label.toLowerCase()).join(', ')} —
+                        цена заведена не у всех деталей. Пока не заведёте, сумму по комплекту не показываем.
+                      </div>
+                    )}
                     {kitPriceStale && (
                       <div style={{
                         background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10,
@@ -1195,8 +1225,13 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                             {KIT_TIERS.map(tier => (
                               <div key={tier.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0' }}>
                                 <span style={{ fontSize: 11.5, color: UI.muted }}>{tier.label}</span>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: UI.ink, whiteSpace: 'nowrap' }}>
-                                  {((p[tier.key] || 0) * needed).toLocaleString('ru')} {signOf(p)}
+                                <span style={{
+                                  fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+                                  color: (p[tier.key] || 0) > 0 ? UI.ink : UI.red,
+                                }}>
+                                  {(p[tier.key] || 0) > 0
+                                    ? `${(p[tier.key] * needed).toLocaleString('ru')} ${signOf(p)}`
+                                    : 'нет цены'}
                                 </span>
                               </div>
                             ))}
@@ -1213,8 +1248,14 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   {/* Свод по деталям. У независимого комплекта его не показывают:
                       там детали продаются порознь и в сумму не складываются. */}
                   {localProduct.kitType !== 'independent' && (() => {
-                    const sumBy = field => localProduct.kitParts
-                      .reduce((sum, part) => sum + ((part.product?.[field]) || 0) * (part.qty || 1), 0);
+                    // Тот же уговор, что и в шапке: сумма только по прайсу, который
+                    // заведён у всех деталей. Иначе показываем «нет цены у детали».
+                    const sumBy = field => {
+                      const parts = localProduct.kitParts;
+                      const priced = parts.filter(part => ((part.product?.[field]) || 0) > 0);
+                      if (priced.length !== parts.length) return null;
+                      return parts.reduce((sum, part) => sum + part.product[field] * (part.qty || 1), 0);
+                    };
                     const partsStock = localProduct.kitParts
                       .reduce((sum, part) => sum + ((part.product?.stock) || 0), 0);
                     const sign = signOf(localProduct);
@@ -1231,14 +1272,19 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                         <div style={{ fontSize: 12.5, color: hasMissing ? UI.red : '#16a34a', fontWeight: 700, marginBottom: 2 }}>
                           Итого за комплект
                         </div>
-                        {KIT_TIERS.map(tier => (
-                          <div key={tier.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
-                            <span style={{ fontSize: 12.5, color: UI.muted }}>{tier.label}</span>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: UI.ink }}>
-                              {sumBy(tier.key).toLocaleString('ru')} {sign}
-                            </span>
-                          </div>
-                        ))}
+                        {KIT_TIERS.map(tier => {
+                          const total = sumBy(tier.key);
+                          return (
+                            <div key={tier.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
+                              <span style={{ fontSize: 12.5, color: UI.muted }}>{tier.label}</span>
+                              <span style={{ fontSize: total === null ? 12.5 : 14, fontWeight: 700, color: total === null ? UI.red : UI.ink }}>
+                                {total === null
+                                  ? 'нет цены у детали'
+                                  : `${total.toLocaleString('ru')} ${sign}`}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}

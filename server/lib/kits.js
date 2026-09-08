@@ -72,14 +72,22 @@ const PRICE_FIELDS = ['price', 'priceWholesale', 'priceDealer'];
 
 // Цена комплекта = сумма деталей по каждому прайсу. Если хоть одна деталь
 // потерялась, цену не выдумываем: пусть лучше останется прежняя, чем неполная.
+//
+// Прайс складываем только когда он заведён у каждой детали: ноль у одной детали
+// — это не «бесплатно», а «цену ещё не завели», и такая сумма занизила бы
+// комплект (парта + стул без розницы = цена одной парты). Собрали не у всех —
+// возвращаем 0: вызывающий пишет только суммы больше нуля.
 function kitPricesFromParts(kitParts, partById) {
   const usable = (kitParts || []).filter(part => partById.has(partIdOf(part)));
   if (!usable.length || usable.length !== (kitParts || []).length) return null;
 
-  return Object.fromEntries(PRICE_FIELDS.map(field => [
-    field,
-    usable.reduce((sum, part) => sum + (partById.get(partIdOf(part))[field] || 0) * (part.qty || 1), 0),
-  ]));
+  return Object.fromEntries(PRICE_FIELDS.map(field => {
+    const priced = usable.filter(part => (partById.get(partIdOf(part))[field] || 0) > 0);
+    if (priced.length !== usable.length) return [field, 0];
+    return [field, usable.reduce(
+      (sum, part) => sum + partById.get(partIdOf(part))[field] * (part.qty || 1), 0,
+    )];
+  }));
 }
 
 // Пересчёт комплекта после правки состава — сразу, не дожидаясь ближайшей
