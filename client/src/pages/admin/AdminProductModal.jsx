@@ -1186,20 +1186,54 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
 
             {/* Состав комплекта */}
             {localProduct.isKit && localProduct.kitParts?.length > 0 && (() => {
-              const missingParts = localProduct.kitParts.filter(part => {
-                const p = part.product;
-                return p && (p.stock || 0) < (part.qty || 1);
-              });
-              const hasMissing = missingParts.length > 0;
+              // Сколько комплектов соберётся — по самой дефицитной детали. Считаем
+              // так же, как сервер в lib/kits.js: иначе цифра здесь разойдётся с
+              // остатком самого комплекта.
+              //
+              // Раньше деталь мерили одним комплектом: «1 шт (нужно 2)». По такой
+              // строке не понять ни сколько комплектов уже собирается, ни сколько
+              // деталей докупить. Теперь у детали стоит её остаток как есть, а
+              // красным — чего не хватает на следующий комплект.
+              // Только зависимый комплект собирают из деталей. У независимого
+              // (SKÅDIS, BOAXEL) доску и крючки покупают порознь, комплект там —
+              // витрина: считать, «на сколько штук хватает», нечего.
+              const dependent = localProduct.kitType !== 'independent';
+              const parts = localProduct.kitParts.filter(part => part.product);
+              const kitsReady = parts.length
+                ? Math.min(...parts.map(part => Math.floor((part.product.stock || 0) / (part.qty || 1))))
+                : 0;
+              const nextKit  = kitsReady + 1;
+              const shortFor = part => dependent
+                ? Math.max(0, (part.qty || 1) * nextKit - (part.product.stock || 0))
+                : 0;
+              const blocking = parts.filter(part => shortFor(part) > 0);
+              const hasMissing = dependent && kitsReady === 0;
               return (
                 <div style={{ ...card, background: hasMissing ? '#fef7f7' : '#f6fdf8', borderColor: hasMissing ? '#fecaca' : '#bbf7d0' }}>
                   <div style={{ ...cardTitle, color: hasMissing ? UI.red : '#16a34a' }}>
                     📦 Состав комплекта ({localProduct.kitParts.length} деталей)
                   </div>
-                  {hasMissing && (
-                    <div style={{ background: '#fee2e2', borderRadius: 10, padding: '9px 12px', marginBottom: 12, fontSize: 12, color: UI.red, fontWeight: 700 }}>
-                      ⚠️ Не хватает деталей для сборки комплекта
-                    </div>
+                  {dependent && (
+                  <div style={{
+                    background: hasMissing ? '#fee2e2' : '#dcfce7', borderRadius: 10,
+                    padding: '9px 12px', marginBottom: 12, fontSize: 12, fontWeight: 700,
+                    color: hasMissing ? UI.red : '#15803d',
+                  }}>
+                    {hasMissing
+                      ? '⚠️ Ни одного комплекта не собрать'
+                      : `✅ Деталей хватает на ${kitsReady} шт`}
+                    {/* Список — только пока он короткий. Когда деталей вдоволь,
+                        в упор к следующему комплекту встаёт сразу полсостава, и
+                        перечислять их в шапке незачем: у строк те же пометки. */}
+                    {blocking.length > 0 && (
+                      <div style={{ color: UI.red, fontWeight: 600, marginTop: 5, lineHeight: 1.55 }}>
+                        Для {nextKit}-й штуки не хватает: {blocking.length <= 2
+                          ? blocking.map(part =>
+                              `${part.product.fullName || part.product.name} — ещё ${shortFor(part)} шт`).join('; ')
+                          : `${blocking.length} деталей — отмечены красным`}
+                      </div>
+                    )}
+                  </div>
                   )}
                   <div style={{ display: 'grid', gap: 10, gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(360px, 1fr))' }}>
                     {localProduct.kitParts.map((part, i) => {
@@ -1207,7 +1241,11 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                       if (!p) return null;
                       const needed = part.qty || 1;
                       const available = p.stock || 0;
-                      const isMissing = available < needed;
+                      const short = shortFor(part);
+                      // Краснеет строка только у той детали, из-за которой не
+                      // собирается ни одного комплекта. Если комплекты уже идут,
+                      // а детали не хватает на следующий — это заметка, не авария.
+                      const isMissing = short > 0 && kitsReady === 0;
                       return (
                         <div key={i} onClick={() => openPart(p)} style={{
                           display: 'flex', alignItems: 'center', gap: 12,
@@ -1225,9 +1263,14 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                             <div style={{ fontSize: 13.5, fontWeight: 700, color: UI.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {p.fullName || p.name}
                             </div>
-                            <div style={{ fontSize: 12, color: isMissing ? UI.red : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                              {loadingPart === p._id ? 'Открываем…' : <>{available} шт{isMissing && ` (нужно ${needed})`}</>}
+                            <div style={{ fontSize: 12, color: available > 0 ? '#16a34a' : UI.red, fontWeight: 700, marginTop: 2 }}>
+                              {loadingPart === p._id ? 'Открываем…' : `${available} шт`}
                             </div>
+                            {short > 0 && loadingPart !== p._id && (
+                              <div style={{ fontSize: 11.5, color: UI.red, fontWeight: 700, marginTop: 1 }}>
+                                на {nextKit}-ю не хватает {short} шт
+                              </div>
+                            )}
                           </div>
                           {/* Деньги по детали — все три прайса, каждый уже умножен на
                               количество в комплекте: так столбец сходится с итогом. */}
@@ -1271,13 +1314,20 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                     const sign = signOf(localProduct);
                     return (
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${hasMissing ? '#fecaca' : '#bbf7d0'}` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        {/* Главное число — сколько комплектов соберётся: сумма
+                            деталей ни о чём не говорит, комплект собирают по самой
+                            дефицитной. Сумму оставили мелким справочным числом. */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: 13, color: hasMissing ? UI.red : '#16a34a', fontWeight: 700 }}>
-                            Всего деталей на складе
+                            Соберётся комплектов
                           </span>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: UI.ink }}>
-                            {partsStock.toLocaleString('ru')} шт
+                          <span style={{ fontSize: 15, fontWeight: 800, color: hasMissing ? UI.red : UI.ink }}>
+                            {kitsReady.toLocaleString('ru')} шт
                           </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 11.5, color: UI.muted }}>деталей на складе всего</span>
+                          <span style={{ fontSize: 11.5, color: UI.muted }}>{partsStock.toLocaleString('ru')} шт</span>
                         </div>
                         <div style={{ fontSize: 12.5, color: hasMissing ? UI.red : '#16a34a', fontWeight: 700, marginBottom: 2 }}>
                           Итого за комплект
