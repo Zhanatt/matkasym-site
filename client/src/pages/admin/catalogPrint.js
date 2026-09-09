@@ -184,7 +184,7 @@ function cardHtml(product, priceType, currency) {
 
 // ── Обложка ───────────────────────────────────────────────────────────────────
 function coverHtml(src) {
-  return `<section class="page cover"><img src="${esc(src)}" alt=""></section>`;
+  return `<section class="page"><div class="sheet cover"><img src="${esc(src)}" alt=""></div></section>`;
 }
 
 // ── Полоса ────────────────────────────────────────────────────────────────────
@@ -196,9 +196,11 @@ function pageHtml(cards, setName, pageNumber, priceType, currency) {
 
   return `
     <section class="page">
-      <header class="phead">${logoLeft ? logo + title : title + logo}</header>
-      <div class="grid">
-        ${cards.map(c => cardHtml(c, priceType, currency)).join('')}
+      <div class="sheet">
+        <header class="phead">${logoLeft ? logo + title : title + logo}</header>
+        <div class="grid">
+          ${cards.map(c => cardHtml(c, priceType, currency)).join('')}
+        </div>
       </div>
     </section>`;
 }
@@ -259,20 +261,34 @@ html, body {
   print-color-adjust: exact;
 }
 
-/* Полоса чуть меньше листа. При ровном A4 движки печати из-за округления
-   считают её на волос выше листа и вставляют между полными полосами пустые —
-   на телефоне это было видно особенно. Запас снизу не виден: нижний ряд
-   карточек кончается заметно выше. */
+/* Лист чуть меньше A4. При ровном A4 движки печати из-за округления считают
+   его на волос выше листа и вставляют между полными полосами пустые. Запас
+   снизу не виден: нижний ряд карточек кончается заметно выше.
+
+   Вся вёрстка внутри снята с макета в пунктах и на размер листа не смотрит,
+   поэтому под чужую область печати лист не перестраивается, а ужимается
+   целиком — множителем --k. На компьютере он равен единице: там в диалоге
+   печати ставят поля «Нет», и лист ложится на A4 один в один. */
+:root { --k: 1; }
+
 .page {
-  position: relative;
-  width: 209.9mm;
-  height: 296.4mm;
-  padding: 0 ${PAGE_W - MARGIN_L - COL_W * 2 - GUTTER}pt 0 ${MARGIN_L}pt;
+  width: calc(209.9mm * var(--k));
+  height: calc(296.4mm * var(--k));
   overflow: hidden;
   break-after: page;
   page-break-after: always;
 }
 .page:last-child { break-after: auto; page-break-after: auto; }
+
+.sheet {
+  position: relative;
+  width: 209.9mm;
+  height: 296.4mm;
+  padding: 0 ${PAGE_W - MARGIN_L - COL_W * 2 - GUTTER}pt 0 ${MARGIN_L}pt;
+  overflow: hidden;
+  transform: scale(var(--k));
+  transform-origin: top left;
+}
 
 /* ── Обложка ─────────────────────────────────────────────────────────────── */
 .cover { padding: 0; }
@@ -451,6 +467,14 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
   return pages.join('');
 }
 
+// Телефон печатает своим диалогом, и поля листа там не отключить: Safari и
+// Chrome на Android держат около сантиметра с каждой стороны. Лист ровно в A4
+// в такую область не влезает — за каждой полосой печаталась пустая. Ужимаем
+// лист до 0.88: это 185x261 мм, они помещаются в область печати с запасом.
+const MOBILE = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const MOBILE_K = 0.88;
+
 /**
  * Открывает каталог отдельной вкладкой и вызывает печать; в диалоге выбирают
  * «Сохранить как PDF». Поля поставить «Нет», фоновую графику включить, иначе
@@ -463,6 +487,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   // пути к шрифтам и логотипу разрешаются не от адреса сайта — печать уходит
   // системным шрифтом и без знака.
   const cover = COVERS[brand] || COVERS.home;
+  const mobile = MOBILE();
   await loadCategoryLabels();
 
   const html = `<!doctype html>
@@ -470,9 +495,12 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
 <base href="${location.origin}/">
 <title>Каталог — ${esc(setName)}</title>
 <style>${css}</style>
+${mobile ? `<style>:root { --k: ${MOBILE_K}; }</style>` : ''}
 </head><body>
 <div class="bar">
-  <b>Поля — «Нет», фоновая графика — включена</b>
+  <b>${mobile
+    ? 'Полосы ужаты под поля телефона; каталог в полный лист печатают с компьютера'
+    : 'Поля — «Нет», фоновая графика — включена'}</b>
   <button type="button" onclick="window.print()">Сохранить PDF</button>
 </div>
 ${coverHtml(cover.title)}
