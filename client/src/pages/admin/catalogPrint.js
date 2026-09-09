@@ -10,6 +10,9 @@
 // Все размеры ниже сняты замером с макета «Каталог хоум мой, пример.pdf»
 // (страницы 3 и 5) и приведены к пунктам A4.
 
+import { adminGetCustomCategories } from '../../api/index';
+import { CATEGORIES } from '../../config/categorySpecs';
+
 // ── Сетка полосы ──────────────────────────────────────────────────────────────
 const PAGE_W = 595, PAGE_H = 842;
 const MARGIN_L = 37.8;                  // левое поле
@@ -70,28 +73,28 @@ const COLOR_HEX = {
   'золотой': '#D4AF37', 'gold': '#D4AF37',
 };
 
-const CATEGORY_LABELS = {
-  'clothes-dryer': 'сушилка для белья', 'laundry-basket': 'корзина для белья',
-  'ironing-board': 'гладильная доска', 'wardrobe-rack': 'гардеробная вешалка',
-  'coat-hanger': 'костюмная вешалка', 'shoe-rack': 'обувная полка',
-  'wall-hanger': 'настенная вешалка', 'toilet-shelf': 'полка для туалета',
-  'bath-shelf': 'полка для ванной', 'bath-corner-shelf': 'угловая полка',
-  'flower-stand': 'подставка для цветов', 'bbq-grill': 'мангал',
-  'antenna': 'антенна', 'tv-bracket': 'кронштейн для TV',
-  'electric-panel': 'электрощит', 'wall-shelf': 'настенная полка',
-  'hook': 'крючки', 'organizer-kitchen': 'кухонный органайзер',
-  'dish-drainer': 'сушилка для посуды', 'school-desk': 'школьная парта',
-  'school-chair': 'школьный стул', 'ladder': 'стремянка',
-  'industrial-shelf': 'промышленный стеллаж', 'storage-tumba': 'тумба',
-  'ac-basket': 'корзина для кондиционера', 'ac-mount': 'кронштейн для кондиционера',
-  'appliances': 'бытовая техника', 'clothing-racks': 'вешалка для одежды',
-  'cosmetics-storage': 'хранение косметики', 'floor-hanger': 'напольная вешалка',
-  'home-decor': 'декор для дома', 'jewelry-storage': 'хранение украшений',
-  'kids': 'детские товары', 'mosquito-nets': 'москитная сетка',
-  'play-tents': 'игровая палатка', 'shelf-corner': 'угловая полка',
-  'shoe-racks': 'полка для обуви', 'stools': 'табурет', 'storage': 'хранение',
-  'tv-mount': 'кронштейн для TV', 'waste-bin': 'урна',
-  'other': '',
+// Название категории для кикера над товаром. Свой словарь здесь уже был, и он
+// отстал от жизни: категорий в базе больше, чем строк в нём, и на полосу
+// выходили служебные ярлыки вроде «electric-panel-outdoor» и «fan-barrier».
+// Берём те же названия, что видит админка: справочник CATEGORIES плюс
+// категории, заведённые руками, — их отдаёт /admin/custom-categories.
+const CATEGORY_LABELS = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label]));
+CATEGORY_LABELS.other = '';   // «Другое» кикером не подписываем
+
+let customLabels = {};
+
+async function loadCategoryLabels() {
+  try {
+    const { data } = await adminGetCustomCategories();
+    customLabels = Object.fromEntries((data || []).map(c => [c.value, c.label]));
+  } catch { customLabels = {}; }
+}
+
+// Ярлык без кириллицы — это slug, которому не нашлось названия. На бумаге он
+// читается мусором, поэтому кикер в таком случае просто пустой.
+const categoryLabel = category => {
+  const label = customLabels[category] ?? CATEGORY_LABELS[category] ?? category ?? '';
+  return /[а-яё]/i.test(label) ? label : '';
 };
 
 /**
@@ -131,7 +134,7 @@ function cardHtml(product, priceType, currency) {
   if (!product) return '<div class="card card--empty"></div>';
 
   const img = printImg(product.images?.[0]);
-  const kicker = CATEGORY_LABELS[product.category] ?? product.category ?? '';
+  const kicker = categoryLabel(product.category);
 
   // Порядок строк как в макете: сначала габариты, потом характеристики товара.
   const rows = [];
@@ -182,93 +185,6 @@ function cardHtml(product, priceType, currency) {
 // ── Обложка ───────────────────────────────────────────────────────────────────
 function coverHtml(src) {
   return `<section class="page cover"><img src="${esc(src)}" alt=""></section>`;
-}
-
-// ── План каталога ─────────────────────────────────────────────────────────────
-// Разделы и что в них лежит — по названиям товаров. Дерево трёхуровневое:
-// сет → категория → товары, как в свёрстанном плане у дизайнера.
-function planTree(groups, setName, headFromGroups) {
-  const sets = [];
-  const findSet = name => {
-    let found = sets.find(x => x.name === name);
-    if (!found) { found = { name, cats: [] }; sets.push(found); }
-    return found;
-  };
-
-  groups.forEach(group => {
-    // При выгрузке бренда группы — сеты, категорию берём у товара.
-    // При выгрузке одного сета группы и есть категории внутри него.
-    const set = findSet(headFromGroups ? (group.groupName || setName) : setName);
-    (group.products || []).forEach(product => {
-      const catName = headFromGroups
-        ? (CATEGORY_LABELS[product.category] ?? product.category ?? '')
-        : (group.groupName || '');
-      let cat = set.cats.find(c => c.name === catName);
-      if (!cat) { cat = { name: catName, items: [] }; set.cats.push(cat); }
-      cat.items.push(product.name || product.fullName || '');
-    });
-  });
-
-  return sets;
-}
-
-// План разбиваем на полосы сами: высоту считаем по строкам, а не отдаём
-// колонкам на волю — иначе длинный план молча обрезался бы по краю полосы.
-const PLAN_COL_H  = 690;   // высота колонки под шапкой плана
-const H_SET = 30, H_CAT = 19, H_ITEM = 13.5, H_GAP = 9;
-
-function planPages(sets) {
-  // Сначала блоки с высотами, потом раскладка: колонки надо выровнять по высоте,
-  // а для этого нужно знать весь объём заранее. Иначе короткий план целиком
-  // сваливался в левую колонку, а правая оставалась пустой.
-  const blocks = [];
-  sets.forEach(set => {
-    blocks.push({ kind: 'set', text: set.name, h: H_SET });
-    set.cats.forEach(cat => {
-      // Категорию с товарами не разрываем: заголовок без списка читается сломанным.
-      blocks.push({
-        kind: 'cat', name: cat.name, items: cat.items,
-        h: (cat.name ? H_CAT : 0) + cat.items.length * H_ITEM + H_GAP,
-      });
-    });
-  });
-
-  const total   = blocks.reduce((n, b) => n + b.h, 0);
-  const colsNum = Math.max(2, Math.ceil(total / PLAN_COL_H));
-  const target  = Math.min(PLAN_COL_H, total / colsNum);
-
-  const cols = [];
-  let col = [], used = 0;
-  blocks.forEach(b => {
-    // Заголовок сета в конце колонки — висячий: уносим вместе со следующим блоком.
-    const orphan = b.kind === 'set' && used + b.h > target - H_CAT;
-    if (col.length && (used + b.h > PLAN_COL_H || used >= target || orphan)) {
-      cols.push(col); col = []; used = 0;
-    }
-    col.push(b); used += b.h;
-  });
-  if (col.length) cols.push(col);
-
-  const pages = [];
-  for (let i = 0; i < cols.length; i += 2) pages.push(cols.slice(i, i + 2));
-  return pages;
-}
-
-function planHtml(groups, setName, headFromGroups) {
-  const pages = planPages(planTree(groups, setName, headFromGroups));
-
-  const colHtml = col => `<div class="plan-col">${col.map(b => b.kind === 'set'
-    ? `<div class="plan-set">${esc(b.text)}</div>`
-    : `<div class="plan-block">
-         ${b.name ? `<div class="plan-cat">${esc(b.name)}</div>` : ''}
-         ${b.items.map(t => `<div class="plan-item">${esc(t)}</div>`).join('')}
-       </div>`).join('')}</div>`;
-
-  return pages.map((cols, i) => `
-    <section class="page plan">
-      <div class="plan-bar">План каталога${pages.length > 1 ? ` · ${i + 1} из ${pages.length}` : ''}</div>
-      <div class="plan-cols">${cols.map(colHtml).join('')}</div>
-    </section>`).join('');
 }
 
 // ── Полоса ────────────────────────────────────────────────────────────────────
@@ -366,55 +282,6 @@ html, body {
   height: 100%;
   object-fit: cover;
 }
-
-/* ── План каталога ───────────────────────────────────────────────────────── */
-.plan { padding: 0; }
-.plan-bar {
-  height: 62pt;
-  background: ${RED};
-  color: #fff;
-  font-size: 17pt;
-  font-weight: 700;
-  letter-spacing: 1.2pt;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.plan-cols {
-  display: flex;
-  gap: 40pt;
-  padding: 40pt ${MARGIN_L}pt 0;
-  align-items: flex-start;
-}
-.plan-col { flex: 1 1 0; min-width: 0; }
-
-.plan-set {
-  font-size: 15pt;
-  font-weight: 700;
-  letter-spacing: 0.6pt;
-  text-transform: uppercase;
-  margin-bottom: 8pt;
-}
-.plan-set:not(:first-child) { margin-top: 18pt; }
-
-.plan-block { margin-bottom: 9pt; }
-.plan-cat {
-  font-size: 10.5pt;
-  font-weight: 500;
-  color: ${RED};
-  margin-bottom: 2pt;
-}
-.plan-item {
-  font-size: 9.5pt;
-  line-height: 13.5pt;
-  color: #5b6572;
-  padding-left: 14pt;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.plan-item::before { content: '— '; }
 
 /* ── Шапка ───────────────────────────────────────────────────────────────── */
 .phead {
@@ -596,6 +463,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   // пути к шрифтам и логотипу разрешаются не от адреса сайта — печать уходит
   // системным шрифтом и без знака.
   const cover = COVERS[brand] || COVERS.home;
+  await loadCategoryLabels();
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
@@ -608,7 +476,6 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   <button type="button" onclick="window.print()">Сохранить PDF</button>
 </div>
 ${coverHtml(cover.title)}
-${planHtml(groups, setName, headFromGroups)}
 ${buildPages(groups, setName, priceType, currency, headFromGroups)}
 ${coverHtml(cover.end)}</body></html>`;
 
