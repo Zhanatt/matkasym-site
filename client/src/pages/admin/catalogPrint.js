@@ -29,6 +29,25 @@ const RED  = '#E30521';                 // плашка цены и знак
 const RULE = '#899FA3';                 // все линейки
 const INK  = '#000000';
 
+// ── Обложки ───────────────────────────────────────────────────────────────────
+// Свои у каждого бренда: HOME, SHAAR, KYZMAT. Ширину берём под печать — 1654 px
+// это A4 при 200 dpi; на 595 px, как было раньше, обложка на бумаге мылила.
+const CV = w => `https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_auto:good,w_${w}`;
+const COVERS = {
+  home: {
+    title: `${CV(1654)}/v1780894224/matkasym/covers/title-page-home.png`,
+    end:   `${CV(1654)}/v1780894227/matkasym/covers/end-page-home.png`,
+  },
+  shaar: {
+    title: `${CV(1654)}/v1780894225/matkasym/covers/title-page-shaar.png`,
+    end:   `${CV(1654)}/v1780894228/matkasym/covers/end-page-shaar.png`,
+  },
+  kyzmat: {
+    title: `${CV(1654)}/v1780894226/matkasym/covers/title-page-kyzmat.png`,
+    end:   `${CV(1654)}/v1780894229/matkasym/covers/end-page-kyzmat.png`,
+  },
+};
+
 // ── Словари ───────────────────────────────────────────────────────────────────
 const PRICE_LABELS = {
   price:          'рознич. цена',
@@ -160,6 +179,98 @@ function cardHtml(product, priceType, currency) {
     </div>`;
 }
 
+// ── Обложка ───────────────────────────────────────────────────────────────────
+function coverHtml(src) {
+  return `<section class="page cover"><img src="${esc(src)}" alt=""></section>`;
+}
+
+// ── План каталога ─────────────────────────────────────────────────────────────
+// Разделы и что в них лежит — по названиям товаров. Дерево трёхуровневое:
+// сет → категория → товары, как в свёрстанном плане у дизайнера.
+function planTree(groups, setName, headFromGroups) {
+  const sets = [];
+  const findSet = name => {
+    let found = sets.find(x => x.name === name);
+    if (!found) { found = { name, cats: [] }; sets.push(found); }
+    return found;
+  };
+
+  groups.forEach(group => {
+    // При выгрузке бренда группы — сеты, категорию берём у товара.
+    // При выгрузке одного сета группы и есть категории внутри него.
+    const set = findSet(headFromGroups ? (group.groupName || setName) : setName);
+    (group.products || []).forEach(product => {
+      const catName = headFromGroups
+        ? (CATEGORY_LABELS[product.category] ?? product.category ?? '')
+        : (group.groupName || '');
+      let cat = set.cats.find(c => c.name === catName);
+      if (!cat) { cat = { name: catName, items: [] }; set.cats.push(cat); }
+      cat.items.push(product.name || product.fullName || '');
+    });
+  });
+
+  return sets;
+}
+
+// План разбиваем на полосы сами: высоту считаем по строкам, а не отдаём
+// колонкам на волю — иначе длинный план молча обрезался бы по краю полосы.
+const PLAN_COL_H  = 690;   // высота колонки под шапкой плана
+const H_SET = 30, H_CAT = 19, H_ITEM = 13.5, H_GAP = 9;
+
+function planPages(sets) {
+  // Сначала блоки с высотами, потом раскладка: колонки надо выровнять по высоте,
+  // а для этого нужно знать весь объём заранее. Иначе короткий план целиком
+  // сваливался в левую колонку, а правая оставалась пустой.
+  const blocks = [];
+  sets.forEach(set => {
+    blocks.push({ kind: 'set', text: set.name, h: H_SET });
+    set.cats.forEach(cat => {
+      // Категорию с товарами не разрываем: заголовок без списка читается сломанным.
+      blocks.push({
+        kind: 'cat', name: cat.name, items: cat.items,
+        h: (cat.name ? H_CAT : 0) + cat.items.length * H_ITEM + H_GAP,
+      });
+    });
+  });
+
+  const total   = blocks.reduce((n, b) => n + b.h, 0);
+  const colsNum = Math.max(2, Math.ceil(total / PLAN_COL_H));
+  const target  = Math.min(PLAN_COL_H, total / colsNum);
+
+  const cols = [];
+  let col = [], used = 0;
+  blocks.forEach(b => {
+    // Заголовок сета в конце колонки — висячий: уносим вместе со следующим блоком.
+    const orphan = b.kind === 'set' && used + b.h > target - H_CAT;
+    if (col.length && (used + b.h > PLAN_COL_H || used >= target || orphan)) {
+      cols.push(col); col = []; used = 0;
+    }
+    col.push(b); used += b.h;
+  });
+  if (col.length) cols.push(col);
+
+  const pages = [];
+  for (let i = 0; i < cols.length; i += 2) pages.push(cols.slice(i, i + 2));
+  return pages;
+}
+
+function planHtml(groups, setName, headFromGroups) {
+  const pages = planPages(planTree(groups, setName, headFromGroups));
+
+  const colHtml = col => `<div class="plan-col">${col.map(b => b.kind === 'set'
+    ? `<div class="plan-set">${esc(b.text)}</div>`
+    : `<div class="plan-block">
+         ${b.name ? `<div class="plan-cat">${esc(b.name)}</div>` : ''}
+         ${b.items.map(t => `<div class="plan-item">${esc(t)}</div>`).join('')}
+       </div>`).join('')}</div>`;
+
+  return pages.map((cols, i) => `
+    <section class="page plan">
+      <div class="plan-bar">План каталога${pages.length > 1 ? ` · ${i + 1} из ${pages.length}` : ''}</div>
+      <div class="plan-cols">${cols.map(colHtml).join('')}</div>
+    </section>`).join('');
+}
+
 // ── Полоса ────────────────────────────────────────────────────────────────────
 function pageHtml(cards, setName, pageNumber, priceType, currency) {
   // Логотип уходит к внешнему краю разворота — по настоящему номеру полосы.
@@ -246,6 +357,64 @@ html, body {
   page-break-after: always;
 }
 .page:last-child { break-after: auto; page-break-after: auto; }
+
+/* ── Обложка ─────────────────────────────────────────────────────────────── */
+.cover { padding: 0; }
+.cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── План каталога ───────────────────────────────────────────────────────── */
+.plan { padding: 0; }
+.plan-bar {
+  height: 62pt;
+  background: ${RED};
+  color: #fff;
+  font-size: 17pt;
+  font-weight: 700;
+  letter-spacing: 1.2pt;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.plan-cols {
+  display: flex;
+  gap: 40pt;
+  padding: 40pt ${MARGIN_L}pt 0;
+  align-items: flex-start;
+}
+.plan-col { flex: 1 1 0; min-width: 0; }
+
+.plan-set {
+  font-size: 15pt;
+  font-weight: 700;
+  letter-spacing: 0.6pt;
+  text-transform: uppercase;
+  margin-bottom: 8pt;
+}
+.plan-set:not(:first-child) { margin-top: 18pt; }
+
+.plan-block { margin-bottom: 9pt; }
+.plan-cat {
+  font-size: 10.5pt;
+  font-weight: 500;
+  color: ${RED};
+  margin-bottom: 2pt;
+}
+.plan-item {
+  font-size: 9.5pt;
+  line-height: 13.5pt;
+  color: #5b6572;
+  padding-left: 14pt;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-item::before { content: '— '; }
 
 /* ── Шапка ───────────────────────────────────────────────────────────────── */
 .phead {
@@ -416,21 +585,18 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
 }
 
 /**
- * Собирает каталог и отдаёт его одним из двух способов:
+ * Открывает каталог отдельной вкладкой и вызывает печать; в диалоге выбирают
+ * «Сохранить как PDF». Поля поставить «Нет», фоновую графику включить, иначе
+ * красная плашка цены напечатается белой. Кнопка есть и на самой странице.
  *
- *   mode: 'print' — открывает отдельной вкладкой и вызывает печать; в диалоге
- *     выбирают «Сохранить как PDF». Поля поставить «Нет», фоновую графику
- *     включить, иначе красная плашка цены напечатается белой.
- *
- *   mode: 'html'  — сразу скачивает файлом, без диалога. Внутри стоит <base>
- *     на адрес сайта, поэтому шрифты, знак и снимки подтягиваются и в
- *     скачанном файле; открыть его можно в любом браузере и оттуда же напечатать.
  */
 export async function printCatalog(groups, setName, priceType = 'price', brand = 'home', currency = 'сом',
-                                   { headFromGroups = true, mode = 'print' } = {}) {
+                                   { headFromGroups = true } = {}) {
   // <base> обязателен: окно открывается как about:blank, и без него относительные
   // пути к шрифтам и логотипу разрешаются не от адреса сайта — печать уходит
   // системным шрифтом и без знака.
+  const cover = COVERS[brand] || COVERS.home;
+
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <base href="${location.origin}/">
@@ -441,18 +607,10 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   <b>Поля — «Нет», фоновая графика — включена</b>
   <button type="button" onclick="window.print()">Сохранить PDF</button>
 </div>
-${buildPages(groups, setName, priceType, currency, headFromGroups)}</body></html>`;
-
-  if (mode === 'html') {
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `matkasym-catalog-${setName.toLowerCase().replace(/\s+/g, '-')}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-    return;
-  }
+${coverHtml(cover.title)}
+${planHtml(groups, setName, headFromGroups)}
+${buildPages(groups, setName, priceType, currency, headFromGroups)}
+${coverHtml(cover.end)}</body></html>`;
 
   const win = window.open('', '_blank');
   if (!win) throw new Error('Браузер заблокировал новое окно — разрешите всплывающие окна для сайта');

@@ -17,16 +17,13 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [picking,   setPicking]   = useState(false);
-  // Режим, выбранный кнопкой. Нужен только чтобы пережить окно выбора раздела:
-  // сам выбор делает нажатая кнопка, а не отдельный список.
-  const [outMode,   setOutMode]   = useState('print');
   const priceType = PRICE_MODE_TO_TYPE[priceMode] || 'price';
   const timerRef = useRef(null);
 
   if (!products?.length) return null;
 
   // pick — выбранный пункт из choices; null означает «весь набор, как раньше».
-  const handleClick = async (pick = null, mode = outMode) => {
+  const handleClick = async (pick = null) => {
     if (loading) return;
     setPicking(false);
     setLoading(true);
@@ -82,7 +79,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
                 : allProducts.some(p => p.brand === 'matkasym-shaar') ? 'shaar' : 'home';
 
     try {
-      await printCatalog(pdfGroups, title, priceType, brand, currency, { headFromGroups: false, mode });
+      await printCatalog(pdfGroups, title, priceType, brand, currency, { headFromGroups: false });
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {
@@ -118,7 +115,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
               // иначе непонятно, куда делся раздел.
               const has = (groups || []).some(([g, items]) => g === c.category && items.length > 0);
               return (
-                <button key={c.category} onClick={() => has && handleClick(c, outMode)} disabled={!has}
+                <button key={c.category} onClick={() => has && handleClick(c)} disabled={!has}
                   style={{
                     padding: '10px 14px', borderRadius: 10, textAlign: 'left',
                     border: '1.5px solid ' + (has ? '#d6dee7' : '#eef0f3'),
@@ -142,7 +139,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
     )}
     <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
       <button
-        onClick={() => { setOutMode('print'); choices?.length ? setPicking(true) : handleClick(null, 'print'); }}
+        onClick={() => (choices?.length ? setPicking(true) : handleClick())}
         disabled={loading}
         title="Откроет каталог и диалог печати — там «Сохранить как PDF»"
         style={{
@@ -166,20 +163,6 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
         <span style={{ position: 'relative', zIndex: 1 }}>
           {loading ? `⏳ ${Math.round(progress)}%` : '📄 PDF'}
         </span>
-      </button>
-
-      <button
-        onClick={() => { setOutMode('html'); choices?.length ? setPicking(true) : handleClick(null, 'html'); }}
-        disabled={loading}
-        title="Скачает файлом сразу, без диалога печати"
-        style={{
-          padding: '5px 12px', borderRadius: 6,
-          border: '1.5px solid #1a73e8', background: '#fff', color: '#1a73e8',
-          cursor: loading ? 'wait' : 'pointer',
-          fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
-        }}
-      >
-        ⬇ HTML
       </button>
     </div>
     </>
