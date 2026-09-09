@@ -114,11 +114,15 @@ export default function AdminDashboard() {
   const [stockBase,     setStockBase]     = useState('makein');
   // Товары из выгрузки, которых нет в каталоге — ждут подтверждения
   const [newItems,      setNewItems]      = useState(null);   // { base, items: [{name, stock, buffer, isGroup, checked}] }
-  const [newItemsBrand, setNewItemsBrand] = useState('matkasym-home');
   // Сет обязателен: без него карточка проваливается в «Без сета», где её никто
   // не видит. Так за месяцы накопилось полторы сотни товаров, часть с остатком.
-  const [newItemsSet,   setNewItemsSet]   = useState('');
-  const [brandSets,     setBrandSets]     = useState({});   // { бренд: [{key,label}] }
+  //
+  // Сет у каждого товара свой. Одна выгрузка остатков приносит вперемешку и
+  // урны, и щиты, и грунтовку — общим сетом на всё окно их не разложить, а
+  // добавлять пришлось бы по одному, заново загружая файл. Поэтому сет стоит
+  // в строке товара, а выпадашка сверху проставляет его сразу всем отмеченным.
+  const [assignTo,      setAssignTo]      = useState('');   // 'бренд::сет' для отмеченных
+  const [setGroups,     setSetGroups]     = useState([]);   // [{ brand, brandLabel, sets: [{key,label}] }]
   const [addingItems,   setAddingItems]   = useState(false);
   const [priceLoading,  setPriceLoading]  = useState(null);
   const [photoLoading,       setPhotoLoading]       = useState(false);
@@ -160,34 +164,37 @@ export default function AdminDashboard() {
     }
   };
 
-  // Справочник сетов по брендам — для выпадашки в окне подтверждения.
+  // Справочник сетов — для выпадашек в окне подтверждения. Сеты сгруппированы
+  // по бренду: бренд отдельной выпадашкой не нужен, он однозначно следует из сета.
   useEffect(() => {
     adminGetBrands()
-      .then(r => {
-        const map = {};
-        (r.data || []).forEach(b => {
+      .then(r => setSetGroups((r.data || [])
+        .filter(b => (b.sets || []).length)
+        .map(b => ({
+          brand: b.key,
+          brandLabel: b.label || b.key.replace('matkasym-', '').toUpperCase(),
           // Имя сета как есть: labelRu — перевод для витрины, а не название
-          map[b.key] = (b.sets || []).map(x => ({ key: x.key, label: x.label || x.key }));
-        });
-        setBrandSets(map);
-      })
-      .catch(() => setBrandSets({}));
+          sets: (b.sets || []).map(x => ({ key: x.key, label: x.label || x.key })),
+        }))))
+      .catch(() => setSetGroups([]));
   }, []);
 
-  // Сменили бренд — прежний сет к нему уже не относится.
-  useEffect(() => { setNewItemsSet(''); }, [newItemsBrand]);
-
   const handleAddNewItems = async () => {
-    const items = newItems.items.filter(i => i.checked);
+    // Идут только те, кому сет проставлен: без сета сервер и не примет.
+    const items = newItems.items.filter(i => i.checked && i.dest);
     if (!items.length) { setNewItems(null); return; }
     setAddingItems(true);
     try {
-      const r = await adminConfirmStockItems(newItems.base, items.map(i => ({
-        name: i.name, stock: i.stock, buffer: i.buffer,
-        brand: newItemsBrand, set: newItemsSet,
-      })));
+      const r = await adminConfirmStockItems(newItems.base, items.map(i => {
+        const [brand, set] = i.dest.split('::');
+        return { name: i.name, stock: i.stock, buffer: i.buffer, brand, set };
+      }));
       setSyncResult({ ok: true, msg: `✅ Добавлено товаров: ${r.data.added}${r.data.skipped ? `, пропущено: ${r.data.skipped}` : ''}` });
-      setNewItems(null);
+      // Добавленные уходят из списка, остальные остаются: сеты проставляют
+      // партиями, и закрывать окно после первой значило бы грузить файл заново.
+      const added = new Set(items.map(i => i.name));
+      const rest  = newItems.items.filter(i => !added.has(i.name));
+      setNewItems(rest.length ? { ...newItems, items: rest } : null);
       adminStats().then(r => setStats(r.data)).catch(() => {});
     } catch (err) {
       setSyncResult({ ok: false, error: err?.response?.data?.error || 'Ошибка добавления' });
@@ -210,7 +217,7 @@ export default function AdminDashboard() {
         setNewItems({
           base: r.data.base,
           baseLabel: r.data.baseLabel,
-          items: r.data.newItems.map(i => ({ ...i, checked: !i.isGroup })),
+          items: r.data.newItems.map(i => ({ ...i, checked: !i.isGroup, dest: '' })),
         });
       }
       if (r.data.excelBase64) {
@@ -492,6 +499,20 @@ export default function AdminDashboard() {
   const PREVIEW = 6;
   const liquidationPreview = showAllLiquidation ? liquidationItems : liquidationItems.slice(0, PREVIEW);
 
+  // Список сетов для окна подтверждения. Один и тот же в строке товара и в
+  // выпадашке сверху, поэтому собран один раз. Бренд зашит в значение: сет
+  // принадлежит своему бренду, спрашивать его отдельно незачем.
+  const setOptions = setGroups.map(g => (
+    <optgroup key={g.brand} label={g.brandLabel}>
+      {g.sets.map(x => <option key={x.key} value={`${g.brand}::${x.key}`}>{x.label}</option>)}
+    </optgroup>
+  ));
+
+  const newItemsList = newItems?.items || [];
+  const checkedCount = newItemsList.filter(i => i.checked).length;
+  const readyCount   = newItemsList.filter(i => i.checked && i.dest).length;
+  const noSetCount   = checkedCount - readyCount;
+
   return (
     <div>
       <div className="admin-page-header">
@@ -619,35 +640,31 @@ export default function AdminDashboard() {
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           onClick={() => !addingItems && setNewItems(null)}
         >
-          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640, maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 22 }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 22 }} onClick={e => e.stopPropagation()}>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#111' }}>
               В остатках «{newItems.baseLabel}» есть товары, которых нет в каталоге
             </div>
             <div style={{ fontSize: 12.5, color: '#888', margin: '6px 0 14px' }}>
               Отмечены только похожие на товар. Строки-группы («Итого», «01 TAZA KIYM», «Вешалки») распознаны и сняты —
-              проверьте, прежде чем добавлять.
+              проверьте, прежде чем добавлять. Сет у каждого товара свой: отметьте те, что идут в один сет, выберите
+              его сверху и нажмите «Проставить». Добавить можно частями — окно останется с остальными.
             </div>
 
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>Бренд:</span>
-              <select value={newItemsBrand} onChange={e => setNewItemsBrand(e.target.value)}
-                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontWeight: 600 }}>
-                <option value="matkasym-home">HOME</option>
-                <option value="matkasym-shaar">SHAAR</option>
-                <option value="matkasym-kyzmat">KYZMAT</option>
-              </select>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>Сет:</span>
-              <select value={newItemsSet} onChange={e => setNewItemsSet(e.target.value)}
-                style={{
-                  padding: '7px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  border: `1.5px solid ${newItemsSet ? '#e0e0e0' : '#f0a0a0'}`,
-                  background: newItemsSet ? '#fff' : '#fff5f5',
-                }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>Отмеченным сет:</span>
+              <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
+                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontWeight: 600, maxWidth: 240 }}>
                 <option value="">— выберите сет —</option>
-                {(brandSets[newItemsBrand] || []).map(x => (
-                  <option key={x.key} value={x.key}>{x.label}</option>
-                ))}
+                {setOptions}
               </select>
+              <button
+                onClick={() => setNewItems(n => ({ ...n, items: n.items.map(i => i.checked ? { ...i, dest: assignTo } : i) }))}
+                disabled={!assignTo || !checkedCount}
+                style={{
+                  padding: '6px 12px', borderRadius: 8, border: 'none', background: '#2d7a3a', color: '#fff',
+                  fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                  opacity: !assignTo || !checkedCount ? .45 : 1,
+                }}>Проставить ({checkedCount})</button>
               <span style={{ flex: 1 }} />
               <button onClick={() => setNewItems(n => ({ ...n, items: n.items.map(i => ({ ...i, checked: true })) }))}
                 style={{ padding: '6px 12px', borderRadius: 8, border: '1.5px solid #e5e5e5', background: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Отметить все</button>
@@ -656,37 +673,56 @@ export default function AdminDashboard() {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
+              {/* Галочка с названием под label, выпадашка снаружи: внутри label
+                  клик по ней снимал бы галочку заодно с выбором сета. */}
               {newItems.items.map((it, idx) => (
-                <label key={idx} style={{
+                <div key={idx} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                  borderBottom: '1px solid #f5f5f5', cursor: 'pointer',
+                  borderBottom: '1px solid #f5f5f5',
                   background: it.isGroup ? '#fafafa' : '#fff',
                 }}>
-                  <input type="checkbox" checked={it.checked}
-                    onChange={e => { const v = e.target.checked; setNewItems(n => ({ ...n, items: n.items.map((x, i) => i === idx ? { ...x, checked: v } : x) })); }} />
-                  <span style={{ flex: 1, fontSize: 13, color: it.isGroup ? '#999' : '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {it.name}
-                  </span>
-                  {it.isGroup && (
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309', background: '#fef3c7', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>похоже на группу</span>
-                  )}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={it.checked}
+                      onChange={e => { const v = e.target.checked; setNewItems(n => ({ ...n, items: n.items.map((x, i) => i === idx ? { ...x, checked: v } : x) })); }} />
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: it.isGroup ? '#999' : '#222', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {it.name}
+                    </span>
+                    {it.isGroup && (
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309', background: '#fef3c7', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>похоже на группу</span>
+                    )}
+                  </label>
+                  {/* Сет у строки свой: щиты и урны из одной выгрузки идут в разные. */}
+                  <select
+                    value={it.dest}
+                    onChange={e => { const v = e.target.value; setNewItems(n => ({ ...n, items: n.items.map((x, i) => i === idx ? { ...x, dest: v } : x) })); }}
+                    style={{
+                      width: 168, flexShrink: 0, padding: '4px 6px', borderRadius: 7, fontSize: 12,
+                      fontWeight: 600, cursor: 'pointer',
+                      border: `1.5px solid ${it.dest ? '#cfe3d4' : it.checked ? '#f0a0a0' : '#e8e8e8'}`,
+                      background: it.dest ? '#f4faf5' : it.checked ? '#fff5f5' : '#fff',
+                      color: it.dest ? '#2d7a3a' : '#999',
+                    }}>
+                    <option value="">— сет —</option>
+                    {setOptions}
+                  </select>
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2d7a3a', minWidth: 60, textAlign: 'right' }}>{it.stock} шт</span>
-                </label>
+                </div>
               ))}
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center', marginTop: 14 }}>
-              <span style={{ fontSize: 12.5, color: newItemsSet ? '#888' : '#c0392b', marginRight: 'auto' }}>
-                {newItemsSet
-                  ? <>Отмечено: <b style={{ color: '#111' }}>{newItems.items.filter(i => i.checked).length}</b> из {newItems.items.length}</>
-                  : 'Выберите сет — без него товар попадёт в «Без сета», и его никто не увидит'}
+              <span style={{ fontSize: 12.5, color: noSetCount ? '#c0392b' : '#888', marginRight: 'auto' }}>
+                {readyCount > 0 && <>Готовы к добавлению: <b style={{ color: '#111' }}>{readyCount}</b> из {newItems.items.length}. </>}
+                {noSetCount > 0
+                  ? `${noSetCount} отмечено без сета — без него товар попадёт в «Без сета», и его никто не увидит`
+                  : readyCount === 0 && 'Отметьте товары и проставьте им сет'}
               </span>
               <button onClick={() => setNewItems(null)} disabled={addingItems}
                 style={{ padding: '9px 16px', borderRadius: 9, border: '1.5px solid #e5e5e5', background: '#fff', color: '#555', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Не добавлять</button>
               <button onClick={handleAddNewItems}
-                disabled={addingItems || !newItemsSet || !newItems.items.some(i => i.checked)}
-                style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: '#2d7a3a', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: addingItems ? 'wait' : 'pointer', opacity: addingItems || !newItemsSet || !newItems.items.some(i => i.checked) ? .5 : 1 }}>
-                {addingItems ? 'Добавляю…' : 'Добавить в каталог'}</button>
+                disabled={addingItems || !readyCount}
+                style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: '#2d7a3a', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: addingItems ? 'wait' : 'pointer', opacity: addingItems || !readyCount ? .5 : 1 }}>
+                {addingItems ? 'Добавляю…' : `Добавить в каталог${readyCount ? ` (${readyCount})` : ''}`}</button>
             </div>
           </div>
         </div>
