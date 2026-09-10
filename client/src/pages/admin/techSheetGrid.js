@@ -11,18 +11,23 @@
  * таблицей проходит рамка листа или линия соседнего блока.
  */
 
-// Порог «пикселя линии»: бланки печатают чёрным по белому, серая заливка
-// шапок (~#e8eef7) в линии попадать не должна.
-const DARK = 190;
+// Линии бланка бывают почти белёсыми — светло-голубая сетка попадается не
+// реже чёрной, поэтому в разметку берём всё, что заметно темнее бумаги.
+const LINE = 235;
+// Чернила — только настоящий текст. По этому порогу считаем, подписана
+// ячейка или пуста, иначе светлая сетка сама сошла бы за надпись.
+const INK = 190;
 
-// Маска тёмных пикселей из RGBA-массива канваса.
-export function maskFromRGBA(data, W, H) {
-  const mask = new Uint8Array(W * H);
-  for (let i = 0, p = 0; i < mask.length; i++, p += 4) {
+// Две маски одного листа: по первой ищем линии, по второй — текст.
+export function masksFromRGBA(data, W, H) {
+  const line = new Uint8Array(W * H);
+  const ink  = new Uint8Array(W * H);
+  for (let i = 0, p = 0; i < line.length; i++, p += 4) {
     const lum = (data[p] * 299 + data[p + 1] * 587 + data[p + 2] * 114) / 1000;
-    if (lum < DARK) mask[i] = 1;
+    if (lum < LINE) line[i] = 1;
+    if (lum < INK)  ink[i]  = 1;
   }
-  return mask;
+  return { line, ink };
 }
 
 // Линия — это длинный непрерывный ряд тёмных пикселей. Считаем самый длинный
@@ -122,7 +127,8 @@ function baselineOf(mask, W, x0, x1, y0, y1) {
  * Ищем таблицу согласования и в ней — строки, куда вписывают подписанта.
  * @returns {{rows: {y0,y1,x0,x1}[], bottom: number} | null} координаты в пикселях
  */
-export function findApprovalRows(mask, W, H) {
+export function findApprovalRows(masks, W, H) {
+  const { line: mask, ink } = masks;
   const hs = horizontalLines(mask, W, H);
   if (hs.length < 2) return null;
 
@@ -169,11 +175,11 @@ export function findApprovalRows(mask, W, H) {
       // таблицы (там подписаны обе ячейки), и рамки чертежа (там пусты обе).
       const xs = [s.left, ...s.inner, s.right];
       for (let k = 0; k + 2 < xs.length; k++) {
-        const label = inkRatio(mask, W, xs[k] + 3, xs[k + 1] - 3, s.y0 + 3, s.y1 - 3);
-        const value = inkRatio(mask, W, xs[k + 1] + 3, xs[k + 2] - 3, s.y0 + 3, s.y1 - 3);
+        const label = inkRatio(ink, W, xs[k] + 3, xs[k + 1] - 3, s.y0 + 3, s.y1 - 3);
+        const value = inkRatio(ink, W, xs[k + 1] + 3, xs[k + 2] - 3, s.y0 + 3, s.y1 - 3);
         const wide  = xs[k + 2] - xs[k + 1] >= (s.right - s.left) * 0.1;
         if (label > 0.02 && value < 0.01 && wide) {
-          const baseline = baselineOf(mask, W, xs[k] + 3, xs[k + 1] - 3, s.y0 + 3, s.y1 - 3);
+          const baseline = baselineOf(ink, W, xs[k] + 3, xs[k + 1] - 3, s.y0 + 3, s.y1 - 3);
           rows.push({ y0: s.y0, y1: s.y1, x0: xs[k + 1], x1: xs[k + 2], baseline });
           break;
         }

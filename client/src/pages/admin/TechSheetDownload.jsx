@@ -59,7 +59,7 @@ export default function TechSheetDownload({ productId, files = [], productName =
 
       // Разбор PDF тянет за собой pdf-lib — грузим его только когда правда нужен
       const { signTechSheet } = await import('./techSheetSign');
-      const { bytes, filled, overflow } = await signTechSheet(res.data, values);
+      const { bytes, filled, overflow, uncertain } = await signTechSheet(res.data, values);
 
       // Длинный текст в ячейку не влезает — файл не отдаём, а говорим, сколько
       // символов туда помещается: иначе подпись пришлось бы печатать нечитаемой.
@@ -79,6 +79,8 @@ export default function TechSheetDownload({ productId, files = [], productName =
         setNote('Таблицу согласования на листе найти не удалось — скачан оригинал без подписей.');
       } else if (missed.length) {
         setNote(`Вписано не всё: не нашлась строка «${FIELDS.find(f => f.key === missed[0]).label}».`);
+      } else if (uncertain) {
+        setNote('В таблице разобрались не все строки — проверьте, что подписи встали напротив своих ролей.');
       }
     } catch (e) {
       console.error('Tech sheet download error:', e);

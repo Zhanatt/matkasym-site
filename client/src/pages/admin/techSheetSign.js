@@ -13,11 +13,12 @@ import * as pdfjsLib from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
-import { maskFromRGBA, findApprovalRows } from './techSheetGrid';
+import { masksFromRGBA, findApprovalRows } from './techSheetGrid';
 
-// Ширина рендера страницы. Мельче — тонкие линии таблицы рвутся и она
-// перестаёт находиться; крупнее — лист разбирается заметно дольше без пользы.
-const RENDER_W = 1600;
+// Ширина рендера страницы. Мельче — тонкие линии таблицы рвутся, и строка
+// бланка либо теряется целиком, либо слипается с соседней; крупнее — лист
+// разбирается дольше без пользы.
+const RENDER_W = 2000;
 
 // Medium: подпись должна смотреться заодно с печатным бланком, а не бледнее его.
 const FONT_URL = '/fonts/Roboto-Medium.ttf';
@@ -54,7 +55,7 @@ function matchRowsByText(rows, textItems, viewport) {
  */
 export async function signTechSheet(pdfBytes, values) {
   const wanted = ROLES.filter(r => (values[r.key] || '').trim());
-  if (!wanted.length) return { bytes: new Uint8Array(pdfBytes), filled: [], overflow: [] };
+  if (!wanted.length) return { bytes: new Uint8Array(pdfBytes), filled: [], overflow: [], uncertain: false };
 
   // Ставим свой воркер, даже если его уже задали в другом месте: чужой адрес
   // может указывать на версию, которой нет, и разбор упадёт на первом же файле.
@@ -80,15 +81,15 @@ export async function signTechSheet(pdfBytes, values) {
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
 
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const mask = maskFromRGBA(data, canvas.width, canvas.height);
-    const table = findApprovalRows(mask, canvas.width, canvas.height);
+    const masks = masksFromRGBA(data, canvas.width, canvas.height);
+    const table = findApprovalRows(masks, canvas.width, canvas.height);
     if (!table) continue;
 
     const text = await page.getTextContent().catch(() => ({ items: [] }));
     target = { pageIndex: n - 1, viewport, table, byText: matchRowsByText(table.rows, text.items || [], viewport) };
   }
   await task.destroy();
-  if (!target) return { bytes: new Uint8Array(pdfBytes), filled: [], overflow: [] };
+  if (!target) return { bytes: new Uint8Array(pdfBytes), filled: [], overflow: [], uncertain: false };
 
   const out = await PDFDocument.load(pdfBytes);
   out.registerFontkit(fontkit);
@@ -144,10 +145,14 @@ export async function signTechSheet(pdfBytes, values) {
   // не отдаём файл вовсе, а показываем, сколько символов помещается.
   if (overflow.length) return { bytes: null, filled: [], overflow };
 
+  // В таблице согласования три роли. Если строк нашлось меньше и подсказки от
+  // текстового слоя не было, порядок мог сбиться — просим глазами проверить.
+  const uncertain = rows.length < 3 && !Object.keys(target.byText).length;
+
   for (const item of plan) {
     page.drawText(item.text, { x: item.x, y: item.y, size: item.size, font, color: rgb(0.05, 0.05, 0.12) });
     filled.push(item.key);
   }
 
-  return { bytes: await out.save(), filled, overflow };
+  return { bytes: await out.save(), filled, overflow, uncertain };
 }
