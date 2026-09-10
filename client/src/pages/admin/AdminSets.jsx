@@ -14,6 +14,7 @@ import {
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
+import BrandAboutButton from './BrandAboutButton';
 import TubesPdfButton from './TubesPdfButton';
 import './AdminSets.css';
 import { canEditCatalog, canExportLalafo } from '../../constants/roles';
@@ -784,9 +785,12 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {!editing && (
-            <BrandPdfButton brandKey={brandKey} sets={customSets} brandLabel={BRAND_META[brandKey].label} currency={CURRENCY[country] || CURRENCY.KG} />
+            <>
+              <BrandAboutButton brandKey={brandKey} sets={customSets} brandLabel={BRAND_META[brandKey].label} stockStats={stockStats} country={country} />
+              <BrandPdfButton brandKey={brandKey} sets={customSets} brandLabel={BRAND_META[brandKey].label} currency={CURRENCY[country] || CURRENCY.KG} />
+            </>
           )}
           {editing ? (
             <>
