@@ -55,7 +55,9 @@ export async function signTechSheet(pdfBytes, values) {
   const wanted = ROLES.filter(r => (values[r.key] || '').trim());
   if (!wanted.length) return { bytes: new Uint8Array(pdfBytes), filled: [] };
 
-  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+  // Ставим свой воркер, даже если его уже задали в другом месте: чужой адрес
+  // может указывать на версию, которой нет, и разбор упадёт на первом же файле.
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
   // pdf.js забирает буфер себе, а pdf-lib потом читает исходник — копируем.
   const forRender = pdfBytes.slice(0);

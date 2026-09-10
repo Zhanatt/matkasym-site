@@ -64,7 +64,8 @@ export default function TechSheetDownload({ productId, files = [], productName =
       }
     } catch (e) {
       console.error('Tech sheet download error:', e);
-      setNote('Не удалось скачать техлист.');
+      // Причина нужна прямо в интерфейсе: консоль на рабочем месте никто не откроет
+      setNote(`Не удалось скачать техлист: ${e?.message || 'неизвестная ошибка'}`);
     } finally {
       setBusy(null);
     }

@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
 import { signOf } from '../../utils/price';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { adminGetBrands, adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 import { canEditCatalog } from '../../constants/roles';
 
-// PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// PDF.js worker. Берём его из сборки, а не с CDN: на cdnjs выкладывают не
+// каждую версию pdf.js, и промах по версии молча ломает разбор PDF.
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 // Базы 1С и их прайсы (зеркалит server/lib/stockBases.js).
 // Набор цен у баз разный: в Казахстан Matkasym отгружает по экспортному
