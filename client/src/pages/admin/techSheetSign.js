@@ -19,7 +19,8 @@ import { maskFromRGBA, findApprovalRows } from './techSheetGrid';
 // перестаёт находиться; крупнее — лист разбирается заметно дольше без пользы.
 const RENDER_W = 1600;
 
-const FONT_URL = '/fonts/Roboto-Regular.ttf';
+// Medium: подпись должна смотреться заодно с печатным бланком, а не бледнее его.
+const FONT_URL = '/fonts/Roboto-Medium.ttf';
 
 // Кого вписываем и как строка подписана в таблице. Порядок важен: если
 // текстового слоя нет, строки разбираются сверху вниз именно в этом порядке.
@@ -53,7 +54,7 @@ function matchRowsByText(rows, textItems, viewport) {
  */
 export async function signTechSheet(pdfBytes, values) {
   const wanted = ROLES.filter(r => (values[r.key] || '').trim());
-  if (!wanted.length) return { bytes: new Uint8Array(pdfBytes), filled: [] };
+  if (!wanted.length) return { bytes: new Uint8Array(pdfBytes), filled: [], overflow: [] };
 
   // Ставим свой воркер, даже если его уже задали в другом месте: чужой адрес
   // может указывать на версию, которой нет, и разбор упадёт на первом же файле.
@@ -87,7 +88,7 @@ export async function signTechSheet(pdfBytes, values) {
     target = { pageIndex: n - 1, viewport, table, byText: matchRowsByText(table.rows, text.items || [], viewport) };
   }
   await task.destroy();
-  if (!target) return { bytes: new Uint8Array(pdfBytes), filled: [] };
+  if (!target) return { bytes: new Uint8Array(pdfBytes), filled: [], overflow: [] };
 
   const out = await PDFDocument.load(pdfBytes);
   out.registerFontkit(fontkit);
@@ -100,6 +101,9 @@ export async function signTechSheet(pdfBytes, values) {
 
   const { rows } = target.table;
   const filled = [];
+  const overflow = [];
+  const plan = [];
+
   wanted.forEach((role, i) => {
     // Порядок ролей в бланке постоянный, поэтому запасной путь — i-я строка
     // сверху; текстовый слой, если он есть, эту догадку уточняет.
@@ -113,18 +117,37 @@ export async function signTechSheet(pdfBytes, values) {
     const cellW = right - left, cellH = top - bottom;
 
     const text = values[role.key].trim();
-    let size = Math.min(cellH * 0.42, 14);
-    const maxW = cellW * 0.9;
-    while (size > 5 && font.widthOfTextAtSize(text, size) > maxW) size -= 0.5;
+    const maxW = cellW * 0.92;
+    // Подпись должна читаться наравне с печатным бланком, поэтому мельче
+    // трети строки не опускаемся: лучше сказать, что не влезает.
+    const minSize = Math.max(7, cellH * 0.34);
+    let size = Math.min(cellH * 0.46, 13);
+    while (size > minSize && font.widthOfTextAtSize(text, size) > maxW) size -= 0.25;
 
-    const w = font.widthOfTextAtSize(text, size);
-    page.drawText(text, {
-      x: left + (cellW - w) / 2,
-      y: bottom + (cellH - size * 0.72) / 2,
-      size, font, color: rgb(0.05, 0.05, 0.12),
-    });
-    filled.push(role.key);
+    if (font.widthOfTextAtSize(text, size) > maxW) {
+      let max = text.length;
+      while (max > 0 && font.widthOfTextAtSize(text.slice(0, max), size) > maxW) max--;
+      overflow.push({ key: role.key, max, length: text.length });
+      return;
+    }
+
+    // Базовая линия строки — та же, что у подписи роли слева; без неё сажаем
+    // по центру ячейки с поправкой на высоту прописных букв.
+    const y = row.baseline != null
+      ? target.viewport.convertToPdfPoint(row.x0, row.baseline)[1]
+      : bottom + (cellH - size * 0.72) / 2;
+
+    plan.push({ key: role.key, text, size, y, x: left + (cellW - font.widthOfTextAtSize(text, size)) / 2 });
   });
 
-  return { bytes: await out.save(), filled };
+  // Наполовину подписанный лист хуже неподписанного: если что-то не влезло,
+  // не отдаём файл вовсе, а показываем, сколько символов помещается.
+  if (overflow.length) return { bytes: null, filled: [], overflow };
+
+  for (const item of plan) {
+    page.drawText(item.text, { x: item.x, y: item.y, size: item.size, font, color: rgb(0.05, 0.05, 0.12) });
+    filled.push(item.key);
+  }
+
+  return { bytes: await out.save(), filled, overflow };
 }

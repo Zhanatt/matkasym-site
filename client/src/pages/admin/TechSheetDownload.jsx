@@ -18,6 +18,13 @@ const inputStyle = {
   fontSize: 13, color: '#111', outline: 'none',
 };
 
+const plural = (n, one, few, many) => {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  return b === 1 ? one : many;
+};
+
 function saveBlob(bytes, filename) {
   const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
   const a = document.createElement('a');
@@ -52,7 +59,18 @@ export default function TechSheetDownload({ productId, files = [], productName =
 
       // Разбор PDF тянет за собой pdf-lib — грузим его только когда правда нужен
       const { signTechSheet } = await import('./techSheetSign');
-      const { bytes, filled } = await signTechSheet(res.data, values);
+      const { bytes, filled, overflow } = await signTechSheet(res.data, values);
+
+      // Длинный текст в ячейку не влезает — файл не отдаём, а говорим, сколько
+      // символов туда помещается: иначе подпись пришлось бы печатать нечитаемой.
+      if (overflow.length) {
+        setNote(overflow.map(o => {
+          const label = FIELDS.find(f => f.key === o.key).label;
+          return `«${label}» не помещается в ячейку: максимум ${o.max} ${plural(o.max, 'символ', 'символа', 'символов')}, сейчас ${o.length}`;
+        }).join('. '));
+        return;
+      }
+
       saveBlob(bytes, name);
 
       const asked = FIELDS.filter(f => values[f.key].trim()).map(f => f.key);

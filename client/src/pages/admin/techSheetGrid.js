@@ -89,6 +89,35 @@ function inkRatio(mask, W, x0, x1, y0, y1) {
   return total ? dark / total : 0;
 }
 
+// Базовая линия надписи в ячейке: нижний край основной массы букв. По ней
+// сажаем вписываемый текст, чтобы он стоял на одной линии с ролью слева, а
+// не «плавал» по центру ячейки. Редкие нижние выносы (р, у, д) отсекает порог.
+function baselineOf(mask, W, x0, x1, y0, y1) {
+  const width = x1 - x0 + 1;
+  const counts = [];
+  for (let y = y0; y <= y1; y++) {
+    let c = 0;
+    for (let x = x0; x <= x1; x++) c += mask[y * W + x];
+    // Ряд, закрашенный почти целиком, — это рамка бланка, а не строка текста.
+    // Толстая рамка не всегда влезает в отступ от границы ячейки, и без этой
+    // проверки подпись садится на неё, то есть в соседнюю строку таблицы.
+    counts.push(c > width * 0.7 ? 0 : c);
+  }
+  const max = Math.max(...counts);
+  if (!max) return null;
+  const threshold = max * 0.15;
+  for (let i = counts.length - 1; i >= 0; i--) {
+    if (counts[i] >= threshold) {
+      const y = y0 + i;
+      // Базовая линия текста не может стоять вплотную к краю ячейки: если
+      // вышло так, значит поймали не буквы — лучше вернуться к центру строки.
+      const h = y1 - y0;
+      return (y - y0) > h * 0.25 && (y1 - y) > h * 0.05 ? y : null;
+    }
+  }
+  return null;
+}
+
 /**
  * Ищем таблицу согласования и в ней — строки, куда вписывают подписанта.
  * @returns {{rows: {y0,y1,x0,x1}[], bottom: number} | null} координаты в пикселях
@@ -144,7 +173,8 @@ export function findApprovalRows(mask, W, H) {
         const value = inkRatio(mask, W, xs[k + 1] + 3, xs[k + 2] - 3, s.y0 + 3, s.y1 - 3);
         const wide  = xs[k + 2] - xs[k + 1] >= (s.right - s.left) * 0.1;
         if (label > 0.02 && value < 0.01 && wide) {
-          rows.push({ y0: s.y0, y1: s.y1, x0: xs[k + 1], x1: xs[k + 2] });
+          const baseline = baselineOf(mask, W, xs[k] + 3, xs[k + 1] - 3, s.y0 + 3, s.y1 - 3);
+          rows.push({ y0: s.y0, y1: s.y1, x0: xs[k + 1], x1: xs[k + 2], baseline });
           break;
         }
       }
