@@ -9,6 +9,7 @@ import { getImageFile, prefetchImageFile, saveImageFiles } from '../../utils/sav
 import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
 import { isTubes, pipesLabel } from '../../utils/tubes';
+import TechSheetDownload from './TechSheetDownload';
 
 // Прайсы, которые комплект складывает по деталям. Порядок тот же, что в шапке.
 const KIT_TIERS = [
@@ -1146,21 +1147,11 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
             {localProduct.techSheet?.files?.length > 0 && (
               <div style={{ ...card, background: '#f5f9ff', borderColor: '#bfdbfe' }}>
                 <div style={{ ...cardTitle, color: '#1d4ed8' }}>📄 Технический лист</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {localProduct.techSheet.files.map((f, i) => (
-                    <a key={i}
-                      href={`/api/admin/products/${localProduct._id}/techsheet/${i}`}
-                      target="_blank" rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        padding: '9px 16px', borderRadius: 11,
-                        background: '#1d4ed8', color: '#fff',
-                        fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
-                      }}>
-                      ⬇ Скачать PDF{localProduct.techSheet.files.length > 1 ? ` (${i + 1})` : ''}
-                    </a>
-                  ))}
-                </div>
+                <TechSheetDownload
+                  productId={localProduct._id}
+                  files={localProduct.techSheet.files}
+                  productName={localProduct.fullName || localProduct.name}
+                />
               </div>
             )}
 

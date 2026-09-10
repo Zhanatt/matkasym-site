@@ -35,6 +35,8 @@ export const adminGetProducts= (params) => api.get('/admin/products', { params }
 export const adminGetProduct = (id)     => api.get(`/admin/products/${id}`);
 export const adminCreateProduct = (data)=> api.post('/admin/products', data);
 export const adminUpdateProduct = (id, data) => api.patch(`/admin/products/${id}`, data);
+// Техлист приходит файлом: забираем байтами, чтобы вписать подписантов на клиенте
+export const adminGetTechSheetFile = (id, idx) => api.get(`/admin/products/${id}/techsheet/${idx}`, { responseType: 'arraybuffer' });
 export const adminDeleteProduct = (id)  => api.delete(`/admin/products/${id}`);
 export const adminGetBrands   = ()          => api.get('/admin/brands');
 export const adminGetFacets   = (params)    => api.get('/admin/products/facets', { params });
