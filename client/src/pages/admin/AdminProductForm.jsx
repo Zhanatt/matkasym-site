@@ -71,17 +71,51 @@ const STATIC_SET_NAMES = {
 };
 
 const COLOR_OPTIONS = [
-  { value: 'white',  label: 'Белый',      hex: '#ffffff', border: '#ddd' },
-  { value: 'black',  label: 'Чёрный',     hex: '#1c1c1c' },
-  { value: 'grey',   label: 'Серый',      hex: '#9e9e9e' },
-  { value: 'brown',  label: 'Коричневый', hex: '#795548' },
-  { value: 'beige',  label: 'Бежевый',    hex: '#d7c4a3' },
-  { value: 'red',    label: 'Красный',    hex: '#e53935' },
-  { value: 'blue',   label: 'Синий',      hex: '#1565c0' },
-  { value: 'green',  label: 'Зелёный',    hex: '#2e7d32' },
-  { value: 'gold',   label: 'Золотой',    hex: '#f9a825' },
-  { value: 'silver', label: 'Серебряный', hex: '#b0bec5' },
+  { value: 'white',     label: 'Белый',      hex: '#ffffff', border: '#ddd' },
+  { value: 'black',     label: 'Чёрный',     hex: '#1c1c1c' },
+  { value: 'grey',      label: 'Серый',      hex: '#9e9e9e' },
+  { value: 'brown',     label: 'Коричневый', hex: '#795548' },
+  { value: 'beige',     label: 'Бежевый',    hex: '#d7c4a3' },
+  { value: 'red',       label: 'Красный',    hex: '#e53935' },
+  { value: 'pink',      label: 'Розовый',    hex: '#ec4899' },
+  { value: 'orange',    label: 'Оранжевый',  hex: '#f57c00' },
+  { value: 'yellow',    label: 'Жёлтый',     hex: '#fdd835' },
+  { value: 'blue',      label: 'Синий',      hex: '#1565c0' },
+  { value: 'lightblue', label: 'Голубой',    hex: '#4fc3f7' },
+  { value: 'green',     label: 'Зелёный',    hex: '#2e7d32' },
+  { value: 'purple',    label: 'Фиолетовый', hex: '#7e57c2' },
+  { value: 'gold',      label: 'Золотой',    hex: '#f9a825' },
+  { value: 'silver',    label: 'Серебряный', hex: '#b0bec5' },
 ];
+
+// Цвет у товара записан двумя способами: полем `color` (латинский ключ — им
+// красят кружок-образец в каталоге) и характеристикой «Цвет» по-русски (её
+// показывают карточки сета, PDF и посты). Форма правила только поле, а
+// характеристику прятала, и значения расходились: у сушилки SAKURA в карточке
+// стоял «розовый», в форме — белый, и поправить розовый было нечем.
+//
+// Написание в базе вольное: «розовый», «розовая», «pink». Отсекаем окончание
+// прилагательного и сравниваем основы.
+const colorStem = raw => String(raw || '').trim().toLowerCase()
+  .replace(/ё/g, 'е')
+  .replace(/(ый|ой|ий|ая|яя|ое|ее|ые|ие)$/, '');
+
+const COLOR_BY_STEM = new Map();
+COLOR_OPTIONS.forEach(c => {
+  COLOR_BY_STEM.set(c.value, c.value);
+  COLOR_BY_STEM.set(colorStem(c.label), c.value);
+});
+// Написания, которые из названия не выводятся.
+[
+  ['серебрист', 'silver'], ['серебр', 'silver'], ['gray', 'grey'],
+  ['светло-сер', 'grey'], ['темно-сер', 'grey'], ['слоновая кость', 'beige'],
+].forEach(([stem, value]) => COLOR_BY_STEM.set(stem, value));
+
+const colorValueOf = raw => COLOR_BY_STEM.get(colorStem(raw)) || '';
+const colorLabelOf = value => COLOR_OPTIONS.find(c => c.value === value)?.label || '';
+
+const COLOR_SPEC_KEY = 'Цвет';
+const isColorKey = k => /^цвет$/i.test(String(k || '').trim());
 
 const CLOUD_NAME    = 'dnbg21ef8';
 const UPLOAD_PRESET = 'Matkasym';
@@ -306,8 +340,16 @@ export default function AdminProductForm() {
       .then(r => {
         const p = r.data;
         const baseSpecs = p.specs || [];
+        // Что показывают карточки — то и ставим в палитру. Характеристика «Цвет»
+        // главнее поля: её видят люди, а поле у того же товара могло остаться
+        // прежним. Незнакомое написание не теряем: его подставит ниже палитра
+        // отдельным кружком, чтобы значение было видно и его можно было сменить.
+        const colorSpec = baseSpecs.find(x => isColorKey(x.key) && x.value);
+        const color = colorValueOf(colorSpec?.value) || colorValueOf(p.color)
+                   || String(colorSpec?.value || p.color || '').trim();
         setForm({
           ...p,
+          color,
           images:         p.images || [],
           specs:          baseSpecs,
           priceCost:      p.priceCost ?? '',
@@ -493,8 +535,18 @@ export default function AdminProductForm() {
     setError('');
     try {
       const { _id, __v, id: _sid, ...rest } = form;
+      // Цвет пишем в оба места сразу, иначе они снова разойдутся: поле красит
+      // образец в каталоге, характеристика «Цвет» стоит в карточках и PDF.
+      // Значение — строчными, как остальные характеристики: «складная»,
+      // «напольное», «розовый». В конец списка, чтобы не вытеснить с карточки
+      // сета то, что там стояло: она показывает первые две характеристики.
+      const colorLabel = (colorLabelOf(form.color) || String(form.color || '')).trim().toLowerCase();
+      const specs = (form.specs || []).filter(x => !isColorKey(x.key));
+      if (colorLabel) specs.push({ key: COLOR_SPEC_KEY, value: colorLabel, unit: '' });
+
       const payload = {
         ...rest,
+        specs,
         priceCost:      Number(form.priceCost) || 0,
         priceWholesale: Number(form.priceWholesale) || 0,
         priceDealer:    Number(form.priceDealer) || 0,
@@ -633,9 +685,19 @@ export default function AdminProductForm() {
                   }}
                 />
               ))}
+              {/* Цвет, которого в палитре нет, — своей плашкой. Прятать его
+                  нельзя: раньше такое значение стояло в карточке, а в форме не
+                  показывалось вовсе, и сменить его было нечем. */}
+              {form.color && !colorLabelOf(form.color) && (
+                <span style={{
+                  height: 30, padding: '0 12px', borderRadius: 15, display: 'inline-flex', alignItems: 'center',
+                  border: '2px solid #f0c000', background: '#fffbeb', color: '#92400e',
+                  fontSize: 12, fontWeight: 700,
+                }}>{form.color}</span>
+              )}
               {form.color && (
                 <span style={{ fontSize: 12, color: '#888', marginLeft: 4 }}>
-                  {COLOR_OPTIONS.find(c => c.value === form.color)?.label}
+                  {colorLabelOf(form.color) || 'своё написание — выберите цвет из палитры, чтобы привести к общему виду'}
                 </span>
               )}
             </div>
@@ -749,7 +811,7 @@ export default function AdminProductForm() {
           </div>
           <div className="admin-specs-grid">
             {form.specs.map((spec, idx) => {
-              if (SKIP_SPEC_KEYS.has(spec.key) || isDimensionKey(spec.key)) return null;
+              if (SKIP_SPEC_KEYS.has(spec.key) || isColorKey(spec.key) || isDimensionKey(spec.key)) return null;
               // Hide duplicate keys — only show first occurrence
               const firstIdx = form.specs.findIndex(s => s.key === spec.key);
               if (firstIdx !== idx) return null;
