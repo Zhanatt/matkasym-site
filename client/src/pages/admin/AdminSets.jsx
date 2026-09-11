@@ -109,7 +109,9 @@ const FIRST_CHUNK = 60;
 // длинный и весь на одно лицо, поэтому при смене линейки ставим подзаголовок.
 const tubeSizeOf = (p) => {
   const raw = String(p?.dimensions || '').replace(/\s*мм$/i, '').trim();
-  if (!raw) return '';
+  // Труба без заполненных габаритов сортируется в конец, и без своей подписи
+  // она молча дописывалась к последней линейке: Ф10 стояла под «Ø 32 мм».
+  if (!raw) return 'Размер не указан';
   return /^[⌀Ø]/.test(raw) ? `Ø ${raw.replace(/^[⌀Ø]\s*/, '')} мм` : `${raw.replace(/[x*]/g, '×')} мм`;
 };
 
@@ -312,14 +314,29 @@ function sizeRank(dim) {
 // Ручной порядок поверх автоматического. Модели, которых в списке нет (завели
 // после настройки), остаются после перечисленных — в том порядке, в каком их
 // поставила автоматика. Пропасть со страницы товар не должен.
+// Ручной порядок поверх автоматического. Товара, которого в сохранённом списке
+// нет, раньше уходил в конец — и размерный ряд труб начинался заново: Ø8…Ø32, а
+// потом снова Ø12…Ø32 из привезённой позже партии. Новинку ставим не в конец, а
+// вслед за тем товаром, за которым она идёт в автоматическом порядке: её место
+// в ряду известно, переставлять её руками никто не просил.
 function applyManualOrder(items, order) {
   if (!order || !order.length) return items;
   const at = new Map(order.map((name, i) => [name, i]));
-  return [...items].sort((a, b) => {
-    const ia = at.has(a[0]) ? at.get(a[0]) : Infinity;
-    const ib = at.has(b[0]) ? at.get(b[0]) : Infinity;
-    return ia - ib;
+
+  // Номер известного товара — из сохранённого списка. Неизвестному даём дробный
+  // номер сразу за последним известным: целых номеров между ними нет, поэтому
+  // новинка встаёт ровно на своё место, не обгоняя следующий известный товар.
+  let anchor = -1, run = 0;
+  const rank = items.map(([name]) => {
+    if (at.has(name)) { anchor = at.get(name); run = 0; return anchor; }
+    run += 1;
+    return anchor + run / (run + 1);
   });
+
+  return items
+    .map((item, i) => ({ item, rank: rank[i], i }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .map(x => x.item);
 }
 
 // Перестановка элемента списка: вынули с позиции from, вставили на to.
@@ -1337,6 +1354,23 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     } finally { setSaving(false); }
   }
 
+  // Сохранённый порядок со временем отстаёт от каталога: партию труб завезли
+  // позже, в списке её нет, и ряд ломается. Сброс возвращает автоматический
+  // порядок — по категориям и размерам, — чтобы не разбирать список руками.
+  async function resetEdit() {
+    if (!confirm('Вернуть автоматический порядок? Расстановка, сделанная руками, пропадёт.')) return;
+    setSaving(true);
+    try {
+      await adminSaveSetLayout(brandKey, setSlug, [], {});
+      setCatOrder([]);
+      setProdOrder({});
+      snapshot.current = null;
+      setEditMode(false);
+    } catch (e) {
+      alert('Не удалось сбросить порядок: ' + (e.response?.data?.message || e.message));
+    } finally { setSaving(false); }
+  }
+
   // Категорию двигаем стрелками: их в сете единицы, и тащить целую секцию
   // мимо десятков карточек неудобно. Сами карточки — перетаскиванием.
   const moveCategory = (name, dir) => {
@@ -1524,6 +1558,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   border: '1.5px solid #e0e0e0', background: '#fff',
                   color: '#555', fontSize: 12, fontWeight: 600,
                 }}>Отмена</button>
+                <button onClick={resetEdit} disabled={saving}
+                  title="Вернуть порядок по категориям и размерам, забыв расстановку руками" style={{
+                  padding: '7px 12px', borderRadius: 9, cursor: saving ? 'default' : 'pointer',
+                  border: '1.5px solid #f0c0c0', background: '#fff',
+                  color: '#c0392b', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                }}>Сбросить</button>
                 <button onClick={saveEdit} disabled={saving} style={{
                   padding: '7px 14px', borderRadius: 9, cursor: saving ? 'default' : 'pointer',
                   border: 'none', background: saving ? '#9bb3d4' : '#3463A3',
