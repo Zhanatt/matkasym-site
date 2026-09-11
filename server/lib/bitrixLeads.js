@@ -29,10 +29,11 @@ const SHOP_CATEGORY_ID = process.env.BITRIX_SHOP_CATEGORY_ID || '49';
 // Номера WhatsApp, на которые ведёт кнопка «Заказать» в постах. В Wazzup под каждый
 // номер заведена своя линия, и обращение на неё почти наверняка пришло с поста —
 // это самая точная привязка, доступная без роботов в портале.
-const { ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR } = require('./postCaption');
+const { ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, ORDER_WHATSAPP_HOME_INST } = require('./postCaption');
 const ORDER_LINES = [
-  { key: 'home',  label: 'WhatsApp заказов HOME',  digits: ORDER_WHATSAPP },
-  { key: 'shaar', label: 'WhatsApp заказов SHAAR', digits: ORDER_WHATSAPP_SHAAR },
+  { key: 'home',      label: 'WhatsApp заказов HOME',   digits: ORDER_WHATSAPP },
+  { key: 'home_inst', label: 'WhatsApp HOME (Instagram)', digits: ORDER_WHATSAPP_HOME_INST },
+  { key: 'shaar',     label: 'WhatsApp заказов SHAAR',  digits: ORDER_WHATSAPP_SHAAR },
 ];
 
 const CACHE_TTL_MS = 10 * 60 * 1000;

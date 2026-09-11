@@ -33,13 +33,13 @@ router.get('/:sku', async (req, res) => {
     // из истории и хочет написать. Отправляем в WhatsApp без текста заказа.
     if (!product) {
       console.warn(`[wa] товар не найден по артикулу «${sku}» — редирект без текста`);
-      return res.redirect(302, `https://wa.me/${orderPhone(null)}`);
+      return res.redirect(302, `https://wa.me/${orderPhone(null, platform)}`);
     }
 
     return res.redirect(302, whatsappLink(product, lang, platform));
   } catch (e) {
     console.error('[wa]', e.message);
-    return res.redirect(302, `https://wa.me/${orderPhone(null)}`);
+    return res.redirect(302, `https://wa.me/${orderPhone(null, platform)}`);
   }
 });
 

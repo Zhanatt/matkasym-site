@@ -20,11 +20,16 @@ const digitsOnly = v => String(v || '').replace(/\D/g, '');
 
 const ORDER_WHATSAPP       = digitsOnly(process.env.WHATSAPP_ORDER_PHONE || '996500001652');
 const ORDER_WHATSAPP_SHAAR = digitsOnly(process.env.WHATSAPP_ORDER_PHONE_SHAAR || '996501111726');
+// Трафик HOME из Instagram ведут отдельно от остального: свой номер — это ещё
+// и своя линия в Wazzup, по которой видно, сколько принесли истории и посты.
+const ORDER_WHATSAPP_HOME_INST = digitsOnly(process.env.WHATSAPP_ORDER_PHONE_HOME_INST || '996502902905');
 
-// Номер по бренду товара. Бренд может не прийти вовсе (пост «без товара»,
-// свободный текст) — тогда общий номер, как было до разделения.
-function orderPhone(p) {
-  return p?.brand === 'matkasym-shaar' ? ORDER_WHATSAPP_SHAAR : ORDER_WHATSAPP;
+// Номер по бренду товара и площадке. Бренд может не прийти вовсе (пост «без
+// товара», свободный текст) — тогда общий номер, как было до разделения.
+function orderPhone(p, platform) {
+  if (p?.brand === 'matkasym-shaar') return ORDER_WHATSAPP_SHAAR;
+  if (platform === 'instagram' && p?.brand === 'matkasym-home') return ORDER_WHATSAPP_HOME_INST;
+  return ORDER_WHATSAPP;
 }
 
 // Метка источника в первом сообщении клиента: по ней в WhatsApp видно,
@@ -248,7 +253,7 @@ function orderMessage(p, lang = DEFAULT_LANG, platform) {
 
 // Ссылка «Заказать товар» — открывает WhatsApp с готовым текстом заказа.
 function whatsappLink(p, lang = DEFAULT_LANG, platform) {
-  return `https://wa.me/${orderPhone(p)}?text=${encodeURIComponent(orderMessage(p, lang, platform))}`;
+  return `https://wa.me/${orderPhone(p, platform)}?text=${encodeURIComponent(orderMessage(p, lang, platform))}`;
 }
 
 // Площадки, где заказ идёт только через личку: ссылки в посте нет.
@@ -360,4 +365,4 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, orderPhone, orderMessage, TRAFFIC_TAGS };
+module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, ORDER_WHATSAPP_HOME_INST, orderPhone, orderMessage, TRAFFIC_TAGS };
