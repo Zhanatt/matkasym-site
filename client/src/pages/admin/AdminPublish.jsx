@@ -46,11 +46,16 @@ function PublishedBadges({ stat, size = 11 }) {
 //
 // ?s=inst — метка источника: в WhatsApp видно, что лид пришёл из истории,
 // а не из канала.
-function StoryLink({ product, lang }) {
+function StoryLink({ product, set, lang }) {
   const [copied, setCopied] = useState(false);
-  if (!product?.sku) return null;
+  // Пост бывает и про сет целиком — тогда за ссылкой стоит /w/set/:slug и
+  // клиент спрашивает про набор, а не про одну позицию.
+  const path = set ? `/w/set/${encodeURIComponent(set)}`
+    : product?.sku ? `/w/${encodeURIComponent(product.sku)}`
+    : null;
+  if (!path) return null;
 
-  const url = `${window.location.origin}/w/${encodeURIComponent(product.sku)}?s=inst`
+  const url = `${window.location.origin}${path}?s=inst`
     + (lang && lang !== 'ky' ? `&lang=${lang}` : '');
 
   const copy = () => {
@@ -616,7 +621,7 @@ export default function AdminPublish() {
                   </span>
                 </label>
                 <select value={postSet} onChange={e => changeSet(e.target.value)}
-                  style={{ ...INP, marginBottom: 18, cursor: 'pointer' }}>
+                  style={{ ...INP, marginBottom: postSet ? 0 : 18, cursor: 'pointer' }}>
                   <option value="">— без сета —</option>
                   {setGroups.map(g => (
                     <optgroup key={g.brand} label={g.brandLabel}>
@@ -624,6 +629,11 @@ export default function AdminPublish() {
                     </optgroup>
                   ))}
                 </select>
+                {postSet && (
+                  <div style={{ marginBottom: 18 }}>
+                    <StoryLink set={postSet} lang={lang} />
+                  </div>
+                )}
 
                 <label style={L}>
                   Товары в посте <span style={{ color: '#bbb', fontWeight: 400 }}>

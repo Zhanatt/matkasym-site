@@ -406,6 +406,13 @@ function groupOrderMessage(list, lang, platform, set) {
   return `${t.orderText}: ${names}${tail}\n\n${trafficTag(platform)}`;
 }
 
+// Ссылка «Заказать» для поста про сет целиком — её же отдаёт короткий редирект
+// /w/set/:slug для стикера в истории Instagram.
+function setWhatsappLink(set, lang = DEFAULT_LANG, platform) {
+  const phone = groupOrderPhone([], platform, set);
+  return `https://wa.me/${phone}?text=${encodeURIComponent(groupOrderMessage([], normLang(lang), platform, set))}`;
+}
+
 function customPriceOf(p, mode, lang) {
   const value = mode === 'wholesale' ? p.priceWholesale : p.price;
   if (p.priceUndefined || !value) return phrases(lang).priceOnRequest;
@@ -445,4 +452,4 @@ function buildCustomCaption(products, opts = {}) {
   return lines.join('\n');
 }
 
-module.exports = { buildCaption, buildCustomCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, ORDER_WHATSAPP_HOME_INST, orderPhone, orderMessage, TRAFFIC_TAGS };
+module.exports = { buildCaption, buildCustomCaption, setWhatsappLink, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, ORDER_WHATSAPP_HOME_INST, orderPhone, orderMessage, TRAFFIC_TAGS };
