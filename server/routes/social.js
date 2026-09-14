@@ -14,7 +14,7 @@ const { buildProductText, captionFor, runPublication, unpublishPublication,
         refreshStats, refreshRecentStats, STATS_PLATFORMS,
         recentlyPublished, DUPLICATE_WINDOW_MS, PLATFORM_LABELS } = require('../lib/socialPublish');
 const { normLang } = require('../lib/postLang');
-const { postTitle } = require('../lib/postCaption');
+const { postTitle, buildCustomCaption } = require('../lib/postCaption');
 const { manualName } = require('../lib/postNames');
 
 router.use(protect, editor);
@@ -757,6 +757,44 @@ router.put('/product-name/:productId', async (req, res) => {
   }
 });
 
+// POST /custom-draft — текст свободного поста по отмеченным товарам.
+// body: { productIds: [...], lang, price }
+//
+// Свободный пост — это фотографии, снятые самими (витрина, поступление,
+// подборка), и подпись к ним. Товары здесь не «главный герой» поста, а список,
+// из которого собираются строки с ценами и хэштеги: придумывать тему посту,
+// о котором ничего не известно, нельзя — отсюда и требование выбрать товары.
+router.post('/custom-draft', async (req, res) => {
+  try {
+    const ids = (req.body?.productIds || []).filter(Boolean).slice(0, 20);
+    if (!ids.length) return res.json({ text: '', products: [] });
+
+    const priceMode = req.body?.price === 'wholesale' ? 'wholesale' : 'retail';
+    const lang = normLang(req.body?.lang);
+
+    const found = await Product.find({ _id: { $in: ids } }).lean();
+    // Порядок — как отметили в форме, а не как отдала база: по нему идут строки
+    // поста, и менять его за спиной у человека нельзя.
+    const byId = Object.fromEntries(found.map(p => [String(p._id), p]));
+    const list = ids.map(id => byId[String(id)]).filter(Boolean);
+    if (!list.length) return res.status(404).json({ message: 'Товары не найдены' });
+
+    res.json({
+      lang,
+      text: buildCustomCaption(list, { priceMode, lang }),
+      products: list.map(p => ({
+        _id: p._id, name: p.name, fullName: p.fullName,
+        title: postTitle(p, lang),
+        price: p.price, priceWholesale: p.priceWholesale, priceUndefined: p.priceUndefined,
+        brand: p.brand,
+        images: (p.images || []).filter(u => u && u.startsWith('http')),
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // POST /preview — как будет выглядеть текст на каждой выбранной площадке.
 router.post('/preview', async (req, res) => {
   try {
@@ -787,13 +825,23 @@ router.post('/preview', async (req, res) => {
 //         targets: [{ accountId, postType, captionTemplate, delayMinutes }] }
 router.post('/publications', async (req, res) => {
   try {
-    const { kind = 'product', productId, text, images, flowId, targets, scheduledAt, lang, force } = req.body || {};
+    const { kind = 'product', productId, productIds, text, images, flowId, targets, scheduledAt, lang, force } = req.body || {};
     if (!Array.isArray(targets) || !targets.length) {
       return res.status(400).json({ message: 'Не выбрана ни одна площадка' });
     }
     if (!String(text || '').trim()) return res.status(400).json({ message: 'Пустой текст поста' });
 
     const product  = productId ? await Product.findById(productId).lean() : null;
+
+    // Свободный пост не привязан к одному товару, но в журнале его должно быть
+    // видно по названию, а не пустой строкой. Подписываем списком отмеченных.
+    let customName = '';
+    if (!product && Array.isArray(productIds) && productIds.length) {
+      const picked = await Product.find({ _id: { $in: productIds.slice(0, 20) } }, 'name fullName').lean();
+      const names = picked.map(p => p.fullName || p.name).filter(Boolean);
+      customName = names.slice(0, 3).join(', ') + (names.length > 3 ? ` и ещё ${names.length - 3}` : '');
+    }
+
     const accounts = await SocialAccount.find({ _id: { $in: targets.map(t => t.accountId) } });
     const byId = Object.fromEntries(accounts.map(a => [String(a._id), a]));
 
@@ -838,7 +886,7 @@ router.post('/publications', async (req, res) => {
       number:      await Counter.next('publication'),
       kind,
       product:     product?._id,
-      productName: product ? (product.fullName || product.name || '') : '',
+      productName: product ? (product.fullName || product.name || '') : customName,
       text:        String(text).trim(),
       images:      (images || []).filter(Boolean),
       flow:        flowId || undefined,

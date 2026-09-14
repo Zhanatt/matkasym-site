@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   adminGetProducts, adminUploadImage,
   socialGetAccounts, socialGetFlows, socialGetFlowTargets,
-  socialGetDraft, socialPreview, socialPublish, socialGetPublishStats,
+  socialGetDraft, socialCustomDraft, socialPreview, socialPublish, socialGetPublishStats,
   socialSaveProductName,
 } from '../../api';
 import { cloudinaryOpt } from '../../utils/drive';
@@ -121,6 +121,15 @@ export default function AdminPublish() {
   const [product,  setProduct]  = useState(null);
   const [pubStats, setPubStats] = useState({});    // productId → { counts, last }
 
+  // Свободный пост: фотографии свои (витрина, поступление, подборка), а подпись
+  // собирается по отмеченным товарам — строка с ценой на каждый и общие хэштеги.
+  // Товар здесь не «главный герой», поэтому и поля товара (название на кыргызском,
+  // ссылка для истории, оптовая цена одного товара) в этом режиме не показываем.
+  const [postKind, setPostKind] = useState('product');   // product | custom
+  const [picks,    setPicks]    = useState([]);          // товары свободного поста
+  const [drafting, setDrafting] = useState(false);
+  const isCustom = postKind === 'custom';
+
   const [images,   setImages]   = useState([]);     // все кандидаты
   const [picked,   setPicked]   = useState([]);     // выбранные индексы (порядок = порядок в карусели)
   const [text,     setText]     = useState('');
@@ -209,6 +218,49 @@ export default function AdminPublish() {
     }
   };
 
+  // ── Свободный пост ──────────────────────────────────────────────────────
+  // Текст пересобирается сам при каждой правке списка товаров: человек отмечает
+  // товары и сразу видит подпись. Если текст правили руками — не трогаем его без
+  // спроса, иначе правка молча пропала бы.
+  const redraftCustom = async (list, over = {}) => {
+    if (!list.length) { setText(''); setTextDirty(false); return; }
+    setDrafting(true);
+    try {
+      const r = await socialCustomDraft(list.map(p => p._id), over.priceMode || priceMode, over.lang || lang);
+      setText(r.data.text || '');
+      setTextDirty(false);
+      setPreviews([]);
+    } catch (e) {
+      setError(e.response?.data?.message || 'Не удалось собрать текст поста');
+    }
+    setDrafting(false);
+  };
+
+  const addPick = async (p) => {
+    setProductQ(''); setFound([]); setError(''); setResult(null);
+    if (picks.some(x => x._id === p._id)) return;
+    const next = [...picks, p];
+    setPicks(next);
+    if (!textDirty) await redraftCustom(next);
+  };
+
+  const removePick = async (id) => {
+    const next = picks.filter(x => x._id !== id);
+    setPicks(next);
+    if (!textDirty) await redraftCustom(next);
+  };
+
+  // Переключение режима. Фотографии и текст — разные по смыслу, поэтому
+  // начинаем с чистого листа, а не тащим за собой чужой черновик.
+  const switchMode = (next) => {
+    if (next === postKind) return;
+    setPostKind(next);
+    setProduct(null); setPicks([]); setImages([]); setPicked([]);
+    setText(''); setTextDirty(false); setPreviews([]);
+    setProductQ(''); setFound([]); setError(''); setResult(null); setDup(null);
+    setTitleAuto(''); setTitleInput(''); setTitleSaved('');
+  };
+
   // Заголовок из ответа сервера: что показывать в поле и с чем сравнивать,
   // чтобы понять, правил ли пользователь название.
   const applyTitle = (d) => {
@@ -229,7 +281,8 @@ export default function AdminPublish() {
     if (mode === priceMode) return;
     if (textDirty && !window.confirm('Текст правили вручную — при смене цены он будет перегенерирован. Продолжить?')) return;
     setPriceMode(mode);
-    await regenerate({ priceMode: mode });
+    if (isCustom) await redraftCustom(picks, { priceMode: mode });
+    else await regenerate({ priceMode: mode });
   };
 
   // Перевод поста: текст собирается заново на выбранном языке. Название берётся
@@ -239,7 +292,8 @@ export default function AdminPublish() {
     if (next === lang) return;
     if (textDirty && !window.confirm('Текст правили вручную — при смене языка он будет перегенерирован. Продолжить?')) return;
     setLang(next);
-    await regenerate({ lang: next });
+    if (isCustom) await redraftCustom(picks, { lang: next });
+    else await regenerate({ lang: next });
   };
 
   const regenerate = async (over = {}) => {
@@ -352,8 +406,10 @@ export default function AdminPublish() {
     setSending(true); setError(''); setResult(null); setDup(null);
     try {
       const r = await socialPublish({
-        kind: 'product',           // свободных постов на этой странице нет — публикуем только товары
-        productId: product?._id,
+        kind: isCustom ? 'custom' : 'product',
+        productId: isCustom ? undefined : product?._id,
+        // Товары свободного поста — чтобы он был подписан в журнале, а не пустой строкой.
+        productIds: isCustom ? picks.map(p => p._id) : undefined,
         text: text.trim(),
         lang,
         images: picked.map(i => images[i]).filter(Boolean),
@@ -377,7 +433,10 @@ export default function AdminPublish() {
   };
 
   const selectedImages = picked.map(i => images[i]).filter(Boolean);
-  const canPublish = Object.keys(targets).length > 0 && text.trim() && product;
+  // Свободный пост держится на фотографиях: текст без картинок — это не пост,
+  // а сообщение, и в Instagram он попросту не уйдёт.
+  const canPublish = Object.keys(targets).length > 0 && text.trim()
+    && (isCustom ? picked.length > 0 : !!product);
 
   // Площадки, куда пост в последней попытке не ушёл, — для кнопки «повторить только их».
   // Отфильтровываем снятые галочкой: набор площадок могли поменять уже после отправки.
@@ -409,9 +468,25 @@ export default function AdminPublish() {
 
       {/* 1. Что публикуем */}
       <div style={CARD}>
-        <label style={L}>Что публикуем</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+          <label style={{ ...L, margin: 0 }}>Что публикуем</label>
+          <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+            {[['product', '📦 Товар'], ['custom', '🖼 Свободный пост']].map(([k, label]) => (
+              <button key={k} onClick={() => switchMode(k)} style={{
+                padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                border: postKind === k ? '2px solid #111' : '1.5px solid #e0e0e0',
+                background: postKind === k ? '#f4f5f7' : '#fff', color: '#111',
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
 
-        {product ? (
+        {isCustom ? (
+          <div style={{ fontSize: 12.5, color: '#8b98a5', lineHeight: 1.6 }}>
+            Свои фотографии — витрина, поступление, подборка. Подпись соберётся сама
+            по товарам, которые отметите под фото: строка с ценой на каждый и до пяти хэштегов.
+          </div>
+        ) : product ? (
           <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f7f8fa', border: '1.5px solid #e0e0e0', borderRadius: 10, padding: '10px 14px' }}>
             {images[0] && <img src={cloudinaryOpt(images[0], 300)} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
@@ -451,7 +526,7 @@ export default function AdminPublish() {
         )}
       </div>
 
-      {product && (
+      {(product || isCustom) && (
         <>
           {/* 2. Контент */}
           <div style={CARD}>
@@ -502,9 +577,70 @@ export default function AdminPublish() {
               </div>
             )}
 
+            {/* Товары свободного поста. Стоят под фотографиями и над текстом:
+                отметили — и подпись тут же собралась заново. */}
+            {isCustom && (
+              <div style={{ marginBottom: 22 }}>
+                <label style={L}>
+                  Товары в посте <span style={{ color: '#bbb', fontWeight: 400 }}>
+                    (по ним собирается подпись: строка с ценой на каждый и хэштеги)
+                  </span>
+                </label>
+
+                {picks.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                    {picks.map((p, i) => (
+                      <span key={p._id} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        background: '#f4f6f8', border: '1.5px solid #e3e7ea', borderRadius: 20,
+                        padding: '5px 6px 5px 12px', fontSize: 12.5, fontWeight: 600, color: '#222',
+                      }}>
+                        <span style={{ color: '#aab3bd', fontWeight: 800 }}>{i + 1}</span>
+                        {p.fullName || p.name}
+                        <button onClick={() => removePick(p._id)} title="Убрать из поста" style={{
+                          border: 'none', background: '#e3e7ea', color: '#5c6873', cursor: 'pointer',
+                          width: 20, height: 20, borderRadius: '50%', fontSize: 13, lineHeight: 1, padding: 0,
+                        }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ position: 'relative' }}>
+                  <input value={productQ} onChange={e => setProductQ(e.target.value)}
+                    placeholder={picks.length ? 'Добавить ещё товар...' : 'Поиск товара по названию...'} style={INP} />
+                  {(found.length > 0 || searching) && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #e0e0e0', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,.1)', zIndex: 10, maxHeight: 260, overflowY: 'auto', marginTop: 4 }}>
+                      {searching && <div style={{ padding: '12px 16px', fontSize: 13, color: '#aaa' }}>Поиск...</div>}
+                      {found.map(p => {
+                        const already = picks.some(x => x._id === p._id);
+                        return (
+                          <button key={p._id} onClick={() => addPick(p)} disabled={already}
+                            style={{ display: 'block', width: '100%', padding: '10px 16px', background: already ? '#fafafa' : 'none', border: 'none', cursor: already ? 'default' : 'pointer', textAlign: 'left', borderBottom: '1px solid #f4f4f4', opacity: already ? .55 : 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{p.fullName || p.name}</div>
+                            <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>
+                              {already ? 'уже в посте' : (p.priceUndefined || !p.price ? 'Цена по запросу' : `${fmtPrice(p.price)} ${signOf(p)}`)}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {picks.length > 0 && (
+                  <button onClick={() => redraftCustom(picks)} disabled={drafting} style={{
+                    marginTop: 10, padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    border: '1.5px solid #e0e0e0', background: '#fff', color: '#333',
+                    cursor: drafting ? 'wait' : 'pointer',
+                  }}>{drafting ? 'Собираю...' : '↻ Собрать текст заново'}</button>
+                )}
+              </div>
+            )}
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
               <label style={{ ...L, margin: 0 }}>Текст <span style={{ color: '#bbb', fontWeight: 400 }}>(поддерживает &lt;b&gt;; для Битрикс24 переводится в его разметку)</span></label>
-              {product && (
+              {(product || picks.length > 0) && (
                 <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
                   {LANGS.map(([code, label]) => (
                     <button key={code} onClick={() => changeLang(code)}
@@ -517,10 +653,14 @@ export default function AdminPublish() {
                   ))}
                   <span style={{ width: 1, background: '#e6e8eb', margin: '2px 4px' }} />
                   {[['retail', '🏷 Розничная'], ['wholesale', '📦 Оптовая']].map(([m, label]) => {
-                    const missing = m === 'wholesale' && !product.priceWholesale;
+                    // Оптовую предлагаем, только если она есть: у свободного
+                    // поста — хотя бы у одного из отмеченных товаров.
+                    const missing = m === 'wholesale' && (isCustom
+                      ? !picks.some(x => x.priceWholesale)
+                      : !product?.priceWholesale);
                     return (
                       <button key={m} onClick={() => changePriceMode(m)} disabled={missing}
-                        title={missing ? 'У товара не заполнена оптовая цена' : ''}
+                        title={missing ? (isCustom ? 'Ни у одного из отмеченных товаров нет оптовой цены' : 'У товара не заполнена оптовая цена') : ''}
                         style={{
                           padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
                           cursor: missing ? 'not-allowed' : 'pointer',
@@ -566,10 +706,12 @@ export default function AdminPublish() {
             <textarea value={text} onChange={e => { setText(e.target.value); setTextDirty(true); setPreviews([]); }} rows={8}
               style={{ ...INP, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
             <div style={{ fontSize: 11, color: '#8b98a5', marginTop: 6, lineHeight: 1.5 }}>
-              Цена и ссылка на WhatsApp уходят только в Telegram, Битрикс24 и на сайт. В Instagram и Facebook
-              строка с ценой вырезается, вместо ссылки встаёт «📲 Буюртма үчүн Direct / WhatsApp'ка жазыңыз»
-              (ссылки там всё равно не кликаются), а в конец дописываются 5 тематических хэштегов по товару.
-              Свои хэштеги в конце текста — оставляем как есть. Как это выглядит по каждой площадке, видно в предпросмотре.
+              Ссылка на WhatsApp уходит только в Telegram, Битрикс24 и на сайт. В Instagram и Facebook
+              вместо неё встаёт «📲 Буюртма үчүн Direct / WhatsApp'ка жазыңыз» — ссылки там всё равно не кликаются.
+              {isCustom
+                ? ' Хэштеги уже стоят в тексте — правьте прямо здесь, второй раз площадки их не допишут.'
+                : ' У поста о товаре в Instagram и Facebook в конец дописываются до пяти тематических хэштегов.'}
+              {' '}Свои хэштеги в конце текста — оставляем как есть. Как это выглядит по каждой площадке, видно в предпросмотре.
             </div>
           </div>
 

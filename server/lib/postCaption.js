@@ -11,7 +11,7 @@ const { phrases, normLang, translateSpecKey, translateSpecValue, detectLang, DEF
 // Словарь названий товаров + название, вписанное руками в карточку.
 const { translateName, manualName } = require('./postNames');
 // Тематические хэштеги для Instagram и Facebook.
-const { hashtagsFor } = require('./postTags');
+const { hashtagsFor, hashtagsForMany } = require('./postTags');
 
 // Номера WhatsApp для приёма заказов, только цифры в международном формате.
 // У SHAAR свой отдел продаж: заказ на его товар, ушедший на общий номер,
@@ -365,4 +365,67 @@ function buildCaption(p, opts = {}) {
   return out;
 }
 
-module.exports = { buildCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, ORDER_WHATSAPP_HOME_INST, orderPhone, orderMessage, TRAFFIC_TAGS };
+// ── Свободный пост ───────────────────────────────────────────────────────────
+// Пост без одного «главного» товара: фотографии свои (сняли подборку, витрину,
+// новое поступление), а текст собирается по отмеченным товарам — строкой на
+// каждый, с ценой. Характеристики и описания сюда не идут: в подборке из пяти
+// позиций они превращают пост в простыню, которую никто не дочитывает.
+
+// Призыв к действию для подборки: берём по самому «живому» состоянию среди
+// товаров. Если хоть что-то лежит на складе — зовём покупать, а не «уточним
+// сроки»; скидка важнее наличия, ради неё пост чаще всего и пишут.
+function groupCtaLine(list, lang = DEFAULT_LANG) {
+  const CTA = phrases(lang).cta;
+  if (list.some(p => p.oldPrice > 0 && p.price > 0 && p.oldPrice > p.price)) return CTA.discount;
+  if (list.some(p => (Number(p.stock) || 0) > 0)) return CTA.inStock;
+  if (list.some(p => p.isOnOrder || p.inTransit)) return CTA.onOrder;
+  return CTA.default;
+}
+
+// Номер WhatsApp — по товарам подборки. Пока все они одного бренда, работает
+// прежнее правило (у SHAAR свой отдел продаж); в смешанной подборке шлём на
+// общий номер: угадывать, о какой позиции напишет клиент, нельзя.
+function groupOrderPhone(list, platform) {
+  const brands = [...new Set(list.map(p => p.brand).filter(Boolean))];
+  return brands.length === 1 ? orderPhone({ brand: brands[0] }, platform) : ORDER_WHATSAPP;
+}
+
+// Что клиент отправит первым сообщением. Перечисляем до трёх названий: длиннее
+// — уже нечитаемо, а ссылка wa.me на кириллице раздувается втрое.
+function groupOrderMessage(list, lang, platform) {
+  const names = list.slice(0, 3).map(p => postTitle(p, lang)).join(', ');
+  const tail  = list.length > 3 ? '…' : '';
+  return `${phrases(lang).orderText}: ${names}${tail}\n\n${trafficTag(platform)}`;
+}
+
+function customPriceOf(p, mode, lang) {
+  const value = mode === 'wholesale' ? p.priceWholesale : p.price;
+  if (p.priceUndefined || !value) return phrases(lang).priceOnRequest;
+  return `${fmtPrice(value)} ${signOf(p)}`;
+}
+
+// Текст свободного поста. Хэштеги ставим сразу в черновик, а не в адаптер
+// площадки: человек должен видеть их в поле и иметь возможность поправить.
+// adaptCaption их не продублирует — он видит, что текст уже кончается тегами.
+function buildCustomCaption(products, opts = {}) {
+  const list = (products || []).filter(Boolean);
+  if (!list.length) return '';
+  const priceMode = opts.priceMode === 'wholesale' ? 'wholesale' : 'retail';
+  const lang = normLang(opts.lang);
+
+  const lines = list.map(p =>
+    `• <b>${esc(postTitle(p, lang))}</b> — ${esc(customPriceOf(p, priceMode, lang))}`);
+
+  const phone = groupOrderPhone(list, opts.platform);
+  const link  = `https://wa.me/${phone}?text=${encodeURIComponent(groupOrderMessage(list, lang, opts.platform))}`;
+
+  lines.push('', groupCtaLine(list, lang),
+    `📲 <a href="${link}">${esc(phrases(lang).orderLink)}</a>`);
+
+  const tags = hashtagsForMany(list, lang);
+  if (tags) lines.push('', tags);
+
+  return lines.join('\n');
+}
+
+module.exports = { buildCaption, buildCustomCaption, ctaLine, priceLine, extractNameParams, withTypePrefix, htmlToPlain, formatPhone, visibleLength, postTitle, setLabel, whatsappLink, adaptCaption, DIRECT_ONLY_PLATFORMS, esc, ORDER_WHATSAPP, ORDER_WHATSAPP_SHAAR, ORDER_WHATSAPP_HOME_INST, orderPhone, orderMessage, TRAFFIC_TAGS };

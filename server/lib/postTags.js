@@ -112,4 +112,31 @@ function hashtagsFor(product, lang) {
   return tags.join(' ');
 }
 
-module.exports = { hashtagsFor, themeTags, THEMES, SET_THEMES, MAX_TAGS };
+// Свободный пост собирают из нескольких товаров сразу. Темы берём у каждого и
+// складываем в общий список без повторов: два стула и стол дают «#мебель
+// #интерьер», а не три одинаковых набора подряд.
+//
+// Расклад тот же, что у поста об одном товаре: до двух тем, бренд, гео — всего
+// не больше пяти. Бренд берём самый частый среди товаров: в подборке «для дома»
+// один щит SHAAR не должен подписывать пост чужим брендом.
+function hashtagsForMany(products, lang) {
+  const list = (products || []).filter(Boolean);
+  if (!list.length) return '';
+  if (list.length === 1) return hashtagsFor(list[0], lang);
+
+  const themes = [];
+  list.forEach(p => themeTags(p).forEach(t => { if (!themes.includes(t)) themes.push(t); }));
+
+  const byBrand = {};
+  list.forEach(p => { byBrand[p.brand] = (byBrand[p.brand] || 0) + 1; });
+  const topBrand = Object.entries(byBrand).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  const tags = [];
+  for (const t of [...themes.slice(0, 2), BRAND_TAGS[topBrand] || '#matkasym', ...(GEO[lang] || GEO.ky)]) {
+    if (t && !tags.includes(t)) tags.push(t);
+    if (tags.length >= MAX_TAGS) break;
+  }
+  return tags.join(' ');
+}
+
+module.exports = { hashtagsFor, hashtagsForMany, themeTags, THEMES, SET_THEMES, BRAND_TAGS, GEO, MAX_TAGS };
