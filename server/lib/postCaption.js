@@ -385,17 +385,25 @@ function groupCtaLine(list, lang = DEFAULT_LANG) {
 // Номер WhatsApp — по товарам подборки. Пока все они одного бренда, работает
 // прежнее правило (у SHAAR свой отдел продаж); в смешанной подборке шлём на
 // общий номер: угадывать, о какой позиции напишет клиент, нельзя.
-function groupOrderPhone(list, platform) {
-  const brands = [...new Set(list.map(p => p.brand).filter(Boolean))];
+// Пост про сет целиком — по бренду сета.
+function groupOrderPhone(list, platform, set) {
+  const brands = [...new Set([...list.map(p => p.brand), set?.brand].filter(Boolean))];
   return brands.length === 1 ? orderPhone({ brand: brands[0] }, platform) : ORDER_WHATSAPP;
 }
 
-// Что клиент отправит первым сообщением. Перечисляем до трёх названий: длиннее
-// — уже нечитаемо, а ссылка wa.me на кириллице раздувается втрое.
-function groupOrderMessage(list, lang, platform) {
+// Что клиент отправит первым сообщением.
+//
+// Про сет спрашивают о наборе, а не о позиции: «Хотел узнать о сете KOSH
+// KELINIZ» — по такому сообщению продавцу сразу понятно, о чём речь, и не надо
+// гадать, какая из пяти вешалок на фото имелась в виду. Перечисление товаров
+// остаётся для подборок без сета: до трёх названий, дальше нечитаемо, да и
+// ссылка wa.me на кириллице раздувается втрое.
+function groupOrderMessage(list, lang, platform, set) {
+  const t = phrases(lang);
+  if (set?.label) return `${t.setQuestion(set.label)}\n\n${trafficTag(platform)}`;
   const names = list.slice(0, 3).map(p => postTitle(p, lang)).join(', ');
   const tail  = list.length > 3 ? '…' : '';
-  return `${phrases(lang).orderText}: ${names}${tail}\n\n${trafficTag(platform)}`;
+  return `${t.orderText}: ${names}${tail}\n\n${trafficTag(platform)}`;
 }
 
 function customPriceOf(p, mode, lang) {
@@ -409,20 +417,29 @@ function customPriceOf(p, mode, lang) {
 // adaptCaption их не продублирует — он видит, что текст уже кончается тегами.
 function buildCustomCaption(products, opts = {}) {
   const list = (products || []).filter(Boolean);
-  if (!list.length) return '';
+  const set  = opts.set?.label ? opts.set : null;
+  // Пост держится либо на товарах, либо на сете. Нет ни того, ни другого —
+  // собирать нечего: подпись без предмета разговора это просто призыв в пустоту.
+  if (!list.length && !set) return '';
+
   const priceMode = opts.priceMode === 'wholesale' ? 'wholesale' : 'retail';
   const lang = normLang(opts.lang);
+  const t = phrases(lang);
 
-  const lines = list.map(p =>
-    `• <b>${esc(postTitle(p, lang))}</b> — ${esc(customPriceOf(p, priceMode, lang))}`);
+  const lines = [];
+  if (set) lines.push(`📦 ${t.set}: <b>${esc(set.label)}</b>`);
+  if (set && list.length) lines.push('');
+  list.forEach(p => lines.push(
+    `• <b>${esc(postTitle(p, lang))}</b> — ${esc(customPriceOf(p, priceMode, lang))}`));
 
-  const phone = groupOrderPhone(list, opts.platform);
-  const link  = `https://wa.me/${phone}?text=${encodeURIComponent(groupOrderMessage(list, lang, opts.platform))}`;
+  const phone = groupOrderPhone(list, opts.platform, set);
+  const link  = `https://wa.me/${phone}?text=${encodeURIComponent(groupOrderMessage(list, lang, opts.platform, set))}`;
 
   lines.push('', groupCtaLine(list, lang),
-    `📲 <a href="${link}">${esc(phrases(lang).orderLink)}</a>`);
+    `📲 <a href="${link}">${esc(t.orderLink)}</a>`);
 
-  const tags = hashtagsForMany(list, lang);
+  // Тему поста без товаров берём у сета: словарь SET_THEMES для того и заведён.
+  const tags = hashtagsForMany(list.length ? list : [{ set: set.slug, brand: set.brand }], lang);
   if (tags) lines.push('', tags);
 
   return lines.join('\n');

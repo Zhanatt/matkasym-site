@@ -18,6 +18,9 @@ const PHRASES = {
     priceOnRequest: 'Баасы сурам боюнча',
     orderLink:      'WhatsApp аркылуу буюртма берүү',
     orderText:      'Буюртма бергим келет',
+    // Вопрос о сете целиком: свободный пост часто про набор, а не про одну
+    // позицию, и продавцу важно сразу понять, о чём речь.
+    setQuestion:    name => `${name} топтому жөнүндө билгим келет`,
     directCta:      "📲 Буюртма үчүн Direct / WhatsApp'ка жазыңыз",
     cta: {
       discount: '🔥 Пайдалуу баа — үлгүрүп сатып алыңыз',
@@ -34,6 +37,7 @@ const PHRASES = {
     priceOnRequest: 'Бағасы сұраныс бойынша',
     orderLink:      'WhatsApp арқылы тапсырыс беру',
     orderText:      'Тапсырыс бергім келеді',
+    setQuestion:    name => `${name} жинағы туралы білгім келеді`,
     directCta:      '📲 Тапсырыс беру үшін Direct / WhatsApp-қа жазыңыз',
     cta: {
       discount: '🔥 Тиімді баға — үлгеріп сатып алыңыз',
@@ -50,6 +54,7 @@ const PHRASES = {
     priceOnRequest: 'Цена по запросу',
     orderLink:      'Заказать товар в WhatsApp',
     orderText:      'Хочу заказать',
+    setQuestion:    name => `Хотел узнать о сете ${name}`,
     directCta:      '📲 Для заказа напишите в Direct / WhatsApp',
     cta: {
       discount: '🔥 Выгодная цена — успейте купить',

@@ -251,8 +251,8 @@ export const socialGetReport       = (days)      => api.get('/admin/social/repor
 export const socialGetPersonPosts  = (userId, days) => api.get(`/admin/social/report/person/${userId}`, { params: { days } });
 // Название товара на кыргызском/казахском — сохраняется в карточку товара
 export const socialSaveProductName = (productId, lang, value) => api.put(`/admin/social/product-name/${productId}`, { lang, value });
-export const socialCustomDraft     = (productIds, priceMode, lang) =>
-  api.post('/admin/social/custom-draft', { productIds, price: priceMode, lang });
+export const socialCustomDraft     = (productIds, priceMode, lang, set) =>
+  api.post('/admin/social/custom-draft', { productIds, price: priceMode, lang, set });
 export const socialPreview         = (data)      => api.post('/admin/social/preview', data);
 export const socialPublish         = (data)      => api.post('/admin/social/publications', data);
 export const socialGetPublications = (limit)     => api.get('/admin/social/publications', { params: { limit } });

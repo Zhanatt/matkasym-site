@@ -10,6 +10,7 @@ const PublishFlow  = require('../models/PublishFlow');
 const Publication  = require('../models/Publication');
 const Counter      = require('../models/Counter');
 const Product      = require('../models/Product');
+const Brand        = require('../models/Brand');
 const { buildProductText, captionFor, runPublication, unpublishPublication,
         refreshStats, refreshRecentStats, STATS_PLATFORMS,
         recentlyPublished, DUPLICATE_WINDOW_MS, PLATFORM_LABELS } = require('../lib/socialPublish');
@@ -767,21 +768,33 @@ router.put('/product-name/:productId', async (req, res) => {
 router.post('/custom-draft', async (req, res) => {
   try {
     const ids = (req.body?.productIds || []).filter(Boolean).slice(0, 20);
-    if (!ids.length) return res.json({ text: '', products: [] });
+    const setSlug = String(req.body?.set || '').trim();
+    if (!ids.length && !setSlug) return res.json({ text: '', products: [], set: null });
 
     const priceMode = req.body?.price === 'wholesale' ? 'wholesale' : 'retail';
     const lang = normLang(req.body?.lang);
 
-    const found = await Product.find({ _id: { $in: ids } }).lean();
+    // Название сета берём у бренда, а не из словаря в коде: сеты заводят в
+    // админке, и новый там появится раньше, чем в любом захардкоженном списке.
+    let set = null;
+    if (setSlug) {
+      const brand = await Brand.findOne({ 'sets.key': setSlug }, 'key sets').lean();
+      const row = (brand?.sets || []).find(x => x.key === setSlug);
+      if (!row) return res.status(404).json({ message: 'Сет не найден' });
+      set = { slug: setSlug, label: row.label || setSlug, brand: brand.key };
+    }
+
+    const found = ids.length ? await Product.find({ _id: { $in: ids } }).lean() : [];
     // Порядок — как отметили в форме, а не как отдала база: по нему идут строки
     // поста, и менять его за спиной у человека нельзя.
     const byId = Object.fromEntries(found.map(p => [String(p._id), p]));
     const list = ids.map(id => byId[String(id)]).filter(Boolean);
-    if (!list.length) return res.status(404).json({ message: 'Товары не найдены' });
+    if (ids.length && !list.length) return res.status(404).json({ message: 'Товары не найдены' });
 
     res.json({
       lang,
-      text: buildCustomCaption(list, { priceMode, lang }),
+      set,
+      text: buildCustomCaption(list, { priceMode, lang, set }),
       products: list.map(p => ({
         _id: p._id, name: p.name, fullName: p.fullName,
         title: postTitle(p, lang),
@@ -840,6 +853,11 @@ router.post('/publications', async (req, res) => {
       const picked = await Product.find({ _id: { $in: productIds.slice(0, 20) } }, 'name fullName').lean();
       const names = picked.map(p => p.fullName || p.name).filter(Boolean);
       customName = names.slice(0, 3).join(', ') + (names.length > 3 ? ` и ещё ${names.length - 3}` : '');
+    }
+    if (!product && !customName && req.body?.set) {
+      const brand = await Brand.findOne({ 'sets.key': req.body.set }, 'sets').lean();
+      const row = (brand?.sets || []).find(x => x.key === req.body.set);
+      customName = `Сет ${row?.label || req.body.set}`;
     }
 
     const accounts = await SocialAccount.find({ _id: { $in: targets.map(t => t.accountId) } });

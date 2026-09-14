@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
-  adminGetProducts, adminUploadImage,
+  adminGetProducts, adminUploadImage, adminGetBrands,
   socialGetAccounts, socialGetFlows, socialGetFlowTargets,
   socialGetDraft, socialCustomDraft, socialPreview, socialPublish, socialGetPublishStats,
   socialSaveProductName,
@@ -127,6 +127,8 @@ export default function AdminPublish() {
   // ссылка для истории, оптовая цена одного товара) в этом режиме не показываем.
   const [postKind, setPostKind] = useState('product');   // product | custom
   const [picks,    setPicks]    = useState([]);          // товары свободного поста
+  const [postSet,  setPostSet]  = useState('');          // сет свободного поста
+  const [setGroups, setSetGroups] = useState([]);        // [{ brand, brandLabel, sets: [{key,label}] }]
   const [drafting, setDrafting] = useState(false);
   const isCustom = postKind === 'custom';
 
@@ -158,6 +160,20 @@ export default function AdminPublish() {
   const debounce   = useRef(null);
   const fileInput  = useRef(null);
   const schedInput = useRef(null);   // нужен, чтобы поймать недовведённую дату (см. publish)
+
+  // Сеты для свободного поста. Сгруппированы по бренду: бренд отдельной
+  // выпадашкой не нужен, он однозначно следует из сета.
+  useEffect(() => {
+    adminGetBrands()
+      .then(r => setSetGroups((r.data || [])
+        .filter(b => (b.sets || []).length)
+        .map(b => ({
+          brand: b.key,
+          brandLabel: b.label || b.key.replace('matkasym-', '').toUpperCase(),
+          sets: (b.sets || []).map(x => ({ key: x.key, label: x.label || x.key })),
+        }))))
+      .catch(() => setSetGroups([]));
+  }, []);
 
   // Статистика публикаций грузится один раз: список короткий, а в поиске нужна мгновенно
   useEffect(() => {
@@ -223,10 +239,12 @@ export default function AdminPublish() {
   // товары и сразу видит подпись. Если текст правили руками — не трогаем его без
   // спроса, иначе правка молча пропала бы.
   const redraftCustom = async (list, over = {}) => {
-    if (!list.length) { setText(''); setTextDirty(false); return; }
+    const set = over.set !== undefined ? over.set : postSet;
+    if (!list.length && !set) { setText(''); setTextDirty(false); return; }
     setDrafting(true);
     try {
-      const r = await socialCustomDraft(list.map(p => p._id), over.priceMode || priceMode, over.lang || lang);
+      const r = await socialCustomDraft(
+        list.map(p => p._id), over.priceMode || priceMode, over.lang || lang, set || undefined);
       setText(r.data.text || '');
       setTextDirty(false);
       setPreviews([]);
@@ -244,6 +262,11 @@ export default function AdminPublish() {
     if (!textDirty) await redraftCustom(next);
   };
 
+  const changeSet = async (next) => {
+    setPostSet(next);
+    if (!textDirty) await redraftCustom(picks, { set: next });
+  };
+
   const removePick = async (id) => {
     const next = picks.filter(x => x._id !== id);
     setPicks(next);
@@ -255,7 +278,7 @@ export default function AdminPublish() {
   const switchMode = (next) => {
     if (next === postKind) return;
     setPostKind(next);
-    setProduct(null); setPicks([]); setImages([]); setPicked([]);
+    setProduct(null); setPicks([]); setPostSet(''); setImages([]); setPicked([]);
     setText(''); setTextDirty(false); setPreviews([]);
     setProductQ(''); setFound([]); setError(''); setResult(null); setDup(null);
     setTitleAuto(''); setTitleInput(''); setTitleSaved('');
@@ -410,6 +433,7 @@ export default function AdminPublish() {
         productId: isCustom ? undefined : product?._id,
         // Товары свободного поста — чтобы он был подписан в журнале, а не пустой строкой.
         productIds: isCustom ? picks.map(p => p._id) : undefined,
+        set: isCustom ? (postSet || undefined) : undefined,
         text: text.trim(),
         lang,
         images: picked.map(i => images[i]).filter(Boolean),
@@ -483,8 +507,9 @@ export default function AdminPublish() {
 
         {isCustom ? (
           <div style={{ fontSize: 12.5, color: '#8b98a5', lineHeight: 1.6 }}>
-            Свои фотографии — витрина, поступление, подборка. Подпись соберётся сама
-            по товарам, которые отметите под фото: строка с ценой на каждый и до пяти хэштегов.
+            Свои фотографии — витрина, поступление, подборка. Подпись соберётся сама:
+            выберите сет или отметьте товары под фото — будет строка с ценой на каждый и
+            до пяти хэштегов. С сетом в WhatsApp клиента уйдёт вопрос про сет целиком.
           </div>
         ) : product ? (
           <>
@@ -581,6 +606,25 @@ export default function AdminPublish() {
                 отметили — и подпись тут же собралась заново. */}
             {isCustom && (
               <div style={{ marginBottom: 22 }}>
+                {/* Сет поста. Свободные посты чаще пишут про набор целиком, чем
+                    про отдельные позиции: выбрали сет — и в WhatsApp у клиента
+                    уходит «Хотел узнать о сете KOSH KELINIZ», а не перечисление
+                    вешалок, из которого продавцу не понять, о чём речь. */}
+                <label style={L}>
+                  Сет <span style={{ color: '#bbb', fontWeight: 400 }}>
+                    (в WhatsApp клиента уйдёт вопрос про этот сет)
+                  </span>
+                </label>
+                <select value={postSet} onChange={e => changeSet(e.target.value)}
+                  style={{ ...INP, marginBottom: 18, cursor: 'pointer' }}>
+                  <option value="">— без сета —</option>
+                  {setGroups.map(g => (
+                    <optgroup key={g.brand} label={g.brandLabel}>
+                      {g.sets.map(x => <option key={x.key} value={x.key}>{x.label}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+
                 <label style={L}>
                   Товары в посте <span style={{ color: '#bbb', fontWeight: 400 }}>
                     (по ним собирается подпись: строка с ценой на каждый и хэштеги)
@@ -628,7 +672,7 @@ export default function AdminPublish() {
                   )}
                 </div>
 
-                {picks.length > 0 && (
+                {(picks.length > 0 || postSet) && (
                   <button onClick={() => redraftCustom(picks)} disabled={drafting} style={{
                     marginTop: 10, padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
                     border: '1.5px solid #e0e0e0', background: '#fff', color: '#333',
@@ -640,7 +684,7 @@ export default function AdminPublish() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
               <label style={{ ...L, margin: 0 }}>Текст <span style={{ color: '#bbb', fontWeight: 400 }}>(поддерживает &lt;b&gt;; для Битрикс24 переводится в его разметку)</span></label>
-              {(product || picks.length > 0) && (
+              {(product || picks.length > 0 || postSet) && (
                 <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
                   {LANGS.map(([code, label]) => (
                     <button key={code} onClick={() => changeLang(code)}
