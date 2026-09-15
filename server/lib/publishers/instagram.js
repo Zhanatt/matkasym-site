@@ -59,6 +59,27 @@ async function graph(path, params, method = 'POST') {
   return d;
 }
 
+// Meta регулярно отвечает «медиафайл не удалось извлечь» на совершенно исправную
+// ссылку: проверено — Cloudinary отдаёт её и роботу facebookexternalhit, 200,
+// baseline jpeg 1080×1350, полторы секунды. Падает при этом не последнее фото
+// карусели, а первое или второе, и та же публикация уходит с первого «Повторить»,
+// хотя ссылка не менялась. То есть это сбой загрузчика Meta, а не наших картинок.
+//
+// Поэтому на этой конкретной ошибке пробуем ещё дважды с паузой. Остальные ошибки
+// (протухший токен, неверные пропорции) повторять бессмысленно — пробрасываем сразу.
+const FETCH_FAILED = /не удалось извлечь медиафайл|could not be fetched|media file/i;
+
+async function createMedia(params, tries = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      return await graph(`/${params.igUserId}/media`, params.body);
+    } catch (e) {
+      if (i >= tries || !FETCH_FAILED.test(e.message || '')) throw e;
+      await new Promise(res => setTimeout(res, 4000 * i));
+    }
+  }
+}
+
 // Контейнер готов не мгновенно: Meta качает картинку в фоне.
 // Публиковать IN_PROGRESS нельзя — ждём FINISHED (обычно 1–3 с).
 async function waitReady(containerId, accessToken, tries = 12) {
@@ -95,21 +116,21 @@ async function publish({ account, caption: rawCaption, images, postType = 'feed'
 
     if (postType === 'story') {
       // У историй нет подписи — Graph API просто игнорирует caption.
-      const c = await graph(`/${igUserId}/media`, {
+      const c = await createMedia({ igUserId, body: {
         image_url: fitForInstagram(images[0], 'story'),
         media_type: 'STORIES',
         access_token: accessToken,
-      });
+      } });
       containerId = c.id;
     } else if (images.length > 1) {
       // Карусель: сначала дочерние контейнеры, потом родительский.
       const children = [];
       for (const url of images.slice(0, 10)) {
-        const child = await graph(`/${igUserId}/media`, {
+        const child = await createMedia({ igUserId, body: {
           image_url: fitForInstagram(url, 'feed'),
           is_carousel_item: 'true',
           access_token: accessToken,
-        });
+        } });
         children.push(child.id);
       }
       for (const id of children) await waitReady(id, accessToken);
@@ -121,11 +142,11 @@ async function publish({ account, caption: rawCaption, images, postType = 'feed'
       });
       containerId = parent.id;
     } else {
-      const c = await graph(`/${igUserId}/media`, {
+      const c = await createMedia({ igUserId, body: {
         image_url: fitForInstagram(images[0], 'feed'),
         caption,
         access_token: accessToken,
-      });
+      } });
       containerId = c.id;
     }
 
