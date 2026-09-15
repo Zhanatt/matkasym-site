@@ -39,9 +39,13 @@ const css = `
   .qty { font-size: 16px; font-weight: 800; white-space: nowrap; }
   .qty span { font-size: 11px; font-weight: 600; color: #6b7280; }
   .dash { color: #c3c9d2; font-weight: 600; }
-  .total { display: flex; justify-content: space-between; padding: 10px 8px 0;
+  h2 { font-size: 15px; margin: 22px 0 8px; padding-top: 4px; }
+  h2.first { margin-top: 6px; }
+  .total { display: flex; justify-content: space-between; padding: 8px 8px 0;
            font-size: 12px; color: #6b7280; break-inside: avoid; }
   .total b { color: #111; font-size: 13px; }
+  .grand { display: flex; justify-content: space-between; margin-top: 16px; padding: 10px 8px 0;
+           border-top: 1.5px solid #111; font-size: 13px; color: #111; break-inside: avoid; }
   @media print { .bar { display: none; } }
 `;
 
@@ -66,13 +70,28 @@ function rowHtml(r, i) {
 /**
  * Разметка листа — отдельно от печати: её можно собрать и вне браузера,
  * например разовой выгрузкой из базы.
- * @param {Array} list заявки в том порядке, в каком они на доске
- * @param {string} title заголовок листа, например «Новые заявки»
- * @param {string} origin адрес сайта для <base> (в браузере — текущий)
- * @param {string} subtitle строка под заголовком: с какой доски список
+ *
+ * Разделов может быть несколько: закупщик берёт с собой один лист, где
+ * повторные заказы и новинки идут подряд. Новый раздел начинается сразу за
+ * предыдущим — страницу под него не переворачиваем, пустых половин не остаётся.
+ *
+ * @param {Array} sections [{ heading, items }] — разделы листа
+ * @param {{title: string, subtitle: string, origin: string}} opts шапка листа
  */
-export function buildRequestsHtml(list, title = 'Заявки на заказ', origin = '', subtitle = 'заявки на заказ товара') {
-  const total = list.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+export function buildSheetHtml(sections, { title = 'Заявки на заказ', subtitle = '', origin = '' } = {}) {
+  const qty = list => list.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+  const all = sections.flatMap(s => s.items);
+
+  const sectionHtml = (sec, i) => `
+  ${sec.heading ? `<h2${i === 0 ? ' class="first"' : ''}>${esc(sec.heading)}</h2>` : ''}
+  <table>
+    <thead><tr><th></th><th></th><th>Товар</th><th class="num">Кол-во</th></tr></thead>
+    <tbody>${sec.items.map(rowHtml).join('')}</tbody>
+  </table>
+  <div class="total">
+    <span>Позиций: <b>${sec.items.length}</b></span>
+    <span>Всего: <b>${qty(sec.items).toLocaleString('ru-RU')} шт</b></span>
+  </div>`;
 
   return `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
@@ -84,16 +103,18 @@ export function buildRequestsHtml(list, title = 'Заявки на заказ', 
   <button type="button" onclick="window.print()">Сохранить PDF</button></div>
 <div class="sheet">
   <h1>${esc(title)}</h1>
-  <div class="sub">MATKASYM · ${esc(subtitle)} · ${day(new Date())}</div>
-  <table>
-    <thead><tr><th></th><th></th><th>Товар</th><th class="num">Кол-во</th></tr></thead>
-    <tbody>${list.map(rowHtml).join('')}</tbody>
-  </table>
-  <div class="total">
-    <span>Позиций: <b>${list.length}</b></span>
-    <span>Всего: <b>${total.toLocaleString('ru-RU')} шт</b></span>
-  </div>
+  <div class="sub">MATKASYM${subtitle ? ` · ${esc(subtitle)}` : ''} · ${day(new Date())}</div>
+  ${sections.map(sectionHtml).join('')}
+  ${sections.length > 1 ? `<div class="grand">
+    <span>Итого позиций: <b>${all.length}</b></span>
+    <span>Итого: <b>${qty(all).toLocaleString('ru-RU')} шт</b></span>
+  </div>` : ''}
 </div></body></html>`;
+}
+
+/** Лист из одного списка — как было до появления разделов. */
+export function buildRequestsHtml(list, title = 'Заявки на заказ', origin = '', subtitle = 'заявки на заказ товара') {
+  return buildSheetHtml([{ items: list }], { title, subtitle, origin });
 }
 
 /**
