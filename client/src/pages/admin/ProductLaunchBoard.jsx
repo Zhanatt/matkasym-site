@@ -13,6 +13,7 @@ import {
 } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { cloudinaryOpt } from '../../utils/drive';
+import { printRequests } from './requestsPrint';
 
 const CLOUD  = 'dnbg21ef8';
 const PRESET = 'Matkasym';
@@ -57,7 +58,24 @@ const DAY_FIELDS = [...METRICS, BITRIX, ...BITRIX_OUTCOME];
 // Откуда товар. У теста поставщик указан на самой карточке, а если товар уже завели
 // в каталоге — берём из карточки товара, она первична.
 const supplierOf = l => (l?.product?.supplier?.company || l?.supplier || '').trim();
+
+// Строка карточки для печатного списка: фото, название и количество — в том
+// виде, в каком его написал менеджер в исходной заявке.
+const launchRow = l => ({
+  name:          l.name,
+  photos:        l.content?.photos?.length ? l.content.photos : (l.image ? [l.image] : []),
+  quantity:      l.fromRequest?.quantity ?? null,
+  ref:           `Тест №${l.number}${l.fromRequestNumber ? ` · из заявки №${l.fromRequestNumber}` : ''}`,
+  sku:           l.sku || '',
+  createdByName: l.fromRequest?.createdByName || '',
+  createdAt:     l.createdAt,
+});
 const isIkea = l => supplierOf(l).toUpperCase() === 'IKEA';
+
+const pdfBtn = col => ({
+  padding: '2px 7px', borderRadius: 6, border: `1px solid ${col.line}`, background: '#fff',
+  color: col.dot, fontSize: 10.5, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+});
 
 // Логотип источника в углу фото — как в каталоге. Пока помечаем только IKEA:
 // это отдельный поток закупа, и его карточки нужно отличать с одного взгляда.
@@ -363,6 +381,20 @@ export default function ProductLaunchBoard({ onCountChange }) {
                     {colItems.length}
                   </span>
                   <span style={{ flex: 1 }} />
+                  {/* Список колонки в PDF: с ним идут к поставщику. У IKEA свой
+                      закуп, поэтому её товары выгружаются ещё и отдельно. */}
+                  {col.key === 'proposed' && colItems.length > 0 && (
+                    <>
+                      <button onClick={() => printRequests(colItems.map(launchRow), 'Предложено', 'тестовая продажа').catch(e => alert(e.message))}
+                        title="Список колонки с фото и количеством — в PDF"
+                        style={pdfBtn(col)}>PDF</button>
+                      {colItems.some(isIkea) && (
+                        <button onClick={() => printRequests(colItems.filter(isIkea).map(launchRow), 'Предложено · товары IKEA', 'тестовая продажа').catch(e => alert(e.message))}
+                          title="Только товары IKEA — в PDF"
+                          style={pdfBtn(col)}>IKEA</button>
+                      )}
+                    </>
+                  )}
                   {/* Завести товар сразу в этой колонке */}
                   {(isContentMgr || col.key === 'proposed') && col.key !== 'done' && (
                     <button onClick={() => setPicker(col.key)} title={`Добавить в «${col.label}»`}

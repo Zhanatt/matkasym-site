@@ -47,7 +47,8 @@ const css = `
 
 function rowHtml(r, i) {
   const pic  = r.photos?.[0] || r.photo || '';
-  const meta = [r.color, r.dimensions, r.sku].filter(Boolean).map(esc).join(' · ');
+  // ref — откуда строка взялась: «№67 · из заявки №62» у карточек тестовой продажи.
+  const meta = [r.ref, r.color, r.dimensions, r.sku].filter(Boolean).map(esc).join(' · ');
   const who  = [r.createdByName, day(r.createdAt)].filter(Boolean).map(esc).join(' · ');
   return `<tr>
     <td class="idx">${i + 1}</td>
@@ -68,8 +69,9 @@ function rowHtml(r, i) {
  * @param {Array} list заявки в том порядке, в каком они на доске
  * @param {string} title заголовок листа, например «Новые заявки»
  * @param {string} origin адрес сайта для <base> (в браузере — текущий)
+ * @param {string} subtitle строка под заголовком: с какой доски список
  */
-export function buildRequestsHtml(list, title = 'Заявки на заказ', origin = '') {
+export function buildRequestsHtml(list, title = 'Заявки на заказ', origin = '', subtitle = 'заявки на заказ товара') {
   const total = list.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
 
   return `<!doctype html>
@@ -82,7 +84,7 @@ export function buildRequestsHtml(list, title = 'Заявки на заказ', 
   <button type="button" onclick="window.print()">Сохранить PDF</button></div>
 <div class="sheet">
   <h1>${esc(title)}</h1>
-  <div class="sub">MATKASYM · заявки на заказ товара · ${day(new Date())}</div>
+  <div class="sub">MATKASYM · ${esc(subtitle)} · ${day(new Date())}</div>
   <table>
     <thead><tr><th></th><th></th><th>Товар</th><th class="num">Кол-во</th></tr></thead>
     <tbody>${list.map(rowHtml).join('')}</tbody>
@@ -98,10 +100,10 @@ export function buildRequestsHtml(list, title = 'Заявки на заказ', 
  * Открывает лист заявок отдельной вкладкой и вызывает печать; в диалоге
  * выбирают «Сохранить как PDF».
  */
-export async function printRequests(requests, title = 'Заявки на заказ') {
+export async function printRequests(requests, title = 'Заявки на заказ', subtitle = 'заявки на заказ товара') {
   const list = requests || [];
   if (!list.length) throw new Error('Нет заявок для выгрузки');
-  const html = buildRequestsHtml(list, title, location.origin);
+  const html = buildRequestsHtml(list, title, location.origin, subtitle);
 
   const win = window.open('', '_blank');
   if (!win) throw new Error('Браузер заблокировал новое окно — разрешите всплывающие окна для сайта');

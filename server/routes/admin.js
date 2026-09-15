@@ -4545,6 +4545,9 @@ router.get('/product-launches', async (req, res) => {
         .populate('product', 'name fullName sku images stock price productStatus brand set isSupplied supplier')
         .populate('design.assignee', 'name')
         .populate('request', 'number status')
+        // Количество менеджер пишет в заявке, из которой вырос тест: на доске и
+        // в выгрузке нужно то самое число, а не проставленное позже.
+        .populate('fromRequest', 'number quantity createdByName')
         .sort({ createdAt: -1 })
         .limit(300),
       ProductLaunch.countDocuments({ stage: { $ne: 'done' } }),
