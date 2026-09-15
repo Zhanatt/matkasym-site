@@ -227,30 +227,36 @@ ADIK_MODELS = {
 }
 
 # артикул → (модель, линейка в названии, цвет, ключ группы)
+#
+# Артикул читается глазами: MKS-<AH|AS>-<линейка>-<модель>-<цвет>. AH — ADIK
+# HOME, AS — ADIK STORAGE; R/S/G — ROUND, SLOTTED, GUARDRAIL. Проставлены в
+# карточках сайта скриптом adik-assign-sku.js, здесь должны совпадать до буквы:
+# по артикулу площадка опознаёт товар, и сменить его потом уже нельзя.
+#
 # Группа только там, где на сайте есть обе расцветки: одиночную карточку
 # склеивать не с чем, и цвет тогда остаётся в названии.
 ADIK_ITEMS = [
-    ('MKS-AD-001', 'ROUND X5',     'ADIK HOME ROUND X5',     'Черный', 'ADIK-X5'),
-    ('MKS-AD-002', 'ROUND X5',     'ADIK HOME ROUND X5',     'Белый',  'ADIK-X5'),
-    ('MKS-AD-003', 'ROUND X4',     'ADIK STORAGE ROUND X4',  'Черный', ''),
-    ('MKS-XX-048', 'ROUND X3',     'ADIK HOME ROUND X3',     None,     ''),
-    ('MKS-AD-004', 'ROUND X3',     'ADIK STORAGE ROUND X3',  'Белый',  ''),
-    ('MKS-AD-005', 'ROUND S4',     'ADIK HOME ROUND S4',     'Черный', 'ADIK-S4'),
-    ('MKS-AD-006', 'ROUND S4',     'ADIK HOME ROUND S4',     'Белый',  'ADIK-S4'),
-    ('MKS-AD-007', 'ROUND S3',     'ADIK HOME ROUND S3',     'Черный', 'ADIK-S3'),
-    ('MKS-AD-008', 'ROUND S3',     'ADIK HOME ROUND S3',     'Белый',  'ADIK-S3'),
-    ('MKS-AD-009', 'GUARDRAIL M4', 'ADIK HOME GUARDRAIL M4', 'Черный', 'ADIK-M4'),
-    ('MKS-AD-010', 'GUARDRAIL M4', 'ADIK HOME GUARDRAIL M4', 'Белый',  'ADIK-M4'),
-    ('MKS-AD-011', 'GUARDRAIL M3', 'ADIK HOME GUARDRAIL M3', 'Черный', 'ADIK-M3'),
-    ('MKS-AD-012', 'GUARDRAIL M3', 'ADIK HOME GUARDRAIL M3', 'Белый',  'ADIK-M3'),
-    ('MKS-AD-013', 'SLOTTED A5',   'ADIK HOME SLOTTED A5',   'Черный', 'ADIK-A5'),
-    ('MKS-AD-014', 'SLOTTED A5',   'ADIK HOME SLOTTED A5',   'Белый',  'ADIK-A5'),
-    ('MKS-AD-015', 'SLOTTED A4',   'ADIK HOME SLOTTED A4',   'Белый',  ''),
-    ('MKS-AD-016', 'SLOTTED A3',   'ADIK HOME SLOTTED A3',   'Черный', 'ADIK-A3'),
-    ('MKS-AD-017', 'SLOTTED A3',   'ADIK HOME SLOTTED A3',   'Белый',  'ADIK-A3'),
-    ('MKS-AD-018', 'SLOTTED B3',   'ADIK HOME SLOTTED B3',   'Черный', 'ADIK-B3'),
-    ('MKS-AD-019', 'SLOTTED B3',   'ADIK HOME SLOTTED B3',   'Белый',  'ADIK-B3'),
-    ('MKS-AD-020', 'C4',           'ADIK HOME C4',           'Черный', ''),
+    ('MKS-AH-R-X5-BLK', 'ROUND X5',     'ADIK HOME ROUND X5',     'Черный', 'ADIK-X5'),
+    ('MKS-AH-R-X5-WHT', 'ROUND X5',     'ADIK HOME ROUND X5',     'Белый',  'ADIK-X5'),
+    ('MKS-AS-R-X4-BLK', 'ROUND X4',     'ADIK STORAGE ROUND X4',  'Черный', ''),
+    ('MKS-AH-R-X3',     'ROUND X3',     'ADIK HOME ROUND X3',     None,     ''),
+    ('MKS-AS-R-X3-WHT', 'ROUND X3',     'ADIK STORAGE ROUND X3',  'Белый',  ''),
+    ('MKS-AH-R-S4-BLK', 'ROUND S4',     'ADIK HOME ROUND S4',     'Черный', 'ADIK-S4'),
+    ('MKS-AH-R-S4-WHT', 'ROUND S4',     'ADIK HOME ROUND S4',     'Белый',  'ADIK-S4'),
+    ('MKS-AH-R-S3-BLK', 'ROUND S3',     'ADIK HOME ROUND S3',     'Черный', 'ADIK-S3'),
+    ('MKS-AH-R-S3-WHT', 'ROUND S3',     'ADIK HOME ROUND S3',     'Белый',  'ADIK-S3'),
+    ('MKS-AH-G-M4-BLK', 'GUARDRAIL M4', 'ADIK HOME GUARDRAIL M4', 'Черный', 'ADIK-M4'),
+    ('MKS-AH-G-M4-WHT', 'GUARDRAIL M4', 'ADIK HOME GUARDRAIL M4', 'Белый',  'ADIK-M4'),
+    ('MKS-AH-G-M3-BLK', 'GUARDRAIL M3', 'ADIK HOME GUARDRAIL M3', 'Черный', 'ADIK-M3'),
+    ('MKS-AH-G-M3-WHT', 'GUARDRAIL M3', 'ADIK HOME GUARDRAIL M3', 'Белый',  'ADIK-M3'),
+    ('MKS-AH-S-A5-BLK', 'SLOTTED A5',   'ADIK HOME SLOTTED A5',   'Черный', 'ADIK-A5'),
+    ('MKS-AH-S-A5-WHT', 'SLOTTED A5',   'ADIK HOME SLOTTED A5',   'Белый',  'ADIK-A5'),
+    ('MKS-AH-S-A4-WHT', 'SLOTTED A4',   'ADIK HOME SLOTTED A4',   'Белый',  ''),
+    ('MKS-AH-S-A3-BLK', 'SLOTTED A3',   'ADIK HOME SLOTTED A3',   'Черный', 'ADIK-A3'),
+    ('MKS-AH-S-A3-WHT', 'SLOTTED A3',   'ADIK HOME SLOTTED A3',   'Белый',  'ADIK-A3'),
+    ('MKS-AH-S-B3-BLK', 'SLOTTED B3',   'ADIK HOME SLOTTED B3',   'Черный', 'ADIK-B3'),
+    ('MKS-AH-S-B3-WHT', 'SLOTTED B3',   'ADIK HOME SLOTTED B3',   'Белый',  'ADIK-B3'),
+    ('MKS-AH-C4-BLK',   'C4',           'ADIK HOME C4',           'Черный', ''),
 ]
 
 ADIK_SET = 'Из серии Baary Oorunda — всё на своих местах.'
@@ -392,7 +398,7 @@ def discount_amount(sku, group):
 # людьми и инфографика с нашим логотипом и кыргызским текстом. Маркетплейсу
 # нужен товар на белом фоне, а чужой брендинг в карточке ему не место —
 # поэтому от ADIK берём только первый кадр, он как раз предметный.
-ADIK_SKU = re.compile(r'^MKS-(AD-|XX-048$)')
+ADIK_SKU = re.compile(r'^MKS-A[HS]-')
 
 
 def pick_imgs(product, sku):

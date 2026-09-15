@@ -5,12 +5,13 @@
  * «Уникальный идентификатор товара». По нему площадка опознаёт товар, и
  * менять его после первой загрузки уже нельзя: сходятся остатки и заказы.
  *
- * Серия `MKS-AD-###` — по образцу тех, что в сете уже есть (MKS-BO-001,
- * MKS-XX-048). Нумеруем в порядке прайс-листа: линейка, внутри — от большего
- * к меньшему, чёрный раньше белого. Порядок фиксированный, чтобы повторный
- * запуск не перетасовал номера.
+ * Схема: `MKS-<AH|AS>-<линейка>-<модель>-<цвет>`, например `MKS-AH-G-M3-BLK`.
+ * AH — ADIK HOME, AS — ADIK STORAGE (так подписаны сами карточки); линейка
+ * буквой: R — ROUND, S — SLOTTED, G — GUARDRAIL; дальше код модели и цвет,
+ * BLK или WHT. У С4 линейки нет — она не входит ни в одну.
  *
- * Карточку, у которой артикул уже есть, не трогаем.
+ * Артикул читается глазами, и по нему сразу видно и линейку, и цвет: это
+ * важнее сквозной нумерации, потому что на площадке артикул уже не сменить.
  *
  *   node scripts/adik-assign-sku.js            # показать, что будет
  *   node scripts/adik-assign-sku.js --apply    # записать
@@ -24,10 +25,37 @@ const Product = require('../models/Product');
 const APPLY = process.argv.includes('--apply');
 const SET = 'baary-oorunda';
 
-// Порядок нумерации: как модели идут в прайс-листе.
+// Порядок вывода: как модели идут в прайс-листе.
 const ORDER = ['ROUND X5', 'ROUND X4', 'ROUND X3', 'ROUND S4', 'ROUND S3',
                'GUARDRAIL M4', 'GUARDRAIL M3', 'SLOTTED A5', 'SLOTTED A4',
                'SLOTTED A3', 'SLOTTED B3', 'C4'];
+
+const LINE_CODE = { ROUND: 'R', SLOTTED: 'S', GUARDRAIL: 'G' };
+
+// ADIK HOME и ADIK STORAGE — разные линейки прайса, и в названиях карточек они
+// разведены. Артикул это сохраняет: у X3 обе версии совпали по габаритам, и
+// без пометки они слились бы в один код.
+const brandCode = (name) => (/ADIK\s+STORAGE/i.test(name) ? 'AS' : 'AH');
+
+// Цвет берём из названия, а если там его нет — из поля карточки: у С4 цвет
+// стоит только в поле, он определён по фотографии товара.
+const colorCode = (name, color) => {
+  if (/бел(ый|ая|ое)/i.test(name) || color === 'white') return 'WHT';
+  if (/ч[её]рн(ый|ая|ое)/i.test(name) || color === 'black') return 'BLK';
+  return '';   // цвет неизвестен — суффикса нет
+};
+
+function skuFor(name, model, color) {
+  const parts = ['MKS', brandCode(name)];
+  if (model === 'C4') parts.push('C4');
+  else {
+    const [family, code] = model.split(' ');
+    parts.push(LINE_CODE[family], code);
+  }
+  const c = colorCode(name, color);
+  if (c) parts.push(c);
+  return parts.join('-');
+}
 
 const LOOKALIKE = { 'А': 'A', 'В': 'B', 'М': 'M', 'Х': 'X' };
 const modelOf = (name) => {
@@ -45,7 +73,7 @@ const colorRank = (name) => (/бел(ый|ая|ое)/i.test(name) ? 1 : 0);
 
   const rows = await Product.find(
     { set: SET, $or: [{ name: /ADIK/i }, { fullName: /ADIK/i }] },
-    'sku name fullName stock',
+    'sku name fullName stock color',
   ).lean();
 
   // Дубли и остатки «по одной штуке» в выгрузку не идут — артикул им не нужен.
@@ -66,21 +94,19 @@ const colorRank = (name) => (/бел(ый|ая|ое)/i.test(name) ? 1 : 0);
     return colorRank(a.name) - colorRank(b.name);
   });
 
-  const busy = new Set((await Product.find({ sku: /^MKS-AD-/ }, 'sku').lean()).map(p => p.sku));
-  let n = 0;
-  const nextSku = () => {
-    let s;
-    do { n += 1; s = `MKS-AD-${String(n).padStart(3, '0')}`; } while (busy.has(s));
-    busy.add(s);
-    return s;
-  };
-
   const plan = [];
+  const busy = new Map();
   for (const p of list) {
-    if (p.sku) { console.log(`${p.sku.padEnd(12)} уже есть   ${p.name}`); continue; }
-    plan.push({ id: p._id, sku: nextSku(), name: p.name });
+    const sku = skuFor(p.name, p.model, p.color);
+    if (busy.has(sku)) {
+      console.log(`⚠ ${sku} — код уже занят карточкой «${busy.get(sku)}», пропускаем: ${p.name}`);
+      continue;
+    }
+    busy.set(sku, p.name);
+    if (p.sku === sku) { console.log(`${sku.padEnd(18)} уже стоит  ${p.name}`); continue; }
+    plan.push({ id: p._id, sku, was: p.sku || '', name: p.name });
   }
-  plan.forEach(x => console.log(`${x.sku.padEnd(12)} ←          ${x.name}`));
+  plan.forEach(x => console.log(`${x.sku.padEnd(18)} ← ${(x.was || 'пусто').padEnd(12)} ${x.name}`));
   console.log(`\nВсего под выгрузку: ${list.length}; проставим артикулов: ${plan.length}`);
 
   if (!APPLY) {
@@ -91,7 +117,7 @@ const colorRank = (name) => (/бел(ый|ая|ое)/i.test(name) ? 1 : 0);
 
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
   const file = path.join(__dirname, `backup-adik-sku-${stamp}.json`);
-  fs.writeFileSync(file, JSON.stringify(plan.map(x => ({ _id: x.id, sku: '' })), null, 2));
+  fs.writeFileSync(file, JSON.stringify(plan.map(x => ({ _id: x.id, sku: x.was })), null, 2));
   console.log(`Бэкап: ${path.relative(process.cwd(), file)}`);
 
   for (const x of plan) await Product.updateOne({ _id: x.id }, { $set: { sku: x.sku } });
