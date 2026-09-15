@@ -42,6 +42,16 @@ const MODELS = {
   // (цифра в коде модели — это полки), нагрузка одна на всю линейку SLOTTED.
   // Вес и упаковку оставляем пустыми: выдумывать их неоткуда.
   'SLOTTED A4':   { dims: '120x40x183', shelves: 4, load: '30–60', partial: true },
+
+  // С4 в прайсе нет вовсе — заполняем по фотографии товара. С неё честно
+  // читаются четыре полки (и цифра в коде модели это подтверждает), чёрный
+  // цвет, металл и перфорированные стойки: полки переставляются по высоте.
+  // Нагрузку, вес и упаковку по снимку не определить — оставляем пустыми.
+  // Габариты берём из названия карточки.
+  'C4': {
+    dims: '150x50x200', shelves: 4, color: 'black', partial: true,
+    extra: [['Материал', 'металл'], ['Полки', 'переставляются по высоте']],
+  },
 };
 
 // В базе модель пишут и «GUARDAIL» (без R) — это та же линейка.
@@ -54,6 +64,8 @@ const MODELS = {
 const LOOKALIKE = { 'А': 'A', 'В': 'B', 'М': 'M', 'Х': 'X' };
 
 const modelOf = (name) => {
+  // С4 стоит особняком: линейки в названии нет, только код модели.
+  if (/ADIK\s+HOME\s+[CС]\s*4\b/i.test(name)) return 'C4';
   const m = String(name).match(/\b(ROUND|SLOTTED|GUARD?RAIL|GUARDAIL)\s*([XSMABХМВА])\s*(\d)/i);
   if (!m) return null;
   const family = /GUARD/i.test(m[1]) ? 'GUARDRAIL' : m[1].toUpperCase();
@@ -92,16 +104,21 @@ const putSpec = (specs, key, value) => {
     const spec = model && MODELS[model];
     if (!spec) { skipped.push({ name, why: model ? `модели ${model} нет в прайсе` : 'модель не распознана' }); continue; }
 
-    const color = colorOf(name);
+    // Цвет обычно стоит в названии карточки; у С4 его там нет, и берём его
+    // из описания модели — на снимке товара он однозначно чёрный.
+    const color = colorOf(name) || (spec.color === 'black' ? { value: 'black', label: 'чёрный' } : null);
     const specs = (p.specs || []).map(s => ({ key: s.key, value: s.value, unit: s.unit || '' }));
 
     putSpec(specs, 'Полок', spec.shelves);
-    putSpec(specs, 'Нагрузка на полку', `${spec.load} кг`);
+    if (spec.load) putSpec(specs, 'Нагрузка на полку', `${spec.load} кг`);
     if (spec.weight) putSpec(specs, 'Вес', `${spec.weight} кг`);
     if (spec.pack)   putSpec(specs, 'Размер упаковки', `${spec.pack} см`);
     if (spec.wheels) putSpec(specs, 'Колёса', 'есть');
+    (spec.extra || []).forEach(([k, v]) => putSpec(specs, k, v));
     if (color)       putSpec(specs, 'Цвет', color.label);
 
+    // Габариты пишем латинской «x»: кириллическую «х» в «150х50х200» карточка
+    // не считает разделителем и печатает размер одним комом вместо «150 × 50 × 200 см».
     const update = { dimensions: spec.dims, specs };
     if (color) update.color = color.value;
 
