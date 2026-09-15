@@ -201,6 +201,121 @@ D_TABLE = (
     'Соберите комплект «стол + стулья» одним заказом. '
     'Артикул IKEA: 594.204.00 / 59420400. Также ищут как: ИКЕА Сандсберг, SANDSBERG, кухонный стол икеа 67х67.')
 
+# ── Стеллажи ADIK (сет Baary Oorunda) ────────────────────────────────────────
+# Наши собственные, не IKEA. Характеристики и упаковка — из розничного прайса
+# ADIK HOME 2026, они же лежат в карточках сайта.
+#
+# Цветовые варианты Ммаркет склеивает в одну карточку по «Группировке SKU» и
+# требует, чтобы внутри группы название и описание совпадали слово в слово.
+# Поэтому цвет из названия и описания убран — он живёт в характеристике «Цвет».
+ADIK_SHEET = '3418 Стеллажи и полки'
+
+# модель → (габариты ДxШxВ, полок, макс. нагрузка на полку, вес изделия, упаковка ДxШxВ)
+ADIK_MODELS = {
+    'ROUND X5':     ('120x40x175', 5, '40 кг', 12, (46, 123, 13)),
+    'ROUND X4':     ('50x30x155',  4, '40 кг', 6,  (36, 63, 11)),
+    'ROUND X3':     ('120x40x80',  3, '40 кг', 8,  (46, 123, 9)),
+    'ROUND S4':     ('50x30x120',  4, '40 кг', 6,  (36, 63, 11)),
+    'ROUND S3':     ('50x30x80',   3, '40 кг', 5,  (36, 63, 9)),
+    'GUARDRAIL M4': ('80x35x135',  4, '40 кг', 8,  (41, 83, 11)),
+    'GUARDRAIL M3': ('80x35x95',   3, '40 кг', 6,  (41, 83, 9)),
+    'SLOTTED A5':   ('120x40x183', 5, '60 кг', 18, (46, 126, 13)),
+    'SLOTTED A4':   ('120x40x183', 4, '60 кг', None, None),   # в прайсе модели нет
+    'SLOTTED A3':   ('120x40x80',  3, '60 кг', 12, (46, 126, 9)),
+    'SLOTTED B3':   ('80x40x80',   3, '60 кг', 8,  (46, 86, 9)),
+    'C4':           ('150x50x200', 4, None,    None, None),   # заполнен по фотографии
+}
+
+# артикул → (модель, линейка в названии, цвет, ключ группы)
+# Группа только там, где на сайте есть обе расцветки: одиночную карточку
+# склеивать не с чем, и цвет тогда остаётся в названии.
+ADIK_ITEMS = [
+    ('MKS-AD-001', 'ROUND X5',     'ADIK HOME ROUND X5',     'Черный', 'ADIK-X5'),
+    ('MKS-AD-002', 'ROUND X5',     'ADIK HOME ROUND X5',     'Белый',  'ADIK-X5'),
+    ('MKS-AD-003', 'ROUND X4',     'ADIK STORAGE ROUND X4',  'Черный', ''),
+    ('MKS-XX-048', 'ROUND X3',     'ADIK HOME ROUND X3',     None,     ''),
+    ('MKS-AD-004', 'ROUND X3',     'ADIK STORAGE ROUND X3',  'Белый',  ''),
+    ('MKS-AD-005', 'ROUND S4',     'ADIK HOME ROUND S4',     'Черный', 'ADIK-S4'),
+    ('MKS-AD-006', 'ROUND S4',     'ADIK HOME ROUND S4',     'Белый',  'ADIK-S4'),
+    ('MKS-AD-007', 'ROUND S3',     'ADIK HOME ROUND S3',     'Черный', 'ADIK-S3'),
+    ('MKS-AD-008', 'ROUND S3',     'ADIK HOME ROUND S3',     'Белый',  'ADIK-S3'),
+    ('MKS-AD-009', 'GUARDRAIL M4', 'ADIK HOME GUARDRAIL M4', 'Черный', 'ADIK-M4'),
+    ('MKS-AD-010', 'GUARDRAIL M4', 'ADIK HOME GUARDRAIL M4', 'Белый',  'ADIK-M4'),
+    ('MKS-AD-011', 'GUARDRAIL M3', 'ADIK HOME GUARDRAIL M3', 'Черный', 'ADIK-M3'),
+    ('MKS-AD-012', 'GUARDRAIL M3', 'ADIK HOME GUARDRAIL M3', 'Белый',  'ADIK-M3'),
+    ('MKS-AD-013', 'SLOTTED A5',   'ADIK HOME SLOTTED A5',   'Черный', 'ADIK-A5'),
+    ('MKS-AD-014', 'SLOTTED A5',   'ADIK HOME SLOTTED A5',   'Белый',  'ADIK-A5'),
+    ('MKS-AD-015', 'SLOTTED A4',   'ADIK HOME SLOTTED A4',   'Белый',  ''),
+    ('MKS-AD-016', 'SLOTTED A3',   'ADIK HOME SLOTTED A3',   'Черный', 'ADIK-A3'),
+    ('MKS-AD-017', 'SLOTTED A3',   'ADIK HOME SLOTTED A3',   'Белый',  'ADIK-A3'),
+    ('MKS-AD-018', 'SLOTTED B3',   'ADIK HOME SLOTTED B3',   'Черный', 'ADIK-B3'),
+    ('MKS-AD-019', 'SLOTTED B3',   'ADIK HOME SLOTTED B3',   'Белый',  'ADIK-B3'),
+    ('MKS-AD-020', 'C4',           'ADIK HOME C4',           'Черный', ''),
+]
+
+ADIK_SET = 'Из серии Baary Oorunda — всё на своих местах.'
+
+
+def shelves_word(n):
+    """«3 полки», «5 полок» — иначе в названии карточки видно машину."""
+    if n % 10 == 1 and n % 100 != 11: return 'полка'
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14): return 'полки'
+    return 'полок'
+
+
+def adik_entry(sku, model, line, color, group):
+    dims, shelves, load, weight, pack = ADIK_MODELS[model]
+    d, w, h = (int(x) for x in dims.split('x'))
+    colors = [c for s, m, l, c, g in ADIK_ITEMS if g and g == group and c]
+
+    # Название: тип + бренд + модель + габариты. Цвет внутри группы не пишем.
+    name = f'Стеллаж металлический {line} {d}×{w}×{h} см, {shelves} {shelves_word(shelves)}'
+    if not group and color:
+        name += f', {color.lower()}'
+
+    where = 'дома, в кладовой, гараже, офисе и магазине'
+    parts = [
+        f'Металлический стеллаж {line} на {shelves} {shelves_word(shelves)}, габариты {d}×{w}×{h} см. '
+        f'Сборно-разборная конструкция: полки переставляются по высоте под то, что храните — '
+        f'от банок и коробок до инструмента. Подойдёт для хранения {where}.',
+    ]
+    if load:
+        parts.append(f'Каждая полка держит до {load.replace(" кг", "")} кг.')
+    if model.startswith('GUARDRAIL'):
+        parts.append('Стоит на колёсах — катится туда, где нужен, и не царапает пол. По краям полок бортики: мелочь не съезжает.')
+    parts.append('Доступен в чёрном и белом цвете.' if len(colors) > 1
+                 else f'Цвет — {(color or "чёрный").lower()}.')
+    parts.append(f'{ADIK_SET} Выберите размер под свою нишу и добавьте в корзину.')
+    desc = ' '.join(parts)
+
+    attrs = {
+        'Тип': 'Стеллаж',
+        'Назначение': 'Для кладовой',
+        'Расположение': 'Напольное',
+        'Тип крепления': 'Напольное',
+        'Ширина': f'{d} см',
+        'Глубина': f'{w} см',
+        'Высота': f'{h} см',
+        'Количество полок': str(shelves),
+        'Материал каркаса': 'Металл',
+        'Материал полок': 'Металл',
+        'Материал': 'Металл',
+        'Наличие задней стенки': 'Нет',
+        'Количество дверей': '0',
+        'Форма': 'Прямоугольная',
+        'Стиль': 'Современный',
+    }
+    if load:
+        attrs['Максимальная нагрузка на полку'] = load
+    if color:
+        attrs['Цвет'] = color
+
+    # Упаковку кладём в общий справочник PKG под ключом артикула.
+    PKG[sku] = (weight or None, *(pack or (None, None, None)))
+    main = 'Да' if group and color == 'Черный' else ''
+    return (ADIK_SHEET, sku, name, sku, group, main, attrs, desc)
+
+
 # лист шаблона, артикул, название, ключ упаковки, группировка SKU, главный товар, характеристики, описание
 ITEMS = [
  ('3402 Кухонные стулья', 'MKS-29420393',   N_SANDSBERG, 'SANDSBERG-CHAIR', 'SANDSBERG-CHAIR', 'Да',
@@ -230,6 +345,8 @@ ITEMS = [
   {**A_RASKOG, 'Цвет': 'Черный'},    D_RASKOG),
  ('3401 Кухонные столы', 'MKS-JA-015', N_TABLE, 'SANDSBERG-TABLE', '', '', A_TABLE, D_TABLE),
 ]
+
+ITEMS += [adik_entry(*x) for x in ADIK_ITEMS]
 
 
 def atlas_uri():
@@ -267,6 +384,20 @@ def discount_amount(sku, group):
     менялась бы после каждого запуска скрипта.
     """
     return random.Random(group or sku).randrange(100, 501, 100)
+
+
+# Какие снимки товара уходят на витрину.
+#
+# У стеллажей ADIK со второго кадра идут не сами товары: интерьерные сцены с
+# людьми и инфографика с нашим логотипом и кыргызским текстом. Маркетплейсу
+# нужен товар на белом фоне, а чужой брендинг в карточке ему не место —
+# поэтому от ADIK берём только первый кадр, он как раз предметный.
+ADIK_SKU = re.compile(r'^MKS-(AD-|XX-048$)')
+
+
+def pick_imgs(product, sku):
+    urls = product.get('images') or []
+    return urls[:1] if ADIK_SKU.match(sku) else urls
 
 
 def order_imgs(urls):
@@ -367,7 +498,7 @@ def main():
             weight, length, width, height = PKG[pkg]
             values = {
                 'name': name, 'description': desc, 'price': net + discount,
-                'discount': discount, 'images': ', '.join(order_imgs(p.get('images') or [])),
+                'discount': discount, 'images': ', '.join(order_imgs(pick_imgs(p, sku))),
                 'merge': ', '.join(x for x in siblings.get(group, []) if x != sku) or None,
                 'group': group, 'event': None, 'pickup': 'Да', 'main': main_flag,
                 'pkg_weight': weight, 'pkg_length': length, 'pkg_width': width, 'pkg_height': height,
