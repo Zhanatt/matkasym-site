@@ -238,9 +238,9 @@ ADIK_MODELS = {
 ADIK_ITEMS = [
     ('MKS-AH-R-X5-BLK', 'ROUND X5',     'ADIK HOME ROUND X5',     'Черный', 'ADIK-X5'),
     ('MKS-AH-R-X5-WHT', 'ROUND X5',     'ADIK HOME ROUND X5',     'Белый',  'ADIK-X5'),
-    ('MKS-AS-R-X4-BLK', 'ROUND X4',     'ADIK STORAGE ROUND X4',  'Черный', ''),
-    ('MKS-AH-R-X3',     'ROUND X3',     'ADIK HOME ROUND X3',     None,     ''),
-    ('MKS-AS-R-X3-WHT', 'ROUND X3',     'ADIK STORAGE ROUND X3',  'Белый',  ''),
+    ('MKS-AH-R-X4-BLK', 'ROUND X4',     'ADIK HOME ROUND X4',     'Черный', ''),
+    ('MKS-AH-R-X3',     'ROUND X3',     'ADIK HOME ROUND X3',     'Черный', 'ADIK-X3'),
+    ('MKS-AH-R-X3-WHT', 'ROUND X3',     'ADIK HOME ROUND X3',     'Белый',  'ADIK-X3'),
     ('MKS-AH-R-S4-BLK', 'ROUND S4',     'ADIK HOME ROUND S4',     'Черный', 'ADIK-S4'),
     ('MKS-AH-R-S4-WHT', 'ROUND S4',     'ADIK HOME ROUND S4',     'Белый',  'ADIK-S4'),
     ('MKS-AH-R-S3-BLK', 'ROUND S3',     'ADIK HOME ROUND S3',     'Черный', 'ADIK-S3'),
@@ -256,7 +256,7 @@ ADIK_ITEMS = [
     ('MKS-AH-S-A3-WHT', 'SLOTTED A3',   'ADIK HOME SLOTTED A3',   'Белый',  'ADIK-A3'),
     ('MKS-AH-S-B3-BLK', 'SLOTTED B3',   'ADIK HOME SLOTTED B3',   'Черный', 'ADIK-B3'),
     ('MKS-AH-S-B3-WHT', 'SLOTTED B3',   'ADIK HOME SLOTTED B3',   'Белый',  'ADIK-B3'),
-    ('MKS-AH-C4-BLK',   'C4',           'ADIK HOME C4',           'Черный', ''),
+    ('MKS-AH-S-C4-BLK', 'C4',           'ADIK HOME SLOTTED C4',   'Черный', ''),
 ]
 
 ADIK_SET = 'Из серии Baary Oorunda — всё на своих местах.'
@@ -510,7 +510,13 @@ def main():
                 'pkg_weight': weight, 'pkg_length': length, 'pkg_width': width, 'pkg_height': height,
             }
 
-            r = ws.max_row + 1
+            # Шаблон качают с галочкой «включить текущие товары», и наши прошлые
+            # выгрузки уже лежат в нём строками. Свою строку правим на месте:
+            # добавь её второй раз — на площадке появится дубль по тому же артикулу.
+            r = next((i for i in range(2, ws.max_row + 1)
+                      if str(ws.cell(i, sku_col).value or '').strip() == sku), None)
+            if r is None:
+                r = ws.max_row + 1
             ws.cell(r, sku_col).value = sku
             for header, key in BASE_HEADERS.items():
                 if header in headers:
