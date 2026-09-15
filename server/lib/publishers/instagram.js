@@ -27,6 +27,20 @@ function fitForInstagram(url, postType) {
     .replace(/\.(png|webp|avif)$/i, '.jpg');
 }
 
+// Meta качает картинку САМА и делает это синхронно, прямо при создании контейнера,
+// а ждёт недолго. Cloudinary же собирает производную (c_pad,b_auto,ar_4:5,w_1080)
+// только при первом обращении — это полторы-две секунды. На карусели из пяти-шести
+// холодных ссылок одна не успевает, и Meta отвечает «медиафайл не удалось извлечь»,
+// хотя со ссылкой всё в порядке: через минуту она открывается мгновенно.
+//
+// Поэтому сначала дёргаем ссылки сами. HEAD хватает: Cloudinary всё равно собирает
+// производную и кладёт её в кэш (замер: холодная 1.1 с, следующая 0.09 с), а тело
+// картинки качать не приходится. Ошибки глушим — прогрев необязателен, при неудаче
+// просто пойдём в Meta как раньше.
+async function warmUp(urls) {
+  await Promise.all(urls.map(url => fetch(url, { method: 'HEAD' }).catch(() => {})));
+}
+
 async function graph(path, params, method = 'POST') {
   const url = `${GRAPH}${path}`;
   const body = new URLSearchParams();
@@ -69,6 +83,12 @@ async function publish({ account, caption: rawCaption, images, postType = 'feed'
   // adaptCaption убирает ссылку, ставит призыв писать в Direct / WhatsApp и
   // дописывает хэштеги — страховка для публикаций, созданных до этих правил.
   const caption = htmlToPlain(adaptCaption(rawCaption, 'instagram', null, publication?.product));
+
+  // Прогреваем ровно те ссылки, которые уйдут в Meta, — с трансформациями.
+  const kind = postType === 'story' ? 'story' : 'feed';
+  const urls = (postType === 'story' ? images.slice(0, 1) : images.slice(0, 10))
+    .map(u => fitForInstagram(u, kind));
+  await warmUp(urls);
 
   try {
     let containerId;
