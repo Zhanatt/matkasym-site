@@ -10,6 +10,7 @@ import {
 } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { cloudinaryOpt } from '../../utils/drive';
+import { printRequests } from './requestsPrint';
 
 const CLOUD = 'dnbg21ef8';
 const PRESET = 'Matkasym';
@@ -373,6 +374,15 @@ export default function PendingOrderRequests({ onCountChange }) {
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.dot }} />
               <span style={{ fontSize: 12.5, fontWeight: 800, color: '#111', textTransform: 'uppercase', letterSpacing: .3 }}>{col.label}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: col.dot, borderRadius: 20, padding: '1px 8px' }}>{colItems.length}</span>
+              {col.key === 'new' && colItems.length > 0 && (
+                <button
+                  onClick={() => printRequests(colItems, 'Новые заявки').catch(e => alert(e.message))}
+                  title="Список заявок с фото и количеством — в PDF"
+                  style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 6, border: `1px solid ${col.line}`,
+                    background: '#fff', color: col.dot, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  📄 PDF
+                </button>
+              )}
             </div>
             {colItems.length === 0 && (
               <div style={{ textAlign: 'center', padding: '22px 10px', color: '#b0b8c1', fontSize: 12.5 }}>Пусто</div>
