@@ -41,6 +41,7 @@ const {
   normSku, normNameLoose, normName, toInt, crossedBuffer, signOf,
 } = require('../lib/stockBases');
 const { applyStockUpload } = require('../lib/stockSync');
+const { setMatch, viewForSet, SET_VIEW_FIELDS } = require('../lib/setView');
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock, ADMIN_ROLES } = require('../middleware/auth');
 
 // Себестоимость — цифра только для владельца: её не показывают в карточке товара,
@@ -342,8 +343,12 @@ const BRIEF_FIELDS = [
 
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country, brief } = req.query;
+    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country, brief, setView } = req.query;
     const filter = { ...countryFilter(country) };
+    // Витрина сета, а не список товаров: показываем и одолженные карточки, а
+    // остаток с ценами берём у базы, которая за этот сет отвечает (lib/setView.js).
+    // Списки админки этого не просят — им нужен товар как он есть в базе.
+    const asSetView = setView === '1' && !!set && set !== '__none__';
 
     // Если запрашиваем товары для приёмки
     if (pendingReceive === 'true') {
@@ -361,6 +366,7 @@ router.get('/products', async (req, res) => {
     // '__none__' — товары без сета. Такие не попадают в каталог по сетам и
     // теряются; для их разбора есть отдельная страница.
     if (set === '__none__') filter.set = { $in: ['', null] };
+    else if (asSetView) (filter.$and ||= []).push(setMatch(set));
     else if (set)      filter.set           = set;
     if (set === 'zhashyl-omur') console.log('[DEBUG] zhashyl-omur query, filter:', filter);
     if (category)      filter.category      = category;
@@ -373,15 +379,21 @@ router.get('/products', async (req, res) => {
 
     // В карточке списка видно одно фото и две характеристики — остальное только
     // утяжеляет ответ: на сете под сотню позиций это сотни лишних килобайт.
-    const query = brief === '1'
-      ? Product.find(filter).select(BRIEF_FIELDS).slice('images', 1).slice('specs', 2).lean()
+    let query = brief === '1'
+      ? Product.find(filter).select(asSetView ? `${BRIEF_FIELDS} ${SET_VIEW_FIELDS}` : BRIEF_FIELDS)
+          .slice('images', 1).slice('specs', 2).lean()
       : Product.find(filter).populate('kitParts.product', KIT_PART_FIELDS);
+    // viewForSet копирует товар спредом, а mongoose-документ так не скопировать
+    if (asSetView && brief !== '1') query = query.lean();
 
     const [products, total] = await Promise.all([
       query.sort(sortObj).skip((page - 1) * limit).limit(Number(limit)),
       Product.countDocuments(filter),
     ]);
-    res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });
+    res.json({
+      products: asSetView ? products.map(p => viewForSet(p, set, country)) : products,
+      total, page: Number(page), pages: Math.ceil(total / limit),
+    });
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }

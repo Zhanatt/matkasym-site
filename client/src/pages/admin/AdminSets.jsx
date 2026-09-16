@@ -1152,7 +1152,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   useEffect(() => {
     let cancelled = false;
     const base     = fetchParams || { set: setSlug };
-    const cacheKey = `setCache:${brandKey}:${setSlug}:${country}:${fetchParams ? JSON.stringify(fetchParams) : ''}`;
+    // v2 — с тех пор ответ сета считает остаток и цены по базе 1С (setView),
+    // и старые снимки показали бы прежние цифры до первого обновления страницы.
+    const cacheKey = `setCache:v2:${brandKey}:${setSlug}:${country}:${fetchParams ? JSON.stringify(fetchParams) : ''}`;
 
     const remember = (list) => {
       try { sessionStorage.setItem(cacheKey, JSON.stringify(list)); }
@@ -1169,7 +1171,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
     (async () => {
       try {
-        const first = await adminGetProducts({ ...base, brief: 1, page: 1, limit: FIRST_CHUNK, country });
+        const first = await adminGetProducts({ ...base, brief: 1, setView: 1, page: 1, limit: FIRST_CHUNK, country });
         if (cancelled) return;
         const shown = first.data.products || [];
         setProducts(shown);
@@ -1177,7 +1179,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
         if ((first.data.total || 0) > shown.length) {
           setLoadingMore(true);
-          const full = await adminGetProducts({ ...base, brief: 1, page: 1, limit: 1000, country });
+          const full = await adminGetProducts({ ...base, brief: 1, setView: 1, page: 1, limit: 1000, country });
           if (cancelled) return;
           setProducts(full.data.products || []);
           remember(full.data.products || []);
@@ -1424,6 +1426,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   const priceLabel = getPriceLabel(priceMode);
 
+  // Сет, за который отвечает одна база 1С: карточки в нём показывают её остаток
+  // и её прайс, а не сумму по Кыргызстану. Подписываем — иначе одни и те же
+  // стеллажи в Baary Oorunda и Onoy Sakta выглядят расхождением в учёте.
+  const viewBaseLabel = useMemo(
+    () => products.find(p => p._setView)?._setView?.baseLabel || '',
+    [products],
+  );
+
   // On desktop — full screen (covers sidebar too); on mobile — full screen
   const panelStyle = {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -1487,6 +1497,13 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 {BRAND_META[brandKey]?.label && (
                   <span style={{ fontSize: 11, color: accent, fontWeight: 600 }}>
                     {BRAND_META[brandKey].label}
+                  </span>
+                )}
+                {viewBaseLabel && (
+                  <span title={`Остатки и цены в этом сете — из базы ${viewBaseLabel}`}
+                    style={{ fontSize: 10.5, fontWeight: 700, color: '#3f5b8b', background: '#eef3fb',
+                      border: '1px solid #d6e2f4', borderRadius: 5, padding: '1px 6px' }}>
+                    📦 {viewBaseLabel}
                   </span>
                 )}
                 {/* Каталог другой страны — иначе пустой сет выглядит поломкой */}

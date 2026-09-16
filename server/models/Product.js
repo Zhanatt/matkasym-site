@@ -13,6 +13,21 @@ const productSchema = new mongoose.Schema({
   // Brand & Set
   brand:    { type: String, required: true, default: 'matkasym-home' },
   set:      { type: String, default: '' },   // e.g. 'taza-kiym', 'kosh-kelniz'
+  // Одна карточка в нескольких сетах. Товар живёт в своём set, а здесь перечислены
+  // чужие сеты, где его тоже показывают: стеллажи ADIK HOME стоят и в Baary Oorunda
+  // (Matkasym Home), и в Onoy Sakta (Matkasym Shaar). Копии карточки нет — фото,
+  // характеристики и остатки общие, правится она в одном месте.
+  alsoIn: [{
+    brand: { type: String, default: '' },
+    set:   { type: String, default: '' },
+    // База 1С, чьи остаток и цены показывать в ЭТОМ сете (см. stockBase).
+    base:  { type: String, default: '' },
+  }],
+  // База 1С, которая отвечает за товар в его собственном сете. Пусто — как раньше:
+  // остаток суммой по Кыргызстану и общие цены. Заполнено — на витрине сета стоят
+  // цифры этой базы: в Baary Oorunda стеллажами ADIK торгует Make-in, а тем же
+  // товаром в Onoy Sakta — Matkasym, и остатки у них разные.
+  stockBase: { type: String, default: '' },
   setLevel: { type: String, default: '' },   // 'standard' | 'vip' | 'premium'
   color:    { type: String, default: '' },   // 'white' | 'black' | 'grey'
 
