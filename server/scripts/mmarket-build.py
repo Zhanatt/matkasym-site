@@ -490,6 +490,10 @@ def main():
         sku_col = next(col for h, col in headers.items() if h.startswith(SKU_HEADER))
         stock_col = next(col for h, col in headers.items() if h.startswith('Город'))
         allowed = dictionaries(wb, sheet)
+        # Что уже лежит на площадке: шаблон качают с галочкой «включить текущие
+        # товары», и эти строки приехали оттуда.
+        known = {str(ws.cell(i, sku_col).value or '').strip()
+                 for i in range(2, ws.max_row + 1) if ws.cell(i, sku_col).value}
         # характеристики — всё между служебными колонками и складом
         attr_headers = [h for h, col in headers.items()
                         if col > max(headers[b] for b in BASE_HEADERS if b in headers) and col != stock_col]
@@ -506,7 +510,12 @@ def main():
                 'name': name, 'description': desc, 'price': net + discount,
                 'discount': discount, 'images': ', '.join(order_imgs(pick_imgs(p, sku))),
                 'merge': ', '.join(x for x in siblings.get(group, []) if x != sku) or None,
-                'group': group, 'event': None, 'pickup': 'Да', 'main': main_flag,
+                # «Группировка SKU» работает только на новых артикулах: у товара,
+                # который уже есть на площадке, она возвращает ошибку загрузки
+                # («используйте сценарий из карточки товара»). Такие карточки там
+                # уже склеены — второй раз объединять их через файл не нужно.
+                'group': group if sku not in known else None,
+                'event': None, 'pickup': 'Да', 'main': main_flag,
                 'pkg_weight': weight, 'pkg_length': length, 'pkg_width': width, 'pkg_height': height,
             }
 
