@@ -509,11 +509,14 @@ def main():
             values = {
                 'name': name, 'description': desc, 'price': net + discount,
                 'discount': discount, 'images': ', '.join(order_imgs(pick_imgs(p, sku))),
-                'merge': ', '.join(x for x in siblings.get(group, []) if x != sku) or None,
-                # «Группировка SKU» работает только на новых артикулах: у товара,
-                # который уже есть на площадке, она возвращает ошибку загрузки
-                # («используйте сценарий из карточки товара»). Такие карточки там
-                # уже склеены — второй раз объединять их через файл не нужно.
+                # Обе колонки склейки — только для новых артикулов. У товара,
+                # который уже на площадке, «Группировка SKU» отвечает «используйте
+                # сценарий из карточки товара», а «Объединить» — «нельзя объединять
+                # товары из разных категорий»: на её стороне карточки могли разъехаться
+                # по категориям, и файл этого не видит. Такие уже склеены при первой
+                # загрузке, второй раз связывать их через файл нечего.
+                'merge': ', '.join(x for x in siblings.get(group, []) if x != sku) or None
+                         if sku not in known else None,
                 'group': group if sku not in known else None,
                 'event': None, 'pickup': 'Да', 'main': main_flag,
                 'pkg_weight': weight, 'pkg_length': length, 'pkg_width': width, 'pkg_height': height,
