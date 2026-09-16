@@ -102,6 +102,14 @@ const SERVICES_PDF_CHOICES = [
   { category: 'Лазерное оборудование', label: 'Лазерная резка' },
 ];
 
+// Весь каталог бренда открывается той же панелью, что и сет: в адресе он стоит
+// на месте сета, поэтому ссылку на него можно переслать и открыть заново.
+const ALL_SETS = '__all__';
+
+// Потолок дозагрузки. Он взят с запасом на весь каталог бренда: в HOME уже под
+// тысячу позиций, и по прежней тысяче хвост каталога молча пропадал бы.
+const FULL_LIMIT = 3000;
+
 // Первая порция карточек: столько влезает на экран с запасом, дальше догружаем фоном.
 const FIRST_CHUNK = 60;
 
@@ -765,15 +773,38 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <div style={{ fontSize: isMobile ? 36 : 46, fontWeight: 800, letterSpacing: -1, color: '#1c1c1c', lineHeight: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+            {/* Название бренда открывает весь его каталог: раньше товары можно
+                было смотреть только по одному сету, а «покажи всё» просили часто. */}
+            <button
+              onClick={() => handleOpenCatalog(ALL_SETS)}
+              title={`Открыть весь каталог ${BRAND_META[brandKey].label}`}
+              style={{
+                padding: 0, border: 'none', background: 'none', cursor: 'pointer',
+                fontSize: isMobile ? 36 : 46, fontWeight: 800, letterSpacing: -1,
+                color: '#1c1c1c', lineHeight: 1, fontFamily: 'inherit',
+                textDecoration: 'underline', textDecorationStyle: 'dotted',
+                textDecorationColor: '#c8cdd4', textUnderlineOffset: 6,
+              }}>
               {BRAND_META[brandKey].label}
-            </div>
+            </button>
             {productCount > 0 && (
               <div style={{ fontSize: 14, fontWeight: 600, color: '#888' }}>
                 {productCount} тов.
               </div>
             )}
+            {/* Пунктир под названием на телефоне читается слабо — рядом стоит
+                явная кнопка с тем же действием. */}
+            <button
+              onClick={() => handleOpenCatalog(ALL_SETS)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '4px 10px', borderRadius: 20, cursor: 'pointer',
+                border: `1px solid ${accent}33`, background: `${accent}14`,
+                color: accent, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+              }}>
+              Весь каталог <span style={{ fontSize: 13, lineHeight: 1 }}>›</span>
+            </button>
           </div>
           <div style={{ height: 3, width: 50, background: accent, borderRadius: 2, margin: '8px 0 6px' }} />
           <div style={{ fontSize: 12, color: '#6b8997' }}>
@@ -1035,7 +1066,13 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
       </div>
 
       {catalogSlug && (
-        <SetCatalogPanel brandKey={brandKey} setSlug={catalogSlug} onClose={handleCloseCatalog} />
+        <SetCatalogPanel
+          brandKey={brandKey}
+          setSlug={catalogSlug}
+          titleOverride={catalogSlug === ALL_SETS ? `${BRAND_META[brandKey].label} — весь каталог` : undefined}
+          fetchParams={catalogSlug === ALL_SETS ? { brand: brandKey } : undefined}
+          onClose={handleCloseCatalog}
+        />
       )}
     </div>
   );
@@ -1179,7 +1216,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
         if ((first.data.total || 0) > shown.length) {
           setLoadingMore(true);
-          const full = await adminGetProducts({ ...base, brief: 1, setView: 1, page: 1, limit: 1000, country });
+          const full = await adminGetProducts({ ...base, brief: 1, setView: 1, page: 1, limit: FULL_LIMIT, country });
           if (cancelled) return;
           setProducts(full.data.products || []);
           remember(full.data.products || []);
