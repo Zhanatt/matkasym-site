@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import SearchSelect from './SearchSelect';
 import './SelectWithAdd.css';
 
 /**
@@ -50,20 +51,16 @@ export default function SelectWithAdd({ options, value, onChange, onAdd, placeho
     );
   }
 
+  // Список с поиском, а не <select>: категорий под сотню, и мотать их глазами
+  // было единственным способом найти нужную. Напечатанное в поиске подставляется
+  // в поле добавления — если ничего не нашлось, это ровно то, что хотели завести.
   return (
-    <select
-      className="swa-select"
+    <SearchSelect
+      options={options}
       value={value}
-      onChange={e => {
-        if (e.target.value === '__add__') setAdding(true);
-        else onChange(e.target.value);
-      }}
-    >
-      {!value && <option value="">{placeholder}</option>}
-      {options.map(o => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-      <option value="__add__">+ Добавить новый...</option>
-    </select>
+      onChange={onChange}
+      placeholder={placeholder}
+      action={{ label: '+ Добавить новый…', onClick: (q) => { setNewVal(q || ''); setAdding(true); } }}
+    />
   );
 }

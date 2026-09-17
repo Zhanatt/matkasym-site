@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { canEditCatalog } from '../../constants/roles';
 import { useFrontmen } from '../../context/FrontmenContext';
 import { adminGetUsers, adminGetBrands } from '../../api/index';
+import SearchSelect from '../../components/SearchSelect';
 
 const BRAND_META = {
   'matkasym-home':   { label: 'HOME',   accent: '#DC1E24' },
@@ -416,18 +417,15 @@ export default function AdminFrontmen() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 10, color: '#888', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Пользователь</div>
-                <select
+                {/* С поиском: пользователей в списке под сотню, и найти нужного
+                    прокруткой было тяжело — имена идут не по алфавиту, а как в базе. */}
+                <SearchSelect
+                  options={users.map(u => ({ value: u._id, label: u.name, hint: u.email }))}
                   value={form.userId}
-                  onChange={e => handleUserSelect(e.target.value)}
-                  style={{ width: '100%', fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 8, padding: '10px 12px', outline: 'none', background: '#fff' }}
-                >
-                  <option value="">— Не привязан —</option>
-                  {users.map(u => (
-                    <option key={u._id} value={u._id}>
-                      {u.name} ({u.email})
-                    </option>
-                  ))}
-                </select>
+                  onChange={handleUserSelect}
+                  emptyLabel="— Не привязан —"
+                  placeholder="Начните вводить имя или почту…"
+                />
               </div>
 
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
