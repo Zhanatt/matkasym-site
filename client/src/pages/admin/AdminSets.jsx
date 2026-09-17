@@ -634,6 +634,8 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   }
 
   const [customSets,  setCustomSets]  = useState([]);
+  const [allBrands,   setAllBrands]   = useState([]);
+  const [showBorrow,  setShowBorrow]  = useState(false);
   const [showAddSet,  setShowAddSet]  = useState(false);
   const [newSetName,  setNewSetName]  = useState('');
   const [addingSet,   setAddingSet]   = useState(false);
@@ -648,11 +650,28 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
 
   useEffect(() => {
     adminGetBrands().then(r => {
+      setAllBrands(r.data || []);
       const brand = r.data.find(b => b.key === brandKey);
-      console.log(`[${brandKey}] brand.sets:`, brand?.sets?.length, brand?.sets?.map(s => s.key));
       if (brand) setCustomSets(brand.sets || []);
     });
   }, [brandKey]);
+
+  // Сет может стоять сразу у нескольких брендов: карточки у него общие, и
+  // правка в одном направлении сразу видна в другом. Здесь — где ещё он есть.
+  const sharedWith = useCallback(
+    slug => allBrands.filter(b => b.key !== brandKey && (b.sets || []).some(s => s.key === slug)),
+    [allBrands, brandKey],
+  );
+
+  // Чужие сеты, которых у нас ещё нет, — их и предлагаем подключить.
+  const borrowable = useMemo(() => {
+    const mine = new Set(customSets.map(s => s.key));
+    return allBrands
+      .filter(b => b.key !== brandKey && BRAND_META[b.key])
+      .flatMap(b => (b.sets || [])
+        .filter(s => !mine.has(s.key))
+        .map(s => ({ brandKey: b.key, key: s.key, label: s.label || toTitle(s.key) })));
+  }, [allBrands, customSets, brandKey]);
 
   const getFrontmenForSet = (slug, channel) => {
     return frontmen.filter(f =>
@@ -740,6 +759,20 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     } catch (e) {
       setAddSetError(e?.response?.data?.error || 'Ошибка при добавлении сета');
     } finally { setAddingSet(false); }
+  }
+
+  // Тот же сет в другом бренде — это не копия: ключ один, карточки одни,
+  // и правка видна сразу с обеих сторон. Здесь только добавляется строка в
+  // список сетов бренда, товары никуда не копируются.
+  async function handleBorrowSet(item) {
+    try {
+      const res = await adminAddBrandSet(brandKey, item.key, item.label);
+      setCustomSets(res.data.sets || []);
+      setAllBrands(prev => prev.map(b => b.key === brandKey ? res.data : b));
+      setShowBorrow(false);
+    } catch (e) {
+      alert(e?.response?.data?.error || 'Не удалось подключить сет');
+    }
   }
 
   async function handleDeleteSet(slug) {
@@ -842,7 +875,9 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
           )}
           {editing ? (
             <>
-              <button onClick={() => setShowAddSet(v => !v)} style={btn('#f0fff4','#267846')}>+ Сет</button>
+              <button onClick={() => { setShowAddSet(v => !v); setShowBorrow(false); }} style={btn('#f0fff4','#267846')}>+ Сет</button>
+              <button onClick={() => { setShowBorrow(v => !v); setShowAddSet(false); }} style={btn('#eef4ff','#1d4ed8')}
+                title="Показать здесь сет другого направления — товары общие">↔ Общий сет</button>
               <button onClick={() => { setEditing(false); setShowAddSet(false); setNewSetName(''); }} style={btn(accent,'#fff',true)}>Готово</button>
             </>
           ) : (
@@ -877,6 +912,34 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
             style={btn('#f5f5f5','#555')}>Отмена</button>
           {addSetError && (
             <span style={{ fontSize: 11, color: '#c00', width: '100%' }}>{addSetError}</span>
+          )}
+        </div>
+      )}
+
+      {/* Подключение сета другого направления */}
+      {editing && showBorrow && (
+        <div style={{ marginBottom: 12, background: '#f5f8ff', borderRadius: 8, padding: '10px 12px',
+          border: '1px solid #cddcff' }}>
+          <div style={{ fontSize: 12, color: '#3b5b8c', marginBottom: 8 }}>
+            Сет появится и здесь, и там, где он уже есть. Товары общие: правка карточки видна с обеих сторон.
+          </div>
+          {borrowable.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: '#8a9ab5' }}>Все сеты других направлений уже подключены</div>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {borrowable.map(item => (
+                <button key={`${item.brandKey}:${item.key}`} onClick={() => handleBorrowSet(item)}
+                  title={`Подключить «${item.label}» из ${BRAND_META[item.brandKey].label}`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px',
+                    borderRadius: 8, border: '1px solid #cddcff', background: '#fff', cursor: 'pointer',
+                    fontSize: 12.5, color: '#1c1c1c' }}>
+                  {item.label}
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: BRAND_META[item.brandKey].accent }}>
+                    {BRAND_META[item.brandKey].label}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -974,6 +1037,18 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                   title={editing && customSet ? 'Двойной клик для редактирования' : displayLabel}
                 >{displayLabel}</span>
               )}
+
+              {/* Сет стоит и в другом направлении — товары у них общие */}
+              {!isEditingThis && sharedWith(slug).map(b => (
+                <span key={b.key} title={`Тот же сет показан в ${BRAND_META[b.key]?.label || b.label}. Карточки общие`}
+                  style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: .3, flexShrink: 0,
+                    padding: '1px 5px', borderRadius: 5, whiteSpace: 'nowrap',
+                    color: BRAND_META[b.key]?.accent || '#555',
+                    background: `${BRAND_META[b.key]?.accent || '#555'}14`,
+                    border: `1px solid ${BRAND_META[b.key]?.accent || '#555'}33` }}>
+                  ↔ {BRAND_META[b.key]?.label || b.label}
+                </span>
+              ))}
 
               {editing && !isEditingThis && (
                 <>
