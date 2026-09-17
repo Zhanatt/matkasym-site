@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { canEditCatalog } from '../../constants/roles';
+import { canEditCatalog, canEnterAdmin } from '../../constants/roles';
 import { useFrontmen } from '../../context/FrontmenContext';
 import { adminGetUsers, adminGetBrands } from '../../api/index';
 import SearchSelect from '../../components/SearchSelect';
@@ -89,7 +89,11 @@ export default function AdminFrontmen() {
   useEffect(() => {
     adminGetUsers()
       .then(res => {
-        const filtered = res.data.filter(u => ['owner', 'editor', 'viewer', 'designer'].includes(u.role));
+        // Кого можно привязать к фронтмену — всех, кто вообще заходит в
+        // Продакт матрицу. Здесь был свой список ролей, и он отстал: завели
+        // «Навигатора», «Склад» и «Закупщика», а в выпадашке их не было —
+        // ровно та же история, о которой предупреждает constants/roles.js.
+        const filtered = res.data.filter(u => canEnterAdmin(u.role));
         filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
         setUsers(filtered);
       })
