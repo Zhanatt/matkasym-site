@@ -349,28 +349,26 @@ export default function AdminReviewResults() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {(() => {
-                const CHANNEL_LABELS = {
-                  'matkasym_home': '🏠 Matkasym Home',
-                  'matkasym_shaar': '🏙 Matkasym Shaar',
-                  'make_in': '🛠 Make In',
-                  'matkasym_kz': '🇰🇿 Matkasym KZ',
-                  'matkasym_horeca': '🍽 Matkasym HoReCa',
-                  'matkasym_kyzmat': '🔧 Matkasym Kyzmat',
+                // Группируем по направлению: канала продаж у людей больше нет.
+                const BRAND_LABELS = {
+                  'matkasym-home':   '🏠 HOME',
+                  'matkasym-shaar':  '🏙 SHAAR',
+                  'matkasym-kyzmat': '🔧 KYZMAT',
                 };
                 const grouped = {};
                 frontmenProgress.forEach(fm => {
-                  const ch = fm.channel || 'other';
-                  if (!grouped[ch]) grouped[ch] = [];
-                  grouped[ch].push(fm);
+                  const b = fm.brand || 'other';
+                  if (!grouped[b]) grouped[b] = [];
+                  grouped[b].push(fm);
                 });
-                const order = ['matkasym_home', 'matkasym_shaar', 'make_in', 'matkasym_kz', 'matkasym_horeca', 'matkasym_kyzmat', 'other'];
-                return order.filter(ch => grouped[ch]).map(channel => (
-                  <div key={channel}>
+                const order = ['matkasym-home', 'matkasym-shaar', 'matkasym-kyzmat', 'other'];
+                return order.filter(b => grouped[b]).map(brandKey => (
+                  <div key={brandKey}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#888', marginBottom: 8 }}>
-                      {CHANNEL_LABELS[channel] || '📦 Другие'}
+                      {BRAND_LABELS[brandKey] || '📦 Другие'}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {grouped[channel].map(fm => (
+                      {grouped[brandKey].map(fm => (
                         <div
                           key={fm._id}
                           style={{
@@ -934,27 +932,26 @@ export default function AdminReviewResults() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
               {(() => {
-                const CHANNEL_LABELS = {
-                  'matkasym_home': '🏠 Matkasym Home',
-                  'make_in': '🛠 Make In',
-                  'matkasym_kz': '🇰🇿 Matkasym KZ',
-                  'matkasym_horeca': '🍽 Matkasym HoReCa',
-                  'matkasym_kyzmat': '🔧 Matkasym Kyzmat',
+                // Группируем по направлению: канала продаж у людей больше нет.
+                const BRAND_LABELS = {
+                  'matkasym-home':   '🏠 HOME',
+                  'matkasym-shaar':  '🏙 SHAAR',
+                  'matkasym-kyzmat': '🔧 KYZMAT',
                 };
                 const grouped = {};
                 summaryData.forEach(fm => {
-                  const ch = fm.channel || 'other';
-                  if (!grouped[ch]) grouped[ch] = [];
-                  grouped[ch].push(fm);
+                  const b = fm.brand || 'other';
+                  if (!grouped[b]) grouped[b] = [];
+                  grouped[b].push(fm);
                 });
-                const order = ['matkasym_home', 'make_in', 'matkasym_kz', 'matkasym_horeca', 'matkasym_kyzmat', 'other'];
-                return order.filter(ch => grouped[ch]).map(channel => (
-                  <div key={channel}>
+                const order = ['matkasym-home', 'matkasym-shaar', 'matkasym-kyzmat', 'other'];
+                return order.filter(b => grouped[b]).map(brandKey => (
+                  <div key={brandKey}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#888', marginBottom: 8 }}>
-                      {CHANNEL_LABELS[channel] || '📦 Другие'}
+                      {BRAND_LABELS[brandKey] || '📦 Другие'}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {grouped[channel].map(fm => (
+                      {grouped[brandKey].map(fm => (
                         <div
                           key={fm._id}
                           style={{

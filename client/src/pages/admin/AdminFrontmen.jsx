@@ -14,24 +14,6 @@ const BRAND_META = {
 
 const PALETTE = ['#E74C3C','#3498DB','#2ECC71','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E'];
 
-const SALES_CHANNELS = {
-  default: [
-    { key: 'matkasym_home', label: 'matkasym_home', desc: 'Розница KG' },
-    { key: 'make_in',       label: 'make_in',       desc: 'Оптовики' },
-    { key: 'matkasym_kz',   label: 'Matkasym KZ',   desc: 'Казахстан' },
-  ],
-  'matkasym-shaar': [
-    { key: 'matkasym_shaar',  label: 'matkasym_shaar',  desc: 'B2G (госзакупки)' },
-    { key: 'matkasym_horeca', label: 'matkasym_horeca', desc: 'HoReCa' },
-    { key: 'make_in',         label: 'make_in',         desc: 'Оптовики' },
-  ],
-  'matkasym-kyzmat': [
-    { key: 'matkasym_kyzmat', label: 'matkasym_kyzmat', desc: 'Производство' },
-  ],
-};
-
-const getChannelsForBrand = (brand) => SALES_CHANNELS[brand] || SALES_CHANNELS.default;
-
 const SET_NAMES = {
   'achyk-asman':     'Achyk Asman',
   'baary-oorunda':   'Baary Oorunda',
@@ -58,15 +40,6 @@ const SET_NAMES = {
   'poly-fabrikat':   'Poly Fabrikat',
 };
 const setLabel = s => SET_NAMES[s] || s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-
-const CHANNEL_LABELS = {
-  'matkasym_home': '🏠 Home',
-  'matkasym_shaar': '🏙 Shaar',
-  'make_in': '🛠 Make In',
-  'matkasym_kz': '🇰🇿 Matkasym KZ',
-  'matkasym_horeca': '🍽 HoReCa',
-  'matkasym_kyzmat': '🔧 Kyzmat',
-};
 
 export default function AdminFrontmen() {
   const { user } = useAuth();
@@ -134,7 +107,7 @@ export default function AdminFrontmen() {
       name: preset?.name || '',
       brand: brandKey,
       instagram: preset?.instagram || '',
-      sets: [], color, channel: '', kind,
+      sets: [], color, kind,
     });
     setEditId('new');
   }
@@ -156,7 +129,6 @@ export default function AdminFrontmen() {
       instagram: fm.instagram || '',
       sets: [...fm.sets],
       color: fm.color,
-      channel: fm.channel || '',
       kind: fm.kind || 'frontman',
     });
     setEditId(fm._id);
@@ -176,13 +148,15 @@ export default function AdminFrontmen() {
 
   async function save() {
     if (!form.name.trim()) return;
+    // Без аккаунта запись повиснет сама по себе: её не свяжешь ни с заявками,
+    // ни с аудитом, ни с уведомлениями в Telegram.
+    if (!form.userId) return;
     setSaving(true);
     try {
       const payload = {
         ...form,
         userId: form.userId || null,
         kind: form.kind || 'frontman',
-        channel: form.kind === 'designer' ? null : (form.channel || null),
       };
       if (editId === 'new') {
         await createFrontman(payload);
@@ -328,7 +302,6 @@ export default function AdminFrontmen() {
                       </div>
                       <div style={{ fontSize: 12, color: '#999', marginTop: 1 }}>
                         {fm.sets.length} сет{fm.sets.length === 1 ? '' : fm.sets.length < 5 ? 'а' : 'ов'}
-                        {fm.channel && <span style={{ marginLeft: 8 }}>{CHANNEL_LABELS[fm.channel] || fm.channel}</span>}
                       </div>
                     </div>
 
@@ -420,14 +393,16 @@ export default function AdminFrontmen() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 10, color: '#888', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Пользователь</div>
+                <div style={{ fontSize: 10, color: '#888', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>
+                  Аккаунт <span style={{ color: '#c00' }}>*</span>
+                </div>
                 {/* С поиском: пользователей в списке под сотню, и найти нужного
                     прокруткой было тяжело — имена идут не по алфавиту, а как в базе. */}
                 <SearchSelect
                   options={users.map(u => ({ value: u._id, label: u.name, hint: u.email }))}
                   value={form.userId}
                   onChange={handleUserSelect}
-                  emptyLabel="— Не привязан —"
+                  emptyLabel="— Выберите аккаунт —"
                   placeholder="Начните вводить имя или почту…"
                 />
               </div>
@@ -453,18 +428,6 @@ export default function AdminFrontmen() {
                   ))}
                 </select>
 
-                {form.kind !== 'designer' && (
-                <select
-                  value={form.channel}
-                  onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}
-                  style={{ flex: 1, fontSize: 13, border: '1px solid #e5e5e5', borderRadius: 8, padding: '10px 12px', outline: 'none', background: '#fff' }}
-                >
-                  <option value="">Канал</option>
-                  {getChannelsForBrand(form.brand).map(ch => (
-                    <option key={ch.key} value={ch.key}>{ch.label}</option>
-                  ))}
-                </select>
-                )}
               </div>
 
               <div>
@@ -499,11 +462,14 @@ export default function AdminFrontmen() {
                 padding: '10px 20px', borderRadius: 8, border: 'none',
                 background: '#f5f5f5', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#555',
               }}>Отмена</button>
-              <button onClick={save} disabled={saving || !form.name?.trim()} style={{
-                padding: '10px 20px', borderRadius: 8, border: 'none',
-                background: '#1c1c1c', color: '#fff', cursor: saving ? 'wait' : 'pointer',
-                fontSize: 13, fontWeight: 700, opacity: saving ? 0.7 : 1,
-              }}>
+              <button onClick={save} disabled={saving || !form.name?.trim() || !form.userId}
+                title={!form.userId ? 'Сначала выберите аккаунт пользователя' : ''}
+                style={{
+                  padding: '10px 20px', borderRadius: 8, border: 'none',
+                  background: '#1c1c1c', color: '#fff',
+                  cursor: saving ? 'wait' : (!form.userId ? 'not-allowed' : 'pointer'),
+                  fontSize: 13, fontWeight: 700, opacity: saving || !form.userId ? 0.5 : 1,
+                }}>
                 {saving ? '...' : 'Сохранить'}
               </button>
             </div>

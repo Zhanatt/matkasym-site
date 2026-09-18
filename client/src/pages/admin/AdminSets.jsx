@@ -14,6 +14,7 @@ import {
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
+import { SET_CATEGORY_ORDER } from '../../config/setCategoryOrder';
 import BrandAboutButton from './BrandAboutButton';
 import TubesPdfButton from './TubesPdfButton';
 import './AdminSets.css';
@@ -174,60 +175,10 @@ const SET_SUB_ITEMS = {
   'dayar-tutuk': ['Трубопрокат'],
 };
 
-const SALES_CHANNELS = [
-  { key: 'matkasym_home', label: 'MATKASYM_HOME', short: 'HOME', color: '#DC1E24' },
-  { key: 'matkasym_kz',   label: 'Matkasym KZ',   short: 'KZ',   color: '#267846' },
-];
+// Фронтмены и дизайнеры ведут сеты направления — раскладывать их по каналам
+// продаж больше не нужно: кто это, видно по привязанному аккаунту.
+const FRONTMAN_COLOR = '#3463A3';
 
-const SHAAR_CHANNELS = [
-  { key: 'matkasym_shaar', label: 'MATKASYM_SHAAR', short: 'SHAAR', color: '#3463A3' },
-];
-
-const KYZMAT_CHANNELS = [
-  { key: 'matkasym_kyzmat', label: 'MATKASYM_KYZMAT', short: 'KYZMAT', color: '#267846' },
-];
-
-// Каналы разведены по странам: Matkasym KZ и его фронтмены работают только
-// в Казахстане, киргизские каналы — только в Кыргызстане.
-const KZ_CHANNELS = SALES_CHANNELS.filter(c => c.key === 'matkasym_kz');
-const KG_CHANNELS = SALES_CHANNELS.filter(c => c.key !== 'matkasym_kz');
-
-function channelsFor(brandKey, country) {
-  if (country === 'KZ') return KZ_CHANNELS;
-  if (brandKey === 'matkasym-shaar')  return SHAAR_CHANNELS;
-  if (brandKey === 'matkasym-kyzmat') return KYZMAT_CHANNELS;
-  return KG_CHANNELS;
-}
-
-// Порядок категорий для конкретных сетов (чем меньше число, тем выше в списке)
-const SET_CATEGORY_ORDER = {
-  'dayar-tutuk': {
-    'Трубы круглые': 1,
-    'Трубы овальные': 2,
-    'Трубы квадратные': 3,
-    'Трубы прямоугольные': 4,
-  },
-  'mazza-seyil': {
-    'Скамейки без спинки': 1,
-    'Скамейки со спинкой': 2,
-    'Скамейки с навесом': 3,
-    'Навесы для скамеек': 4,
-    'Перголы': 5,
-    'Качели': 6,
-    'Ландшафтное освещение': 7,
-    'Остальное освещение': 8,
-    'Велопарковки': 9,
-  },
-  'taza-kiym': {
-    'Плечики': 1,
-    'Корзины для белья': 2,
-    'Гладильная доска': 3,
-    'Сушилка': 4,
-    'Гардеробная вешалка': 5,
-    'Костюмная вешалка': 6,
-    'Складная полка для гардеробной вешалки': 7,
-  },
-};
 
 // Порядок карточек внутри конкретной категории. Обычный (без записи здесь) —
 // сначала линейки, наверх та, где больше остаток, и лишь внутри линейки размер.
@@ -673,20 +624,10 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
         .map(s => ({ brandKey: b.key, key: s.key, label: s.label || toTitle(s.key) })));
   }, [allBrands, customSets, brandKey]);
 
-  const getFrontmenForSet = (slug, channel) => {
-    return frontmen.filter(f =>
-      (f.kind || 'frontman') === 'frontman' &&
-      f.brand === brandKey && f.sets?.includes(slug) && f.channel === channel
-    );
-  };
-
-  // Фронтмен, которому не выбрали канал продаж, не попадал ни в одну колонку и
-  // просто пропадал с доски — хотя сеты за ним закреплены. Показываем его в
-  // первой колонке отдельным видом: видно и человека, и что канал не задан.
-  const getFrontmenWithoutChannel = slug =>
+  const getFrontmenForSet = slug =>
     frontmen.filter(f =>
       (f.kind || 'frontman') === 'frontman' &&
-      f.brand === brandKey && f.sets?.includes(slug) && !f.channel
+      f.brand === brandKey && f.sets?.includes(slug)
     );
 
   // Дизайнеры ведут сеты без привязки к каналу продаж — отдельная колонка справа
@@ -709,6 +650,14 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
 
   // During drag, use localOrder for visual feedback
   const displaySets = localOrder.length > 0 ? localOrder : allSets;
+
+  // Сеты в том порядке, в каком они на экране — с их названиями. В PDF каталога
+  // уходил customSets как есть, то есть порядок базы: на экране сеты стояли
+  // один за другим, а в файле шли вперемешку.
+  const orderedSets = useMemo(
+    () => allSets.map(k => customSets.find(x => x.key === k)).filter(Boolean),
+    [allSets, customSets],
+  );
 
   const handleDragStart = (e, idx) => {
     setDraggedIdx(idx);
@@ -879,7 +828,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
           {!editing && (
             <>
               <BrandAboutButton brandKey={brandKey} sets={customSets} brandLabel={BRAND_META[brandKey].label} stockStats={stockStats} country={country} />
-              <BrandPdfButton brandKey={brandKey} sets={customSets} brandLabel={BRAND_META[brandKey].label} currency={CURRENCY[country] || CURRENCY.KG} />
+              <BrandPdfButton brandKey={brandKey} sets={orderedSets} brandLabel={BRAND_META[brandKey].label} currency={CURRENCY[country] || CURRENCY.KG} />
             </>
           )}
           {editing ? (
@@ -953,33 +902,22 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
         </div>
       )}
 
-      {/* Channel headers */}
+      {/* Заголовки колонок */}
       {!isMobile && (
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, paddingLeft: 200 }}>
-          {channelsFor(brandKey, country).map(ch => (
-            <div key={ch.key} style={{
+          {[{ label: 'Фронтмены', color: FRONTMAN_COLOR }, { label: 'Дизайнеры', color: DESIGNER_COLOR }].map(col => (
+            <div key={col.label} style={{
               flex: 1,
               textAlign: 'center',
               fontSize: 10,
               fontWeight: 700,
-              color: ch.color,
+              color: col.color,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
             }}>
-              {ch.label}
+              {col.label}
             </div>
           ))}
-          <div style={{
-            flex: 1,
-            textAlign: 'center',
-            fontSize: 10,
-            fontWeight: 700,
-            color: DESIGNER_COLOR,
-            textTransform: 'uppercase',
-            letterSpacing: 0.5,
-          }}>
-            Дизайнеры
-          </div>
         </div>
       )}
 
@@ -1079,52 +1017,29 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                 </>
               )}
 
-              {/* Sales channels columns */}
+              {/* Колонки: кто ведёт сет */}
               {!isMobile && !editing && (
                 <div style={{ display: 'flex', flex: 1, marginLeft: 8 }}>
-                  {channelsFor(brandKey, country).map((ch, chIdx) => {
-                    const channelFrontmen = getFrontmenForSet(slug, ch.key);
-                    const noChannel = chIdx === 0 ? getFrontmenWithoutChannel(slug) : [];
-                    return (
-                      <div key={ch.key} style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 4,
-                        justifyContent: 'center',
-                        minHeight: 20,
+                  <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', minHeight: 20 }}>
+                    {getFrontmenForSet(slug).map(f => (
+                      <span key={f._id} style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: f.color || FRONTMAN_COLOR,
+                        background: `${f.color || FRONTMAN_COLOR}15`,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        whiteSpace: 'nowrap',
                       }}>
-                        {channelFrontmen.map(f => (
-                          <span key={f._id} style={{
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: f.color || ch.color,
-                            background: `${f.color || ch.color}15`,
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                            whiteSpace: 'nowrap',
-                          }}>
-                            {f.name}
-                          </span>
-                        ))}
-                        {noChannel.map(f => (
-                          <span key={f._id} title="Канал продаж не выбран — поставьте его в разделе «Съёмки → Фронтмены»"
-                            style={{
-                              fontSize: 10, fontWeight: 600, color: '#8a94a3',
-                              background: '#f1f3f6', border: '1px dashed #cbd2db',
-                              padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap',
-                            }}>
-                            {f.name} <span style={{ color: '#b6bec9' }}>без канала</span>
-                          </span>
-                        ))}
-                        {channelFrontmen.length === 0 && noChannel.length === 0 && (
-                          <span style={{ fontSize: 10, color: '#ddd' }}>—</span>
-                        )}
-                      </div>
-                    );
-                  })}
+                        {f.name}
+                      </span>
+                    ))}
+                    {getFrontmenForSet(slug).length === 0 && (
+                      <span style={{ fontSize: 10, color: '#ddd' }}>—</span>
+                    )}
+                  </div>
 
-                  {/* Дизайнеры сета — одна колонка на все каналы */}
+                  {/* Дизайнеры сета */}
                   <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center', minHeight: 20 }}>
                     {getDesignersForSet(slug).map(d => (
                       <span key={d._id} style={{
@@ -1166,6 +1081,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
           setSlug={catalogSlug}
           titleOverride={catalogSlug === ALL_SETS ? `${BRAND_META[brandKey].label} — весь каталог` : undefined}
           fetchParams={catalogSlug === ALL_SETS ? { brand: brandKey } : undefined}
+          brandSets={catalogSlug === ALL_SETS ? orderedSets : undefined}
           onClose={handleCloseCatalog}
         />
       )}
@@ -1236,7 +1152,7 @@ const CURRENCY = { KG: 'сом', KZ: '₸' };
 const fmtPrice = (price, country) =>
   price > 0 ? `${price.toLocaleString('ru')} ${CURRENCY[country] || CURRENCY.KG}` : '—';
 
-function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride, fetchParams }) {
+function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride, fetchParams, brandSets }) {
   const country     = useCountry();
   const { user }    = useAuth();
   // Порядок и удаление — только владелец, редактор и дизайнер. Сервер проверяет
@@ -1725,7 +1641,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             {!isMobile && (
               setSlug === TUBES_SET
                 ? <TubesPdfButton products={shownProducts} priceMode={priceMode} pending={loadingMore} />
-                : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} pending={loadingMore} />
+                : brandSets
+                  /* «Весь каталог» печатает BrandPdfButton: он тянет товары сам и
+                     раскладывает их сет → категория → карточка, как на экране.
+                     Панельная кнопка печатала то, что видно, и сеты в PDF шли
+                     вперемешку — горшки, мангал, коврик подряд. */
+                  ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
+                      currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} pending={loadingMore} />
             )}
           </div>
 
@@ -1742,7 +1665,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               {!loading && renderStockStats(11)}
               {setSlug === TUBES_SET
                 ? <TubesPdfButton products={shownProducts} priceMode={priceMode} pending={loadingMore} />
-                : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} pending={loadingMore} />}
+                : brandSets
+                  /* «Весь каталог» печатает BrandPdfButton: он тянет товары сам и
+                     раскладывает их сет → категория → карточка, как на экране.
+                     Панельная кнопка печатала то, что видно, и сеты в PDF шли
+                     вперемешку — горшки, мангал, коврик подряд. */
+                  ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
+                      currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} pending={loadingMore} />}
             </div>
           )}
 

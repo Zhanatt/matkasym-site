@@ -449,6 +449,27 @@ router.get('/set-layout', async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// GET /set-layouts?brand= — расстановка сразу по всем сетам бренда.
+//
+// Нужна каталогу целиком: PDF «весь каталог» раскладывает товары сет → категория
+// → карточка ровно так, как они стоят на экране, а порядок этот хранится по
+// одному документу на сет. Дёргать /set-layout по разу на каждый из пятнадцати
+// сетов — пятнадцать запросов перед печатью.
+router.get('/set-layouts', async (req, res) => {
+  try {
+    const { brand } = req.query;
+    if (!brand) return res.status(400).json({ message: 'Нужен brand' });
+    const rows = await SetLayout.find({ brand }).lean();
+    const layouts = {};
+    rows.forEach(l => {
+      const products = {};
+      (l.productOrder || []).forEach(r => { products[r.category] = r.names || []; });
+      layouts[l.set] = { categories: l.categories || [], products };
+    });
+    res.json({ layouts });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 router.put('/set-layout', editor, async (req, res) => {
   try {
     const { brand, set, categories, products } = req.body;
@@ -3830,7 +3851,7 @@ router.get('/review/frontmen-progress', async (req, res) => {
         _id: fm._id,
         name: fm.name,
         color: fm.color,
-        channel: fm.channel || null,
+        brand: fm.brand || null,
         sets: fm.sets,
         total: totalProducts,
         reviewed: reviewedCount,
@@ -3839,8 +3860,9 @@ router.get('/review/frontmen-progress', async (req, res) => {
       });
     }
 
+    // Сначала по направлению, внутри — кто ближе к концу аудита
     result.sort((a, b) => {
-      if (a.channel !== b.channel) return (a.channel || 'zzz').localeCompare(b.channel || 'zzz');
+      if (a.brand !== b.brand) return (a.brand || 'zzz').localeCompare(b.brand || 'zzz');
       return b.progress - a.progress;
     });
     res.json(result);
