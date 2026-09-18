@@ -1,11 +1,43 @@
 import { useState, useRef } from 'react';
-import { adminGetProducts } from '../../api/index';
+import { adminGetProducts, adminGetSetLayouts } from '../../api/index';
 import { printCatalog, fitsCatalog } from './catalogPrint';
+import { categoryRank } from '../../config/setCategoryOrder';
 
-export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Каталог', currency = 'сом' }) {
+// Порядок в каталоге целиком: сет → категория → карточка, как они стоят на
+// экране. Сеты идут в порядке линеек бренда, категории и карточки внутри сета —
+// по расстановке из SetLayout (её правят кнопкой «Порядок» в панели сета).
+// Чего в расстановке нет — по алфавиту категории и как отдала база внутри.
+//
+// Раньше внутри сета товары шли подряд как пришли с сервера, то есть по остатку:
+// горшки, мангал, коврик — вперемешку. По такому PDF каталог не листают.
+function orderInSet(products, setSlug, layout) {
+  const saved = layout?.categories || [];
+  const cats = new Map();
+  products.forEach(p => {
+    const cat = p.category || 'Прочее';
+    if (!cats.has(cat)) cats.set(cat, []);
+    cats.get(cat).push(p);
+  });
+  return [...cats.entries()]
+    .sort((a, b) => categoryRank(setSlug, a[0], saved) - categoryRank(setSlug, b[0], saved)
+                 || a[0].localeCompare(b[0], 'ru'))
+    .flatMap(([cat, items]) => {
+      const names = layout?.products?.[cat] || [];
+      const rank = new Map(names.map((n, i) => [n, i]));
+      return [...items].sort((x, y) => (rank.has(x.name) ? rank.get(x.name) : 999)
+                                     - (rank.has(y.name) ? rank.get(y.name) : 999));
+    });
+}
+
+// priceMode — когда кнопку ставят в панель каталога, цену там уже выбирают
+// своим переключателем; свой прятаем, чтобы их не было два.
+const PRICE_MODE_TO_TYPE = { retail: 'price', wholesale: 'priceWholesale', dealer: 'priceDealer', none: 'none' };
+
+export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Каталог', currency = 'сом', priceMode }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
-  const [priceType, setPriceType] = useState('price');
+  const [ownType,   setPriceType] = useState('price');
+  const priceType = priceMode ? (PRICE_MODE_TO_TYPE[priceMode] || 'price') : ownType;
   const timerRef = useRef(null);
 
   const handleClick = async () => {
@@ -18,8 +50,17 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
     }, 300);
 
     try {
-      const res = await adminGetProducts({ brand: brandKey, limit: 5000 });
+      // brief=1 — иначе сервер отдаёт полные документы со всеми деталями
+      // комплектов на девятьсот позиций, и запрос на Render (512 МБ) просто
+      // не доезжает: прогресс доходил до 80% и вываливалась «Ошибка при
+      // создании PDF». Каталогу из товара нужны только фото, цена, габариты и
+      // пара характеристик — ровно то, что в brief.
+      const [res, layoutRes] = await Promise.all([
+        adminGetProducts({ brand: brandKey, brief: 1, limit: 5000 }),
+        adminGetSetLayouts(brandKey).catch(() => ({ data: { layouts: {} } })),
+      ]);
       const allProducts = res.data.products || [];
+      const layouts = layoutRes.data?.layouts || {};
 
       const availableProducts = allProducts.filter(fitsCatalog);
 
@@ -44,23 +85,18 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
 
       const pdfGroups = [];
 
-      setOrder.forEach(setKey => {
-        if (grouped[setKey] && grouped[setKey].length > 0) {
-          pdfGroups.push({
-            groupName: setLabels[setKey] || setKey,
-            products: grouped[setKey]
-          });
-        }
-      });
+      const pushSet = (setKey) => {
+        if (!grouped[setKey]?.length) return;
+        pdfGroups.push({
+          groupName: setLabels[setKey] || setKey,
+          products: orderInSet(grouped[setKey], setKey, layouts[setKey]),
+        });
+      };
 
-      Object.keys(grouped).forEach(setKey => {
-        if (!setOrder.includes(setKey) && grouped[setKey].length > 0) {
-          pdfGroups.push({
-            groupName: setLabels[setKey] || setKey,
-            products: grouped[setKey]
-          });
-        }
-      });
+      setOrder.forEach(pushSet);
+      // Сеты, которых нет в линейках бренда (и товары вовсе без сета) — в конец:
+      // прятать их нельзя, а место в чужом ряду им выдумывать незачем.
+      Object.keys(grouped).filter(k => !setOrder.includes(k)).sort().forEach(pushSet);
 
       if (pdfGroups.length === 0) {
         alert('Нет товаров для выгрузки');
@@ -88,8 +124,9 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
 
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      {!priceMode && (
       <select
-        value={priceType}
+        value={ownType}
         onChange={e => setPriceType(e.target.value)}
         disabled={loading}
         style={{ padding: '5px 8px', borderRadius: 6, border: '1.5px solid #e0e0e0',
@@ -100,6 +137,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
         <option value="priceDealer">Дилерская</option>
         <option value="none">Без цены</option>
       </select>
+      )}
 
       <button
         onClick={handleClick}

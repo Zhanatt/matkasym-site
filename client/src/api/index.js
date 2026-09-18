@@ -243,6 +243,8 @@ export const socialExportLalafoSet = (brand, set) =>
 
 export const adminGetSetLayout  = (brand, set) => api.get('/admin/set-layout', { params: { brand, set } });
 export const adminSaveSetLayout = (brand, set, categories, products) => api.put('/admin/set-layout', { brand, set, categories, products });
+// Расстановка по всем сетам бренда сразу — для PDF «весь каталог».
+export const adminGetSetLayouts = (brand) => api.get('/admin/set-layouts', { params: { brand } });
 
 export const socialGetPublishStats = ()          => api.get('/admin/social/publish-stats');
 export const socialGetLalafo       = ()          => api.get('/admin/social/lalafo');
