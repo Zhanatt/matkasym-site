@@ -13,7 +13,11 @@ const PRICE_MODE_TO_TYPE = {
 // покраску и сварку показывают разным людям и в разных разговорах.
 // label из choices идёт в заголовок PDF: в базе категория называется
 // «отдел-сварки», а в каталоге это «Сварка».
-export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail', currency = 'сом', choices = null }) {
+// pending — страница ещё догружает хвост каталога. Кнопку в это время не даём
+// нажать: список товаров на экране пока неполный, а PDF собирается ровно из него
+// — так «весь каталог HOME» ушёл в печать на 54 карточки вместо 678, и по файлу
+// это никак не видно.
+export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail', currency = 'сом', choices = null, pending = false }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [picking,   setPicking]   = useState(false);
@@ -140,13 +144,15 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
     <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
       <button
         onClick={() => (choices?.length ? setPicking(true) : handleClick())}
-        disabled={loading}
-        title="Откроет каталог и диалог печати — там «Сохранить как PDF»"
+        disabled={loading || pending}
+        title={pending
+          ? 'Каталог ещё догружается — дождитесь, иначе в PDF уйдёт только часть товаров'
+          : 'Откроет каталог и диалог печати — там «Сохранить как PDF»'}
         style={{
           position: 'relative', overflow: 'hidden',
           padding: '5px 14px', borderRadius: 6, border: 'none',
-          cursor: loading ? 'wait' : 'pointer',
-          background: '#1a73e8', color: '#fff',
+          cursor: loading ? 'wait' : pending ? 'default' : 'pointer',
+          background: pending ? '#9bb3d4' : '#1a73e8', color: '#fff',
           fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', minWidth: 90,
         }}
       >
@@ -161,7 +167,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           }} />
         )}
         <span style={{ position: 'relative', zIndex: 1 }}>
-          {loading ? `⏳ ${Math.round(progress)}%` : '📄 PDF'}
+          {loading ? `⏳ ${Math.round(progress)}%` : pending ? '⏳ догружаем…' : '📄 PDF'}
         </span>
       </button>
     </div>

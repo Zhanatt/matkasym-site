@@ -10,7 +10,10 @@ const LANGS = [
 
 // priceMode — тот же переключатель «Розн./Опт./Дил./Без», что и в шапке сета:
 // какой прайс выбран на экране, такой и уходит в PDF.
-export default function TubesPdfButton({ products, priceMode = 'retail' }) {
+// pending — хвост каталога ещё едет с сервера. Прайс собирается из того, что
+// на экране, поэтому до конца загрузки кнопку не даём нажать: иначе в файл
+// попадёт только первая порция труб, и по нему это не увидеть.
+export default function TubesPdfButton({ products, priceMode = 'retail', pending = false }) {
   const [open,     setOpen]     = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [progress, setProgress] = useState(0);
@@ -58,12 +61,13 @@ export default function TubesPdfButton({ products, priceMode = 'retail' }) {
     <div ref={wrapRef} style={{ position: 'relative', flexShrink: 0 }}>
       <button
         onClick={() => setOpen(o => !o)}
-        disabled={loading}
+        disabled={loading || pending}
+        title={pending ? 'Каталог ещё догружается — дождитесь, иначе в PDF уйдёт только часть труб' : undefined}
         style={{
           position: 'relative', overflow: 'hidden',
           padding: '5px 14px', borderRadius: 6, border: 'none',
-          cursor: loading ? 'wait' : 'pointer',
-          background: '#1a73e8', color: '#fff',
+          cursor: loading ? 'wait' : pending ? 'default' : 'pointer',
+          background: pending ? '#9bb3d4' : '#1a73e8', color: '#fff',
           fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', minWidth: 90,
         }}
       >
@@ -75,7 +79,7 @@ export default function TubesPdfButton({ products, priceMode = 'retail' }) {
           }} />
         )}
         <span style={{ position: 'relative', zIndex: 1 }}>
-          {loading ? `⏳ ${Math.round(progress)}%` : '📄 PDF'}
+          {loading ? `⏳ ${Math.round(progress)}%` : pending ? '⏳ догружаем…' : '📄 PDF'}
         </span>
       </button>
 
