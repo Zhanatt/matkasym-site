@@ -680,6 +680,15 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     );
   };
 
+  // Фронтмен, которому не выбрали канал продаж, не попадал ни в одну колонку и
+  // просто пропадал с доски — хотя сеты за ним закреплены. Показываем его в
+  // первой колонке отдельным видом: видно и человека, и что канал не задан.
+  const getFrontmenWithoutChannel = slug =>
+    frontmen.filter(f =>
+      (f.kind || 'frontman') === 'frontman' &&
+      f.brand === brandKey && f.sets?.includes(slug) && !f.channel
+    );
+
   // Дизайнеры ведут сеты без привязки к каналу продаж — отдельная колонка справа
   const getDesignersForSet = slug =>
     frontmen.filter(f => f.kind === 'designer' && f.brand === brandKey && f.sets?.includes(slug));
@@ -1073,8 +1082,9 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
               {/* Sales channels columns */}
               {!isMobile && !editing && (
                 <div style={{ display: 'flex', flex: 1, marginLeft: 8 }}>
-                  {channelsFor(brandKey, country).map(ch => {
+                  {channelsFor(brandKey, country).map((ch, chIdx) => {
                     const channelFrontmen = getFrontmenForSet(slug, ch.key);
+                    const noChannel = chIdx === 0 ? getFrontmenWithoutChannel(slug) : [];
                     return (
                       <div key={ch.key} style={{
                         flex: 1,
@@ -1097,7 +1107,17 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                             {f.name}
                           </span>
                         ))}
-                        {channelFrontmen.length === 0 && (
+                        {noChannel.map(f => (
+                          <span key={f._id} title="Канал продаж не выбран — поставьте его в разделе «Съёмки → Фронтмены»"
+                            style={{
+                              fontSize: 10, fontWeight: 600, color: '#8a94a3',
+                              background: '#f1f3f6', border: '1px dashed #cbd2db',
+                              padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap',
+                            }}>
+                            {f.name} <span style={{ color: '#b6bec9' }}>без канала</span>
+                          </span>
+                        ))}
+                        {channelFrontmen.length === 0 && noChannel.length === 0 && (
                           <span style={{ fontSize: 10, color: '#ddd' }}>—</span>
                         )}
                       </div>
