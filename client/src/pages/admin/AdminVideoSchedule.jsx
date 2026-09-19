@@ -8,6 +8,7 @@ import {
   adminUncompleteVideoSchedule,
   adminDeleteVideoSchedule,
 } from '../../api';
+import SearchSelect from '../../components/SearchSelect';
 
 const SET_NAMES = {
   'achyk-asman': 'Achyk Asman',
@@ -578,14 +579,14 @@ export default function AdminVideoSchedule() {
                   <div style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>
                     Добавить товар <span style={{ color: '#aaa', fontWeight: 600 }}>({filteredUnscheduled.length})</span>
                   </div>
-                  <select
+                  <SearchSelect
+                    style={{ maxWidth: 160 }}
+                    inputStyle={{ padding: '7px 24px 7px 10px', borderRadius: 9, border: '1.5px solid #e5e5e5', fontSize: 12.5, fontWeight: 600, background: '#fff' }}
                     value={selectedSet}
-                    onChange={e => setSelectedSet(e.target.value)}
-                    style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid #e5e5e5', fontSize: 12.5, fontWeight: 600, background: '#fff', maxWidth: 160 }}
-                  >
-                    <option value="all">Все сеты</option>
-                    {uniqueSets.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
-                  </select>
+                    onChange={v => setSelectedSet(v || 'all')}
+                    placeholder="Все сеты"
+                    options={[{ value: 'all', label: 'Все сеты' }, ...uniqueSets.map(x => ({ value: x, label: setLabel(x) }))]}
+                  />
                 </div>
 
                 {/* Поиск */}

@@ -10,6 +10,7 @@ import {
 import { cloudinaryOpt } from '../../utils/drive';
 import { POST_TYPES, platformMeta } from '../../config/socialPlatforms';
 import { signOf } from '../../utils/price';
+import SearchSelect from '../../components/SearchSelect';
 
 // Куда товар уже уходил: иконка площадки и сколько раз. Нужно, чтобы не отправить
 // один и тот же товар дважды — в поиске это видно до выбора.
@@ -620,15 +621,15 @@ export default function AdminPublish() {
                     (в WhatsApp клиента уйдёт вопрос про этот сет)
                   </span>
                 </label>
-                <select value={postSet} onChange={e => changeSet(e.target.value)}
-                  style={{ ...INP, marginBottom: postSet ? 0 : 18, cursor: 'pointer' }}>
-                  <option value="">— без сета —</option>
-                  {setGroups.map(g => (
-                    <optgroup key={g.brand} label={g.brandLabel}>
-                      {g.sets.map(x => <option key={x.key} value={x.key}>{x.label}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
+                {/* Список с поиском вместо optgroup: сетов у трёх брендов под
+                    полсотни, бренд показываем второй строкой — по нему тоже ищется. */}
+                <SearchSelect
+                  style={{ marginBottom: postSet ? 0 : 18 }}
+                  inputStyle={{ ...INP, marginBottom: 0 }}
+                  value={postSet} onChange={changeSet}
+                  emptyLabel="— без сета —" placeholder="— без сета —"
+                  options={setGroups.flatMap(g => g.sets.map(x => ({ value: x.key, label: x.label, hint: g.brandLabel })))}
+                />
                 {postSet && (
                   <div style={{ marginBottom: 18 }}>
                     <StoryLink set={postSet} lang={lang} />

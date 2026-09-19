@@ -9,6 +9,7 @@ import { CATEGORIES } from '../../config/categorySpecs';
 import { useAuth } from '../../context/AuthContext';
 import { CRM_STAGES } from './AdminProductForm';
 import { signOf } from '../../utils/price';
+import SearchSelect from '../../components/SearchSelect';
 
 const BRANDS = [
   { value: '', label: 'Все бренды' },
@@ -107,6 +108,9 @@ function thumb(p) {
   }
   return null;
 }
+
+// Поле поиска притворяется соседним .admin-select — фильтры стоят в одну строку.
+const SEARCH_SELECT_STYLE = { padding: '9px 26px 9px 12px', fontSize: 13, borderRadius: 8 };
 
 function categoryLabel(value) {
   return CATEGORIES.find(c => c.value === value)?.label || value || '—';
@@ -369,31 +373,26 @@ export default function AdminProducts() {
             {BRANDS.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
 
-          {/* Set — shows only sets that exist in DB for current brand */}
-          <select
-            className="admin-select"
+          {/* Set — shows only sets that exist in DB for current brand.
+              Список с поиском: сетов десятки, категорий под сотню. */}
+          <SearchSelect
+            style={{ width: 190 }} inputStyle={SEARCH_SELECT_STYLE}
             value={set}
-            onChange={e => setSet(e.target.value)}
+            onChange={setSet}
             disabled={availSets.length === 0}
-          >
-            <option value="">Все сеты</option>
-            {availSets.map(s => (
-              <option key={s} value={s}>{SET_LABELS_RU[s] || s.toUpperCase().replace(/-/g, ' ')}</option>
-            ))}
-          </select>
+            emptyLabel="Все сеты" placeholder="Все сеты"
+            options={availSets.map(x => ({ value: x, label: SET_LABELS_RU[x] || x.toUpperCase().replace(/-/g, ' ') }))}
+          />
 
           {/* Category — shows only categories that exist in current brand+set */}
-          <select
-            className="admin-select"
+          <SearchSelect
+            style={{ width: 190 }} inputStyle={SEARCH_SELECT_STYLE}
             value={category}
-            onChange={e => setCategory(e.target.value)}
+            onChange={setCategory}
             disabled={availCats.length === 0}
-          >
-            <option value="">Все категории</option>
-            {availCats.map(c => (
-              <option key={c} value={c}>{categoryLabel(c)}</option>
-            ))}
-          </select>
+            emptyLabel="Все категории" placeholder="Все категории"
+            options={availCats.map(c => ({ value: c, label: categoryLabel(c) }))}
+          />
 
           {/* Stock filter by quantity */}
           <select className="admin-select" value={stockFilter} onChange={e => setStockFilter(e.target.value)}>

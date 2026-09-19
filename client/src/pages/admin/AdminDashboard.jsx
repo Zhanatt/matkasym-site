@@ -7,6 +7,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { adminGetBrands, adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 import { canEditCatalog } from '../../constants/roles';
+import SearchSelect from '../../components/SearchSelect';
 
 // PDF.js worker. Берём его из сборки, а не с CDN: на cdnjs выкладывают не
 // каждую версию pdf.js, и промах по версии молча ломает разбор PDF.
@@ -509,6 +510,10 @@ export default function AdminDashboard() {
       {g.sets.map(x => <option key={x.key} value={`${g.brand}::${x.key}`}>{x.label}</option>)}
     </optgroup>
   ));
+  // Тот же список для поля с поиском: бренд идёт подсказкой второй строкой,
+  // по нему тоже ищется — у трёх брендов сетов под полсотни.
+  const setSearchOptions = setGroups.flatMap(g =>
+    g.sets.map(x => ({ value: `${g.brand}::${x.key}`, label: x.label, hint: g.brandLabel })));
 
   const newItemsList = newItems?.items || [];
   const checkedCount = newItemsList.filter(i => i.checked).length;
@@ -654,11 +659,13 @@ export default function AdminDashboard() {
 
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#444' }}>Отмеченным сет:</span>
-              <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
-                style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontWeight: 600, maxWidth: 240 }}>
-                <option value="">— выберите сет —</option>
-                {setOptions}
-              </select>
+              <SearchSelect
+                style={{ width: 240 }}
+                inputStyle={{ padding: '7px 24px 7px 10px', borderRadius: 8, border: '1.5px solid #e0e0e0', fontSize: 13, fontWeight: 600 }}
+                value={assignTo} onChange={setAssignTo}
+                emptyLabel="— выберите сет —" placeholder="— выберите сет —"
+                options={setSearchOptions}
+              />
               <button
                 onClick={() => setNewItems(n => ({ ...n, items: n.items.map(i => i.checked ? { ...i, dest: assignTo } : i) }))}
                 disabled={!assignTo || !checkedCount}

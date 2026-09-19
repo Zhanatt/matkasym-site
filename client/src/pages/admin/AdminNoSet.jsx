@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminGetProducts, adminGetBrands, adminGetFacets, adminUpdateProduct } from '../../api/index';
 import AdminProductModal from './AdminProductModal';
+import SearchSelect from '../../components/SearchSelect';
 import { cloudinaryOpt } from '../../utils/drive';
 
 const NO_PHOTO = '/logos/no-photo.png';
@@ -15,6 +16,11 @@ const BRAND_LABEL = {
 // Тот же список на сервере (routes/admin.js, MISC_CATEGORIES).
 const MISC_CATEGORIES = new Set(['other', 'Прочее', 'Другое', '']);
 const isMiscCat = c => !c || MISC_CATEGORIES.has(c);
+
+// Поля «куда кладём» крупнее соседних: по ним попадают пальцем, и выбранное
+// значение должно читаться через всю страницу.
+const PICK_STYLE = { padding: '12px 30px 12px 14px', borderRadius: 10, fontSize: 15, fontWeight: 700, border: '2px solid #e0e0e0' };
+const PICK_ON    = { border: '2px solid #2d7a3a', background: '#f0faf2' };
 
 // Одновременных запросов на сохранение: пачка бывает под две сотни товаров,
 // по одному это минуты ожидания, а всё разом положит и браузер, и Atlas.
@@ -250,31 +256,40 @@ export default function AdminNoSet() {
           ))}
         </div>
 
+        {/* Списки с поиском: категорий в бренде под сотню, и найти «Покраску»
+            прокруткой — это и есть то, из-за чего товар кладут «куда попало». */}
         <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <select value={target} onChange={e => setTarget(e.target.value)} disabled={busy}
-            style={{
-              flex: '1 1 200px', padding: '12px 14px', borderRadius: 10, fontSize: 15, fontWeight: 700,
-              border: `2px solid ${target ? '#2d7a3a' : '#e0e0e0'}`,
-              background: target ? '#f0faf2' : '#fff',
-            }}>
-            <option value="">— сет: не менять —</option>
-            {sets.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
+          <SearchSelect
+            style={{ flex: '1 1 200px' }}
+            inputStyle={{ ...PICK_STYLE, ...(target ? PICK_ON : null) }}
+            options={sets.map(x => ({ value: x.key, label: x.label }))}
+            value={target}
+            onChange={setTarget}
+            disabled={busy}
+            emptyLabel="— сет: не менять —"
+            placeholder="— сет: не менять —"
+          />
 
-          <select value={cat} onChange={e => setCat(e.target.value)} disabled={busy}
-            style={{
-              flex: '1 1 200px', padding: '12px 14px', borderRadius: 10, fontSize: 15, fontWeight: 700,
-              border: `2px solid ${catValue ? '#2d7a3a' : '#e0e0e0'}`,
-              background: catValue ? '#f0faf2' : '#fff',
-            }}>
-            <option value="">— категория: не менять —</option>
-            {cats.map(c => <option key={c} value={c}>{c}</option>)}
-            <option value="__new__">➕ своя категория…</option>
-          </select>
+          <SearchSelect
+            style={{ flex: '1 1 200px' }}
+            inputStyle={{ ...PICK_STYLE, ...(catValue ? PICK_ON : null) }}
+            options={cats.map(c => ({ value: c, label: c }))}
+            value={cat === '__new__' ? '' : cat}
+            onChange={v => { setCat(v); setNewCat(''); }}
+            disabled={busy}
+            emptyLabel="— категория: не менять —"
+            placeholder="— категория: не менять —"
+            action={{
+              label: '➕ своя категория…',
+              // Напечатанное в поиске переносим в поле: если ничего не нашлось,
+              // это ровно то имя, которое хотели завести.
+              onClick: (q) => { setCat('__new__'); setNewCat(q || ''); },
+            }}
+          />
         </div>
 
         {cat === '__new__' && (
-          <input value={newCat} onChange={e => setNewCat(e.target.value)}
+          <input value={newCat} onChange={e => setNewCat(e.target.value)} autoFocus
             placeholder="Название новой категории, например «Настенные вешалки»"
             style={{
               width: '100%', marginTop: 8, padding: '12px 14px', borderRadius: 10, fontSize: 14,

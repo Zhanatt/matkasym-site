@@ -14,14 +14,17 @@ import './SearchSelect.css';
  * onChange: (value) => void
  * emptyLabel: подпись пункта «ничего не выбрано»; без неё пункта нет
  * action: { label, onClick } — строка внизу списка («+ Добавить новый…»)
+ * style / inputStyle: подгонка под страницу — списки живут и в формах со своим
+ *   CSS, и на страницах с инлайновыми стилями, а выглядеть должны как соседи
  */
 export default function SearchSelect({
   options = [], value, onChange, placeholder = 'Выберите…',
-  emptyLabel, action, className = '',
+  emptyLabel, action, className = '', disabled = false, style, inputStyle,
 }) {
   const [open, setOpen]   = useState(false);
   const [query, setQuery] = useState('');
   const [hover, setHover] = useState(0);
+  const [up,    setUp]    = useState(false);   // список вверх, если внизу нет места
   const boxRef   = useRef(null);
   const inputRef = useRef(null);
   const listRef  = useRef(null);
@@ -56,6 +59,11 @@ export default function SearchSelect({
   }, [hover, open]);
 
   const openList = () => {
+    if (disabled) return;
+    // Поле бывает и в липкой панели внизу экрана, и в модалке: список, ушедший
+    // за нижний край, выглядит как «ничего не открылось».
+    const r = boxRef.current?.getBoundingClientRect();
+    if (r) setUp(window.innerHeight - r.bottom < 280 && r.top > 280);
     setQuery('');
     setHover(Math.max(0, list.findIndex(o => String(o.value) === String(value))));
     setOpen(true);
@@ -79,25 +87,29 @@ export default function SearchSelect({
   };
 
   return (
-    <div className={`ss ${className}`} ref={boxRef}>
+    <div className={`ss ${className}`} ref={boxRef} style={style}>
       <input
         ref={inputRef}
         className={`ss-input ${open ? 'ss-input--open' : ''}`}
         value={shown}
+        disabled={disabled}
         placeholder={selected ? selected.label : placeholder}
         onChange={e => { setQuery(e.target.value); setHover(0); if (!open) setOpen(true); }}
         onFocus={openList}
         onKeyDown={onKey}
         autoComplete="off"
+        style={inputStyle}
       />
-      <span className="ss-caret" aria-hidden onMouseDown={e => {
-        // Стрелка — это переключатель: второй клик по ней закрывает список.
-        e.preventDefault();
-        open ? close() : inputRef.current?.focus();
-      }}>▾</span>
+      {!disabled && (
+        <span className="ss-caret" aria-hidden onMouseDown={e => {
+          // Стрелка — это переключатель: второй клик по ней закрывает список.
+          e.preventDefault();
+          open ? close() : inputRef.current?.focus();
+        }}>▾</span>
+      )}
 
       {open && (
-        <div className="ss-drop" ref={listRef}>
+        <div className={`ss-drop${up ? ' ss-drop--up' : ''}`} ref={listRef}>
           {list.map((o, i) => (
             <button
               key={`${o.value}-${i}`}

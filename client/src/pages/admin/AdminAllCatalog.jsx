@@ -6,6 +6,7 @@ import AdminProductCard from './AdminProductCard';
 import AdminPdfButton from './AdminPdfButton';
 import { useScrollRestore } from '../../hooks/useScrollRestore';
 import { useLazyItems } from '../../hooks/useLazyItems';
+import SearchSelect from '../../components/SearchSelect';
 
 const NO_PHOTO = '/logos/no-photo.png';
 
@@ -379,17 +380,25 @@ export default function AdminAllCatalog() {
             {brands.map(b => <option key={b} value={b}>{BRAND_META[b]?.label || b}</option>)}
           </select>
 
-          <select value={fSet} onChange={e => { setFSet(e.target.value); setFCategory(''); }} style={SEL}>
-            <option value="">Все сеты</option>
-            {noSetCount   > 0 && <option value={NO_SET}>🚫 Без сета ({noSetCount})</option>}
-            {kitPartCount > 0 && <option value={KIT_PARTS}>🧩 Детали комплектов ({kitPartCount})</option>}
-            {availableSets.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
-          </select>
+          {/* Сеты и категории — списки с поиском: их десятки, и выбирать
+              прокруткой в узкой выпадашке дольше, чем набрать три буквы. */}
+          <SearchSelect
+            style={{ width: 200 }} inputStyle={{ ...SEL, padding: '6px 26px 6px 10px' }}
+            value={fSet} onChange={v => { setFSet(v); setFCategory(''); }}
+            emptyLabel="Все сеты" placeholder="Все сеты"
+            options={[
+              ...(noSetCount   > 0 ? [{ value: NO_SET,    label: `🚫 Без сета (${noSetCount})` }] : []),
+              ...(kitPartCount > 0 ? [{ value: KIT_PARTS, label: `🧩 Детали комплектов (${kitPartCount})` }] : []),
+              ...availableSets.map(x => ({ value: x, label: setLabel(x) })),
+            ]}
+          />
 
-          <select value={fCategory} onChange={e => setFCategory(e.target.value)} style={SEL}>
-            <option value="">Все категории</option>
-            {availableCategories.map(c => <option key={c} value={c}>{catLabel(c)}</option>)}
-          </select>
+          <SearchSelect
+            style={{ width: 200 }} inputStyle={{ ...SEL, padding: '6px 26px 6px 10px' }}
+            value={fCategory} onChange={setFCategory}
+            emptyLabel="Все категории" placeholder="Все категории"
+            options={availableCategories.map(c => ({ value: c, label: catLabel(c) }))}
+          />
 
           {!isLiquidation && (
             <select value={fStock} onChange={e => setFStock(e.target.value)} style={SEL}>

@@ -10,6 +10,7 @@ import { signOf, costSignOf } from '../../utils/price';
 import { dimensionLabel } from '../../utils/dimensions';
 import { isTubes, pipesLabel } from '../../utils/tubes';
 import TechSheetDownload from './TechSheetDownload';
+import SearchSelect from '../../components/SearchSelect';
 
 // Прайсы, которые комплект складывает по деталям. Порядок тот же, что в шапке.
 const KIT_TIERS = [
@@ -146,6 +147,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
   const [categories, setCategories] = useState([]);
   const [placing,    setPlacing]    = useState(null);    // какое поле сейчас пишем
   const [newCat,     setNewCat]     = useState(false);   // вписываем категорию вручную
+  const [newCatDraft, setNewCatDraft] = useState('');    // что успели напечатать в поиске
   const canEditPlacement = canEditCatalog(user?.role);
 
   // Подгружаем полные данные товара (techSheet и др. могут отсутствовать в списке)
@@ -733,58 +735,62 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                         {brands.map(b => <option key={b.key} value={b.key}>{b.label}</option>)}
                       </select>
 
-                      <select
+                      <SearchSelect
                         value={localProduct.set || ''}
                         disabled={!!placing || !localProduct.brand}
-                        onChange={e => savePlacement({ set: e.target.value }, 'set')}
-                        style={{ ...selectStyle, borderColor: localProduct.set ? UI.line : '#f0a0a0' }}>
-                        <option value="">— сет не выбран —</option>
-                        {(brands.find(b => b.key === localProduct.brand)?.sets || [])
-                          .map(x => <option key={x.key} value={x.key}>{x.label}</option>)}
-                      </select>
+                        onChange={v => savePlacement({ set: v }, 'set')}
+                        inputStyle={{ ...selectStyle, padding: '9px 28px 9px 11px', borderColor: localProduct.set ? UI.line : '#f0a0a0' }}
+                        emptyLabel="— сет не выбран —"
+                        placeholder="— сет не выбран —"
+                        options={(brands.find(b => b.key === localProduct.brand)?.sets || [])
+                          .map(x => ({ value: x.key, label: x.label }))}
+                      />
 
-                      {/* Категория — обычный список, а не поле с подсказками:
+                      {/* Категория — список с поиском, а не поле с подсказками:
                           подсказки браузер фильтрует по уже введённому тексту, и
                           у товара с категорией «other» в выпадашке был ровно один
                           пункт — «other». Чтобы увидеть остальные пятьдесят,
-                          пришлось бы сначала стереть значение.
-                          Категория всё же свободная строка, поэтому последним
-                          пунктом можно вписать новую. */}
+                          пришлось бы сначала стереть значение. SearchSelect при
+                          открытии показывает весь список и сужает его по тому,
+                          что печатают, — значение при этом не трогается.
+                          Категория всё же свободная строка, поэтому последней
+                          строкой списка можно вписать новую. */}
                       {newCat ? (
                         <div style={{ display: 'flex', gap: 6 }}>
                           <input
                             autoFocus
-                            defaultValue=""
+                            defaultValue={newCatDraft}
                             disabled={!!placing}
                             placeholder="новая категория"
                             onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                             onBlur={e => {
                               const v = e.target.value.trim();
-                              setNewCat(false);
+                              setNewCat(false); setNewCatDraft('');
                               if (v && v !== (localProduct.category || '')) savePlacement({ category: v }, 'category');
                             }}
                             style={{ ...selectStyle, flex: 1 }} />
-                          <button onClick={() => setNewCat(false)}
+                          <button onClick={() => { setNewCat(false); setNewCatDraft(''); }}
                             style={{ ...selectStyle, width: 'auto', cursor: 'pointer', color: UI.muted }}>Отмена</button>
                         </div>
                       ) : (
-                        <select
+                        <SearchSelect
                           value={localProduct.category || ''}
                           disabled={!!placing}
-                          onChange={e => {
-                            if (e.target.value === '__new__') { setNewCat(true); return; }
-                            savePlacement({ category: e.target.value }, 'category');
-                          }}
-                          style={selectStyle}>
-                          <option value="">— категория не выбрана —</option>
-                          {/* Текущая категория может быть не из этого бренда —
-                              показываем её отдельно, иначе список выглядел бы пустым */}
-                          {localProduct.category && !categories.includes(localProduct.category) && (
-                            <option value={localProduct.category}>{localProduct.category}</option>
-                          )}
-                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                          <option value="__new__">➕ Новая категория…</option>
-                        </select>
+                          onChange={v => savePlacement({ category: v }, 'category')}
+                          inputStyle={{ ...selectStyle, padding: '9px 28px 9px 11px' }}
+                          emptyLabel="— категория не выбрана —"
+                          placeholder="— категория не выбрана —"
+                          options={[
+                            // Текущая категория может быть не из этого бренда —
+                            // показываем её отдельно, иначе список выглядел бы пустым
+                            ...(localProduct.category && !categories.includes(localProduct.category)
+                              ? [{ value: localProduct.category, label: localProduct.category }] : []),
+                            ...categories.map(c => ({ value: c, label: c })),
+                          ]}
+                          // Напечатанное в поиске переносим в поле: не нашлось —
+                          // значит это и есть имя, которое заводят.
+                          action={{ label: '➕ Новая категория…', onClick: (q) => { setNewCatDraft(q || ''); setNewCat(true); } }}
+                        />
                       )}
                     </div>
 

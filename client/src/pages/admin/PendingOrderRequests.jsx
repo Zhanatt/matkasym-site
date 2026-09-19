@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { cloudinaryOpt } from '../../utils/drive';
 import { printRequests } from './requestsPrint';
+import SearchSelect from '../../components/SearchSelect';
 
 const CLOUD = 'dnbg21ef8';
 const PRESET = 'Matkasym';
@@ -691,10 +692,12 @@ export default function PendingOrderRequests({ onCountChange }) {
                       <option value="">Все бренды</option>
                       {brandOptions.map(b => <option key={b} value={b}>{brandLabel(b)}</option>)}
                     </select>
-                    <select value={setFilter} onChange={e => setSet(e.target.value)} style={selectStyle}>
-                      <option value="">Все сеты</option>
-                      {setOptions.map(s => <option key={s} value={s}>{setLabel(s)}</option>)}
-                    </select>
+                    <SearchSelect
+                      style={{ width: 180 }} inputStyle={{ ...selectStyle, padding: '7px 26px 7px 10px' }}
+                      value={setFilter} onChange={setSet}
+                      emptyLabel="Все сеты" placeholder="Все сеты"
+                      options={setOptions.map(x => ({ value: x, label: setLabel(x) }))}
+                    />
                   </div>
 
                   {/* Фильтр IKEA / без IKEA */}
