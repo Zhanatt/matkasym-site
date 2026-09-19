@@ -42,6 +42,16 @@ const {
 } = require('../lib/stockBases');
 const { applyStockUpload } = require('../lib/stockSync');
 const { setMatch, viewForSet, SET_VIEW_FIELDS } = require('../lib/setView');
+
+// Товар считается неразобранным, если у него нет сета ИЛИ категория — свалка
+// («Прочее», 'other', пусто). И то и другое прячет карточку от людей: без сета
+// её нет в каталоге по сетам, а «Прочее» на витрине сета уезжает в самый низ
+// общей кучей, где её никто не ищет. Разбирают их на одной странице, поэтому
+// и правила живут в одном месте.
+const MISC_CATEGORIES = ['other', 'Прочее', 'Другое', ''];
+const NO_SET_FILTER = { set: { $in: ['', null] } };
+const NO_CAT_FILTER = { category: { $in: [...MISC_CATEGORIES, null] } };
+const UNSORTED_FILTER = { $or: [NO_SET_FILTER, NO_CAT_FILTER] };
 const { protect, admin, editor, viewer, warehouse, canReceiveStock, canViewBufferStock, ADMIN_ROLES } = require('../middleware/auth');
 
 // Себестоимость — цифра только для владельца: её не показывают в карточке товара,
@@ -298,7 +308,7 @@ router.get('/stats', async (req, res) => {
     // banned — бывшие сотрудники админки, их тоже считаем в общем списке пользователей
     const adminRoles = [...ADMIN_ROLES, 'banned'];
 
-    const [products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen, noSet] = await Promise.all([
+    const [products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen, noSet, noCat, unsorted] = await Promise.all([
       Product.countDocuments(),
       Product.countDocuments({ inStock: false }),
       Brand.countDocuments(),
@@ -310,9 +320,14 @@ router.get('/stats', async (req, res) => {
       Frontman.countDocuments(),
       // Товары без сета: в каталог по сетам они не попадают, поэтому их не видно
       // и о них забывают. Считаем, чтобы вывести предупреждение на дашборд.
-      Product.countDocuments({ $or: [{ set: '' }, { set: null }, { set: { $exists: false } }] }),
+      Product.countDocuments(NO_SET_FILTER),
+      // Товары в «Прочем»: сет у них есть, но на витрине они падают в общую кучу
+      // внизу страницы — потеря тише, чем без сета, но такая же. Разбирают их
+      // там же, поэтому и считаем рядом.
+      Product.countDocuments(NO_CAT_FILTER),
+      Product.countDocuments(UNSORTED_FILTER),
     ]);
-    res.json({ products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen, noSet });
+    res.json({ products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen, noSet, noCat, unsorted });
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }
@@ -343,7 +358,7 @@ const BRIEF_FIELDS = [
 
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country, brief, setView } = req.query;
+    const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country, brief, setView, unsorted } = req.query;
     const filter = { ...countryFilter(country) };
     // Витрина сета, а не список товаров: показываем и одолженные карточки, а
     // остаток с ценами берём у базы, которая за этот сет отвечает (lib/setView.js).
@@ -365,11 +380,16 @@ router.get('/products', async (req, res) => {
     if (brand)         filter.brand         = brand;
     // '__none__' — товары без сета. Такие не попадают в каталог по сетам и
     // теряются; для их разбора есть отдельная страница.
-    if (set === '__none__') filter.set = { $in: ['', null] };
+    if (set === '__none__') Object.assign(filter, NO_SET_FILTER);
     else if (asSetView) (filter.$and ||= []).push(setMatch(set));
     else if (set)      filter.set           = set;
     if (set === 'zhashyl-omur') console.log('[DEBUG] zhashyl-omur query, filter:', filter);
-    if (category)      filter.category      = category;
+    // '__none__' — товары в свалке («Прочее», 'other', пусто), парный случай к set=__none__.
+    if (category === '__none__') Object.assign(filter, NO_CAT_FILTER);
+    else if (category) filter.category      = category;
+    // unsorted — то и другое разом: страница разбора работает с одним списком,
+    // потому что товар обычно теряется по обеим причинам сразу.
+    if (unsorted === '1') (filter.$and ||= []).push(UNSORTED_FILTER);
     if (inStock !== undefined) filter.inStock = inStock === 'true';
     if (productStatus) filter.productStatus = productStatus;
     if (stockStatus)   filter.stockStatus   = stockStatus;

@@ -730,10 +730,11 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Товары без сета: в каталог по сетам они не попадают, поэтому о них
-          забывают. Показываем на дашборде, а не ждём, пока кто-то поставит
-          фильтр во «Всём каталоге». */}
-      {stats?.noSet > 0 && (
+      {/* Неразобранные товары: без сета их нет в каталоге по сетам, а «Прочее»
+          на витрине сета уезжает общей кучей в самый низ. И то и другое прячет
+          карточку от людей, поэтому считаем вместе и показываем на дашборде —
+          а не ждём, пока кто-то поставит фильтр во «Всём каталоге». */}
+      {stats?.unsorted > 0 && (
         <Link to="/admin/no-set" style={{ textDecoration: 'none' }}>
           <div style={{
             marginBottom: 20, padding: '12px 18px', borderRadius: 10,
@@ -742,10 +743,10 @@ export default function AdminDashboard() {
           }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
             <span style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>
-              Товаров без сета: {stats.noSet}
+              Неразобранных товаров: {stats.unsorted}
             </span>
             <span style={{ fontSize: 12.5, color: '#a16207' }}>
-              они не попадают в каталог по сетам — их не видно ни в выгрузках, ни на витрине
+              без сета — {stats.noSet}, в категории «Прочее» — {stats.noCat}: их не видно ни в выгрузках, ни на витрине
             </span>
             <span style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 700, color: '#92400e' }}>
               Разобрать →
