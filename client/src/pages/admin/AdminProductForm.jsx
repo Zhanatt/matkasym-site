@@ -270,6 +270,8 @@ export default function AdminProductForm() {
   const [savedCatSpecs, setSavedCatSpecs] = useState([]);
   const [savingSpec, setSavingSpec]       = useState(null);
   const [suppliers, setSuppliers]         = useState([]);
+  // Карточка уже сохранена как комплект с деталями — значит она и есть материнская.
+  const [savedKit, setSavedKit] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState('');
 
   const loadSavedCatSpecs = useCallback((category) => {
@@ -347,6 +349,11 @@ export default function AdminProductForm() {
         const colorSpec = baseSpecs.find(x => isColorKey(x.key) && x.value);
         const color = colorValueOf(colorSpec?.value) || colorValueOf(p.color)
                    || String(colorSpec?.value || p.color || '').trim();
+        // «Материнская» — это не флаг в базе, а состояние: сохранённый комплект,
+        // в котором уже лежат детали. Берём с загрузки, а не из формы: иначе
+        // карточка объявляла бы себя материнской сразу после добавления детали,
+        // ещё до сохранения.
+        setSavedKit(!!(p.isKit && (p.kitParts || []).length));
         setForm({
           ...p,
           color,
@@ -794,6 +801,7 @@ export default function AdminProductForm() {
             value={{ isKit: form.isKit, kitType: form.kitType, kitParts: form.kitParts }}
             onChange={patch => setForm(f => ({ ...f, ...patch }))}
             currentId={id}
+            isMother={savedKit}
             currency={CURRENCY_SIGN[form.currency] || 'сом'}
             meta={{
               brand: form.brand, set: form.set, setLevel: form.setLevel,

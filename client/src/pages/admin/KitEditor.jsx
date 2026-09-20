@@ -25,7 +25,7 @@ const partId = part => String(part?.product?._id || part?.product || '');
 // (сразу после добавления) — карточке нужен объект, серверу id.
 const partInfo = part => (typeof part?.product === 'object' && part.product ? part.product : null);
 
-export default function KitEditor({ value, onChange, currentId, currency = 'сом', meta = {} }) {
+export default function KitEditor({ value, onChange, currentId, currency = 'сом', meta = {}, isMother = false }) {
   const { isKit = false, kitType = 'dependent', kitParts = [] } = value || {};
   const [picking, setPicking] = useState(false);
   const [query, setQuery]     = useState('');
@@ -39,6 +39,9 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
   const [spawning, setSpawning]     = useState(false);
   const [spawned, setSpawned]       = useState(null);
   const [spawnError, setSpawnError] = useState('');
+  // На карточке, которая уже материнская, предложение завести ещё одну спрятано
+  // за ссылку: обычно сюда заходят смотреть состав, а не плодить дубли.
+  const [spawnOpen, setSpawnOpen]   = useState(false);
 
   const chosen = useMemo(() => new Set(kitParts.map(partId)), [kitParts]);
 
@@ -136,6 +139,22 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
 
       {isKit && (
         <>
+          {/* Карточка с деталями внутри и есть материнская — это должно быть
+              написано, а не угадываться по тому, что ниже предлагают завести
+              ещё одну такую же. */}
+          {isMother && kitParts.length > 0 && (
+            <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8,
+                          background: '#eef5ff', border: '1.5px solid #c3d8f5' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#27496d' }}>
+                Это материнская карточка — {kitParts.length} дет. собраны в ней
+              </div>
+              <div style={{ fontSize: 11.5, color: '#4a6785', lineHeight: 1.5, marginTop: 3 }}>
+                {kitType === 'independent'
+                  ? 'Детали остаются в каталоге и продаются порознь: остаток и цена по ним не считаются.'
+                  : 'Остаток и три цены считаются по деталям, а сами детали в каталоге не показываются — их продают в составе комплекта.'}
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
             {[
               { key: 'dependent',   title: 'Зависимый',   note: 'Остаток — по самой дефицитной детали. Стол, стул, парта.' },
@@ -283,7 +302,15 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
             </div>
           )}
 
-          {kitParts.length > 0 && (
+          {kitParts.length > 0 && isMother && !spawned && !spawnOpen && (
+            <button type="button" onClick={() => setSpawnOpen(true)}
+              style={{ marginTop: 12, padding: 0, border: 'none', background: 'none', cursor: 'pointer',
+                       fontSize: 12.5, fontWeight: 600, color: '#3463A3' }}>
+              + Создать ещё одну карточку из этих деталей
+            </button>
+          )}
+
+          {kitParts.length > 0 && (!isMother || spawned || spawnOpen) && (
             <div style={{ marginTop: 12, border: '1.5px dashed #b9c4d2', borderRadius: 8, padding: 12 }}>
               {spawned ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -298,7 +325,9 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>Материнская карточка</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>
+                    {isMother ? 'Ещё одна карточка из этих деталей' : 'Материнская карточка'}
+                  </div>
                   <div style={{ fontSize: 11.5, color: '#6b7684', lineHeight: 1.5, marginBottom: 9 }}>
                     Отдельная карточка, которая соберёт эти детали в себе: остаток и три цены
                     посчитаются по ним. Текущую карточку она не меняет — состав останется и здесь.
@@ -314,6 +343,11 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
                                fontWeight: 600, fontSize: 13, opacity: spawning || !motherName.trim() ? 0.5 : 1 }}>
                       {spawning ? 'Создаём…' : '+ Создать из этих деталей'}
                     </button>
+                    {isMother && !spawning && (
+                      <button type="button" onClick={() => { setSpawnOpen(false); setMotherName(''); setSpawnError(''); }}
+                        style={{ padding: '7px 10px', border: 'none', background: 'none', cursor: 'pointer',
+                                 fontSize: 12.5, color: '#6b7684' }}>Отмена</button>
+                    )}
                   </div>
                   {spawnError && (
                     <div style={{ marginTop: 7, fontSize: 12, color: '#d64545' }}>{spawnError}</div>
