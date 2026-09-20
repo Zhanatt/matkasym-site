@@ -7,7 +7,7 @@ import { adminDeleteProduct, adminCreateProduct, adminReceiveProduct, adminAddSt
 import { cloudinaryOpt } from '../../utils/drive';
 import { getImageFile, prefetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { signOf, costSignOf } from '../../utils/price';
-import { dimensionLabel } from '../../utils/dimensions';
+import { dimensionLabel, dimensionAxes } from '../../utils/dimensions';
 import { isTubes, pipesLabel } from '../../utils/tubes';
 import TechSheetDownload from './TechSheetDownload';
 import SearchSelect from '../../components/SearchSelect';
@@ -1052,19 +1052,29 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
 
             {/* ── Общие характеристики ──────────────────────────────────────── */}
             {(() => {
-              // Габариты — отдельным тайлом первым
-              let dimTile = null;
+              // Габариты — отдельными тайлами первыми. Если оси размечены
+              // буквами (H1850*W900*D400), показываем каждую своей строкой:
+              // одной строкой это читалось как «Д × Ш × В», хотя первым там
+              // стоит высота.
+              let dimTiles = [];
               if (product.dimensions) {
-                const raw = product.dimensions.trim();
-                const unitMatch = raw.match(/[а-яёa-z]+\.?$/i);
-                const unit = unitMatch ? unitMatch[0] : 'см';
-                const numStr = raw.replace(/[а-яёa-z]+\.?$/i, '').trim();
-                const parts = numStr.split(/[×x*]/i).map(s => s.trim()).filter(Boolean);
-                dimTile = {
-                  icon: '📐',
-                  label: dimensionLabel(raw),
-                  value: parts.length === 3 ? `${parts.join(' × ')} ${unit}` : raw,
-                };
+                const raw  = product.dimensions.trim();
+                const byAxis = dimensionAxes(raw);
+                if (byAxis) {
+                  dimTiles = byAxis.axes.map(a => ({
+                    icon: '📐', label: a.label, value: `${a.value} ${byAxis.unit}`,
+                  }));
+                } else {
+                  const unitMatch = raw.match(/[а-яёa-z]+\.?$/i);
+                  const unit = unitMatch ? unitMatch[0] : 'см';
+                  const numStr = raw.replace(/[а-яёa-z]+\.?$/i, '').trim();
+                  const parts = numStr.split(/[×x*]/i).map(s => s.trim()).filter(Boolean);
+                  dimTiles = [{
+                    icon: '📐',
+                    label: dimensionLabel(raw),
+                    value: parts.length === 3 ? `${parts.join(' × ')} ${unit}` : raw,
+                  }];
+                }
               }
 
               const seen = new Set();
@@ -1111,7 +1121,7 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                   return { icon: specIcon(s.key), label: capFirst(s.key), value: `${s.value}${u ? ' ' + u : ''}` };
                 });
 
-              const tiles = [...(dimTile ? [dimTile] : []), ...specTiles];
+              const tiles = [...dimTiles, ...specTiles];
               if (!tiles.length) return null;
 
               return (

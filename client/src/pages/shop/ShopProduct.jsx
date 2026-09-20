@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { shopProduct } from './shopApi';
 import { setBackButton, setMainButton, isTelegram, haptic } from './useTelegram';
 import { photosOf, money, setLabel, stockLabel } from './shopUtils';
-import { dimensionLabel } from '../../utils/dimensions';
+import { dimensionLabel, dimensionAxes } from '../../utils/dimensions';
 
 export default function ShopProduct() {
   const { id } = useParams();
@@ -71,9 +71,16 @@ export default function ShopProduct() {
 
         {(specs.length > 0 || product.dimensions) && (
           <div className="shop-specs">
-            {product.dimensions && (
-              <div className="shop-spec"><span>{dimensionLabel(product.dimensions)}</span><span>{product.dimensions}</span></div>
-            )}
+            {/* Оси, размеченные буквами, — отдельными строками: «H1850*W900*D400»
+                это высота, ширина и глубина, а не «Д × Ш × В». */}
+            {product.dimensions && (() => {
+              const byAxis = dimensionAxes(product.dimensions);
+              return byAxis
+                ? byAxis.axes.map(a => (
+                    <div className="shop-spec" key={a.label}><span>{a.label}</span><span>{a.value} {byAxis.unit}</span></div>
+                  ))
+                : <div className="shop-spec"><span>{dimensionLabel(product.dimensions)}</span><span>{product.dimensions}</span></div>;
+            })()}
             {specs.map((s, i) => (
               <div className="shop-spec" key={i}><span>{s.key}</span><span>{s.value}</span></div>
             ))}

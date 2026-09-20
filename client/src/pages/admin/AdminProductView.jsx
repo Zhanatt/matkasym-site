@@ -7,7 +7,7 @@ import { cloudinaryOpt } from '../../utils/drive';
 import { fetchImageFile, getImageFile, prefetchImageFile, saveImageFiles } from '../../utils/saveImage';
 import { CRM_STAGES } from './AdminProductForm';
 import { signOf, costSignOf } from '../../utils/price';
-import { dimensionLabel } from '../../utils/dimensions';
+import { dimensionLabel, dimensionAxes } from '../../utils/dimensions';
 
 const PRODUCT_STATUS_META = {
   for_sale:       { label: 'В продаже',           color: '#2d7a3a' },
@@ -265,8 +265,15 @@ export default function AdminProductView() {
           {/* Color */}
           {product.color && <Row label="Цвет" value={{ white: 'Белый', black: 'Чёрный', grey: 'Серый', pink: 'Розовый', green: 'Зелёный' }[product.color] || product.color} />}
 
-          {/* Dimensions */}
-          {product.dimensions && <Row label={dimensionLabel(product.dimensions)} value={product.dimensions} />}
+          {/* Dimensions. Размеченные буквами оси (H1850*W900*D400) разводим по
+              строкам: одной строкой они читались как «Д × Ш × В», а первой там
+              идёт высота. */}
+          {product.dimensions && (() => {
+            const byAxis = dimensionAxes(product.dimensions);
+            return byAxis
+              ? byAxis.axes.map(a => <Row key={a.label} label={a.label} value={`${a.value} ${byAxis.unit}`} />)
+              : <Row label={dimensionLabel(product.dimensions)} value={product.dimensions} />;
+          })()}
 
           {/* Supplier — привозной товар */}
           {product.isSupplied && (
