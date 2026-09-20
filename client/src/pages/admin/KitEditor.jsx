@@ -6,7 +6,7 @@
 // выбранные детали в себе и посчитает по ним остаток и три цены.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminGetProducts, adminCreateProduct } from '../../api/index';
+import { adminGetProducts, adminCreateProduct, adminUpdateProduct } from '../../api/index';
 import { cloudinaryOpt } from '../../utils/drive';
 
 const NO_PHOTO = '/logos/no-photo.png';
@@ -42,6 +42,14 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
   // На карточке, которая уже материнская, предложение завести ещё одну спрятано
   // за ссылку: обычно сюда заходят смотреть состав, а не плодить дубли.
   const [spawnOpen, setSpawnOpen]   = useState(false);
+  // Материнская карточка не всегда новая: чаще она в каталоге уже есть —
+  // её завели раньше или она пришла из 1С, и состав надо положить в неё,
+  // а не плодить рядом вторую с тем же названием.
+  const [motherMode, setMotherMode] = useState('create');   // create | pick
+  const [mQuery,   setMQuery]   = useState('');
+  const [mFound,   setMFound]   = useState([]);
+  const [mLoading, setMLoading] = useState(false);
+  const mTimer = useRef(null);
 
   const chosen = useMemo(() => new Set(kitParts.map(partId)), [kitParts]);
 
@@ -58,6 +66,22 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
     }, 300);
     return () => clearTimeout(timer.current);
   }, [query, picking]);
+
+  // Поиск материнской карточки — отдельный от поиска деталей: списки разные,
+  // и подставлять в один результаты другого нельзя.
+  useEffect(() => {
+    if (motherMode !== 'pick' || !(spawnOpen || !isMother)) return;
+    clearTimeout(mTimer.current);
+    if (mQuery.trim().length < 2) { setMFound([]); return; }
+    setMLoading(true);
+    mTimer.current = setTimeout(() => {
+      adminGetProducts({ search: mQuery.trim(), limit: 20, includePending: 'true' })
+        .then(r => setMFound(r.data.products || []))
+        .catch(() => setMFound([]))
+        .finally(() => setMLoading(false));
+    }, 300);
+    return () => clearTimeout(mTimer.current);
+  }, [mQuery, motherMode, spawnOpen, isMother]);
 
   const set = patch => onChange({ isKit, kitType, kitParts, ...patch });
 
@@ -124,6 +148,33 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
       setMotherName('');
     } catch (e) {
       setSpawnError(e.response?.data?.error || e.message || 'Не удалось создать карточку');
+    } finally {
+      setSpawning(false);
+    }
+  };
+
+  // Назначить материнской уже существующую карточку: состав кладём в неё.
+  // Текущую не трогаем — как и при создании новой.
+  const adoptMother = async (p) => {
+    if (spawning) return;
+    if (String(p._id) === String(currentId) || chosen.has(String(p._id))) return;
+    // Свой состав у выбранной карточки мы затрём, и это надо спросить: там
+    // могли быть другие детали, и молча их потерять — хуже, чем лишний вопрос.
+    if (p.isKit && (p.kitParts || []).length
+        && !window.confirm(`У «${p.name}» уже есть состав из ${p.kitParts.length} дет. Заменить его на эти ${kitParts.length}?`)) return;
+    setSpawning(true);
+    setSpawnError('');
+    try {
+      const { data } = await adminUpdateProduct(p._id, {
+        isKit: true,
+        kitType,
+        kitParts: kitParts.map(part => ({ product: partId(part), qty: Math.max(1, Number(part.qty) || 1) })),
+      });
+      setSpawned({ ...(data || p), _adopted: true });
+      setMQuery('');
+      setMFound([]);
+    } catch (e) {
+      setSpawnError(e.response?.data?.error || e.message || 'Не удалось назначить карточку');
     } finally {
       setSpawning(false);
     }
@@ -306,7 +357,7 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
             <button type="button" onClick={() => setSpawnOpen(true)}
               style={{ marginTop: 12, padding: 0, border: 'none', background: 'none', cursor: 'pointer',
                        fontSize: 12.5, fontWeight: 600, color: '#3463A3' }}>
-              + Создать ещё одну карточку из этих деталей
+              + Ещё одна карточка из этих деталей — создать или выбрать
             </button>
           )}
 
@@ -315,7 +366,7 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
               {spawned ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#2f9e44' }}>
-                    ✓ Материнская карточка «{spawned.name}» создана
+                    ✓ Материнская карточка «{spawned.name}» {spawned._adopted ? 'назначена' : 'создана'}
                   </span>
                   <button type="button" onClick={() => navigate(`/admin/products/${spawned._id}/edit`)}
                     style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
@@ -332,23 +383,86 @@ export default function KitEditor({ value, onChange, currentId, currency = 'со
                     Отдельная карточка, которая соберёт эти детали в себе: остаток и три цены
                     посчитаются по ним. Текущую карточку она не меняет — состав останется и здесь.
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <input value={motherName} onChange={e => setMotherName(e.target.value)}
-                      placeholder="Название материнской карточки"
-                      style={{ flex: '1 1 220px', minWidth: 0, padding: '7px 10px',
-                               border: '1.5px solid #e3e7ec', borderRadius: 6, fontSize: 13 }} />
-                    <button type="button" onClick={spawnMother} disabled={spawning || !motherName.trim()}
-                      style={{ padding: '7px 14px', borderRadius: 8, cursor: motherName.trim() ? 'pointer' : 'default',
-                               border: '1.5px solid #3463A3', background: '#fff', color: '#3463A3',
-                               fontWeight: 600, fontSize: 13, opacity: spawning || !motherName.trim() ? 0.5 : 1 }}>
-                      {spawning ? 'Создаём…' : '+ Создать из этих деталей'}
-                    </button>
+
+                  {/* Завести новую или взять ту, что уже есть в каталоге. Второе
+                      нужно чаще: карточка комплекта обычно заведена раньше
+                      деталей или пришла из 1С. */}
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 9 }}>
+                    {[
+                      { key: 'create', label: 'Создать новую' },
+                      { key: 'pick',   label: 'Выбрать из каталога' },
+                    ].map(opt => (
+                      <button key={opt.key} type="button" onClick={() => { setMotherMode(opt.key); setSpawnError(''); }}
+                        style={{ padding: '6px 12px', borderRadius: 7, cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
+                                 border: `1.5px solid ${motherMode === opt.key ? '#3463A3' : '#e3e7ec'}`,
+                                 background: motherMode === opt.key ? '#f4f8ff' : '#fff',
+                                 color: motherMode === opt.key ? '#3463A3' : '#6b7684' }}>
+                        {opt.label}
+                      </button>
+                    ))}
                     {isMother && !spawning && (
-                      <button type="button" onClick={() => { setSpawnOpen(false); setMotherName(''); setSpawnError(''); }}
-                        style={{ padding: '7px 10px', border: 'none', background: 'none', cursor: 'pointer',
-                                 fontSize: 12.5, color: '#6b7684' }}>Отмена</button>
+                      <button type="button" onClick={() => { setSpawnOpen(false); setMotherName(''); setMQuery(''); setMFound([]); setSpawnError(''); }}
+                        style={{ marginLeft: 'auto', padding: '6px 10px', border: 'none', background: 'none',
+                                 cursor: 'pointer', fontSize: 12.5, color: '#6b7684' }}>Отмена</button>
                     )}
                   </div>
+
+                  {motherMode === 'create' ? (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <input value={motherName} onChange={e => setMotherName(e.target.value)}
+                        placeholder="Название материнской карточки"
+                        style={{ flex: '1 1 220px', minWidth: 0, padding: '7px 10px',
+                                 border: '1.5px solid #e3e7ec', borderRadius: 6, fontSize: 13 }} />
+                      <button type="button" onClick={spawnMother} disabled={spawning || !motherName.trim()}
+                        style={{ padding: '7px 14px', borderRadius: 8, cursor: motherName.trim() ? 'pointer' : 'default',
+                                 border: '1.5px solid #3463A3', background: '#fff', color: '#3463A3',
+                                 fontWeight: 600, fontSize: 13, opacity: spawning || !motherName.trim() ? 0.5 : 1 }}>
+                        {spawning ? 'Создаём…' : '+ Создать из этих деталей'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input autoFocus value={mQuery} onChange={e => setMQuery(e.target.value)}
+                        placeholder="Название или артикул карточки, которая станет материнской"
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px',
+                                 border: '1.5px solid #e3e7ec', borderRadius: 6, fontSize: 13 }} />
+                      <div style={{ maxHeight: 220, overflowY: 'auto', marginTop: 8 }}>
+                        {mLoading && <div style={{ fontSize: 12, color: '#98a2af', padding: 8 }}>Ищем…</div>}
+                        {!mLoading && mQuery.trim().length >= 2 && mFound.length === 0 && (
+                          <div style={{ fontSize: 12, color: '#98a2af', padding: 8 }}>Ничего не нашлось</div>
+                        )}
+                        {mFound.map(p => {
+                          // Ни текущую карточку, ни собственную деталь материнской
+                          // сделать нельзя: комплект оказался бы внутри себя.
+                          const self = String(p._id) === String(currentId);
+                          const part = chosen.has(String(p._id));
+                          const off  = self || part || spawning;
+                          const has  = p.isKit && (p.kitParts || []).length;
+                          return (
+                            <div key={p._id} onClick={() => !off && adoptMother(p)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 6px',
+                                       borderRadius: 6, cursor: off ? 'default' : 'pointer', opacity: off ? 0.45 : 1 }}
+                              onMouseEnter={e => { if (!off) e.currentTarget.style.background = '#f4f8ff'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                              <img src={cloudinaryOpt(p.images?.[0] || NO_PHOTO, 60)} alt=""
+                                style={{ width: 32, height: 32, objectFit: 'contain', background: '#f7f8fa', borderRadius: 5 }}
+                                onError={e => { e.target.src = NO_PHOTO; }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12.5, color: '#111', overflow: 'hidden',
+                                              textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                                <div style={{ fontSize: 10.5, color: '#98a2af' }}>
+                                  {p.sku || 'без артикула'} · {p.stock || 0} шт
+                                  {has ? ` · уже комплект из ${p.kitParts.length} дет.` : ''}
+                                </div>
+                              </div>
+                              {self && <span style={{ fontSize: 11, color: '#98a2af' }}>текущая</span>}
+                              {part && <span style={{ fontSize: 11, color: '#98a2af' }}>это деталь</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {spawnError && (
                     <div style={{ marginTop: 7, fontSize: 12, color: '#d64545' }}>{spawnError}</div>
                   )}
