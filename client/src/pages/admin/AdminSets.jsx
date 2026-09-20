@@ -10,6 +10,7 @@ import {
   adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets,
   adminGetSetLayout,
   adminSaveSetLayout,
+  adminCategoryUsage, adminRenameCategory,
   adminDeleteProduct,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
@@ -436,6 +437,59 @@ function MoveArrows({ onUp, onDown, canUp, canDown, size = 24 }) {
         onClick={e => stop(e, onUp, canUp)}>▲</button>
       <button title="Ниже" style={btn(canDown)}
         onClick={e => stop(e, onDown, canDown)}>▼</button>
+    </span>
+  );
+}
+
+// Имя категории правится на месте. Категория — не справочник, а строка в каждом
+// товаре: «переименовать» значит пройтись по всем карточкам с этим именем, и
+// делать это удобнее там же, где её видно, — в заголовке секции.
+function CategoryName({ name, editable, busy, onRename, style }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(name);
+
+  useEffect(() => { if (!editing) setDraft(name); }, [name, editing]);
+
+  const finish = (ok) => {
+    setEditing(false);
+    const next = draft.trim();
+    if (ok && next && next !== name) onRename(next);
+    else setDraft(name);
+  };
+
+  if (!editable) return <span style={style}>{name}</span>;
+
+  if (editing) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        onClick={e => e.stopPropagation()}>
+        <input
+          autoFocus
+          value={draft}
+          disabled={busy}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter')  { e.preventDefault(); finish(true); }
+            if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+          }}
+          style={{ padding: '4px 8px', border: '1.5px solid #3463A3', borderRadius: 6,
+                   fontSize: 13, fontWeight: 700, minWidth: 220, textTransform: 'none' }} />
+        <button type="button" title="Переименовать везде" onClick={() => finish(true)} disabled={busy}
+          style={{ width: 24, height: 24, borderRadius: 6, border: 'none', cursor: 'pointer',
+                   background: '#2d7a3a', color: '#fff', fontSize: 12 }}>✓</button>
+        <button type="button" title="Отмена" onClick={() => finish(false)} disabled={busy}
+          style={{ width: 24, height: 24, borderRadius: 6, cursor: 'pointer',
+                   border: '1.5px solid #e3e7ec', background: '#fff', color: '#6b7684', fontSize: 12 }}>✕</button>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      onClick={e => { e.stopPropagation(); setEditing(true); }}
+      title="Нажмите, чтобы переименовать категорию во всех товарах"
+      style={{ ...style, cursor: 'text', borderBottom: '1px dashed #b9c4d2' }}>
+      {name}{busy ? ' …' : ''}
     </span>
   );
 }
@@ -1430,6 +1484,55 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     setCatOrder(moveItem(catOrder, from, to));
   };
 
+  // Переименование категории. Порядок стрелками — настройка этой страницы, а
+  // переименование трогает сами товары, и не только те, что на экране: имя
+  // может стоять у карточек других сетов. Поэтому сначала показываем, где оно
+  // используется, и только потом меняем.
+  const [renamingCat, setRenamingCat] = useState(null);
+
+  async function renameCategory(from, to) {
+    const next = String(to || '').trim();
+    if (!next || next === from || renamingCat) return;
+
+    let usage = null;
+    try { usage = (await adminCategoryUsage(from)).data; } catch { /* спросим без цифр */ }
+    const places = usage?.places || [];
+    const here   = places.filter(x => x.brand === brandKey && x.set === setSlug)
+                         .reduce((n, x) => n + x.count, 0);
+    const others = places.filter(x => !(x.brand === brandKey && x.set === setSlug));
+    const lines = [`Переименовать категорию «${from}» → «${next}»?`, ''];
+    if (usage) {
+      lines.push(`Изменится у ${usage.total} товаров: ${here} в этом сете` +
+        (others.length ? `, ${usage.total - here} в других (${others.slice(0, 4).map(x => toTitle(x.set || '—')).join(', ')}${others.length > 4 ? '…' : ''})` : ''));
+      lines.push('', 'Имя категории хранится в каждом товаре — поменяется у всех сразу.');
+    }
+    if (!window.confirm(lines.join('\n'))) return;
+
+    setRenamingCat(from);
+    try {
+      await adminRenameCategory(from, next);
+      // Локально переписываем то же самое, чтобы страница не перезагружалась:
+      // товары, порядок категорий и порядок карточек внутри них.
+      setProducts(prev => prev.map(p => (p.category === from ? { ...p, category: next } : p)));
+      setCatOrder(prev => [...new Set(prev.map(c => (c === from ? next : c)))]);
+      setProdOrder(prev => {
+        const out = {};
+        Object.entries(prev || {}).forEach(([cat, names]) => {
+          const key = cat === from ? next : cat;
+          out[key] = [...(out[key] || []), ...names.filter(n => !(out[key] || []).includes(n))];
+        });
+        return out;
+      });
+      setOpenGroups(prev => {
+        if (!prev || !(from in prev)) return prev;
+        const { [from]: was, ...rest } = prev;
+        return { ...rest, [next]: was };
+      });
+    } catch (e) {
+      alert('Не удалось переименовать: ' + (e.response?.data?.error || e.message));
+    } finally { setRenamingCat(null); }
+  }
+
   // Удаление товара из каталога. Карточка на витрине — это модель, у неё может
   // быть несколько вариантов (цвета) с разными id, поэтому сносим все: иначе
   // карточка осталась бы на месте, но с урезанным набором.
@@ -1975,7 +2078,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               canDown={catOrder.indexOf(groupName) < catOrder.length - 1}
                             />
                           )}
-                          <span className="tube-accordion-title">{groupName}</span>
+                          <span className="tube-accordion-title">
+                            <CategoryName
+                              name={groupName}
+                              editable={editMode && !isOutOfStockGroup && groupName !== 'Прочее'}
+                              busy={renamingCat === groupName}
+                              onRename={next => renameCategory(groupName, next)}
+                            />
+                          </span>
                         </div>
                         <span className="tube-accordion-badge">{items.length} шт</span>
                       </div>
@@ -2129,7 +2239,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                         canDown={catOrder.indexOf(groupName) < catOrder.length - 1}
                       />
                     )}
-                    {groupName}
+                    <CategoryName
+                      name={groupName}
+                      editable={catDraggable}
+                      busy={renamingCat === groupName}
+                      onRename={next => renameCategory(groupName, next)}
+                    />
                     <span style={{ fontSize: 12, fontWeight: 500, color: '#999' }}>{items.length} тов.</span>
                   </div>
                   <div style={{

@@ -246,6 +246,11 @@ export const adminSaveSetLayout = (brand, set, categories, products) => api.put(
 // Расстановка по всем сетам бренда сразу — для PDF «весь каталог».
 export const adminGetSetLayouts = (brand) => api.get('/admin/set-layouts', { params: { brand } });
 
+// Переименование категории: сначала смотрим, где она используется, потом меняем
+// её во всех товарах разом — категория живёт строкой в каждой карточке.
+export const adminCategoryUsage  = (name)      => api.get('/admin/categories/usage', { params: { name } });
+export const adminRenameCategory = (from, to)  => api.post('/admin/categories/rename', { from, to });
+
 export const socialGetPublishStats = ()          => api.get('/admin/social/publish-stats');
 export const socialGetLalafo       = ()          => api.get('/admin/social/lalafo');
 export const socialGetLeads        = (days)      => api.get('/admin/social/leads', { params: { days } });

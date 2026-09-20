@@ -1062,6 +1062,79 @@ router.post('/custom-categories', protect, editor, async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// ── Переименование категории ───────────────────────────────────────────────
+//
+// Категория — свободная строка в каждом товаре, а не справочник: «Подушки и
+// текстиль» существует ровно потому, что так записано у четырнадцати карточек.
+// Поэтому переименование — это массовая правка товаров плюс два места, где имя
+// категории хранится отдельно: порядок на витрине (SetLayout) и её
+// характеристики (CategorySpec). Пропустить любое из них — потерять настройку.
+
+// GET /categories/usage?name= — где категория используется. Нужен до правки:
+// человек видит секцию одного сета, а имя может стоять у товаров половины
+// каталога, и менять их все — решение, которое принимают с открытыми глазами.
+router.get('/categories/usage', async (req, res) => {
+  try {
+    const name = String(req.query.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Нужно имя категории' });
+    const rows = await Product.aggregate([
+      { $match: { category: name } },
+      { $group: { _id: { brand: '$brand', set: '$set' }, n: { $sum: 1 } } },
+      { $sort: { n: -1 } },
+    ]);
+    res.json({
+      total: rows.reduce((n, r) => n + r.n, 0),
+      places: rows.map(r => ({ brand: r._id.brand || '', set: r._id.set || '', count: r.n })),
+    });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
+router.post('/categories/rename', editor, async (req, res) => {
+  try {
+    const from = String(req.body.from || '').trim();
+    const to   = String(req.body.to   || '').trim();
+    if (!from || !to) return res.status(400).json({ error: 'Нужны старое и новое имя категории' });
+    if (from === to)  return res.json({ matched: 0, modified: 0, merged: false });
+
+    // Имя уже занято — это не ошибка, а слияние: два написания одного и того
+    // же («Коврики» и «коврики») чаще всего и переименовывают, чтобы свести.
+    const merged = (await Product.countDocuments({ category: to })) > 0;
+
+    const r = await Product.updateMany({ category: from }, { $set: { category: to } });
+
+    // Порядок на витрине хранит имена категорий строкой. Правим в JS, а не
+    // $set по позиции: при слиянии в списке появился бы дубль, а он делает
+    // порядок неоднозначным.
+    const layouts = await SetLayout.find({ $or: [{ categories: from }, { 'productOrder.category': from }] });
+    for (const l of layouts) {
+      l.categories = [...new Set((l.categories || []).map(c => (c === from ? to : c)))];
+      const byCat = new Map();
+      (l.productOrder || []).forEach(row => {
+        const cat = row.category === from ? to : row.category;
+        // При слиянии два списка товаров становятся одним: порядок целевой
+        // категории идёт первым, за ним — то, чего в нём ещё не было.
+        const names = byCat.get(cat) || [];
+        byCat.set(cat, [...names, ...(row.names || []).filter(n => !names.includes(n))]);
+      });
+      l.productOrder = [...byCat].map(([category, names]) => ({ category, names }));
+      await l.save();
+    }
+
+    // Характеристики категории: имя в CategorySpec уникально, поэтому при
+    // слиянии старую запись убираем — набор полей берём у целевой.
+    const target = await CategorySpec.findOne({ category: to });
+    if (target) await CategorySpec.deleteOne({ category: from });
+    else        await CategorySpec.updateOne({ category: from }, { $set: { category: to } });
+
+    res.json({
+      matched:  r.matchedCount  ?? r.n ?? 0,
+      modified: r.modifiedCount ?? r.nModified ?? 0,
+      layouts:  layouts.length,
+      merged,
+    });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
 // ── Category custom specs ──────────────────────────────────────────────────
 
 // GET /api/admin/category-specs/:category — get custom specs for a category
