@@ -45,6 +45,22 @@ function formatReport(r) {
   if (r.buffersUpdated) lines.push(`Буферный запас обновлён: ${r.buffersUpdated}`);
   if (r.skuLearned)     lines.push(`Новых связей по артикулу: ${r.skuLearned}`);
 
+  // Переименование в 1С связь по артикулу переживает молча — о нём говорим отдельно,
+  // иначе имя на сайте так и останется старым и разойдётся с базой.
+  const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  if (r.renamed?.length) {
+    lines.push('', `✏️ Переименовано в 1С: <b>${r.renamed.length}</b>`);
+    for (const x of r.renamed.slice(0, 5)) lines.push(`• ${esc(x.was)}\n   → ${esc(x.now)}`);
+    if (r.renamed.length > 5) lines.push(`…и ещё ${r.renamed.length - 5}`);
+  }
+  if (r.renameSuspects?.length) {
+    lines.push('', `🤔 Похоже на переименование — остаток обнулился: <b>${r.renameSuspects.length}</b>`);
+    for (const x of r.renameSuspects.slice(0, 5)) {
+      lines.push(`• ${esc(x.was)}\n   → ${esc(x.now)} (${x.stock} шт., совпадение ${x.score}%)`);
+    }
+    if (r.renameSuspects.length > 5) lines.push(`…и ещё ${r.renameSuspects.length - 5}`);
+  }
+
   // Новые позиции не заводим молча: в выгрузке кроме товаров лежат группы и сырьё
   const fresh = (r.newItems || []).filter(i => !i.isGroup);
   if (fresh.length) {

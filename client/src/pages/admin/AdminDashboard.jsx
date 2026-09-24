@@ -105,6 +105,29 @@ function ProductAlertList({ products, navigate }) {
   );
 }
 
+// Строка «было → стало» из отчёта о переименовании номенклатуры.
+// Имя из 1С показываем целиком и переносом: обрезанное многоточием название
+// бесполезно — именно по нему и надо понять, что изменилось.
+function RenameRow({ item, suspect }) {
+  return (
+    <Link
+      to={`/admin/products/${item.id}`}
+      style={{
+        display: 'block', padding: '8px 12px', marginBottom: 6, borderRadius: 8,
+        background: '#fff', border: '1px solid #e2e8f0', textDecoration: 'none',
+      }}
+    >
+      <div style={{ fontSize: 12.5, color: '#64748b', textDecoration: 'line-through' }}>{item.was}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111' }}>→ {item.now}</div>
+      <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+        Карточка: {item.card}
+        {item.sku ? ` · ${item.sku}` : ''}
+        {suspect ? ` · в выгрузке ${item.stock} шт. · совпадение ${item.score}%` : ''}
+      </div>
+    </Link>
+  );
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -117,6 +140,8 @@ export default function AdminDashboard() {
   const [stockBase,     setStockBase]     = useState('makein');
   // Товары из выгрузки, которых нет в каталоге — ждут подтверждения
   const [newItems,      setNewItems]      = useState(null);   // { base, items: [{name, stock, buffer, isGroup, checked}] }
+  // Переименования номенклатуры в 1С: { baseLabel, renamed: [{was, now, card, sku}], suspects: [...] }
+  const [renames,       setRenames]       = useState(null);
   // Сет обязателен: без него карточка проваливается в «Без сета», где её никто
   // не видит. Так за месяцы накопилось полторы сотни товаров, часть с остатком.
   //
@@ -220,7 +245,17 @@ export default function AdminDashboard() {
         setNewItems({
           base: r.data.base,
           baseLabel: r.data.baseLabel,
-          items: r.data.newItems.map(i => ({ ...i, checked: !i.isGroup, dest: '' })),
+          // Строку, похожую на переименованную позицию, галочкой не отмечаем:
+          // заводить её как новый товар — значит получить дубль вместо правки имени.
+          items: r.data.newItems.map(i => ({ ...i, checked: !i.isGroup && !i.maybeRenamedFrom, dest: '' })),
+        });
+      }
+      // Переименования в 1С: имя в базе изменилось, а на карточке осталось прежнее.
+      if (r.data.renamed?.length || r.data.renameSuspects?.length) {
+        setRenames({
+          baseLabel: r.data.baseLabel,
+          renamed:   r.data.renamed || [],
+          suspects:  r.data.renameSuspects || [],
         });
       }
       if (r.data.excelBase64) {
@@ -699,6 +734,13 @@ export default function AdminDashboard() {
                     {it.isGroup && (
                       <span style={{ fontSize: 10.5, fontWeight: 700, color: '#b45309', background: '#fef3c7', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>похоже на группу</span>
                     )}
+                    {it.maybeRenamedFrom && (
+                      <span
+                        title={`Похоже на переименованный товар «${it.maybeRenamedFrom}» — не заводите дубль, поправьте имя на карточке`}
+                        style={{ fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', background: '#e0e7ff', borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                        переименован?
+                      </span>
+                    )}
                   </label>
                   {/* Сет у строки свой: щиты и урны из одной выгрузки идут в разные. */}
                   <select
@@ -817,6 +859,47 @@ export default function AdminDashboard() {
             )}
             <button onClick={() => setSyncResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5 }}>×</button>
           </div>
+        </div>
+      )}
+
+      {/* Переименования номенклатуры в 1С. Связь по артикулу их переживает молча,
+          и карточка остаётся со старым названием — пока об этом не скажут. */}
+      {renames && (
+        <div style={{
+          marginBottom: 20, padding: '14px 18px', borderRadius: 10,
+          background: '#f5f7ff', border: '1.5px solid #c7d2fe',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1e3a8a' }}>
+              ✏️ В базе «{renames.baseLabel}» переименовали номенклатуру
+            </div>
+            <button onClick={() => setRenames(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5, flexShrink: 0 }}>×</button>
+          </div>
+
+          {renames.renamed.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 12.5, color: '#475569', marginBottom: 6 }}>
+                Товар нашёлся по артикулу, остаток записан верно — разошлось только название:
+                <b> {renames.renamed.length}</b>
+              </div>
+              {renames.renamed.map(r => (
+                <RenameRow key={r.id} item={r} />
+              ))}
+            </div>
+          )}
+
+          {renames.suspects.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12.5, color: '#9a3412', marginBottom: 6 }}>
+                Похоже на переименование, но артикула в выгрузке нет — <b>остаток обнулён</b>,
+                проверьте и поправьте имя или артикул на карточке: <b>{renames.suspects.length}</b>
+              </div>
+              {renames.suspects.map(r => (
+                <RenameRow key={r.id} item={r} suspect />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

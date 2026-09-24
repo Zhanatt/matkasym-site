@@ -8,10 +8,12 @@
  */
 const xlsx = require('xlsx');
 
+const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
+
 const Product  = require('../models/Product');
 const StockLog = require('../models/StockLog');
 const { uploadRawBuffer } = require('./cloudinary');
-const { sendBufferStockAlerts } = require('./telegram');
+const { sendBufferStockAlerts, sendTelegramMessage } = require('./telegram');
 const { zoneOf } = require('./bufferZones');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parseTurnoverRows, looksLikeGroup, detectColumns, findSkuColumn,
@@ -105,6 +107,111 @@ function detectBase(rows) {
 // берём больший, меньший игнорируем. 0 означает "в 1С не задан".
 const bufferFromMins = (a, b) => Math.max(toInt(a), toInt(b));
 
+// ── Догадка «позицию переименовали» ─────────────────────────────────────────
+// Сравниваем имена по словам, а не по буквам: в 1С обычно правят одно слово
+// («Стол Асыл» → «Стол Асыл дуб»), и посимвольное расстояние на таком хвосте
+// врёт. Односимвольные куски выбрасываем, кириллические двойники латиницы
+// сводит normNameLoose — в номенклатуре они намешаны внутри одного слова.
+const nameTokens = (s) => [...new Set(
+  String(s || '').toLowerCase().split(/[^0-9a-zа-яё]+/i)
+    .map(t => normNameLoose(t)).filter(t => t.length > 1)
+)];
+
+// Доля общих слов от более длинного имени. Порога два: обычно хватает 0.6,
+// но у коротких имён («Труба 25») одно общее слово — это половина названия,
+// и такому совпадению верить нельзя.
+const SIMILAR_MIN = 0.6;
+const SIMILAR_MIN_SHORT = 0.85;
+
+function scoreTokens(a, b) {
+  if (!a.length || !b.length) return 0;
+  const setB = new Set(b);
+  const common = a.filter(t => setB.has(t)).length;
+  if (!common) return 0;
+  const score = common / Math.max(a.length, b.length);
+  const need = common >= 2 ? SIMILAR_MIN : SIMILAR_MIN_SHORT;
+  return score >= need ? score : 0;
+}
+
+/**
+ * Пары «товар пропал из выгрузки» ↔ «строка выгрузки никому не досталась».
+ * Ничего не применяем автоматически: ошибка увела бы остаток на чужую карточку.
+ * Возвращаем только догадки, человек решает сам.
+ *
+ * Перебор идёт не всех со всеми: строим индекс по словам и считаем схожесть
+ * лишь с теми строками, где есть хотя бы одно общее слово.
+ */
+function guessRenames(missing, freeRows, baseKey) {
+  if (!missing.length || !freeRows.length) return [];
+
+  const rowTokens = freeRows.map(r => nameTokens(r.name || r.raw || ''));
+  const byToken = new Map();
+  rowTokens.forEach((tokens, i) => {
+    for (const t of tokens) {
+      if (!byToken.has(t)) byToken.set(t, []);
+      byToken.get(t).push(i);
+    }
+  });
+
+  const pairs = [];
+  for (const p of missing) {
+    const tokens = nameTokens(p.fullName || p.name || '');
+    const candidates = new Set();
+    for (const t of tokens) for (const i of byToken.get(t) || []) candidates.add(i);
+    for (const i of candidates) {
+      const score = scoreTokens(tokens, rowTokens[i]);
+      if (score) pairs.push({ score, p, i });
+    }
+  }
+
+  // Лучшие пары первыми, и каждый товар и каждая строка участвуют один раз:
+  // иначе одна новая строка «переименовалась» бы сразу из трёх карточек.
+  pairs.sort((a, b) => b.score - a.score);
+  const usedP = new Set(), usedI = new Set();
+  const out = [];
+  for (const { score, p, i } of pairs) {
+    const pid = String(p._id);
+    if (usedP.has(pid) || usedI.has(i)) continue;
+    usedP.add(pid); usedI.add(i);
+    const row = freeRows[i];
+    out.push({
+      id:    pid,
+      card:  p.fullName || p.name || '',
+      sku:   p.skuByBase?.[baseKey] || p.sku || '',
+      was:   p.nameByBase?.[baseKey] || p.fullName || p.name || '',
+      now:   String(row.name || row.raw || '').trim(),
+      stock: row.stock,
+      score: Math.round(score * 100),
+    });
+  }
+  return out;
+}
+
+// Короткое сообщение владельцам: в 1С сменили название номенклатуры.
+// Список режем — в отчёте загрузки видно всё, а в Telegram важен сам факт.
+async function notifyRenames(baseKey, renamed, suspects) {
+  const User = require('../models/User');
+  const owners = await User.find({ role: 'owner', telegramChatId: { $nin: [null, ''] } }, 'telegramChatId').lean();
+  if (!owners.length) return;
+
+  const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const lines = [`<b>✏️ В базе «${BASES[baseKey].label}» переименовали номенклатуру</b>`];
+
+  if (renamed.length) {
+    lines.push('', `Точно (товар нашёлся по артикулу): <b>${renamed.length}</b>`);
+    for (const r of renamed.slice(0, 5)) lines.push(`• ${esc(r.was)}\n   → ${esc(r.now)}`);
+    if (renamed.length > 5) lines.push(`…и ещё ${renamed.length - 5}`);
+  }
+  if (suspects.length) {
+    lines.push('', `Похоже на переименование — остаток обнулился: <b>${suspects.length}</b>`);
+    for (const r of suspects.slice(0, 5)) lines.push(`• ${esc(r.was)}\n   → ${esc(r.now)} (${r.stock} шт., совпадение ${r.score}%)`);
+    if (suspects.length > 5) lines.push(`…и ещё ${suspects.length - 5}`);
+  }
+  lines.push('', `<a href="${SITE_URL}/admin">Открыть матрицу →</a>`);
+
+  for (const o of owners) await sendTelegramMessage(o.telegramChatId, lines.join('\n'), { disablePreview: true });
+}
+
 /**
  * Разбирает файл выгрузки и записывает остатки базы baseKey.
  * Один товар лежит в нескольких базах 1С, поэтому загрузка правит только свой ключ
@@ -113,9 +220,10 @@ const bufferFromMins = (a, b) => Math.max(toInt(a), toInt(b));
  * @param {Buffer} buffer  — xlsx как есть
  * @param {string} baseKey — makein | matkasym | qtop
  * @param {object} user    — кто загрузил (для журнала остатков)
+ * @param {object} opts    — { notifyTelegram } слать ли владельцам письмо о переименованиях
  * @returns отчёт: сколько совпало, обнулилось, какие позиции 1С не найдены в каталоге
  */
-async function applyStockUpload(buffer, baseKey, user) {
+async function applyStockUpload(buffer, baseKey, user, opts = {}) {
   if (!isBaseKey(baseKey)) throw new Error(`Неизвестная база 1С: ${baseKey}`);
 
   const wb   = xlsx.read(buffer, { type: 'buffer' });
@@ -165,34 +273,54 @@ async function applyStockUpload(buffer, baseKey, user) {
   // База труб обслуживает только свой сет: остальной каталог она не видит и,
   // главное, не обнуляет — иначе один файл на 20 строк прошёлся бы по всем 1442.
   const scope = BASES[baseKey].set ? { set: BASES[baseKey].set } : {};
-  const products = await Product.find(scope, '_id fullName name sku skuByBase category price priceWholesale priceCost stock stockByBase inBase bufferStock bufferByBase brand supplier.company isKit kitType kitParts');
+  const products = await Product.find(scope, '_id fullName name sku skuByBase nameByBase category price priceWholesale priceCost stock stockByBase inBase bufferStock bufferByBase brand supplier.company isKit kitType kitParts');
 
   // Товар из выгрузки ищем по артикулу, а не по названию: в разных базах 1С одну
   // и ту же позицию пишут по-разному («Эко мангал R10» / «Эко мангал R 10»), и остаток
   // уезжал на карточку-дубликат. Имя остаётся запасным вариантом — по нему связь
   // и устанавливается в первый раз, пока артикул у товара ещё не записан.
   let bySku = 0, byName = 0, byLoose = 0, skuLearned = 0;
-  let byTube = 0;
+  let byTube = 0, byPrevName = 0;
+  // Строки выгрузки, уже отданные какому-то товару: по остальным ниже ищем,
+  // не переименовали ли в 1С позицию, которая «пропала» из файла.
+  const usedRows = new Set();
   const findRow = p => {
+    const take = (row, how, bump) => { bump(); usedRows.add(row); return { row, how }; };
+
     if (tubeMap.size) {
       const key = keyOfName(p.fullName || p.name || '');
       const r = key && tubeMap.get(key);
-      if (r) { byTube++; return r; }
+      if (r) return take(r, 'tube', () => byTube++);
     }
     if (hasSku) {
       const own = normSku(p.skuByBase?.[baseKey]);
-      if (own) { const r = skuMap.get(own); if (r) { bySku++; return r; } }
+      if (own) { const r = skuMap.get(own); if (r) return take(r, 'sku', () => bySku++); }
       const common = normSku(p.sku);
-      if (common) { const r = skuMap.get(common); if (r) { bySku++; return r; } }
+      if (common) { const r = skuMap.get(common); if (r) return take(r, 'sku', () => bySku++); }
     }
     const nm = p.fullName || p.name || '';
     const exact = stockMap.get(normName(nm));
-    if (exact) { byName++; return exact; }
+    if (exact) return take(exact, 'name', () => byName++);
+
+    // Имя из прошлой выгрузки. Спасает обратный случай: карточку переименовали
+    // у нас, а в 1С осталось прежнее название — по fullName она уже не находится.
+    const prev = p.nameByBase?.[baseKey] || '';
+    if (prev) {
+      const r = stockMap.get(normName(prev)) || looseMap.get(normNameLoose(prev));
+      if (r) return take(r, 'prevName', () => byPrevName++);
+    }
+
     const loose = looseMap.get(normNameLoose(nm));
-    if (loose) { byLoose++; return loose; }
-    return undefined;
+    if (loose) return take(loose, 'looseName', () => byLoose++);
+    return { row: undefined, how: '' };
   };
   let matched = 0, zeroed = 0, buffersUpdated = 0, pricesUpdated = 0;
+  // Номенклатуру в 1С переименовывают на ходу. Связь по артикулу это переживает,
+  // но знать о расхождении нужно: имя на сайте остаётся прежним, и на витрине,
+  // в подписях к постам и в выгрузках товар живёт под старым названием.
+  const renamed = [];
+  // Товары, пропавшие из выгрузки, — кандидаты на переименование без артикула.
+  const missing = [];
   const notFoundRows = [];
   const stockLogDocs = [];
   const bufferAlerts = [];
@@ -203,7 +331,27 @@ async function applyStockUpload(buffer, baseKey, user) {
   // Их остаток считается по деталям ниже, после записи остатков.
   const kitProducts = products.filter(p => p.isKit);
   const ops = products.filter(p => !p.isKit).map(p => {
-    const row = findRow(p);
+    const { row, how } = findRow(p);
+    // Имя берём очищенное парсером, а не raw: в raw у Matkasym висит единица
+    // измерения («…, шт»), и она и сравнение ломает, и в ключи stockMap не входит —
+    // по такому имени товар потом не нашёлся бы по прежнему названию.
+    const rowName  = row ? String(row.name || row.raw || '').trim() : '';
+    const prevName = p.nameByBase?.[baseKey] || '';
+
+    // Имя из выгрузки помним всегда — по нему в следующий раз видно, что изменилось.
+    // Первая выгрузка после обновления поля прежнего имени не знает: расхождение
+    // с fullName карточки там ни о чём не говорит (в базах пишут по-своему),
+    // поэтому за переименование считаем только смену имени МЕЖДУ выгрузками.
+    if (row && prevName && normName(prevName) !== normName(rowName)) {
+      renamed.push({
+        id:   String(p._id),
+        card: p.fullName || p.name || '',
+        sku:  p.skuByBase?.[baseKey] || p.sku || '',
+        was:  prevName,
+        now:  rowName,
+        how,
+      });
+    }
 
     // Артикул базы запоминаем при первом же совпадении — дальше связь держится
     // на нём, и переименование номенклатуры в 1С её больше не рвёт.
@@ -224,6 +372,9 @@ async function applyStockUpload(buffer, baseKey, user) {
     if (row) {
       matched++;
     } else {
+      // Товар знали в этой базе, а в файле его нет — либо сняли с номенклатуры,
+      // либо переименовали. Второе проверяем ниже по свободным строкам выгрузки.
+      if (p.inBase?.[baseKey] || oldBaseStock > 0) missing.push(p);
       // «Пропал из выгрузки» — только если в этой базе остаток был.
       // Для Make-in сохраняем прежнее поведение: список всего, чего нет в файле.
       if (baseKey === 'makein' || oldBaseStock > 0) {
@@ -284,6 +435,9 @@ async function applyStockUpload(buffer, baseKey, user) {
     // Единица учёта базы: остаток труб 1С ведёт в метрах, и «786 шт» на карточке
     // читалось бы как 786 труб вместо 131.
     if (row && BASES[baseKey].unit) priceSet.unit = BASES[baseKey].unit;
+    // Имя пишем только когда товар в выгрузке есть: у пропавшего прежнее имя
+    // как раз и пригодится, чтобы найти его в следующем файле.
+    if (row) priceSet[`nameByBase.${baseKey}`] = rowName;
 
     return { updateOne: { filter: { _id: p._id }, update: { $set: {
       ...priceSet,
@@ -296,6 +450,14 @@ async function applyStockUpload(buffer, baseKey, user) {
     } } } };
   });
   if (ops.length) await Product.bulkWrite(ops, { ordered: false });
+
+  // Пропал из выгрузки — возможно, не пропал, а переименован. Строки, не доставшиеся
+  // никому, сравниваем с пропавшими товарами по словам. Остаток такому товару уже
+  // обнулён: связывать карточку с догадкой автоматически нельзя, поэтому просто
+  // показываем пару «было → стало» — поправить имя или артикул человек решает сам.
+  const freeRows = [...new Set([...stockMap.values(), ...looseMap.values()])]
+    .filter(r => !usedRows.has(r) && r.stock > 0);
+  const renameSuspects = guessRenames(missing, freeRows, baseKey);
 
   // Зависимый комплект (парта + стул) существует ровно в том количестве, на какое
   // хватает самой дефицитной детали. Читаем детали после bulkWrite — уже с новыми остатками.
@@ -398,6 +560,10 @@ async function applyStockUpload(buffer, baseKey, user) {
   const setSlugs = await Product.distinct('set');
   const knownGroups = new Set(setSlugs.filter(Boolean).map(s => normName(String(s).replace(/-/g, ' '))));
 
+  // Строка, похожая на переименованную позицию, тоже выглядит как «новый товар».
+  // Помечаем такие, иначе их заведут вторым дублем вместо правки имени.
+  const suspectByName = new Map(renameSuspects.map(r => [normName(r.now), r]));
+
   const newItems = [];
   for (const [key, row] of stockMap) {
     if (known.has(key) || !row.stock) continue;
@@ -411,18 +577,29 @@ async function applyStockUpload(buffer, baseKey, user) {
       stock:   row.stock,
       buffer:  row.buffer || 0,
       isGroup: looksLikeGroup(row.raw || rawName, baseKey, knownGroups),
+      maybeRenamedFrom: suspectByName.get(normName(rawName))?.card || '',
     });
   }
   newItems.sort((a, b) => b.stock - a.stock);
 
-  console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} (sku=${bySku} name=${byName} loose=${byLoose} tube=${byTube}) prices=${pricesUpdated} skuLearned=${skuLearned} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
+  // Загрузку из админки владелец видит на экране, но переименование — вещь, о которой
+  // надо узнать, даже если файл залил редактор со своего компьютера.
+  if (opts.notifyTelegram && (renamed.length || renameSuspects.length)) {
+    notifyRenames(baseKey, renamed, renameSuspects)
+      .catch(e => console.error('[stockSync] уведомление о переименовании:', e.message));
+  }
+
+  console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} (sku=${bySku} name=${byName} prev=${byPrevName} loose=${byLoose} tube=${byTube}) renamed=${renamed.length} maybeRenamed=${renameSuspects.length} prices=${pricesUpdated} skuLearned=${skuLearned} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
 
   return {
     success: true, base: baseKey, baseLabel: BASES[baseKey].label, warehouses,
     matched, zeroed, total: matched + zeroed, buffersUpdated, kitsUpdated, excelBase64,
     newItems,
     // Как именно сошлись товары — видно, работает ли связь по артикулу
-    matchedBy: { sku: bySku, name: byName, looseName: byLoose, tube: byTube },
+    matchedBy: { sku: bySku, name: byName, looseName: byLoose, tube: byTube, prevName: byPrevName },
+    // Переименования в 1С: точные (товар нашёлся, а имя в файле другое)
+    // и догадки (товар пропал, но на него похожа ничья строка выгрузки).
+    renamed, renameSuspects,
     pricesUpdated, unit: BASES[baseKey].unit || 'шт',
     hasSkuColumn: hasSku, skuLearned,
   };
@@ -435,4 +612,4 @@ function detectBaseFromBuffer(buffer) {
   return detectBase(xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' }));
 }
 
-module.exports = { applyStockUpload, detectBase, detectBaseFromBuffer, detectStockColumns };
+module.exports = { applyStockUpload, detectBase, detectBaseFromBuffer, detectStockColumns, guessRenames };

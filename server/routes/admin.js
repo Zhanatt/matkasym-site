@@ -1855,7 +1855,7 @@ router.post('/upload-stock', editor, upload.single('file'), async (req, res) => 
   if (!isBaseKey(baseKey)) return res.status(400).json({ error: `Неизвестная база 1С: ${baseKey}` });
 
   try {
-    res.json(await applyStockUpload(req.file.buffer, baseKey, req.user));
+    res.json(await applyStockUpload(req.file.buffer, baseKey, req.user, { notifyTelegram: true }));
   } catch (e) {
     res.status(500).json({ error: 'Ошибка обработки файла: ' + e.message });
   }
