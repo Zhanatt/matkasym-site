@@ -319,6 +319,12 @@ async function applyStockUpload(buffer, baseKey, user, opts = {}) {
   // но знать о расхождении нужно: имя на сайте остаётся прежним, и на витрине,
   // в подписях к постам и в выгрузках товар живёт под старым названием.
   const renamed = [];
+  // Имя в базе не совпало с названием карточки. Сверяемся с каталогом на каждой
+  // загрузке и с первого же файла — ждать второй выгрузки, чтобы сказать о
+  // расхождении, незачем. Отдельно от renamed: у каждой из трёх баз 1С своя
+  // номенклатура, один и тот же товар в них зовётся по-разному, и это норма.
+  // Поэтому список только показываем, в Telegram не шлём и ничего не требуем.
+  const nameMismatch = [];
   // Товары, пропавшие из выгрузки, — кандидаты на переименование без артикула.
   const missing = [];
   const notFoundRows = [];
@@ -342,12 +348,22 @@ async function applyStockUpload(buffer, baseKey, user, opts = {}) {
     // Первая выгрузка после обновления поля прежнего имени не знает: расхождение
     // с fullName карточки там ни о чём не говорит (в базах пишут по-своему),
     // поэтому за переименование считаем только смену имени МЕЖДУ выгрузками.
+    const cardName = p.fullName || p.name || '';
     if (row && prevName && normName(prevName) !== normName(rowName)) {
       renamed.push({
         id:   String(p._id),
-        card: p.fullName || p.name || '',
+        card: cardName,
         sku:  p.skuByBase?.[baseKey] || p.sku || '',
         was:  prevName,
+        now:  rowName,
+        how,
+      });
+    } else if (row && cardName && normName(cardName) !== normName(rowName)) {
+      nameMismatch.push({
+        id:   String(p._id),
+        card: cardName,
+        sku:  p.skuByBase?.[baseKey] || p.sku || '',
+        was:  cardName,
         now:  rowName,
         how,
       });
@@ -455,8 +471,10 @@ async function applyStockUpload(buffer, baseKey, user, opts = {}) {
   // никому, сравниваем с пропавшими товарами по словам. Остаток такому товару уже
   // обнулён: связывать карточку с догадкой автоматически нельзя, поэтому просто
   // показываем пару «было → стало» — поправить имя или артикул человек решает сам.
+  // Строки с нулём тоже берём: переименовать могут и товар, которого сейчас нет
+  // на складе, а «ноль вместо ноля» такую пропажу ничем себя не выдаёт.
   const freeRows = [...new Set([...stockMap.values(), ...looseMap.values()])]
-    .filter(r => !usedRows.has(r) && r.stock > 0);
+    .filter(r => !usedRows.has(r));
   const renameSuspects = guessRenames(missing, freeRows, baseKey);
 
   // Зависимый комплект (парта + стул) существует ровно в том количестве, на какое
@@ -589,7 +607,7 @@ async function applyStockUpload(buffer, baseKey, user, opts = {}) {
       .catch(e => console.error('[stockSync] уведомление о переименовании:', e.message));
   }
 
-  console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} (sku=${bySku} name=${byName} prev=${byPrevName} loose=${byLoose} tube=${byTube}) renamed=${renamed.length} maybeRenamed=${renameSuspects.length} prices=${pricesUpdated} skuLearned=${skuLearned} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
+  console.log(`[upload-stock] ${new Date().toISOString()} base=${baseKey} rows=${stockMap.size} matched=${matched} (sku=${bySku} name=${byName} prev=${byPrevName} loose=${byLoose} tube=${byTube}) renamed=${renamed.length} maybeRenamed=${renameSuspects.length} nameMismatch=${nameMismatch.length} prices=${pricesUpdated} skuLearned=${skuLearned} zeroed=${zeroed} buffers=${buffersUpdated} kits=${kitsUpdated} new=${newItems.length} warehouses=${warehouses.join(' + ') || 'legacy'}`);
 
   return {
     success: true, base: baseKey, baseLabel: BASES[baseKey].label, warehouses,
@@ -599,7 +617,7 @@ async function applyStockUpload(buffer, baseKey, user, opts = {}) {
     matchedBy: { sku: bySku, name: byName, looseName: byLoose, tube: byTube, prevName: byPrevName },
     // Переименования в 1С: точные (товар нашёлся, а имя в файле другое)
     // и догадки (товар пропал, но на него похожа ничья строка выгрузки).
-    renamed, renameSuspects,
+    renamed, renameSuspects, nameMismatch,
     pricesUpdated, unit: BASES[baseKey].unit || 'шт',
     hasSkuColumn: hasSku, skuLearned,
   };

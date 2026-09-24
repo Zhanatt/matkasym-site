@@ -105,10 +105,20 @@ function ProductAlertList({ products, navigate }) {
   );
 }
 
+// Чем карточка сцеплена со строкой выгрузки — по этому видно, надёжна ли связь:
+// артикул переживает переименование, имя без пробелов — уже догадка.
+const MATCH_LABELS = {
+  sku:       'по артикулу',
+  name:      'по имени',
+  prevName:  'по имени из прошлой выгрузки',
+  looseName: 'по имени без пробелов',
+  tube:      'по геометрии трубы',
+};
+
 // Строка «было → стало» из отчёта о переименовании номенклатуры.
 // Имя из 1С показываем целиком и переносом: обрезанное многоточием название
 // бесполезно — именно по нему и надо понять, что изменилось.
-function RenameRow({ item, suspect }) {
+function RenameRow({ item, suspect, mismatch }) {
   return (
     <Link
       to={`/admin/products/${item.id}`}
@@ -117,10 +127,14 @@ function RenameRow({ item, suspect }) {
         background: '#fff', border: '1px solid #e2e8f0', textDecoration: 'none',
       }}
     >
-      <div style={{ fontSize: 12.5, color: '#64748b', textDecoration: 'line-through' }}>{item.was}</div>
-      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111' }}>→ {item.now}</div>
+      <div style={{ fontSize: 12.5, color: '#64748b', textDecoration: mismatch ? 'none' : 'line-through' }}>
+        {mismatch ? 'На карточке: ' : ''}{item.was}
+      </div>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#111' }}>
+        {mismatch ? 'В базе: ' : '→ '}{item.now}
+      </div>
       <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
-        Карточка: {item.card}
+        {mismatch ? `Связь: ${MATCH_LABELS[item.how] || item.how}` : `Карточка: ${item.card}`}
         {item.sku ? ` · ${item.sku}` : ''}
         {suspect ? ` · в выгрузке ${item.stock} шт. · совпадение ${item.score}%` : ''}
       </div>
@@ -140,8 +154,9 @@ export default function AdminDashboard() {
   const [stockBase,     setStockBase]     = useState('makein');
   // Товары из выгрузки, которых нет в каталоге — ждут подтверждения
   const [newItems,      setNewItems]      = useState(null);   // { base, items: [{name, stock, buffer, isGroup, checked}] }
-  // Переименования номенклатуры в 1С: { baseLabel, renamed: [{was, now, card, sku}], suspects: [...] }
+  // Названия номенклатуры в 1С: { baseLabel, renamed: [{was, now, card, sku}], suspects, mismatch }
   const [renames,       setRenames]       = useState(null);
+  const [showMismatch,  setShowMismatch]  = useState(false);
   // Сет обязателен: без него карточка проваливается в «Без сета», где её никто
   // не видит. Так за месяцы накопилось полторы сотни товаров, часть с остатком.
   //
@@ -250,13 +265,15 @@ export default function AdminDashboard() {
           items: r.data.newItems.map(i => ({ ...i, checked: !i.isGroup && !i.maybeRenamedFrom, dest: '' })),
         });
       }
-      // Переименования в 1С: имя в базе изменилось, а на карточке осталось прежнее.
-      if (r.data.renamed?.length || r.data.renameSuspects?.length) {
+      // Названия в этой базе: что переименовали в 1С и что разошлось с карточкой.
+      if (r.data.renamed?.length || r.data.renameSuspects?.length || r.data.nameMismatch?.length) {
         setRenames({
           baseLabel: r.data.baseLabel,
           renamed:   r.data.renamed || [],
           suspects:  r.data.renameSuspects || [],
+          mismatch:  r.data.nameMismatch || [],
         });
+        setShowMismatch(false);
       }
       if (r.data.excelBase64) {
         const binary = atob(r.data.excelBase64);
@@ -871,7 +888,7 @@ export default function AdminDashboard() {
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#1e3a8a' }}>
-              ✏️ В базе «{renames.baseLabel}» переименовали номенклатуру
+              ✏️ Названия номенклатуры в базе «{renames.baseLabel}»
             </div>
             <button onClick={() => setRenames(null)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, opacity: .5, flexShrink: 0 }}>×</button>
@@ -898,6 +915,31 @@ export default function AdminDashboard() {
               {renames.suspects.map(r => (
                 <RenameRow key={r.id} item={r} suspect />
               ))}
+            </div>
+          )}
+
+          {/* Расхождение с каталогом. У каждой из трёх баз 1С своя номенклатура,
+              и своё название там — обычное дело: список справочный, не список ошибок. */}
+          {renames.mismatch.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12.5, color: '#475569', marginBottom: 6 }}>
+                В этой базе называются иначе, чем на карточке: <b>{renames.mismatch.length}</b>.
+                Остаток записан верно. У каждой базы своя номенклатура, поэтому другое название —
+                норма; поправить стоит, если это опечатка (латиница вместо кириллицы, лишний пробел).
+              </div>
+              {(showMismatch ? renames.mismatch : renames.mismatch.slice(0, 5)).map(r => (
+                <RenameRow key={r.id} item={r} mismatch />
+              ))}
+              {renames.mismatch.length > 5 && (
+                <button
+                  onClick={() => setShowMismatch(v => !v)}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    fontSize: 12.5, fontWeight: 700, color: '#1d4ed8',
+                  }}>
+                  {showMismatch ? 'Свернуть' : `Показать все (${renames.mismatch.length})`}
+                </button>
+              )}
             </div>
           )}
         </div>

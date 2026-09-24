@@ -60,6 +60,13 @@ function formatReport(r) {
     }
     if (r.renameSuspects.length > 5) lines.push(`…и ещё ${r.renameSuspects.length - 5}`);
   }
+  // Имя базы против имени карточки. У каждой базы 1С своя номенклатура, так что
+  // расхождение — не обязательно ошибка: показываем счётчик и пару примеров.
+  if (r.nameMismatch?.length) {
+    lines.push('', `ℹ️ В этой базе названы иначе, чем на карточке: <b>${r.nameMismatch.length}</b>`);
+    for (const x of r.nameMismatch.slice(0, 3)) lines.push(`• ${esc(x.card)}\n   в базе: ${esc(x.now)}`);
+    if (r.nameMismatch.length > 3) lines.push(`…и ещё ${r.nameMismatch.length - 3}`);
+  }
 
   // Новые позиции не заводим молча: в выгрузке кроме товаров лежат группы и сырьё
   const fresh = (r.newItems || []).filter(i => !i.isGroup);
