@@ -6,17 +6,21 @@ const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 // Письмо админу — новый пользователь хочет доступ
+// adminEmail — один адрес или массив: владельцев может быть несколько, и раньше
+// сюда не передавали вообще ничего (to: undefined) — письмо тихо не уходило,
+// а ошибка глохла в try/catch у вызывающего. Поэтому пустой список — исключение.
 async function sendApprovalRequest({ adminName, adminEmail, newUser }) {
+  const to = (Array.isArray(adminEmail) ? adminEmail : [adminEmail]).filter(Boolean);
+  if (!to.length) throw new Error('Некому отправить запрос доступа: не передан email администратора');
   if (!resend) {
-    console.log('[Mailer] Resend not configured, skipping approval request email');
-    return;
+    throw new Error('RESEND_API_KEY не задан в переменных окружения — отправка почты не настроена');
   }
   const approveLink = `${SITE_URL}/api/auth/approve/${newUser._id}?secret=${process.env.JWT_SECRET.slice(0, 12)}`;
   const rejectLink  = `${SITE_URL}/api/auth/reject/${newUser._id}?secret=${process.env.JWT_SECRET.slice(0, 12)}`;
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: `Продакт матрица <${FROM_EMAIL}>`,
-    to: adminEmail,
+    to,
     subject: `🔐 Новый запрос доступа — ${newUser.name}`,
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -39,10 +43,19 @@ async function sendApprovalRequest({ adminName, adminEmail, newUser }) {
               ✕ Отклонить
             </a>
           </div>
+          <p style="color: #7d96a0; font-size: 12px; margin: 20px 0 0;">
+            «Подтвердить» открывает доступ с ролью <strong>Наблюдатель</strong>.
+            Другую роль можно выдать на странице
+            <a href="${SITE_URL}/admin/users" style="color: #e10523;">Пользователи</a>.
+          </p>
         </div>
       </div>
     `,
   });
+
+  // Resend не бросает исключение, а возвращает { error } — без этой проверки
+  // ошибка (неподтверждённый домен, чужой адрес) терялась бы молча.
+  if (error) throw new Error(error.message || JSON.stringify(error));
 }
 
 // Письмо пользователю — доступ подтверждён

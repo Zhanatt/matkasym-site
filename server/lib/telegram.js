@@ -274,6 +274,30 @@ async function sendNewsNotificationTelegram({ type, title, message, product }, r
   }
 }
 
+// Запрос доступа от нового пользователя — владельцам в Telegram.
+// Дубль к письму, а не замена: почта через Resend исторически капризная
+// (неподтверждённый домен), и запрос мог провисеть незамеченным неделями.
+// Кнопок здесь нет специально: одобрение — действие владельца в админке,
+// а ссылку из Telegram может открыть кто угодно, кому переслали сообщение.
+async function sendAccessRequestTelegram({ newUser }, recipients) {
+  const recipientsList = (Array.isArray(recipients) ? recipients : [recipients]).filter(Boolean);
+  if (!recipientsList.length) return;
+
+  let text = `<b>🔐 Запрос доступа в Продакт матрицу</b>\n\n`;
+  text += `<b>${newUser.name}</b>\n`;
+  text += `${newUser.email}\n`;
+  if (newUser.phone) text += `${newUser.phone}\n`;
+  text += `\n<a href="${SITE_URL}/admin/users">Одобрить в матрице →</a>`;
+
+  for (const r of recipientsList) {
+    if (!r.telegramChatId) {
+      console.log(`[Telegram] Access request: skipping ${r.name || r.email} — no telegramChatId`);
+      continue;
+    }
+    await sendTelegramMessage(r.telegramChatId, text, { disablePreview: true });
+  }
+}
+
 async function sendAuditNotificationTelegram({ auditName, deadline }, recipients) {
   const deadlineStr = new Date(deadline).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -430,4 +454,4 @@ async function fetchPostViews(username, messageId) {
   return views === null ? { error: 'На странице поста нет счётчика просмотров' } : { views };
 }
 
-module.exports = { ensureWebhookUpdates, getChatInfo, fetchPostViews, sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendBufferStockAlerts, publishToChat, tgImage, clampCaption, downloadTelegramFile };
+module.exports = { ensureWebhookUpdates, getChatInfo, fetchPostViews, sendTelegramMessage, sendTelegramPhoto, sendTelegramAlbum, sendNewsNotificationTelegram, sendAuditNotificationTelegram, sendAccessRequestTelegram, sendBufferStockAlerts, publishToChat, tgImage, clampCaption, downloadTelegramFile };

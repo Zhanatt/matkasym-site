@@ -5,6 +5,7 @@ const LoginLog = require('../models/LoginLog');
 const { protect } = require('../middleware/auth');
 const crypto  = require('crypto');
 const { sendApprovalRequest, sendApproved, sendRejected, sendPasswordReset } = require('../lib/mailer');
+const { sendAccessRequestTelegram } = require('../lib/telegram');
 
 const COOKIE_MAX_AGE = 90 * 24 * 60 * 60 * 1000; // 90 дней
 
@@ -32,11 +33,24 @@ router.post('/register', async (req, res) => {
 
     const user = await User.create({ name, email: normEmail, password, phone, isPending: true });
 
-    // Notify admin for approval
+    // Кому уходит запрос: владельцам. Адрес не берём из переменной окружения —
+    // её пришлось бы держать в Render и помнить о ней; владельцы и так в базе,
+    // и одобрить запрос может только роль owner (middleware `admin`).
+    const owners = await User.find({ role: 'owner' }).select('name email telegramChatId').lean();
+
+    // Почта и Telegram — независимо: Resend у нас исторически капризный
+    // (неподтверждённый домен), и падение письма не должно съедать уведомление в Telegram.
     try {
-      await sendApprovalRequest({ newUser: user });
+      if (!owners.length) throw new Error('В базе нет ни одного владельца');
+      await sendApprovalRequest({ adminEmail: owners.map(o => o.email), newUser: user });
     } catch (e) {
-      console.error('Mailer error:', e.message);
+      console.error('[register] Не удалось отправить письмо о запросе доступа:', e.message);
+    }
+
+    try {
+      await sendAccessRequestTelegram({ newUser: user }, owners);
+    } catch (e) {
+      console.error('[register] Не удалось отправить Telegram о запросе доступа:', e.message);
     }
 
     res.status(201).json({ pending: true, message: 'Запрос отправлен. Ожидайте подтверждения администратора.' });
@@ -79,10 +93,15 @@ router.get('/approve/:id', async (req, res) => {
     if (secret !== process.env.JWT_SECRET.slice(0, 12))
       return res.status(403).send('Недействительная ссылка');
 
+    // Роль 'admin' в системе не существует (см. User.role enum и ADMIN_ROLES
+    // в middleware/auth.js) — одобренный по ссылке получал мусорную роль и упирался
+    // в «У вас нет доступа к Продакт матрице». Даём ту же роль, что и кнопка
+    // «Одобрить» в /admin/users, — «Наблюдатель»; поднять её владелец может там же.
+    // runValidators, чтобы такая же опечатка больше не записалась в базу молча.
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { role: 'admin', isPending: false },
-      { new: true }
+      { role: 'viewer', isPending: false },
+      { new: true, runValidators: true }
     );
     if (!user) return res.status(404).send('Пользователь не найден');
 
