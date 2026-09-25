@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import { signOf } from '../../utils/price';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { adminGetBrands, adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload } from '../../api/index';
+import { adminGetBrands, adminStats, adminGetProducts, adminUploadStock, adminUploadPrices, adminUploadPhotos, adminPreviewNomenclature, adminConfirmNomenclature, adminConfirmStockItems, adminUndoStockUpload, adminNomenclatureName } from '../../api/index';
 import { useAuth } from '../../context/AuthContext';
 import { canEditCatalog } from '../../constants/roles';
 import SearchSelect from '../../components/SearchSelect';
@@ -118,15 +118,22 @@ const MATCH_LABELS = {
 // Строка «было → стало» из отчёта о переименовании номенклатуры.
 // Имя из 1С показываем целиком и переносом: обрезанное многоточием название
 // бесполезно — именно по нему и надо понять, что изменилось.
-function RenameRow({ item, suspect, mismatch }) {
+//
+// Кнопки здесь, а не «сходите в карточку и поправьте руками»: список, который
+// только показывает расхождения, читают один раз, а потом перестают.
+function RenameRow({ item, kind, busy, onResolve }) {
+  const mismatch = kind === 'mismatch';
+  const suspect  = kind === 'suspect';
+  const btn = (extra = {}) => ({
+    padding: '5px 11px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+    cursor: busy ? 'wait' : 'pointer', opacity: busy ? .5 : 1, ...extra,
+  });
+
   return (
-    <Link
-      to={`/admin/products/${item.id}`}
-      style={{
-        display: 'block', padding: '8px 12px', marginBottom: 6, borderRadius: 8,
-        background: '#fff', border: '1px solid #e2e8f0', textDecoration: 'none',
-      }}
-    >
+    <div style={{
+      padding: '9px 12px', marginBottom: 6, borderRadius: 8,
+      background: '#fff', border: '1px solid #e2e8f0',
+    }}>
       <div style={{ fontSize: 12.5, color: '#64748b', textDecoration: mismatch ? 'none' : 'line-through' }}>
         {mismatch ? 'На карточке: ' : ''}{item.was}
       </div>
@@ -138,7 +145,27 @@ function RenameRow({ item, suspect, mismatch }) {
         {item.sku ? ` · ${item.sku}` : ''}
         {suspect ? ` · в выгрузке ${item.stock} шт. · совпадение ${item.score}%` : ''}
       </div>
-    </Link>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+        <button
+          disabled={busy}
+          onClick={() => onResolve(item, 'rename', kind)}
+          style={btn({ border: 'none', background: '#1d4ed8', color: '#fff' })}
+        >
+          {suspect ? `Это он — переименовать и вернуть ${item.stock} шт.` : 'Взять имя из 1С'}
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => onResolve(item, suspect ? 'skip' : 'keep', kind)}
+          style={btn({ border: '1.5px solid #e2e8f0', background: '#fff', color: '#475569' })}
+        >
+          {suspect ? 'Это другой товар' : 'Так и называется'}
+        </button>
+        <Link to={`/admin/products/${item.id}`} style={{ fontSize: 12, color: '#64748b', marginLeft: 'auto' }}>
+          Открыть карточку →
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -157,6 +184,8 @@ export default function AdminDashboard() {
   // Названия номенклатуры в 1С: { baseLabel, renamed: [{was, now, card, sku}], suspects, mismatch }
   const [renames,       setRenames]       = useState(null);
   const [showMismatch,  setShowMismatch]  = useState(false);
+  const [renameBusy,    setRenameBusy]    = useState('');
+  const [renameError,   setRenameError]   = useState('');
   // Сет обязателен: без него карточка проваливается в «Без сета», где её никто
   // не видит. Так за месяцы накопилось полторы сотни товаров, часть с остатком.
   //
@@ -244,6 +273,37 @@ export default function AdminDashboard() {
     } finally { setAddingItems(false); }
   };
 
+  // Решение по расхождению имени. Строку убираем из списка сразу после ответа сервера:
+  // отчёт собран по файлу, перезагружать его ради одной строки незачем.
+  const LIST_OF_KIND = { renamed: 'renamed', suspect: 'suspects', mismatch: 'mismatch' };
+  const resolveName = async (item, action, kind) => {
+    const listKey = LIST_OF_KIND[kind];
+    const drop = () => setRenames(r => {
+      if (!r) return r;
+      const next = { ...r, [listKey]: r[listKey].filter(x => x.id !== item.id) };
+      return (next.renamed.length || next.suspects.length || next.mismatch.length) ? next : null;
+    });
+
+    // «Это другой товар» — решение про строку выгрузки, а не про карточку:
+    // на сервер идти незачем, товар останется в списке новых позиций.
+    if (action === 'skip') return drop();
+
+    setRenameBusy(item.id + kind);
+    setRenameError('');
+    try {
+      await adminNomenclatureName({
+        id: item.id, base: renames.base, name: item.now, action,
+        // Остаток возвращаем только у догадок: там товар пропал из файла и обнулился.
+        ...(action === 'rename' && kind === 'suspect' ? { stock: item.stock } : {}),
+      });
+      drop();
+    } catch (err) {
+      setRenameError(err?.response?.data?.error || 'Не удалось сохранить');
+    } finally {
+      setRenameBusy('');
+    }
+  };
+
   const handleStockUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -268,12 +328,14 @@ export default function AdminDashboard() {
       // Названия в этой базе: что переименовали в 1С и что разошлось с карточкой.
       if (r.data.renamed?.length || r.data.renameSuspects?.length || r.data.nameMismatch?.length) {
         setRenames({
+          base:      r.data.base,
           baseLabel: r.data.baseLabel,
           renamed:   r.data.renamed || [],
           suspects:  r.data.renameSuspects || [],
           mismatch:  r.data.nameMismatch || [],
         });
         setShowMismatch(false);
+        setRenameError('');
       }
       if (r.data.excelBase64) {
         const binary = atob(r.data.excelBase64);
@@ -898,10 +960,11 @@ export default function AdminDashboard() {
             <div style={{ marginTop: 10 }}>
               <div style={{ fontSize: 12.5, color: '#475569', marginBottom: 6 }}>
                 Товар нашёлся по артикулу, остаток записан верно — разошлось только название:
-                <b> {renames.renamed.length}</b>
+                <b> {renames.renamed.length}</b>. Имя на карточке можно подтянуть из 1С одной кнопкой.
               </div>
               {renames.renamed.map(r => (
-                <RenameRow key={r.id} item={r} />
+                <RenameRow key={r.id} item={r} kind="renamed"
+                  busy={renameBusy === r.id + 'renamed'} onResolve={resolveName} />
               ))}
             </div>
           )}
@@ -909,11 +972,13 @@ export default function AdminDashboard() {
           {renames.suspects.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <div style={{ fontSize: 12.5, color: '#9a3412', marginBottom: 6 }}>
-                Похоже на переименование, но артикула в выгрузке нет — <b>остаток обнулён</b>,
-                проверьте и поправьте имя или артикул на карточке: <b>{renames.suspects.length}</b>
+                Похоже на переименование, но артикула в выгрузке нет — <b>остаток обнулён</b>:
+                <b> {renames.suspects.length}</b>. Если это тот же товар — кнопка переименует
+                карточку и вернёт остаток из этой же выгрузки, ждать следующей не нужно.
               </div>
               {renames.suspects.map(r => (
-                <RenameRow key={r.id} item={r} suspect />
+                <RenameRow key={r.id} item={r} kind="suspect"
+                  busy={renameBusy === r.id + 'suspect'} onResolve={resolveName} />
               ))}
             </div>
           )}
@@ -925,10 +990,12 @@ export default function AdminDashboard() {
               <div style={{ fontSize: 12.5, color: '#475569', marginBottom: 6 }}>
                 В этой базе называются иначе, чем на карточке: <b>{renames.mismatch.length}</b>.
                 Остаток записан верно. У каждой базы своя номенклатура, поэтому другое название —
-                норма; поправить стоит, если это опечатка (латиница вместо кириллицы, лишний пробел).
+                норма: «Так и называется» уберёт строку отсюда навсегда. «Взять имя из 1С» —
+                когда это опечатка (латиница вместо кириллицы, лишний пробел).
               </div>
               {(showMismatch ? renames.mismatch : renames.mismatch.slice(0, 5)).map(r => (
-                <RenameRow key={r.id} item={r} mismatch />
+                <RenameRow key={r.id} item={r} kind="mismatch"
+                  busy={renameBusy === r.id + 'mismatch'} onResolve={resolveName} />
               ))}
               {renames.mismatch.length > 5 && (
                 <button
@@ -940,6 +1007,12 @@ export default function AdminDashboard() {
                   {showMismatch ? 'Свернуть' : `Показать все (${renames.mismatch.length})`}
                 </button>
               )}
+            </div>
+          )}
+
+          {renameError && (
+            <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: '#c0392b' }}>
+              {renameError}
             </div>
           )}
         </div>

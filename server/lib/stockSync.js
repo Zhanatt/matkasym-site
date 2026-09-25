@@ -273,7 +273,7 @@ async function applyStockUpload(buffer, baseKey, user, opts = {}) {
   // База труб обслуживает только свой сет: остальной каталог она не видит и,
   // главное, не обнуляет — иначе один файл на 20 строк прошёлся бы по всем 1442.
   const scope = BASES[baseKey].set ? { set: BASES[baseKey].set } : {};
-  const products = await Product.find(scope, '_id fullName name sku skuByBase nameByBase category price priceWholesale priceCost stock stockByBase inBase bufferStock bufferByBase brand supplier.company isKit kitType kitParts');
+  const products = await Product.find(scope, '_id fullName name sku skuByBase nameByBase nameAckByBase category price priceWholesale priceCost stock stockByBase inBase bufferStock bufferByBase brand supplier.company isKit kitType kitParts');
 
   // Товар из выгрузки ищем по артикулу, а не по названию: в разных базах 1С одну
   // и ту же позицию пишут по-разному («Эко мангал R10» / «Эко мангал R 10»), и остаток
@@ -349,7 +349,11 @@ async function applyStockUpload(buffer, baseKey, user, opts = {}) {
     // с fullName карточки там ни о чём не говорит (в базах пишут по-своему),
     // поэтому за переименование считаем только смену имени МЕЖДУ выгрузками.
     const cardName = p.fullName || p.name || '';
-    if (row && prevName && normName(prevName) !== normName(rowName)) {
+    // Расхождение, которое уже посмотрели и оставили как есть, второй раз не
+    // показываем — иначе каждый день висит один и тот же список, и его перестают читать.
+    const ackName = p.nameAckByBase?.[baseKey] || '';
+    const acked   = !!ackName && normName(ackName) === normName(rowName);
+    if (row && !acked && prevName && normName(prevName) !== normName(rowName)) {
       renamed.push({
         id:   String(p._id),
         card: cardName,
@@ -358,7 +362,7 @@ async function applyStockUpload(buffer, baseKey, user, opts = {}) {
         now:  rowName,
         how,
       });
-    } else if (row && cardName && normName(cardName) !== normName(rowName)) {
+    } else if (row && !acked && cardName && normName(cardName) !== normName(rowName)) {
       nameMismatch.push({
         id:   String(p._id),
         card: cardName,

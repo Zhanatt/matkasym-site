@@ -133,6 +133,10 @@ export const adminUploadStock   = (file, base, onProgress)  => {
   });
 };
 export const adminUndoStockUpload = (base) => api.post('/admin/undo-stock-upload', { base });
+// Решение по расхождению имени номенклатуры из отчёта загрузки остатков:
+// rename — взять имя из 1С на карточку (со stock — заодно вернуть обнулённый остаток),
+// keep — «в этой базе товар так и называется», больше не показывать.
+export const adminNomenclatureName = (payload) => api.post('/admin/nomenclature-name', payload);
 export const adminUploadPhotos  = (files, onProgress, sourceFile = '')       => {
   const fd = new FormData();
   for (const f of files) fd.append('files', f);

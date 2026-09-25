@@ -596,6 +596,90 @@ router.patch('/products/:id/buffer-stock', async (req, res) => {
   } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
 });
 
+// POST /admin/nomenclature-name — решение по расхождению имени из отчёта загрузки остатков.
+//
+// Отчёт только показывал расхождения, а руками их правили через карточку — и не правили.
+// Здесь два ответа на один вопрос «почему имя в 1С другое»:
+//   rename — в 1С переименовали, берём имя оттуда на карточку;
+//   keep   — в этой базе товар так и называется, больше не показывать.
+//
+// stock приходит только с rename и только для «похоже на переименование»: товар пропал
+// из файла под старым именем, остаток обнулился, а строка с новым именем в той же
+// выгрузке есть. Возвращаем остаток сразу — иначе до следующей загрузки товар числится
+// отсутствующим, хотя лежит на складе.
+router.post('/nomenclature-name', editor, async (req, res) => {
+  try {
+    const { id, base, name, action = 'rename', stock } = req.body || {};
+    if (!isBaseKey(base)) return res.status(400).json({ error: `Неизвестная база 1С: ${base}` });
+
+    const clean = String(name || '').trim();
+    if (!clean) return res.status(400).json({ error: 'Не передано имя номенклатуры' });
+
+    const p = await Product.findById(id);
+    if (!p) return res.status(404).json({ error: 'Товар не найден' });
+
+    const label = BASES[base].label || base;
+    const ack = { makein: '', matkasym: '', tubes: '', qtop: '',
+      ...(p.nameAckByBase ? (p.nameAckByBase.toObject?.() || p.nameAckByBase) : {}) };
+
+    if (action === 'keep') {
+      ack[base] = clean;
+      p.nameAckByBase = ack;
+      await p.save();
+      return res.json({ ok: true, action, product: p });
+    }
+
+    const oldName = p.fullName || p.name || '';
+    const changes = [{ field: `Название (имя номенклатуры, ${label})`, from: oldName, to: clean }];
+
+    p.fullName = clean;
+    const names = { makein: '', matkasym: '', tubes: '', qtop: '',
+      ...(p.nameByBase ? (p.nameByBase.toObject?.() || p.nameByBase) : {}) };
+    names[base] = clean;
+    p.nameByBase = names;
+    // Имя совпало с базой — принимать больше нечего.
+    ack[base] = '';
+    p.nameAckByBase = ack;
+
+    // Остаток возвращаем только если его прислали: у «названы иначе» товар из выгрузки
+    // не пропадал, и трогать его остаток нельзя.
+    const qty = Number(stock);
+    if (Number.isFinite(qty) && qty >= 0) {
+      const byBase = { makein: 0, matkasym: 0, tubes: 0, qtop: 0,
+        ...(p.stockByBase ? (p.stockByBase.toObject?.() || p.stockByBase) : {}) };
+      const fromStock = p.stock || 0;
+      byBase[base] = Math.floor(qty);
+      const total = STOCK_SUM_BASES.reduce((n, k) => n + (byBase[k] || 0), 0);
+
+      p.stockByBase = byBase;
+      p.stock       = total;
+      p.inStock     = total > 0;
+      p.stockStatus = total > 0 ? 'in_stock' : 'out_of_stock';
+      p.inBase      = { ...(p.inBase ? (p.inBase.toObject?.() || p.inBase) : {}), [base]: true };
+
+      if (total !== fromStock) {
+        changes.push({ field: `Остаток (${label})`, from: fromStock, to: total });
+        await StockLog.create({
+          productId: p._id, productName: clean, sku: p.sku || '',
+          delta: total - fromStock, fromStock, toStock: total,
+          source: 'manual', base, note: 'возврат остатка после переименования в 1С',
+          changedBy: { id: req.user._id, name: req.user.name, email: req.user.email },
+        });
+      }
+    }
+
+    await p.save();
+    await ChangeLog.create({
+      productId:   p._id,
+      productName: clean,
+      changedBy:   { id: req.user._id, name: req.user.name, email: req.user.email },
+      changes,
+    });
+
+    res.json({ ok: true, action, product: p });
+  } catch (e) { res.status(500).json({ error: mongoErr(e) }); }
+});
+
 // Editor+ required for mutations
 router.post('/products', editor, async (req, res) => {
   try {

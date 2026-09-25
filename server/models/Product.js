@@ -134,6 +134,15 @@ const productSchema = new mongoose.Schema({
     tubes:    { type: String, default: '' },
     qtop:     { type: String, default: '' },
   },
+  // Расхождение имени, которое человек посмотрел и принял: «в этой базе товар
+  // так и называется». Хранится само имя базы, а не «да»: если номенклатуру
+  // переименуют снова, отчёт обязан сказать об этом заново.
+  nameAckByBase: {
+    makein:   { type: String, default: '' },
+    matkasym: { type: String, default: '' },
+    tubes:    { type: String, default: '' },
+    qtop:     { type: String, default: '' },
+  },
   // Заведён ли товар в номенклатуре базы (был в последней выгрузке).
   // Нужно, чтобы отличить «есть в базе, но остаток 0» от «этой базе товар неизвестен».
   inBase: {
