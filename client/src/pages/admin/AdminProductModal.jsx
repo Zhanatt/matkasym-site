@@ -450,7 +450,10 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     tier => kitSums[tier.key] > 0 && kitSums[tier.key] !== (product[tier.key] || 0),
   );
 
-  const prices = [
+  // «Цена ещё не определена» — цифр не показываем вообще. В полях может лежать
+  // прикидка или старое значение из 1С, но продавать по ним нельзя, а карточка
+  // с числом читается как готовая цена.
+  const prices = product.priceUndefined ? [] : [
     { label: 'Розничная',     value: kitPrice('price') },
     { label: 'Оптовая',       value: kitPrice('priceWholesale') },
     { label: 'Дилерская',     value: kitPrice('priceDealer') },
@@ -885,13 +888,21 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 {/* Цены сайта. Показываем всегда: прайс базы 1С покрывает не все типы цен
                     (розничной может не быть ни в одной базе), а каталог, PDF и посты
                     читают именно эти поля — прятать их за карточками баз нельзя. */}
-                {(prices.length > 0 || kitTiersUnpriced.length > 0) && !isIndependentKit && country !== 'KZ' && (
+                {(prices.length > 0 || kitTiersUnpriced.length > 0 || product.priceUndefined) && !isIndependentKit && country !== 'KZ' && (
                   <div style={card}>
                     <div style={{ ...cardTitle, marginBottom: 4 }}>Цены на сайте</div>
                     <div style={{ fontSize: 12, color: UI.label, marginBottom: 12 }}>
                       их показывают каталог, PDF и посты
                       {kitSums && ' · сумма по деталям комплекта'}
                     </div>
+                    {product.priceUndefined && (
+                      <div style={{
+                        background: '#f8fafc', border: `1px dashed ${UI.lineSoft}`, borderRadius: 10,
+                        padding: '10px 13px', fontSize: 12.5, color: UI.label, lineHeight: 1.5,
+                      }}>
+                        Цена ещё не определена — в каталоге, PDF и постах её не показываем.
+                      </div>
+                    )}
                     {kitTiersUnpriced.length > 0 && (
                       <div style={{
                         background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,

@@ -309,7 +309,9 @@ export default function AdminSuppliers() {
                         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {p.name}
                       </div>
-                      {p.price > 0 && (
+                      {p.priceUndefined ? (
+                        <div style={{ fontSize: 12, color: '#888', fontStyle: 'italic', marginTop: 6 }}>Цена не определена</div>
+                      ) : p.price > 0 && (
                         <div style={{ fontSize: 14, fontWeight: 800, color: '#1d4ed8', marginTop: 6 }}>
                           {p.price.toLocaleString('ru')} {signOf(p)}
                         </div>

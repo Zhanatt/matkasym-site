@@ -568,8 +568,14 @@ export default function AdminProducts() {
                             </div>
                           </td>
                           <td style={{ whiteSpace: 'nowrap' }}>
-                            <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--slate)', display: 'block', lineHeight: 1.2 }}>Опт.</span>
-                            <span style={{ fontWeight: 700 }}>{(primary.priceWholesale || 0).toLocaleString('ru')} {signOf(primary)}</span>
+                            {primary.priceUndefined ? (
+                              <span style={{ fontSize: 12, color: 'var(--slate)', fontStyle: 'italic' }}>Цена не определена</span>
+                            ) : (
+                              <>
+                                <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--slate)', display: 'block', lineHeight: 1.2 }}>Опт.</span>
+                                <span style={{ fontWeight: 700 }}>{(primary.priceWholesale || 0).toLocaleString('ru')} {signOf(primary)}</span>
+                              </>
+                            )}
                           </td>
                           <td>
                             {(() => {

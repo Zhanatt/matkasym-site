@@ -96,7 +96,7 @@ function ProductAlertList({ products, navigate }) {
             {p.fullName || p.name}
           </span>
           <span style={{ color: 'var(--slate)', fontSize: 12, flexShrink: 0 }}>
-            {p.stock} шт. · {(p.price || 0).toLocaleString('ru')} {signOf(p)}
+            {p.stock} шт. · {p.priceUndefined ? 'цена не определена' : `${(p.price || 0).toLocaleString('ru')} ${signOf(p)}`}
           </span>
           <span style={{ fontSize: 11, color: 'var(--slate)', flexShrink: 0 }}>→</span>
         </div>

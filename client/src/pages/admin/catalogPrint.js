@@ -167,7 +167,9 @@ function cardHtml(product, priceType, currency) {
     .split(/[,/]/).map(c => c.trim().toLowerCase()).filter(Boolean)
     .map(c => COLOR_HEX[c]).filter(Boolean);
 
-  const value = priceType !== 'none' ? Number(product[priceType]) || 0 : 0;
+  // «Цена ещё не определена» — в каталоге цифры быть не должно, даже если поле
+  // заполнено: там лежит прикидка, а не цена, по которой продают.
+  const value = priceType !== 'none' && !product.priceUndefined ? Number(product[priceType]) || 0 : 0;
 
   return `
     <div class="card">

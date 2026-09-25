@@ -358,17 +358,28 @@ export default function AdminProductView() {
             </div>
           )}
 
-          {/* Prices */}
+          {/* Prices. С флагом «цена ещё не определена» цифр не показываем вовсе:
+              в полях может лежать прикидка, а карточка с числом читается как
+              готовая цена — и так она уходила в каталог, PDF и посты. */}
           <div>
             <Label>Цены</Label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-              <PriceCard label="Розничная" value={product.price} product={product} />
-              <PriceCard label="Оптовая"   value={product.priceWholesale} product={product} />
-              <PriceCard label="Дилерская" value={product.priceDealer} product={product} />
-              {user?.role === 'owner' && (
-                <PriceCard label="Себестоимость" value={product.priceCost} product={product} sign={costSignOf(product)} />
-              )}
-            </div>
+            {product.priceUndefined ? (
+              <div style={{
+                background: '#f7f6f3', border: '1px dashed #d8d4cc', borderRadius: 8,
+                padding: '10px 14px', fontSize: 13, color: 'var(--slate)', lineHeight: 1.5,
+              }}>
+                Цена ещё не определена — в каталоге, PDF и постах её не показываем.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                <PriceCard label="Розничная" value={product.price} product={product} />
+                <PriceCard label="Оптовая"   value={product.priceWholesale} product={product} />
+                <PriceCard label="Дилерская" value={product.priceDealer} product={product} />
+                {user?.role === 'owner' && (
+                  <PriceCard label="Себестоимость" value={product.priceCost} product={product} sign={costSignOf(product)} />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Stock */}

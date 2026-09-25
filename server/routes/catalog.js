@@ -70,10 +70,12 @@ function format(p) {
     categoryLabel: CATEGORY_LABELS[p.category] || p.category,
     color:         p.color || null,
 
-    // Цены
-    price:          p.price,           // розничная (на сайте)
-    priceWholesale: p.priceWholesale || null,  // оптовая
-    priceDealer:    p.priceDealer    || null,  // дилерская
+    // Цены. С флагом «цена ещё не определена» не отдаём ни одной цифры:
+    // в полях лежит прикидка, а бот назовёт её клиенту как цену товара.
+    price:          p.priceUndefined ? null : p.price,                      // розничная (на сайте)
+    priceWholesale: p.priceUndefined ? null : (p.priceWholesale || null),   // оптовая
+    priceDealer:    p.priceUndefined ? null : (p.priceDealer    || null),   // дилерская
+    priceUndefined: !!p.priceUndefined,        // true → цена по запросу
 
     // Наличие
     inStock:     available,

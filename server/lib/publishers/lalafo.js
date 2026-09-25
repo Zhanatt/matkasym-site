@@ -86,7 +86,9 @@ function buildItem(product, publication) {
     // принимает: toLocaleString разделяет разряды неразрывным пробелом (U+00A0),
     // и вместе со словом «сом» в числовом поле это уже не число.
     // Где розничной цены нет — договорная, как в исходном формате площадки.
-    price:       product.price > 0 ? String(Math.round(product.price)) : PRICE_LABEL,
+    // Флаг «цена ещё не определена» важнее заполненного поля: в нём прикидка,
+    // а объявление с такой цифрой — обещание продать по ней.
+    price:       !product.priceUndefined && product.price > 0 ? String(Math.round(product.price)) : PRICE_LABEL,
     photos:      photosOf(product),
   };
 }

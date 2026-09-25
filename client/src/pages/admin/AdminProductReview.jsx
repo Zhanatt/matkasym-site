@@ -666,20 +666,29 @@ export default function AdminProductReview() {
               )}
 
               {/* Цены */}
-              <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                <div style={{ flex: 1, padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
-                    {currentProduct.price?.toLocaleString('ru')}
-                  </div>
-                  <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>розница</div>
+              {currentProduct.priceUndefined ? (
+                <div style={{
+                  padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, marginBottom: 12,
+                  textAlign: 'center', fontSize: 13, color: '#888', fontStyle: 'italic',
+                }}>
+                  Цена ещё не определена
                 </div>
-                <div style={{ flex: 1, padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
-                    {currentProduct.priceWholesale?.toLocaleString('ru') || '—'}
+              ) : (
+                <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                  <div style={{ flex: 1, padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
+                      {currentProduct.price?.toLocaleString('ru')}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>розница</div>
                   </div>
-                  <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>опт</div>
+                  <div style={{ flex: 1, padding: '10px 12px', background: '#f8f8f8', borderRadius: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#333' }}>
+                      {currentProduct.priceWholesale?.toLocaleString('ru') || '—'}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>опт</div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Остаток и статус */}
               <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
