@@ -111,7 +111,9 @@ products.forEach(p => {
 **`createdAt` не проставляется при `Product.create`.**
 В схеме есть поле `isNew` — оно зарезервировано в Mongoose и ломает timestamps.
 Товар уходит в хвост сортировки `{stock:-1, createdAt:-1}` и не попадает в первую
-тысячу — визуально «товара нет». Проставлять `createdAt` вручную после вставки.
+тысячу — визуально «товара нет». Проставлять `createdAt` вручную после вставки —
+**через `Product.collection.updateOne`**: `Product.updateOne` при timestamps молча
+выбрасывает `createdAt` из `$set` (28.09.2026 так остались без даты MKS-PF-073…076).
 
 **Привозной товар без `isOnOrder: true` не виден.**
 `AllCatalog` и `SetCatalogPanel` прячут его как «нет в наличии», даже если он заведён
