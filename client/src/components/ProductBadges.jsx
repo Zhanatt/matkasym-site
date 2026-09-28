@@ -48,6 +48,36 @@ export function SupplierBadge({ product, size = 'normal' }) {
   );
 }
 
+// Размер стеллажа поверх фото, в правом нижнем углу — как значок IKEA сверху.
+// Стеллажи ADIK одной серии на снимках не отличить: A3 и A5 отличаются только
+// высотой, и без размера на карточке их путают.
+const SHELVING   = /стеллаж|adik/i;
+const NOT_WHOLE  = /рама|ножк|каркас|кронштейн/i;   // детали стеллажа, а не стеллаж
+const SIZE_IN_NAME = /(\d+(?:[.,]\d+)?)\s*[xх×*]\s*(\d+(?:[.,]\d+)?)(?:\s*[xх×*]\s*(\d+(?:[.,]\d+)?))?/i;
+
+export function shelvingSize(product) {
+  const name = product?.fullName || product?.name || '';
+  const isShelving = (SHELVING.test(name) || /^adik/i.test(product?.category || '')) && !NOT_WHOLE.test(name);
+  if (!isShelving) return '';
+  // Габариты карточки, а если их не завели — из названия («ADIK STORAGE MEDIUM 200х60х200»)
+  const m = String(product.dimensions || '').match(SIZE_IN_NAME) || name.match(SIZE_IN_NAME);
+  return m ? [m[1], m[2], m[3]].filter(Boolean).join('×') : '';
+}
+
+export function SizeBadge({ product }) {
+  const size = shelvingSize(product);
+  if (!size) return null;
+  return (
+    <div title="Габариты, см" style={{
+      background: 'rgba(255,255,255,.92)', color: '#1c1e21', borderRadius: 6, padding: '3px 7px',
+      fontSize: 11, fontWeight: 700, letterSpacing: .2, whiteSpace: 'nowrap',
+      boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+    }}>
+      {size} <span style={{ fontWeight: 500, color: '#6b7280' }}>см</span>
+    </div>
+  );
+}
+
 export function InTransitBadge({ product }) {
   if (!product.inTransit) return null;
 

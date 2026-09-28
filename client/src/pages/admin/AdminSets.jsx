@@ -23,7 +23,7 @@ import { canEditCatalog, canExportLalafo } from '../../constants/roles';
 import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
-import { SupplierBadge, StatusBadge, STATUS_BADGE } from '../../components/ProductBadges';
+import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE } from '../../components/ProductBadges';
 
 // ── страна учёта ───────────────────────────────────────────────────────────────
 
@@ -2332,6 +2332,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                                 <StatusBadge product={primary} />
                               </div>
                             )}
+                            {/* Размер стеллажа — снизу справа, как значок IKEA сверху */}
+                            <div style={{ position: 'absolute', bottom: 6, right: 6 }}>
+                              <SizeBadge product={primary} />
+                            </div>
                           </div>
                           <div style={{ padding: '10px 11px' }}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
@@ -2413,6 +2417,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           <StatusBadge product={primary} />
                         </div>
                       )}
+                      {/* Размер стеллажа — снизу справа, как значок IKEA сверху */}
+                      <div style={{ position: 'absolute', bottom: 6, right: 6 }}>
+                        <SizeBadge product={primary} />
+                      </div>
                     </div>
                     <div style={{ padding: '10px 11px' }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
@@ -2507,6 +2515,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                             <StatusBadge product={primary} />
                           </div>
                         )}
+                        {/* Размер стеллажа — снизу справа, как значок IKEA сверху */}
+                        <div style={{ position: 'absolute', bottom: 6, right: 6 }}>
+                          <SizeBadge product={primary} />
+                        </div>
                       </div>
                       <div style={{ padding: '10px 11px' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#111', lineHeight: 1.3,
