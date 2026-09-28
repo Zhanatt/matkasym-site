@@ -52,7 +52,7 @@ export function SupplierBadge({ product, size = 'normal' }) {
 // сверху. Стеллажи ADIK одной серии на снимках не отличить (A3 и A5 — только
 // высотой), шкафы AICHUROK — тоже, без размера на карточке их путают.
 const SHELVING  = /стеллаж|adik/i;
-const CABINET   = /шкаф|kiyimbox|постамат/i;
+const CABINET   = /шкаф|тумб|kiyimbox|постамат/i;
 const NOT_WHOLE = /рама|ножк|каркас|кронштейн|электрощит/i;   // детали, а не изделие
 const SIZE_IN_NAME = /(\d+(?:[.,]\d+)?)\s*[xх×*]\s*(\d+(?:[.,]\d+)?)(?:\s*[xх×*]\s*(\d+(?:[.,]\d+)?))?/i;
 const AXIS = { h: 'h', w: 'w', d: 'd', в: 'h', ш: 'w', г: 'd' };
@@ -64,13 +64,16 @@ function sizeParts(str) {
   for (const m of String(str).matchAll(/(?:^|[^a-zа-яё])([hwdвшг])\s*(\d{2,5})/gi)) ax[AXIS[m[1].toLowerCase()]] = +m[2];
   if (ax.h && ax.w) return [ax.w, ax.d, ax.h].filter(Boolean);
   const m = String(str).match(SIZE_IN_NAME);
-  return m ? [m[1], m[2], m[3]].filter(Boolean).map(v => +String(v).replace(',', '.')) : null;
+  const parts = m ? [m[1], m[2], m[3]].filter(Boolean).map(v => +String(v).replace(',', '.')) : null;
+  // «H1031×460×620» — буквой подписана одна высота, и она первая: переносим её в конец
+  if (parts?.length === 3 && ax.h && parts[0] === ax.h) return [parts[1], parts[2], parts[0]];
+  return parts;
 }
 
 export function shelvingSize(product) {
   const name = product?.fullName || product?.name || '';
   const cat  = product?.category || '';
-  const fits = (SHELVING.test(name) || /^adik/i.test(cat) || CABINET.test(name) || /шкаф/i.test(cat))
+  const fits = (SHELVING.test(name) || /^adik/i.test(cat) || CABINET.test(name) || /шкаф|тумб/i.test(cat))
             && !NOT_WHOLE.test(name) && !/электрощит/i.test(cat);
   if (!fits) return '';
   // Габариты карточки, а если их не завели — из названия («Шкаф 2300х500х385»)
