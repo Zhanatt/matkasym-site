@@ -687,6 +687,13 @@ router.post('/nomenclature-name', editor, async (req, res) => {
 router.post('/products', editor, async (req, res) => {
   try {
     const p = await Product.create(req.body);
+    // createdAt при создании не ставится: поле isNew в схеме ломает timestamps.
+    // Без даты карточка уходит в хвост сортировки {stock:-1, createdAt:-1} — пишем
+    // её в обход Mongoose (он выбрасывает createdAt из $set), временем из _id.
+    await Product.collection.updateOne(
+      { _id: p._id, createdAt: { $exists: false } },
+      { $set: { createdAt: p._id.getTimestamp(), updatedAt: new Date() } },
+    );
 
     // Материнскую карточку заводят сразу с деталями. Правку состава разбирает
     // PATCH, а создание до сих пор не разбирал никто: детали оставались в
