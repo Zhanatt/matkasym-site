@@ -1149,10 +1149,21 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
 const RETAIL_BRANDS = new Set(['matkasym-home', 'matkasym-shaar']);
 const NO_PHOTO      = '/logos/no-photo.png';
 
+// Обложка группы вариантов — первый вариант с фото. Брали variants[0], а он
+// зависит от догрузки: у «Сушилки SAKURA» сначала приходили три варианта с фото,
+// после догрузки первым вставал белый без снимка — и картинка пропадала через
+// секунду после открытия страницы.
+const coverOf = variants => variants.find(v => v.images?.[0]) || variants[0];
+
+// Квадрат цвета вместо фото рисуем только для HEX — так заведены краски. Словом
+// в поле «Цвет» («white», «белый») помечены обычные товары, и у них вместо
+// заглушки «нет фото» выходил пустой белый квадрат.
+const isSwatch = c => /^#[0-9a-f]{3,8}$/i.test(String(c || '').trim());
+
 // Компонент для отображения изображения или цвета (для красок)
 function ProductImage({ product, size = 80, className = '', style = {} }) {
   const hasImage = product.images?.[0];
-  const hasColor = product.color;
+  const hasColor = isSwatch(product.color);
 
   if (hasColor && !hasImage) {
     return (
@@ -2260,7 +2271,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       const stockInfo  = getStockInfo(primary, country);
                       const stockLabel = stockInfo.label;
                       const showBadge  = STATUS_BADGE[primary.productStatus];
-                      const hasColorOnly = primary.color && !primary.images?.[0];
+                      const cover      = coverOf(variants);
+                      const hasColorOnly = isSwatch(primary.color) && !cover.images?.[0];
                       const cardOpacity = isOutOfStock ? 0.5 : (stockInfo.isKitMissing ? 0.5 : 1);
                       return (
                         <Fragment key={name}>
@@ -2304,7 +2316,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           )}
                           <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {!hasColorOnly && (
-                              <img src={cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400)} alt={name}
+                              <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                                 onError={e => { e.target.src = NO_PHOTO; }} />
                             )}
@@ -2374,7 +2386,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 const stockInfo  = getStockInfo(primary, country);
                 const stockLabel = stockInfo.label;
                 const showBadge  = STATUS_BADGE[primary.productStatus];
-                const hasColorOnly = primary.color && !primary.images?.[0];
+                const cover      = coverOf(variants);
+                const hasColorOnly = isSwatch(primary.color) && !cover.images?.[0];
                 return (
                   <div key={name} onClick={() => setDetailProduct(primary)}
                     style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
@@ -2386,7 +2399,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   >
                     <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {!hasColorOnly && (
-                        <img src={cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400)} alt={name}
+                        <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                           style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                           onError={e => { e.target.src = NO_PHOTO; }} />
                       )}
@@ -2467,7 +2480,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   const primary    = variants[0];
                   const price      = getPrice(primary, priceMode);
                   const showBadge  = STATUS_BADGE[primary.productStatus];
-                  const hasColorOnly = primary.color && !primary.images?.[0];
+                  const cover      = coverOf(variants);
+                  const hasColorOnly = isSwatch(primary.color) && !cover.images?.[0];
                   return (
                     <div key={name} onClick={() => setDetailProduct(primary)}
                       style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
@@ -2479,7 +2493,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     >
                       <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {!hasColorOnly && (
-                          <img src={cloudinaryOpt(primary.images?.[0] || NO_PHOTO, 400)} alt={name}
+                          <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                             onError={e => { e.target.src = NO_PHOTO; }} />
                         )}
