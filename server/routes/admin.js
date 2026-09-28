@@ -42,6 +42,7 @@ const {
 } = require('../lib/stockBases');
 const { applyStockUpload } = require('../lib/stockSync');
 const { setMatch, viewForSet, SET_VIEW_FIELDS } = require('../lib/setView');
+const { attachUrnVolume } = require('../lib/urnVolume');
 
 // Товар считается неразобранным, если у него нет сета ИЛИ категория — свалка
 // («Прочее», 'other', пусто). И то и другое прячет карточку от людей: без сета
@@ -410,6 +411,8 @@ router.get('/products', async (req, res) => {
       query.sort(sortObj).skip((page - 1) * limit).limit(Number(limit)),
       Product.countDocuments(filter),
     ]);
+    // Объём урн — для плашки на фото; в brief-выборке нет нужных характеристик
+    if (brief === '1') await attachUrnVolume(products);
     res.json({
       products: asSetView ? products.map(p => viewForSet(p, set, country)) : products,
       total, page: Number(page), pages: Math.ceil(total / limit),

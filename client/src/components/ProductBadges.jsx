@@ -64,8 +64,20 @@ export function shelvingSize(product) {
   return m ? [m[1], m[2], m[3]].filter(Boolean).join('×') : '';
 }
 
+// Плашка в правом нижнем углу фото: у стеллажей — размер, у урн и баков — объём
+// (у сортировочных общий, по всем секциям). Объём считает сервер — поле volume.
 export function SizeBadge({ product }) {
   const size = shelvingSize(product);
+  if (!size && product?.volume) {
+    return (
+      <div title="Объём" style={{
+        background: 'rgba(255,255,255,.92)', color: '#1c1e21', borderRadius: 6, padding: '3px 7px',
+        fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+      }}>
+        {product.volume}
+      </div>
+    );
+  }
   if (!size) return null;
   return (
     <div title="Габариты, см" style={{
