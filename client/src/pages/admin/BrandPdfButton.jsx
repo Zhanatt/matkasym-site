@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { adminGetProducts, adminGetSetLayouts } from '../../api/index';
 import { printCatalog, fitsCatalog } from './catalogPrint';
 import { categoryRank } from '../../config/setCategoryOrder';
@@ -40,6 +40,27 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
   const priceType = priceMode ? (PRICE_MODE_TO_TYPE[priceMode] || 'price') : ownType;
   const timerRef = useRef(null);
 
+  // Каталог под встречу: не весь бренд, а отмеченные сеты — например, для
+  // строительной компании щиты, фасад, урны и скамейки. null — отмечены все.
+  const [picked, setPicked] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef(null);
+  const isPicked = key => !picked || picked.has(key);
+  const pickedCount = sets.filter(s => isPicked(s.key)).length;
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const close = e => { if (!pickerRef.current?.contains(e.target)) setPickerOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [pickerOpen]);
+
+  const togglePick = key => {
+    const next = new Set(sets.filter(s => isPicked(s.key)).map(s => s.key));
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setPicked(next.size === sets.length ? null : next);
+  };
+
   const handleClick = async () => {
     if (loading) return;
     setLoading(true);
@@ -62,7 +83,16 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const allProducts = res.data.products || [];
       const layouts = layoutRes.data?.layouts || {};
 
-      const availableProducts = allProducts.filter(fitsCatalog);
+      const availableProducts = allProducts.filter(fitsCatalog)
+        .filter(p => !picked || picked.has(p.set));
+
+      if (picked && picked.size === 0) {
+        alert('Не выбран ни один сет');
+        clearInterval(timerRef.current);
+        setLoading(false);
+        setProgress(0);
+        return;
+      }
 
       if (availableProducts.length === 0) {
         alert('Нечего выгружать: в каталог идут товары с остатком, детали комплектов в него не входят');
@@ -96,7 +126,8 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       setOrder.forEach(pushSet);
       // Сеты, которых нет в линейках бренда (и товары вовсе без сета) — в конец:
       // прятать их нельзя, а место в чужом ряду им выдумывать незачем.
-      Object.keys(grouped).filter(k => !setOrder.includes(k)).sort().forEach(pushSet);
+      // При выборе сетов вручную хвоста нет — в каталог идёт ровно отмеченное.
+      if (!picked) Object.keys(grouped).filter(k => !setOrder.includes(k)).sort().forEach(pushSet);
 
       if (pdfGroups.length === 0) {
         alert('Нет товаров для выгрузки');
@@ -137,6 +168,46 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
         <option value="priceDealer">Дилерская</option>
         <option value="none">Без цены</option>
       </select>
+      )}
+
+      {sets.length > 1 && (
+        <div ref={pickerRef} style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(v => !v)}
+            disabled={loading}
+            title="Какие сеты положить в каталог"
+            style={{ padding: '5px 10px', borderRadius: 6, border: '1.5px solid #e0e0e0',
+              background: picked ? '#eef4ff' : '#fff', color: picked ? '#1a73e8' : '#333',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            {picked ? `Сеты: ${pickedCount} из ${sets.length}` : 'Все сеты'} ▾
+          </button>
+          {pickerOpen && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+              background: '#fff', border: '1px solid #e3e6ea', borderRadius: 10,
+              boxShadow: '0 10px 30px rgba(0,0,0,.14)', padding: 8, minWidth: 240,
+              maxHeight: 360, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', gap: 6, padding: '2px 4px 8px', borderBottom: '1px solid #f0f0f0', marginBottom: 4 }}>
+                <button type="button" onClick={() => setPicked(null)}
+                  style={{ flex: 1, padding: '4px 0', fontSize: 11.5, border: '1px solid #e0e0e0', borderRadius: 6, background: '#fff', cursor: 'pointer' }}>
+                  Все
+                </button>
+                <button type="button" onClick={() => setPicked(new Set())}
+                  style={{ flex: 1, padding: '4px 0', fontSize: 11.5, border: '1px solid #e0e0e0', borderRadius: 6, background: '#fff', cursor: 'pointer' }}>
+                  Снять все
+                </button>
+              </div>
+              {sets.map(s => (
+                <label key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 6px',
+                  borderRadius: 6, fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
+                  <input type="checkbox" checked={isPicked(s.key)} onChange={() => togglePick(s.key)} />
+                  {s.label || s.key}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <button
