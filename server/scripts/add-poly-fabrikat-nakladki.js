@@ -137,7 +137,8 @@ async function upload(file, opts) {
     const now = new Date();
     // createdAt руками: поле isNew в схеме ломает timestamps (см. CLAUDE.md)
     const created = await Product.create({ ...doc, images: [img], techSheet: { files: [{ name: PDF_NAME, url: pdfUrl }] } });
-    await Product.updateOne({ _id: created._id }, { $set: { createdAt: now, updatedAt: now } });
+    // через коллекцию: Mongoose при timestamps выбрасывает createdAt из $set
+    await Product.collection.updateOne({ _id: created._id }, { $set: { createdAt: now, updatedAt: now } });
     console.log(`✓ ${doc.fullName} — ${created._id}`);
   }
   await mongoose.disconnect();
