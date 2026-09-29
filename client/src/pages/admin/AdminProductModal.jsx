@@ -187,6 +187,33 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
     } finally { setPlacing(null); }
   };
 
+  // Порядок фото правится прямо в карточке: первое фото — обложка в каталоге,
+  // PDF и постах, и ради его смены раньше открывали всю форму редактирования.
+  const [savingOrder, setSavingOrder] = useState(false);
+  const dragFrom = useRef(null);
+  const saveImageOrder = async (next, focus) => {
+    const before = localProduct.images;
+    setLocalProduct(p => ({ ...p, images: next }));   // сразу на экране, запись — следом
+    setImgIdx(focus);
+    setSavingOrder(true);
+    try {
+      const res = await adminUpdateProduct(localProduct._id, { images: next });
+      setLocalProduct(prev => ({ ...prev, ...res.data }));
+      onSaved && onSaved(res.data);
+    } catch (e) {
+      setLocalProduct(p => ({ ...p, images: before }));
+      alert('Не удалось сохранить порядок фото: ' + (e.response?.data?.error || e.message));
+    } finally { setSavingOrder(false); }
+  };
+  const moveImage = (from, to) => {
+    const list = (localProduct.images || []).filter(Boolean);
+    if (to < 0 || to >= list.length || from === to) return;
+    const next = [...list];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    saveImageOrder(next, to);
+  };
+
   const canSetBuffer = user?.role === 'owner' || user?.canSetBufferStock;
   const [bufferEditBase, setBufferEditBase] = useState(null); // ключ базы, у которой правят буфер
   const [bufferVal, setBufferVal] = useState(0);
@@ -808,14 +835,48 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
                 {images.length > 1 && (
                   <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', paddingBottom: 2 }}>
                     {images.map((src, i) => (
-                      <img key={i} src={cloudinaryOpt(src, 160)} alt="" onClick={() => setImgIdx(i)}
-                        style={{
-                          width: 62, height: 62, objectFit: 'cover', borderRadius: 12, cursor: 'pointer',
-                          flexShrink: 0, background: '#f6f7f9',
-                          border: i === imgIdx ? `2px solid ${UI.blue}` : `1px solid ${UI.line}`,
-                          padding: 2, opacity: i === imgIdx ? 1 : .75,
-                        }} />
+                      <div key={src + i} style={{ position: 'relative', flexShrink: 0 }}
+                        draggable={canEdit && !savingOrder}
+                        onDragStart={() => { dragFrom.current = i; }}
+                        onDragOver={e => { if (dragFrom.current !== null) e.preventDefault(); }}
+                        onDrop={e => { e.preventDefault(); const f = dragFrom.current; dragFrom.current = null; if (f !== null) moveImage(f, i); }}
+                        onDragEnd={() => { dragFrom.current = null; }}
+                        title={canEdit ? 'Перетащите, чтобы поменять порядок' : undefined}>
+                        <img src={cloudinaryOpt(src, 160)} alt="" onClick={() => setImgIdx(i)} draggable={false}
+                          style={{
+                            width: 62, height: 62, objectFit: 'cover', borderRadius: 12,
+                            cursor: canEdit ? 'grab' : 'pointer', display: 'block',
+                            background: '#f6f7f9',
+                            border: i === imgIdx ? `2px solid ${UI.blue}` : `1px solid ${UI.line}`,
+                            padding: 2, opacity: i === imgIdx ? 1 : .75,
+                          }} />
+                        {i === 0 && (
+                          <span title="Главное фото — обложка в каталоге" style={{
+                            position: 'absolute', top: 3, left: 3, background: UI.blue, color: '#fff',
+                            fontSize: 9, fontWeight: 800, borderRadius: 6, padding: '1px 5px', pointerEvents: 'none',
+                          }}>★</span>
+                        )}
+                      </div>
                     ))}
+                  </div>
+                )}
+                {canEdit && images.length > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    <button type="button" disabled={savingOrder || imgIdx === 0} onClick={() => moveImage(imgIdx, 0)}
+                      style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${UI.line}`, background: '#fff',
+                        fontSize: 12, fontWeight: 700, color: imgIdx === 0 ? '#aab' : UI.blue,
+                        cursor: savingOrder || imgIdx === 0 ? 'default' : 'pointer' }}>
+                      ★ {imgIdx === 0 ? 'Главное фото' : 'Сделать главной'}
+                    </button>
+                    <button type="button" disabled={savingOrder || imgIdx === 0} onClick={() => moveImage(imgIdx, imgIdx - 1)}
+                      title="Сдвинуть левее"
+                      style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${UI.line}`, background: '#fff', fontSize: 12, cursor: 'pointer' }}>←</button>
+                    <button type="button" disabled={savingOrder || imgIdx === images.length - 1} onClick={() => moveImage(imgIdx, imgIdx + 1)}
+                      title="Сдвинуть правее"
+                      style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${UI.line}`, background: '#fff', fontSize: 12, cursor: 'pointer' }}>→</button>
+                    <span style={{ fontSize: 11.5, color: UI.muted }}>
+                      {savingOrder ? 'сохраняем…' : 'или перетащите миниатюру'}
+                    </span>
                   </div>
                 )}
               </div>
