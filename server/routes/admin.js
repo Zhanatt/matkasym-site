@@ -2122,7 +2122,7 @@ router.post('/preview-nomenclature', editor, upload.single('file'), async (req, 
       for (let c = 0; c < hr.length; c++) {
         const cell = String(hr[c] || '').toLowerCase();
         if (cell.includes('основной'))     colOsn  = c;
-        if (cell.includes('коммерческий')) colKomm = c;
+        if (/ком+ерческ/i.test(cell)) colKomm = c;   // в 1С бывает «Комерческий»
       }
     }
     for (let ri = 6; ri <= 12; ri++) {

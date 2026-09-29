@@ -28,6 +28,11 @@ const { keyOfName } = require('./tubes');
 // Показатель относится к ближайшему складу слева. Склады кроме основного и
 // коммерческого (Итого, Виртуальный, Вен агент) игнорируются.
 // В старых выгрузках колонок минимума нет — тогда minOsn/minKomm остаются null.
+// «Коммерческий склад» в 1С Make-in бывает записан с одной «м» — «Комерческий»
+// (выгрузки с 28.09.2026). По точному слову колонка не находилась, остаток брался
+// из пустой запасной колонки, и коммерческий склад целиком уходил в ноль.
+const isKommCol = t => /ком+ерческ/i.test(String(t || ''));
+
 function detectStockColumns(rows) {
   const fallback = { colOsn: 4, colKomm: 19, minOsn: null, minKomm: null, dataStart: 7, skuCol: -1 };
 
@@ -41,7 +46,7 @@ function detectStockColumns(rows) {
   (rows[headRow] || []).forEach((cell, c) => {
     const t = String(cell || '').trim().toLowerCase();
     if (!t || c === 0) return;
-    groups.push({ col: c, key: t.includes('основной') ? 'Osn' : t.includes('коммерческий') ? 'Komm' : null });
+    groups.push({ col: c, key: t.includes('основной') ? 'Osn' : isKommCol(t) ? 'Komm' : null });
   });
   if (!groups.some(g => g.key)) return fallback;
 
@@ -70,7 +75,7 @@ function looksLikeMakein(rows) {
   for (let ri = 0; ri <= 12; ri++) {
     const row = rows[ri] || [];
     if (String(row[0] || '').trim().toLowerCase() !== 'товар') continue;
-    return row.some(c => String(c || '').toLowerCase().includes('коммерческий'));
+    return row.some(isKommCol);
   }
   return false;
 }
