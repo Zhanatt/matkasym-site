@@ -158,7 +158,8 @@ function cardHtml(product, priceType, currency) {
       rows.push({ k: s.key, v: s.unit ? `${s.value} ${s.unit}` : s.value });
     }
   });
-  if (product.color && !rows.some(r => /цвет/i.test(r.k))) {
+  // Код цвета краски («#F7F9EF») строкой не выводим — сам цвет залит в кадр
+  if (product.color && !/^#[0-9a-f]{6}$/i.test(String(product.color).trim()) && !rows.some(r => /цвет/i.test(r.k))) {
     rows.push({ k: 'цвет', v: product.color });
   }
 
@@ -171,11 +172,17 @@ function cardHtml(product, priceType, currency) {
   // заполнено: там лежит прикидка, а не цена, по которой продают.
   const value = priceType !== 'none' && !product.priceUndefined ? Number(product[priceType]) || 0 : 0;
 
+  // У красок фото нет, зато цвет записан кодом («#F7F9EF») — как на сайте, кадр
+  // заливается самим цветом: по образцу краску и выбирают.
+  const paintHex = /^#[0-9a-f]{6}$/i.test(String(product.color || '').trim()) ? product.color.trim() : '';
+
   return `
     <div class="card">
       <div class="shot">${img
         ? `<img src="${esc(img)}" alt="">`
-        : '<div class="shot-none">фото готовится</div>'}</div>
+        : paintHex
+          ? `<div class="shot-color" style="background:${esc(paintHex)}"></div>`
+          : '<div class="shot-none">фото готовится</div>'}</div>
       <div class="swatches">${
         swatches.map(hex => `<span class="sw" style="background:${hex}"></span>`).join('')
       }</div>
@@ -364,6 +371,16 @@ html, body {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+/* Краска без снимка — кадр заливается её цветом. Тонкая рамка нужна светлым
+   (белая, молочная): без неё образец сливается с листом. */
+.shot-color {
+  width: 100%;
+  height: 100%;
+  border-radius: 6pt;
+  box-shadow: inset 0 0 0 0.75pt ${RULE};
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 /* Товар без снимка. Пустой кадр читается как брак печати, поэтому место
    занимает спокойная заглушка — в высоту кадра, чтобы полоса не поехала. */
