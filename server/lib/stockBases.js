@@ -115,6 +115,18 @@ const fmtMoney = (value, product) => {
 
 const BASE_KEYS = Object.keys(BASES);
 
+// Из какой базы цена идёт на витрину (price/priceWholesale/priceDealer/priceCost).
+// SHAAR продаётся по прайсам Matkasym, HOME — по прайсам Make-in. Товар, которого
+// в «своей» базе нет вовсе (бак 360 л — SHAAR, но лежит только в Make-in), берёт
+// цену из той киргизской базы, где он есть: иначе его цена перестала бы обновляться.
+const SHOWCASE_PRICE_BASE = { 'matkasym-shaar': 'matkasym', 'matkasym-home': 'makein' };
+const showcasePriceBase = product => SHOWCASE_PRICE_BASE[product?.brand] || 'makein';
+function writesShowcasePrice(product, baseKey) {
+  if (BASES[baseKey]?.country !== 'KG') return false;   // Q-top в тенге — витрина считает в сомах
+  const own = showcasePriceBase(product);
+  return baseKey === own || !product?.inBase?.[own];
+}
+
 // Страны учёта. Остатки разных стран не складываются: Q-top — это отдельный
 // казахстанский склад, он живёт в своём каталоге (переключатель KZ в «Каталоге по сетам»).
 const COUNTRIES = {
@@ -464,6 +476,6 @@ function parsePriceRows(rows, priceType, normName) {
 module.exports = {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, parseTurnoverRows, stripUnit, looksLikeGroup,
   normSku, normNameLoose, normName, toInt, crossedBuffer, detectColumns, findSkuColumn,
-  COUNTRIES, basesOfCountry, STOCK_SUM_BASES,
+  COUNTRIES, basesOfCountry, STOCK_SUM_BASES, showcasePriceBase, writesShowcasePrice,
   PRICE_TYPES, PRICE_TYPE_KEYS, isPriceType, currencyOf, CURRENCY_SIGN, signOf, fmtMoney,
 };

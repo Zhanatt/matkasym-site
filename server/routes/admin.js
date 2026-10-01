@@ -37,7 +37,7 @@ const {
 } = require('../lib/productLaunch');
 const {
   BASES, BASE_KEYS, isBaseKey, parseStockRows, parsePriceRows, stripUnit, looksLikeGroup,
-  STOCK_SUM_BASES, basesOfCountry, PRICE_TYPES, isPriceType, currencyOf,
+  STOCK_SUM_BASES, basesOfCountry, PRICE_TYPES, isPriceType, currencyOf, writesShowcasePrice,
   normSku, normNameLoose, normName, toInt, crossedBuffer, signOf,
 } = require('../lib/stockBases');
 const { applyStockUpload } = require('../lib/stockSync');
@@ -2211,13 +2211,12 @@ router.post('/confirm-nomenclature', editor, async (req, res) => {
 
 // ── UPLOAD PRICE LIST ────────────────────────────────────────────────────────
 // POST /api/admin/upload-prices?base=makein|matkasym|qtop&type=retail|wholesale|dealer|cost|export
-// У каждой базы свой прайс: пишем в pricesByBase[base][type]. Цены Make-in дополнительно
-// дублируются в price/priceWholesale/... — на них завязан остальной сайт: карточки,
-// каталог, PDF, посты и буферный запас читают старое поле, а не pricesByBase.
-// Та же логика для товара, которого в Make-in нет (шкафы Matkasym Shaar и т.п.):
-// иначе его цена видна только в блоке «Прайсы по базам». Товар, который есть в обеих
-// базах, старым полем не трогаем — там должна остаться цена Make-in, а прайс Q-top
-// не трогает старое поле никогда: он в тенге, а витрина читает его как сомы.
+// У каждой базы свой прайс: пишем в pricesByBase[base][type]. Цена «своей» базы товара
+// дополнительно дублируется в price/priceWholesale/... — на них завязан остальной сайт:
+// карточки, каталог, PDF, посты и буферный запас читают старое поле, а не pricesByBase.
+// Своя база — по бренду: SHAAR продаётся по прайсам Matkasym, HOME — по прайсам Make-in
+// (writesShowcasePrice в lib/stockBases.js). Прайс Q-top старое поле не трогает
+// никогда: он в тенге, а витрина читает его как сомы.
 router.post('/upload-prices', editor, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
 
@@ -2234,9 +2233,6 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
   const field = PRICE_TYPES[type].legacyField || null;
   // Продажная цена — та, что показывается на витрине; закупочную флаг не касается
   const isSalePrice = ['retail', 'wholesale', 'dealer'].includes(type);
-  // В старом поле цена без валюты, а витрина считает её сомовой: прайс Q-top —
-  // казахстанский, в тенге, его дублировать туда нельзя.
-  const dupLegacy = BASES[baseKey].country === 'KG';
 
   try {
     const wb   = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -2258,7 +2254,7 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
       ({ priceMap } = parsePriceRows(rows, type, normName));
     }
 
-    const products = await Product.find({}, `_id fullName name sku pricesByBase inBase priceUndefined ${field || ''}`);
+    const products = await Product.find({}, `_id fullName name sku brand pricesByBase inBase priceUndefined ${field || ''}`);
     let matched = 0, skipped = 0;
     const ops = [];
     const priceLogDocs = [];
@@ -2268,7 +2264,7 @@ router.post('/upload-prices', editor, upload.single('file'), async (req, res) =>
       if (newPrice === undefined) { skipped++; continue; }
       const oldPrice = Number(p.pricesByBase?.[baseKey]?.[type]) || 0;
       const set      = { [path]: newPrice };
-      if (field && dupLegacy && (baseKey === 'makein' || !p.inBase?.makein)) {
+      if (field && writesShowcasePrice(p, baseKey)) {
         set[field] = newPrice;
         // Флаг ставили, пока цены не было (импорт привозных: «узнаем у поставщика») —
         // цена пришла, значит он устарел, иначе карточка так и пишет «не определена»
