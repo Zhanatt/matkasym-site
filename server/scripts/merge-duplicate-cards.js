@@ -15,6 +15,10 @@
  *
  *   node scripts/merge-duplicate-cards.js           # показать, что произойдёт
  *   node scripts/merge-duplicate-cards.js --apply   # выполнить
+ *
+ * Пары для другого сета — из файла (тот же формат, что PAIRS ниже, плюс set):
+ *   node scripts/merge-duplicate-cards.js --pairs pairs.json [--apply]
+ *   { "set": "0-tashtandy", "pairs": [{ "keep": "...", "drop": "...", "take": [...], "note": "..." }] }
  */
 const fs = require('fs');
 const path = require('path');
@@ -24,7 +28,9 @@ const Product = require('../models/Product');
 const { BASE_KEYS, STOCK_SUM_BASES } = require('../lib/stockBases');
 
 const APPLY = process.argv.includes('--apply');
-const SET = 'taza-kiym';
+const pairsArg = process.argv.indexOf('--pairs');
+const external = pairsArg > 0 ? JSON.parse(fs.readFileSync(process.argv[pairsArg + 1], 'utf8')) : null;
+const SET = external?.set || 'taza-kiym';
 
 /**
  * keep — артикул карточки, которая остаётся; drop — артикул дубля.
@@ -148,7 +154,7 @@ async function repoint(fromId, toId, conflicts) {
   await mongoose.connect(MONGO_URI);
 
   const plan = [];
-  for (const pair of PAIRS) {
+  for (const pair of (external ? external.pairs : PAIRS)) {
     const keep = await Product.findOne({ sku: pair.sku || pair.keep, set: SET }).lean()
               || await Product.findOne({ sku: pair.keep, set: SET }).lean();
     // Дубль ищем по артикулу, а у карточек из Q-top его местами просто нет — тогда по имени
@@ -190,7 +196,7 @@ async function repoint(fromId, toId, conflicts) {
   }
 
   const renames = [];
-  for (const r of RENAME) {
+  for (const r of (external ? [] : RENAME)) {
     const p = await Product.findOne({ sku: r.sku, set: SET }).select('fullName sku').lean();
     if (!p) { console.log(`•  ${r.sku} → ${r.to}: карточки нет (возможно, уже переименована)`); continue; }
     if (!String(p.fullName).includes(r.expect)) { console.log(`⚠  ${r.sku}: ждали «${r.expect}», в базе «${p.fullName}»`); continue; }
