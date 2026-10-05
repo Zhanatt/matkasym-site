@@ -121,8 +121,11 @@ export async function signTechSheet(pdfBytes, values) {
     const maxW = cellW * 0.92;
     // Подпись должна читаться наравне с печатным бланком, поэтому мельче
     // трети строки не опускаемся: лучше сказать, что не влезает.
+    // Размер — только от ячейки: листы бывают в любом масштабе, и потолок
+    // в пунктах на крупной странице превращал подпись в мелкий шрифт
+    // рядом с крупными «Менеджер»/«Заказчик». Половина строки — вровень с ними.
     const minSize = Math.max(7, cellH * 0.34);
-    let size = Math.min(cellH * 0.46, 13);
+    let size = cellH * 0.5;
     while (size > minSize && font.widthOfTextAtSize(text, size) > maxW) size -= 0.25;
 
     if (font.widthOfTextAtSize(text, size) > maxW) {
