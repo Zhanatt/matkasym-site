@@ -30,16 +30,22 @@ export function masksFromRGBA(data, W, H) {
   return { line, ink };
 }
 
-// Линия — это длинный непрерывный ряд тёмных пикселей. Считаем самый длинный
-// пробег: пунктир и текст такой длины не дают, рамка ячейки даёт.
-function rowRun(mask, W, y) {
-  let best = 0, cur = 0;
+// Линия — это длинный непрерывный ряд тёмных пикселей: пунктир и текст такой
+// длины не дают, рамка ячейки даёт. Берём все такие пробеги ряда с их краями —
+// на одной высоте листа бывают линии двух разных таблиц, стоящих рядом.
+function rowRuns(mask, W, y, min) {
+  const runs = [];
   const base = y * W;
-  for (let x = 0; x < W; x++) {
-    cur = mask[base + x] ? cur + 1 : 0;
-    if (cur > best) best = cur;
+  let start = -1;
+  for (let x = 0; x <= W; x++) {
+    const dark = x < W && mask[base + x];
+    if (dark && start < 0) start = x;
+    if (!dark && start >= 0) {
+      if (x - start >= min) runs.push([start, x - 1]);
+      start = -1;
+    }
   }
-  return best;
+  return runs;
 }
 
 function colRun(mask, W, x, y0, y1) {
@@ -65,20 +71,55 @@ function cluster(values, gap = 2) {
   return out.map(c => Math.round(c.reduce((a, b) => a + b, 0) / c.length));
 }
 
+const overlap = (a, b) => Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+
+// Горизонтальные линии вместе с их протяжённостью. Толстая линия даёт подряд
+// несколько рядов — склеиваем их в одну, если они лежат друг над другом.
 function horizontalLines(mask, W, H) {
   const min = W * 0.15;
-  const ys = [];
+  const open = [], done = [];
   // Края листа сами по себе дают линию во всю ширину — таблицей они не бывают.
   for (let y = Math.ceil(H * 0.01); y < H * 0.99; y++) {
-    if (rowRun(mask, W, y) >= min) ys.push(y);
+    for (const [x0, x1] of rowRuns(mask, W, y, min)) {
+      const seg = open.find(s => y - s.last <= 2 && overlap(s, { x0, x1 }) > 0);
+      if (seg) {
+        seg.ys.push(y); seg.last = y;
+        seg.x0 = Math.min(seg.x0, x0); seg.x1 = Math.max(seg.x1, x1);
+      } else {
+        open.push({ ys: [y], last: y, x0, x1 });
+      }
+    }
+    for (let i = open.length - 1; i >= 0; i--) {
+      if (y - open[i].last > 2) done.push(...open.splice(i, 1));
+    }
   }
-  return cluster(ys);
+  done.push(...open);
+  done.sort((a, b) => a.ys[0] - b.ys[0]);
+
+  // Одна толстая линия бывает разорвана текстом или стыком на разных рядах
+  // пикселей и даёт два куска почти на одной высоте. Склеиваем, иначе строка
+  // возьмёт короткий кусок за свою нижнюю границу и обрежется по ширине.
+  // Высота линии — середина всех её рядов: по краю толстой линии граница
+  // строки съехала бы на рамку, и пустая ячейка показалась бы исписанной.
+  const merged = [];
+  for (const s of done) {
+    const twin = merged.find(m => s.ys[0] - m.ys[m.ys.length - 1] <= 3 && overlap(m, s) > 0);
+    if (twin) {
+      twin.ys.push(...s.ys);
+      twin.x0 = Math.min(twin.x0, s.x0); twin.x1 = Math.max(twin.x1, s.x1);
+    } else {
+      merged.push({ ys: [...s.ys], x0: s.x0, x1: s.x1 });
+    }
+  }
+  return merged
+    .map(s => ({ y: Math.round(s.ys.reduce((a, b) => a + b, 0) / s.ys.length), x0: s.x0, x1: s.x1 }))
+    .sort((a, b) => a.y - b.y);
 }
 
-function verticalsInBand(mask, W, y0, y1, minFrac) {
+function verticalsInBand(mask, W, y0, y1, minFrac, xFrom = W * 0.01, xTo = W * 0.99) {
   const need = (y1 - y0) * minFrac;
   const xs = [];
-  for (let x = Math.ceil(W * 0.01); x < W * 0.99; x++) {
+  for (let x = Math.ceil(xFrom); x < xTo; x++) {
     if (colRun(mask, W, x, y0, y1) >= need) xs.push(x);
   }
   return cluster(xs);
@@ -87,9 +128,15 @@ function verticalsInBand(mask, W, y0, y1, minFrac) {
 // Доля тёмных пикселей в прямоугольнике: по ней отличаем ячейку с надписью
 // от пустой, куда и надо писать.
 function inkRatio(mask, W, x0, x1, y0, y1) {
+  const width = x1 - x0 + 1;
   let dark = 0, total = 0;
   for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++, total++) dark += mask[y * W + x];
+    let row = 0;
+    for (let x = x0; x <= x1; x++) row += mask[y * W + x];
+    total += width;
+    // Ряд, закрашенный почти целиком, — край рамки, залезший в ячейку
+    // (толстая линия шире отступа от границы), а не надпись.
+    if (row <= width * 0.7) dark += row;
   }
   return total ? dark / total : 0;
 }
@@ -138,12 +185,24 @@ export function findApprovalRows(masks, W, H) {
   const MAX_ROW = H * 0.09;
 
   // Строки-кандидаты: между линиями стоит рамка ячеек шириной с таблицу.
+  // Верхнюю и нижнюю линию строки берём из одной таблицы — ближайшую снизу,
+  // что лежит под верхней по всей длине. Иначе, когда рядом на той же высоте
+  // стоит другая таблица (характеристики слева от согласования), их линии
+  // перемежаются, строки дробятся на узкие полосы, и подпись уходит не в ту
+  // таблицу, да ещё и мелким шрифтом по высоте полосы.
   const strips = [];
-  for (let i = 0; i < hs.length - 1; i++) {
-    const y0 = hs[i], y1 = hs[i + 1];
+  for (let i = 0; i < hs.length; i++) {
+    const top = hs[i];
+    const bottom = hs.slice(i + 1).find(b => b.y > top.y + 2
+      && overlap(top, b) >= Math.min(top.x1 - top.x0, b.x1 - b.x0) * 0.9);
+    if (!bottom) continue;
+    const y0 = top.y, y1 = bottom.y;
     const gap = y1 - y0;
     if (gap < MIN_ROW || gap > MAX_ROW) continue;
-    const v = verticalsInBand(mask, W, y0 + 3, y1 - 3, 0.85);
+    // Запас по краям: угол рамки сглажен, и одна из линий бывает короче на
+    // несколько пикселей. Больше не берём — соседняя таблица стоит в 30–40 px.
+    const xFrom = Math.max(top.x0, bottom.x0) - 12, xTo = Math.min(top.x1, bottom.x1) + 13;
+    const v = verticalsInBand(mask, W, y0 + 3, y1 - 3, 0.85, xFrom, xTo);
     if (v.length < 2) continue;
     const left = v[0], right = v[v.length - 1];
     if (right - left < W * 0.3) continue;
@@ -152,17 +211,19 @@ export function findApprovalRows(masks, W, H) {
   if (!strips.length) return null;
 
   // Соседние строки одной таблицы стоят вплотную и делят общие боковые рамки.
+  // Строки соседних по высоте таблиц перемежаются, поэтому каждую строку
+  // приставляем к той таблице, чью нижнюю строку она продолжает.
   const tables = [];
-  let cur = [strips[0]];
-  for (const s of strips.slice(1)) {
-    const prev = cur[cur.length - 1];
-    const same = Math.abs(s.y0 - prev.y1) <= 3
-      && Math.abs(s.left - prev.left) <= 4
-      && Math.abs(s.right - prev.right) <= 4;
-    if (same) cur.push(s);
-    else { tables.push(cur); cur = [s]; }
+  for (const s of strips) {
+    const t = tables.find(rows => {
+      const prev = rows[rows.length - 1];
+      return Math.abs(s.y0 - prev.y1) <= 3
+        && Math.abs(s.left - prev.left) <= 4
+        && Math.abs(s.right - prev.right) <= 4;
+    });
+    if (t) t.push(s);
+    else tables.push([s]);
   }
-  tables.push(cur);
 
   const candidates = [];
   for (const t of tables) {
@@ -191,7 +252,11 @@ export function findApprovalRows(masks, W, H) {
   }
   if (!candidates.length) return null;
 
-  // Таблица согласования — самая содержательная и обычно нижняя на листе.
-  candidates.sort((a, b) => (b.rows.length - a.rows.length) || (b.bottom - a.bottom));
+  // В таблице согласования три подписанта — менеджер, заказчик, разработчик.
+  // Ближе всего к этому числу строк и берём: в штампе чертежа рядом бывает
+  // столбик «Материал / Цвет / Установка» такого же устройства, но длиннее.
+  // Дальше — самая содержательная и нижняя на листе.
+  const off = c => Math.abs(c.rows.length - 3);
+  candidates.sort((a, b) => (off(a) - off(b)) || (b.rows.length - a.rows.length) || (b.bottom - a.bottom));
   return candidates[0];
 }
