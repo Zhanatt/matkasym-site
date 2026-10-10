@@ -353,7 +353,7 @@ const BRIEF_FIELDS = [
   'price', 'priceWholesale', 'priceDealer', 'priceCost', 'costCurrency', 'priceUndefined', 'currency',
   'stock', 'stockByBase', 'inBase', 'inStock', 'stockStatus', 'bufferStock',
   'isOnOrder', 'inTransit', 'inTransitQty', 'pendingReceive', 'pendingReceiveQty',
-  'productStatus', 'isKit', 'kitType', 'isSupplied', 'supplier', 'maker', 'isNew', 'hasVideo',
+  'productStatus', 'isKit', 'kitType', 'isSupplied', 'supplier', 'maker', 'hideInPdf', 'isNew', 'hasVideo',
   'images', 'specs', 'updatedAt', 'createdAt',
 ].join(' ');
 

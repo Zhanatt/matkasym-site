@@ -171,6 +171,10 @@ const productSchema = new mongoose.Schema({
   // владелец и дизайнеры (PATCH /admin/products/maker), остальным поле не отдаём.
   maker:            { type: String, enum: ['', 'ikea', 'matkasym', 'china'], default: '' },
 
+  // Не печатать в PDF-каталоге (catalogPrint.js → fitsCatalog). В каталоге сета
+  // товар виден как обычно — скрывается только из выгрузки.
+  hideInPdf:        { type: Boolean, default: false },
+
   // Video
   hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар
 
