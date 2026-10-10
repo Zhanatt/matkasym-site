@@ -280,3 +280,4 @@ export const adminUpdateShopRequest = (id, data)   => api.patch(`/admin/shop-req
 
 export default api;
 export const adminSetProductMaker = (ids, maker) => api.patch('/admin/products/maker', { ids, maker });
+export const adminSetBrandSetFrozen = (key, slug, frozen) => api.patch(`/admin/brands/${key}/sets/${slug}/frozen`, { frozen });

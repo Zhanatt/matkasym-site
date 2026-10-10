@@ -986,6 +986,19 @@ router.delete('/brands/:key/sets/:slug', editor, async (req, res) => {
 });
 
 // Update a set's label in a brand (upsert - creates if not exists)
+// Заморозка сета: не печатается в общем PDF-каталоге направления
+router.patch('/brands/:key/sets/:slug/frozen', editor, async (req, res) => {
+  try {
+    const brand = await Brand.findOneAndUpdate(
+      { key: req.params.key, 'sets.key': req.params.slug },
+      { $set: { 'sets.$.frozen': !!req.body?.frozen } },
+      { new: true }
+    );
+    if (!brand) return res.status(404).json({ error: 'Сет не найден' });
+    res.json(brand);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
 router.put('/brands/:key/sets/:slug', editor, async (req, res) => {
   try {
     const { label, labelRu } = req.body;

@@ -13,6 +13,7 @@ import {
   adminCategoryUsage, adminRenameCategory,
   adminDeleteProduct,
   adminSetProductMaker,
+  adminSetBrandSetFrozen,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
@@ -806,6 +807,16 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     }
   }
 
+  // Заморозка: сет не печатается в общем PDF-каталоге направления
+  async function handleToggleFrozen(slug, frozen) {
+    try {
+      const res = await adminSetBrandSetFrozen(brandKey, slug, frozen);
+      setCustomSets(res.data.sets || []);
+    } catch (e) {
+      alert(e?.response?.data?.error || 'Не удалось изменить заморозку');
+    }
+  }
+
   function startEditSet(slug, currentLabel) {
     setEditingSetKey(slug);
     setEditSetLabel(currentLabel);
@@ -1051,6 +1062,25 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                   ↔ {BRAND_META[b.key]?.label || b.label}
                 </span>
               ))}
+
+              {!isEditingThis && customSet?.frozen && (
+                <span title="Заморожен: в общий PDF-каталог не печатается"
+                  style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: .3, flexShrink: 0,
+                    padding: '1px 6px', borderRadius: 5, whiteSpace: 'nowrap',
+                    color: '#0369a1', background: '#e0f2fe', border: '1px solid #bae6fd' }}>
+                  ❄ ЗАМОРОЗКА
+                </span>
+              )}
+
+              {editing && !isEditingThis && customSet && (
+                <button onClick={() => handleToggleFrozen(slug, !customSet.frozen)}
+                  title={customSet.frozen ? 'Разморозить: сет снова попадёт в общий PDF-каталог' : 'Заморозить: сет не попадёт в общий PDF-каталог'}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, cursor: 'pointer',
+                    border: '1px solid ' + (customSet.frozen ? '#7dd3fc' : '#e0e0e0'),
+                    background: customSet.frozen ? '#e0f2fe' : '#fff', color: customSet.frozen ? '#0369a1' : '#555' }}>
+                  {customSet.frozen ? '❄ Разморозить' : '❄ Заморозить'}
+                </button>
+              )}
 
               {editing && !isEditingThis && (
                 <>

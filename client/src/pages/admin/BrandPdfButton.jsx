@@ -45,7 +45,10 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
   const [picked, setPicked] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef(null);
-  const isPicked = key => !picked || picked.has(key);
+  // Замороженный сет в общий каталог не идёт: по умолчанию он не отмечен,
+  // но поставить галочку вручную можно — для отдельной встречи.
+  const isFrozen = key => !!sets.find(s => s.key === key)?.frozen;
+  const isPicked = key => (picked ? picked.has(key) : !isFrozen(key));
   const pickedCount = sets.filter(s => isPicked(s.key)).length;
 
   useEffect(() => {
@@ -58,7 +61,9 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
   const togglePick = key => {
     const next = new Set(sets.filter(s => isPicked(s.key)).map(s => s.key));
     if (next.has(key)) next.delete(key); else next.add(key);
-    setPicked(next.size === sets.length ? null : next);
+    const byDefault = sets.filter(s => !isFrozen(s.key)).map(s => s.key);
+    const same = next.size === byDefault.length && byDefault.every(k => next.has(k));
+    setPicked(same ? null : next);
   };
 
   const handleClick = async () => {
@@ -84,7 +89,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const layouts = layoutRes.data?.layouts || {};
 
       const availableProducts = allProducts.filter(fitsCatalog)
-        .filter(p => !picked || picked.has(p.set));
+        .filter(p => isPicked(p.set));
 
       if (picked && picked.size === 0) {
         alert('Не выбран ни один сет');
@@ -203,6 +208,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
                   borderRadius: 6, fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
                   <input type="checkbox" checked={isPicked(s.key)} onChange={() => togglePick(s.key)} />
                   {s.label || s.key}
+                  {s.frozen && <span title="Заморожен: в общий каталог не идёт" style={{ marginLeft: 'auto', fontSize: 11, color: '#0369a1' }}>❄ заморожен</span>}
                 </label>
               ))}
             </div>

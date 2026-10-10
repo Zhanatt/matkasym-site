@@ -8,6 +8,9 @@ const SetSchema = new mongoose.Schema({
   image:    { type: String, default: '' },    // Google Drive file ID or URL
   levels:   [{ type: String }],               // ['Standard', 'VIP', 'Premium']
   order:    { type: Number, default: 0 },
+  // Заморозка: сет не идёт в общий PDF-каталог направления (BrandPdfButton).
+  // Вручную через «Все сеты» его отметить можно; на сайте и в админке виден как обычно.
+  frozen:   { type: Boolean, default: false },
 });
 
 const BrandSchema = new mongoose.Schema({
