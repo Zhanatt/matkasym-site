@@ -167,6 +167,10 @@ const productSchema = new mongoose.Schema({
   pendingReceiveQty:{ type: Number, default: 0 },       // ожидаемое количество для приёмки
   isOnOrder:        { type: Boolean, default: false },  // товар под заказ (производим/закупаем по запросу)
 
+  // Кто сделал товар — значок на фото в каталоге сета. Ставят и видят только
+  // владелец и дизайнеры (PATCH /admin/products/maker), остальным поле не отдаём.
+  maker:            { type: String, enum: ['', 'ikea', 'matkasym', 'china'], default: '' },
+
   // Video
   hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар
 

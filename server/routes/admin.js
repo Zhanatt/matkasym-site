@@ -353,7 +353,7 @@ const BRIEF_FIELDS = [
   'price', 'priceWholesale', 'priceDealer', 'priceCost', 'costCurrency', 'priceUndefined', 'currency',
   'stock', 'stockByBase', 'inBase', 'inStock', 'stockStatus', 'bufferStock',
   'isOnOrder', 'inTransit', 'inTransitQty', 'pendingReceive', 'pendingReceiveQty',
-  'productStatus', 'isKit', 'kitType', 'isSupplied', 'supplier', 'isNew', 'hasVideo',
+  'productStatus', 'isKit', 'kitType', 'isSupplied', 'supplier', 'maker', 'isNew', 'hasVideo',
   'images', 'specs', 'updatedAt', 'createdAt',
 ].join(' ');
 
@@ -413,6 +413,8 @@ router.get('/products', async (req, res) => {
     ]);
     // Объём урн — для плашки на фото; в brief-выборке нет нужных характеристик
     if (brief === '1') await attachUrnVolume(products);
+    // Производителя видят только владелец и дизайнеры
+    if (brief === '1' && !canSetMaker(req.user)) products.forEach(p => { delete p.maker; });
     res.json({
       products: asSetView ? products.map(p => viewForSet(p, set, country)) : products,
       total, page: Number(page), pages: Math.ceil(total / limit),
@@ -751,6 +753,23 @@ async function dropUnusedImages(removed, productId) {
   }
 }
 
+// Производитель — значок на фото в каталоге сета (IKEA / MATKASYM / Китай).
+// Меняют только владелец и дизайнеры; ставится сразу всем вариантам карточки.
+const canSetMaker = u => ['owner', 'designer'].includes(u?.role);
+router.patch('/products/maker', async (req, res) => {
+  if (!canSetMaker(req.user)) return res.status(403).json({ error: 'Производителя меняют владелец и дизайнеры' });
+  const { ids, maker } = req.body || {};
+  if (!['', 'ikea', 'matkasym', 'china'].includes(maker)) return res.status(400).json({ error: 'Неизвестный производитель' });
+  const list = (Array.isArray(ids) ? ids : []).filter(isValidId);
+  if (!list.length) return res.status(400).json({ error: 'Не выбраны товары' });
+  try {
+    const r = await Product.updateMany({ _id: { $in: list } }, { $set: { maker } });
+    res.json({ updated: r.modifiedCount, maker });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.patch('/products/:id', editor, async (req, res) => {
   if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
   try {
@@ -761,6 +780,7 @@ router.patch('/products/:id', editor, async (req, res) => {
     // они не могут: молча оставляем прежнее значение, чтобы сохранение формы
     // с пустым (скрытым) полем не обнулило цифру.
     if (!isOwner(req.user)) delete req.body.priceCost;
+    delete req.body.maker;
 
     // Detect changed fields
     const changes = [];

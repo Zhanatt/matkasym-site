@@ -12,6 +12,7 @@ import {
   adminSaveSetLayout,
   adminCategoryUsage, adminRenameCategory,
   adminDeleteProduct,
+  adminSetProductMaker,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 import BrandPdfButton from './BrandPdfButton';
@@ -23,7 +24,7 @@ import { canEditCatalog, canExportLalafo } from '../../constants/roles';
 import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
-import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE } from '../../components/ProductBadges';
+import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS } from '../../components/ProductBadges';
 
 // ── страна учёта ───────────────────────────────────────────────────────────────
 
@@ -1229,6 +1230,16 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const defaultMode = RETAIL_BRANDS.has(brandKey) ? 'retail' : 'retail';
   const [priceMode, setPriceMode]         = useState(defaultMode);
   const [products,  setProducts]          = useState([]);
+  // Производитель ставится всем вариантам карточки сразу — значок у них общий
+  const setMaker = async (variants, maker) => {
+    const ids = new Set(variants.map(v => String(v._id)));
+    try {
+      await adminSetProductMaker([...ids], maker);
+      setProducts(prev => prev.map(p => (ids.has(String(p._id)) ? { ...p, maker } : p)));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Не удалось сохранить производителя');
+    }
+  };
   const [loading,   setLoading]           = useState(true);
   const [loadingMore, setLoadingMore]     = useState(false);   // хвост сета едет фоном
   const scrollRef = useRef(null);
@@ -2314,19 +2325,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               onClick={e => { e.stopPropagation(); setToDelete({ name, variants }); }}
                             >×</button>
                           )}
-                          <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {!hasColorOnly && (
                               <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                                 onError={e => { e.target.src = NO_PHOTO; }} />
                             )}
-                            {primary.isSupplied && (
-                              // В режиме правки левый верхний угол занят крестиком —
-                              // сдвигаем бейдж вниз, чтобы не перекрывали друг друга.
-                              <div style={{ position: 'absolute', top: editMode ? 36 : 6, left: 6 }}>
-                                <SupplierBadge product={primary} />
+                            {/* Производитель — выбирают прямо здесь (владелец и дизайнеры); пока не выбран, виден поставщик.
+                                В режиме правки левый верхний угол занят крестиком — сдвигаем вниз. */}
+                              <div style={{ position: 'absolute', top: editMode ? 36 : 6, left: 6, display: 'flex', flexDirection: 'column', gap: 4, zIndex: 2 }}>
+                                <MakerPicker product={primary} onChange={maker => setMaker(variants, maker)} />
+                                {primary.isSupplied && !MAKERS[primary.maker] && <SupplierBadge product={primary} />}
                               </div>
-                            )}
                             {showBadge && (
                               <div style={{ position: 'absolute', top: 6, right: 6 }}>
                                 <StatusBadge product={primary} />
@@ -2401,17 +2411,17 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
-                    <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {!hasColorOnly && (
                         <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                           style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                           onError={e => { e.target.src = NO_PHOTO; }} />
                       )}
-                      {primary.isSupplied && (
-                        <div style={{ position: 'absolute', top: 6, left: 6 }}>
-                          <SupplierBadge product={primary} />
+                      {/* Производитель — выбирают прямо здесь (владелец и дизайнеры); пока не выбран, виден поставщик */}
+                        <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', gap: 4, zIndex: 2 }}>
+                          <MakerPicker product={primary} onChange={maker => setMaker(variants, maker)} />
+                          {primary.isSupplied && !MAKERS[primary.maker] && <SupplierBadge product={primary} />}
                         </div>
-                      )}
                       {showBadge && (
                         <div style={{ position: 'absolute', top: 6, right: 6 }}>
                           <StatusBadge product={primary} />
@@ -2499,17 +2509,17 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                     >
-                      <div style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {!hasColorOnly && (
                           <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                             onError={e => { e.target.src = NO_PHOTO; }} />
                         )}
-                        {primary.isSupplied && (
-                          <div style={{ position: 'absolute', top: 6, left: 6 }}>
-                            <SupplierBadge product={primary} />
+                        {/* Производитель — выбирают прямо здесь (владелец и дизайнеры); пока не выбран, виден поставщик */}
+                          <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', flexDirection: 'column', gap: 4, zIndex: 2 }}>
+                            <MakerPicker product={primary} onChange={maker => setMaker(variants, maker)} />
+                            {primary.isSupplied && !MAKERS[primary.maker] && <SupplierBadge product={primary} />}
                           </div>
-                        )}
                         {showBadge && (
                           <div style={{ position: 'absolute', top: 6, right: 6 }}>
                             <StatusBadge product={primary} />

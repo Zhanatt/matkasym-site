@@ -35,3 +35,29 @@
 @media (prefers-reduced-motion: reduce) {
   .set-jiggle { animation: none; }
 }
+
+/* ── Производитель на фото (IKEA / MATKASYM / Китай) ── */
+.maker-btn { all: unset; cursor: pointer; display: block; line-height: 0; border-radius: 4px; }
+.maker-btn:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }
+.maker-add {
+  width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%;
+  background: rgba(255,255,255,.95); color: #6b7280; font: 600 15px/22px system-ui, sans-serif;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18); opacity: 0; transition: opacity .15s;
+}
+.set-photo:hover .maker-add, .maker-add:focus-visible, .maker-add[aria-expanded="true"] { opacity: 1; }
+@media (hover: none) { .maker-add { opacity: .85; } }
+.maker-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 150px;
+  background: #fff; border-radius: 10px; padding: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.05);
+}
+.maker-menu button {
+  all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 9px;
+  padding: 7px 9px; border-radius: 7px; font: 500 12.5px/1.2 system-ui, sans-serif; color: #1c1e21;
+}
+.maker-menu button:hover, .maker-menu button:focus-visible { background: #f3f4f6; }
+.maker-menu button.on { background: #eef4ff; color: #1d4ed8; }
+.maker-menu .maker-ico { width: 64px; display: flex; justify-content: flex-start; line-height: 0; }
+.maker-menu .maker-ico img, .maker-menu .maker-ico svg, .maker-menu .maker-ico span { box-shadow: none !important; }
+.maker-menu .maker-ico span { border: 1px solid #e5e7eb; }
+.maker-menu .maker-clear { color: #6b7280; border-top: 1px solid #f0f0f0; border-radius: 0 0 7px 7px; margin-top: 2px; }

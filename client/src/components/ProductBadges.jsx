@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export const STATUS_BADGE = {
@@ -173,5 +174,93 @@ export function ProductImageBadges({ product }) {
         </div>
       )}
     </>
+  );
+}
+
+// ── Производитель ────────────────────────────────────────────────────────────
+// Значок в левом верхнем углу фото в каталоге сета: IKEA, MATKASYM или Китай.
+// Выбирают прямо на карточке, не открывая её. Видят и меняют только владелец
+// и дизайнеры — сервер остальным поле не отдаёт и менять не даёт.
+export const canSetMaker = user => ['owner', 'designer'].includes(user?.role);
+
+const BADGE_H = 18;
+const chip = { height: BADGE_H, borderRadius: 3, boxShadow: '0 1px 4px rgba(0,0,0,.15)', display: 'block' };
+
+function ChinaFlag() {
+  // Пропорции 3:2, большая звезда и четыре малые — как на флаге
+  const star = 'M0,-1 L0.2245,-0.309 L0.951,-0.309 L0.363,0.118 L0.588,0.809 L0,0.382 L-0.588,0.809 L-0.363,0.118 L-0.951,-0.309 L-0.2245,-0.309Z';
+  return (
+    <svg viewBox="0 0 30 20" style={{ ...chip, width: BADGE_H * 1.5 }} aria-label="Китай">
+      <rect width="30" height="20" fill="#de2910" />
+      <path d={star} fill="#ffde00" transform="translate(5,5) scale(3)" />
+      {[[10, 2, 23], [12, 4, 45], [12, 7, 70], [10, 9, 20]].map(([x, y, r]) => (
+        <path key={x + '-' + y} d={star} fill="#ffde00" transform={`translate(${x},${y}) rotate(${r}) scale(1)`} />
+      ))}
+    </svg>
+  );
+}
+
+export const MAKERS = {
+  ikea:     { label: 'IKEA',     render: () => <img src="/logos/ikea.svg" alt="IKEA" style={{ ...chip }} /> },
+  matkasym: { label: 'MATKASYM', render: () => (
+    <span style={{ ...chip, background: '#fff', padding: '0 6px', display: 'flex', alignItems: 'center' }}>
+      <img src="/logos/logo-main.png" alt="MATKASYM" style={{ height: 9, display: 'block' }} />
+    </span>
+  ) },
+  china:    { label: 'Китай',    render: () => <ChinaFlag /> },
+};
+
+const stop = e => e.stopPropagation();
+
+export function MakerPicker({ product, onChange }) {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = e => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    const esc = e => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  if (!canSetMaker(user)) return null;
+  const current = MAKERS[product.maker];
+
+  const pick = async value => {
+    setOpen(false);
+    if (value === (product.maker || '')) return;
+    setBusy(true);
+    try { await onChange(value); } finally { setBusy(false); }
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }} onClick={stop} onPointerDown={stop} onMouseDown={stop}>
+      <button
+        type="button"
+        className={current ? 'maker-btn' : 'maker-btn maker-add'}
+        title={current ? `Производитель: ${current.label}. Нажмите, чтобы изменить` : 'Указать производителя'}
+        aria-haspopup="menu" aria-expanded={open}
+        disabled={busy}
+        onClick={() => setOpen(o => !o)}
+        style={{ opacity: busy ? .5 : undefined }}
+      >
+        {current ? current.render() : '+'}
+      </button>
+      {open && (
+        <div role="menu" className="maker-menu">
+          {Object.entries(MAKERS).map(([key, m]) => (
+            <button key={key} type="button" role="menuitemradio" aria-checked={product.maker === key}
+              className={product.maker === key ? 'on' : ''} onClick={() => pick(key)}>
+              <span className="maker-ico">{m.render()}</span>{m.label}
+            </button>
+          ))}
+          {current && <button type="button" role="menuitem" className="maker-clear" onClick={() => pick('')}>Убрать</button>}
+        </div>
+      )}
+    </div>
   );
 }

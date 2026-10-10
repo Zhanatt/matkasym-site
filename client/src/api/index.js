@@ -279,3 +279,4 @@ export const adminGetShopRequests   = (params)     => api.get('/admin/shop-reque
 export const adminUpdateShopRequest = (id, data)   => api.patch(`/admin/shop-requests/${id}`, data);
 
 export default api;
+export const adminSetProductMaker = (ids, maker) => api.patch('/admin/products/maker', { ids, maker });
