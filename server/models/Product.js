@@ -178,6 +178,9 @@ const productSchema = new mongoose.Schema({
   // печатаются одной карточкой с этим названием, а их цвета (из скобок в
   // названии) — строкой «цвет». Например, баки Tazalyk разных цветов.
   pdfGroup:         { type: String, default: '' },
+  // Подпись варианта внутри pdfGroup («MINI 7-9»): если задана, карточка
+  // печатает варианты строками «подпись — цена» вместо общей цены.
+  pdfVariant:       { type: String, default: '' },
 
   // Video
   hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар

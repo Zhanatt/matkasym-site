@@ -157,7 +157,13 @@ function cardHtml(product, priceType, currency) {
   const kicker = categoryLabel(product.category);
 
   // Порядок строк как в макете: сначала габариты, потом характеристики товара.
-  const rows = [];
+  // У объединённой карточки с размерами (pdfVariant) первыми идут варианты
+  // строками «MINI 7-9 — 480 сом», общей цены у неё нет.
+  const variants = product.__variants || [];
+  const rows = variants.map(v => {
+    const price = priceType !== 'none' && !v.priceUndefined ? Number(v[priceType]) || 0 : 0;
+    return { k: v.label, v: price > 0 ? `${price.toLocaleString('ru')} ${currency}` : '' };
+  });
   if (product.dimensions) rows.push({ k: 'габариты (ДхШхВ)', v: product.dimensions });
   (product.specs || []).forEach(s => {
     if (s?.value && !rows.some(r => r.k === s.key)) {
@@ -176,7 +182,7 @@ function cardHtml(product, priceType, currency) {
 
   // «Цена ещё не определена» — в каталоге цифры быть не должно, даже если поле
   // заполнено: там лежит прикидка, а не цена, по которой продают.
-  const value = priceType !== 'none' && !product.priceUndefined ? Number(product[priceType]) || 0 : 0;
+  const value = !variants.length && priceType !== 'none' && !product.priceUndefined ? Number(product[priceType]) || 0 : 0;
 
   // У красок фото нет, зато цвет записан кодом («#F7F9EF») — как на сайте, кадр
   // заливается самим цветом: по образцу краску и выбирают.
@@ -204,7 +210,7 @@ function cardHtml(product, priceType, currency) {
         </div>` : ''}
       </div>
       <div class="specs">${
-        rows.slice(0, 4).map(r =>
+        rows.slice(0, Math.max(4, variants.length)).map(r =>
           `<div class="row"><span class="k">${esc(r.k)}</span><span class="v">${esc(r.v)}</span></div>`
         ).join('')
       }</div>
@@ -549,6 +555,19 @@ function mergePdfGroups(products) {
       specs: (cover.specs || []).filter(s => !/^цвет$/i.test(s.key)),
       color: colors.map(c => c.toLowerCase()).join(', ') };
     ['price', 'priceWholesale', 'priceDealer'].forEach(f => { const v = minOf(f); if (Number.isFinite(v)) merged[f] = v; });
+
+    // Варианты-размеры: строка на каждый с его ценой, от дешёвого к дорогому.
+    // Габариты у них разные — их не печатаем, из характеристик оставляем общие.
+    if (items.some(i => i.pdfVariant)) {
+      merged.__variants = [...items]
+        .sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
+        .map(i => ({ label: i.pdfVariant || i.name, price: i.price, priceWholesale: i.priceWholesale,
+                     priceDealer: i.priceDealer, priceUndefined: i.priceUndefined }));
+      const norm = s => String(s?.value ?? '').trim().toLowerCase();
+      merged.specs = (cover.specs || []).filter(s => s?.value && !/^цвет$/i.test(s.key)
+        && items.every(i => (i.specs || []).some(t => t.key?.toLowerCase() === s.key?.toLowerCase() && norm(t) === norm(s))));
+      merged.dimensions = '';
+    }
     return merged;
   });
 }
