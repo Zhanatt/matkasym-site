@@ -174,6 +174,10 @@ const productSchema = new mongoose.Schema({
   // Не печатать в PDF-каталоге (catalogPrint.js → fitsCatalog). В каталоге сета
   // товар виден как обычно — скрывается только из выгрузки.
   hideInPdf:        { type: Boolean, default: false },
+  // Одна карточка в PDF на несколько товаров: у кого значение совпадает, те
+  // печатаются одной карточкой с этим названием, а их цвета (из скобок в
+  // названии) — строкой «цвет». Например, баки Tazalyk разных цветов.
+  pdfGroup:         { type: String, default: '' },
 
   // Video
   hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар

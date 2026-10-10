@@ -67,6 +67,8 @@ const COLOR_HEX = {
   'серебристый': '#C0C0C0', 'silver': '#C0C0C0',
   'красный': '#D32F2F', 'red': '#D32F2F',
   'синий': '#1565C0', 'blue': '#1565C0',
+  'темно-серый': '#4A4F55', 'тёмно-серый': '#4A4F55',
+  'желтый': '#F2C200', 'жёлтый': '#F2C200',
   'зеленый': '#2E7D32', 'зелёный': '#2E7D32', 'green': '#2E7D32',
   'бежевый': '#D4B896', 'beige': '#D4B896',
   'коричневый': '#795548', 'brown': '#795548',
@@ -518,6 +520,39 @@ const MOBILE_K = 0.88;
  * красная плашка цены напечатается белой. Кнопка есть и на самой странице.
  *
  */
+// Цвет варианта: из последних скобок названия («… (Темно-серый)»), иначе поле color
+const variantColor = p => {
+  const m = String(p.name || '').match(/\(([^()]+)\)\s*$/);
+  const c = (m ? m[1] : p.color || '').trim();
+  return /^#[0-9a-f]{6}$/i.test(c) ? '' : c;
+};
+
+// Товары с одинаковым pdfGroup печатаются одной карточкой: фото и характеристики
+// первого (в порядке сета), название — сам pdfGroup, цвета всех — строкой «цвет»
+// с кружками-образцами. Цена — общая, а если разная, то меньшая.
+function mergePdfGroups(products) {
+  const out = [];
+  const byKey = new Map();
+  products.forEach(p => {
+    const key = p?.pdfGroup;
+    if (!key) { out.push(p); return; }
+    if (!byKey.has(key)) { byKey.set(key, []); out.push({ __pdfGroup: key }); }
+    byKey.get(key).push(p);
+  });
+  return out.map(p => {
+    if (!p?.__pdfGroup) return p;
+    const items = byKey.get(p.__pdfGroup);
+    const cover = items[0];
+    const colors = [...new Set(items.map(variantColor).filter(Boolean))];
+    const minOf = f => Math.min(...items.map(i => Number(i[f]) || Infinity));
+    const merged = { ...cover, name: p.__pdfGroup, fullName: p.__pdfGroup,
+      specs: (cover.specs || []).filter(s => !/^цвет$/i.test(s.key)),
+      color: colors.map(c => c.toLowerCase()).join(', ') };
+    ['price', 'priceWholesale', 'priceDealer'].forEach(f => { const v = minOf(f); if (Number.isFinite(v)) merged[f] = v; });
+    return merged;
+  });
+}
+
 export async function printCatalog(groups, setName, priceType = 'price', brand = 'home', currency = 'сом',
                                    { headFromGroups = true } = {}) {
   // <base> обязателен: окно открывается как about:blank, и без него относительные
@@ -526,6 +561,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   const cover = COVERS[brand] || COVERS.home;
   const mobile = MOBILE();
   await loadCategoryLabels();
+  groups = groups.map(g => ({ ...g, products: mergePdfGroups(g.products || []) }));
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
