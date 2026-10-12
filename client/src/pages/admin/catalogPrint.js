@@ -166,7 +166,8 @@ const hasPhoto = p => Boolean(p.images?.[0]) || /^#[0-9a-f]{6}$/i.test(String(p.
 export const fitsCatalog = p =>
   Boolean(p)
   && p.productStatus !== 'kit_part'
-  && hasPhoto(p)
+  // Цвет из pdfGroup печатается кружком на карточке группы — своё фото ему не нужно
+  && (hasPhoto(p) || Boolean(p.pdfGroup))
   && !p.hideInPdf
   && !(isTestSale(p) && HIDE_TEST_SALE[p.brand])
   && (p.inStock || p.stock > 0 || p.isOnOrder || isTestSale(p));
@@ -954,7 +955,8 @@ const MOBILE_K = 0.88;
 // Цвет варианта: из последних скобок названия («… (Темно-серый)»), иначе поле color
 const variantColor = p => {
   const m = String(p.name || '').match(/\(([^()]+)\)\s*$/);
-  const c = (m ? m[1] : p.color || '').trim();
+  // «(Зеленая)», «(Синяя)» → «Зеленый», «Синий»: образцы знают мужской род
+  const c = (m ? m[1] : p.color || '').trim().replace(/ая$/i, 'ый').replace(/яя$/i, 'ий');
   return /^#[0-9a-f]{6}$/i.test(c) ? '' : c;
 };
 
@@ -970,10 +972,12 @@ function mergePdfGroups(products) {
     if (!byKey.has(key)) { byKey.set(key, []); out.push({ __pdfGroup: key }); }
     byKey.get(key).push(p);
   });
-  return out.map(p => {
-    if (!p?.__pdfGroup) return p;
+  return out.flatMap(p => {
+    if (!p?.__pdfGroup) return [p];
     const items = byKey.get(p.__pdfGroup);
-    const cover = items[0];
+    // Фото карточки — у первого с фото; группу совсем без фото не печатаем
+    const cover = items.find(hasPhoto);
+    if (!cover) return [];
     const colors = [...new Set(items.map(variantColor).filter(Boolean))];
     const minOf = f => Math.min(...items.map(i => Number(i[f]) || Infinity));
     const merged = { ...cover, name: p.__pdfGroup, fullName: p.__pdfGroup,
@@ -993,7 +997,7 @@ function mergePdfGroups(products) {
         && items.every(i => (i.specs || []).some(t => t.key?.toLowerCase() === s.key?.toLowerCase() && norm(t) === norm(s))));
       merged.dimensions = '';
     }
-    return merged;
+    return [merged];
   });
 }
 
