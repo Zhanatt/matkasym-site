@@ -48,10 +48,13 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
       pdfGroups = useGroups
         .filter(([groupName]) => groupName !== 'Нет в наличии')
         .map(([groupName, items]) => {
-          // items is array of [name, variants] — extract first variant (primary product)
+          // items is array of [name, variants] — first variant that fits the catalog.
+          // Одноимённые карточки идут одной строкой: если первой стоит скрытая
+          // (hideInPdf) или без остатка, печатаем следующую, а не теряем товар
+          // (так пропадал SW3 — первым шёл его пустой дубль).
           const groupProducts = items
-            .map(([, variants]) => variants[0])
-            .filter(fitsCatalog);
+            .map(([, variants]) => variants.find(fitsCatalog))
+            .filter(Boolean);
           return { groupName, products: groupProducts };
         })
         .filter(g => g.products.length > 0);
