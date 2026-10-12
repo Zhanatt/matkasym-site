@@ -432,7 +432,8 @@ function rangeHtml(range, priceType, currency) {
   // Общий масштаб: самый крупный короб занимает кадр ячейки целиком
   const dims = items.map(boxDims);
   const perRow = items.length <= 6 ? items.length : Math.ceil(items.length / 2);
-  const cellW = (COL_W * 2 + GUTTER) / perRow - 8, cellH = 118;
+  // Один ряд — короба крупнее, иначе под ним пустует полстраницы
+  const cellW = (COL_W * 2 + GUTTER) / perRow - 8, cellH = items.length <= perRow ? 210 : 118;
   const s = Math.min(...dims.filter(Boolean).map(([h, w, d]) =>
     Math.min(cellW / (w + d * 0.435), cellH / (h + d * 0.25))));
 
