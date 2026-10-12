@@ -218,6 +218,118 @@ function cardHtml(product, priceType, currency) {
 }
 
 // ── Обложка ───────────────────────────────────────────────────────────────────
+// ── Серия ─────────────────────────────────────────────────────────────────────
+// Модели одной серии (шкафы AICHUROK GK 4 / 6 / 9 / 12) — одним блоком на весь
+// ряд полосы: слева общее фото, справа название и общие характеристики с ценой
+// «от», снизу лента моделей — у каждой свой снимок, двери или отделка, габариты
+// и цена. Так серию видно целиком и модели сравнивают рядом, а не листая.
+const SERIES_MAX = 6;   // моделей в ленте; больше — серия продолжается новым рядом
+
+const plural = (n, one, few, many) => {
+  const a = Math.abs(n) % 100, b = a % 10;
+  return a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many;
+};
+const specOf = (p, re) => (p.specs || []).find(s => re.test(s.key || '') && s.value)?.value;
+
+// Чем модель отличается от соседей по серии: двери, ящики или отделка — берём
+// то, что у моделей разное (у IS ящиков по два у всех, различает отделка).
+const NOTES = [
+  p => { const n = Number(specOf(p, /дверей/i)); return n ? `${n} ${plural(n, 'дверь', 'двери', 'дверей')}` : ''; },
+  p => { const n = Number(specOf(p, /ящик/i));   return n ? `${n} ${plural(n, 'ящик', 'ящика', 'ящиков')}` : ''; },
+  p => specOf(p, /отделк|цвет/i) || '',
+];
+function noteFor(items) {
+  const differs = NOTES.find(f => new Set(items.map(f)).size > 1);
+  const pick = differs || NOTES.find(f => items.some(f));
+  return p => (pick ? pick(p) : '');
+}
+
+// «H1850*W900*D500» → «185×90×50 см» (В×Ш×Г, как на этикетках шкафов)
+function dimsShort(p) {
+  const ax = {};
+  for (const m of String(p.dimensions || '').matchAll(/([HWD])\s*(\d+)/gi)) ax[m[1].toUpperCase()] = +m[2];
+  if (!(ax.H && ax.W)) return String(p.dimensions || '');
+  return [ax.H, ax.W, ax.D].filter(Boolean).map(v => Math.round(v / 10)).join('×') + ' см';
+}
+
+const priceOf = (p, priceType) =>
+  priceType !== 'none' && !p.priceUndefined ? Number(p[priceType]) || 0 : 0;
+
+function seriesHtml(series, priceType, currency) {
+  const { title, items, hero } = series;
+  const prices = items.map(i => priceOf(i, priceType)).filter(v => v > 0);
+  const from = prices.length ? Math.min(...prices) : 0;
+
+  // Общие для всех моделей характеристики; различия видно в ленте
+  const norm = v => String(v ?? '').trim().toLowerCase();
+  const rows = [];
+  const dims = [...new Set(items.map(dimsShort))];
+  if (dims.length === 1 && dims[0]) rows.push({ k: 'габариты (В×Ш×Г)', v: dims[0] });
+  (hero.specs || []).forEach(sp => {
+    if (!sp?.value || /кит\.|EXW|упаков|брутто|кол-во в коробке/i.test(sp.key)) return;
+    if (rows.some(r => r.k.toLowerCase() === sp.key.toLowerCase())) return;
+    if (items.every(i => (i.specs || []).some(t => norm(t.key) === norm(sp.key) && norm(t.value) === norm(sp.value)))) {
+      rows.push({ k: sp.key, v: sp.unit ? `${sp.value} ${sp.unit}` : sp.value });
+    }
+  });
+  rows.push({ k: 'моделей в серии', v: String(series.total) });
+
+  const note = noteFor(items);
+  const strip = items.map(i => {
+    const v = priceOf(i, priceType);
+    const img = printImg(i.images?.[0]);
+    return `
+      <div class="sv">
+        <div class="sv-shot">${img ? `<img src="${esc(img)}" alt="">` : ''}</div>
+        <div class="sv-code">${esc(i.pdfVariant || i.name)}</div>
+        <div class="sv-note">${esc(note(i))}</div>
+        <div class="sv-dims">${esc(dimsShort(i))}</div>
+        ${v > 0 ? `<div class="sv-pill">${v.toLocaleString('ru')} ${esc(currency)}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="series">
+      <div class="se-top">
+        <div class="se-hero">${hero.images?.[0] ? `<img src="${esc(printImg(hero.images[0]))}" alt="">` : ''}</div>
+        <div class="se-info">
+          <div class="kicker">${esc(categoryLabel(hero.category))}</div>
+          <div class="se-name">${esc(title)}</div>
+          ${from > 0 ? `
+          <div class="se-price">
+            <div class="plabel">${esc(PRICE_LABELS[priceType] || '')}${prices.length > 1 ? ' от' : ''}</div>
+            <div class="pill">${from.toLocaleString('ru')} ${esc(currency)}</div>
+          </div>` : ''}
+          <div class="specs">${rows.slice(0, 5).map(r =>
+            `<div class="row"><span class="k">${esc(r.k)}</span><span class="v">${esc(r.v)}</span></div>`).join('')}</div>
+        </div>
+      </div>
+      <div class="se-strip" style="--n:${Math.max(items.length, 4)}">${strip}</div>
+    </div>`;
+}
+
+// Товары с одинаковым pdfSeries сворачиваются в серию на месте первого из них.
+// Модели в ленте — от меньшей цены к большей; фото серии — у первого по порядку сета.
+function collectSeries(products) {
+  const out = [];
+  const byKey = new Map();
+  products.forEach(p => {
+    const key = p?.pdfSeries;
+    if (!key) { out.push(p); return; }
+    if (!byKey.has(key)) { byKey.set(key, []); out.push({ __series: key }); }
+    byKey.get(key).push(p);
+  });
+  return out.flatMap(p => {
+    if (!p?.__series) return [p];
+    const all = byKey.get(p.__series);
+    const hero = all[0];
+    const sorted = [...all].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+    const chunks = [];
+    for (let i = 0; i < sorted.length; i += SERIES_MAX) chunks.push(sorted.slice(i, i + SERIES_MAX));
+    return chunks.map(items => ({ __seriesBlock: { title: p.__series, items, hero, total: all.length } }));
+  });
+}
+
 function coverHtml(src) {
   return `<section class="page"><div class="sheet cover"><img src="${esc(src)}" alt=""></div></section>`;
 }
@@ -234,7 +346,7 @@ function pageHtml(cards, setName, pageNumber, priceType, currency) {
       <div class="sheet">
         <header class="phead">${logoLeft ? logo + title : title + logo}</header>
         <div class="grid">
-          ${cards.map(c => cardHtml(c, priceType, currency)).join('')}
+          ${cards.map(c => (c?.__seriesBlock ? seriesHtml(c.__seriesBlock, priceType, currency) : cardHtml(c, priceType, currency))).join('')}
         </div>
       </div>
     </section>`;
@@ -476,6 +588,51 @@ html, body {
 }
 .row .k { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .v { flex: 0 0 auto; font-weight: 500; text-align: right; white-space: nowrap; }
+
+/* ── Серия: блок на весь ряд ─────────────────────────────────────────────── */
+.series {
+  grid-column: 1 / -1;
+  height: ${CARD_PITCH}pt;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.se-top {
+  display: grid;
+  grid-template-columns: ${COL_W}pt ${COL_W}pt;
+  column-gap: ${GUTTER}pt;
+  height: 206pt;
+}
+.se-hero { height: 206pt; display: flex; align-items: flex-end; justify-content: center; }
+.se-hero img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.se-info { display: flex; flex-direction: column; justify-content: flex-end; }
+.se-name {
+  font-size: 19pt; font-weight: 700; line-height: 1.1; margin-top: 1pt;
+  padding-bottom: 8pt; border-bottom: 1.5pt solid ${RULE};
+}
+.se-price { margin-top: 8pt; }
+.se-info .specs { margin-top: 4pt; }
+
+/* Лента моделей: колонки поровну, у каждой снимок на общей линии пола */
+.se-strip {
+  margin-top: 14pt;
+  padding-top: 10pt;
+  border-top: 0.5pt solid ${RULE};
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  column-gap: 10pt;
+}
+.sv { min-width: 0; text-align: center; }
+.sv-shot { height: 92pt; display: flex; align-items: flex-end; justify-content: center; }
+.sv-shot img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.sv-code { margin-top: 6pt; font-size: 10.5pt; font-weight: 700; line-height: 1.15; }
+.sv-note { margin-top: 1.5pt; font-size: 8pt; line-height: 1.25; }
+.sv-dims { font-size: 7.5pt; line-height: 1.3; color: #5a6a6d; }
+.sv-pill {
+  display: inline-block; margin-top: 4pt; padding: 0 6pt;
+  height: 15pt; line-height: 15pt; border-radius: 3pt;
+  background: ${RED}; color: #fff; font-size: 9pt; white-space: nowrap;
+}
 `;
 
 // ── Сборка документа ──────────────────────────────────────────────────────────
@@ -498,16 +655,26 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     (group.products || []).forEach(product => stream.push({ product, section }));
   });
 
+  // Серия занимает целый ряд (две ячейки) и встаёт с начала ряда: если ряд уже
+  // начат карточкой, его вторая ячейка остаётся пустой.
   const pages = [];
-  for (let i = 0; i < stream.length; i += PER_PAGE) {
-    const chunk = stream.slice(i, i + PER_PAGE);
+  let cards = [], used = 0, section = '';
+  const flush = () => {
+    if (!cards.length) return;
+    while (used < PER_PAGE) { cards.push(null); used++; }
     // Раздел, действующий к концу полосы: если новый начался в первой карточке,
     // вся полоса уже про него.
-    const section = chunk[chunk.length - 1].section;
-    const cards = chunk.map(x => x.product);
-    while (cards.length < PER_PAGE) cards.push(null);
     pages.push(pageHtml(cards, section, pages.length + 1, priceType, currency));
-  }
+    cards = []; used = 0;
+  };
+  stream.forEach(({ product, section: sec }) => {
+    const span = product?.__seriesBlock ? COLS_PER_PAGE : 1;
+    if (span > 1 && used % COLS_PER_PAGE) { cards.push(null); used++; }
+    if (used + span > PER_PAGE) flush();
+    cards.push(product); used += span; section = sec;
+    if (used >= PER_PAGE) flush();
+  });
+  flush();
 
   return pages.join('');
 }
@@ -580,7 +747,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   const cover = COVERS[brand] || COVERS.home;
   const mobile = MOBILE();
   await loadCategoryLabels();
-  groups = groups.map(g => ({ ...g, products: mergePdfGroups(g.products || []) }));
+  groups = groups.map(g => ({ ...g, products: collectSeries(mergePdfGroups(g.products || [])) }));
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">

@@ -181,6 +181,9 @@ const productSchema = new mongoose.Schema({
   // Подпись варианта внутри pdfGroup («MINI 7-9»): если задана, карточка
   // печатает варианты строками «подпись — цена» вместо общей цены.
   pdfVariant:       { type: String, default: '' },
+  // Серия в PDF: товары с одинаковым pdfSeries печатаются одним блоком на всю
+  // ширину полосы — большое фото серии и лента моделей (подпись — pdfVariant).
+  pdfSeries:        { type: String, default: '' },
 
   // Video
   hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар
