@@ -1,5 +1,5 @@
 // Порядок товаров 0-TASHTANDY в PDF (12.10.2026), поле pdfOrder. Экран не трогает.
-// Пластиковые урны от меньшей к большей → уличные урны, похожие рядом →
+// Пластиковые урны от меньшей к большей, за ними пластиковые баки 120/240 → уличные урны, похожие рядом →
 // серии SW, GW, GWR, G, KARAKOL, 3 BURCH → баки от меньшего к большему, Ecomayak последним.
 // Без --apply только показывает. --undo откатывает из бэкапа.
 const fs = require('fs');
@@ -14,6 +14,8 @@ const SET = '0-tashtandy';
 const ORDER = [
   // пластиковые урны
   'MKS-UTH-012', 'MKS-UTH-013', 'MKS-UTH-019', 'MKS-UTH-020',
+  // за ними пластиковые баки на колёсах: 120, 120 педаль, 240, 240 педаль
+  'MKS-UT-029', 'MKS-UT-030', 'MKS-UT-032', 'MKS-UT-031',
   // уличные: маленькая напольная → подвесные на стойках → закрытые с проёмом → деревянные
   'MKS-UT-008',                                  // G Tegerek
   'MKS-UT-015', 'MKS-UT-001', 'MKS-СЗ0300',      // Jashyl, A1, AW
@@ -27,7 +29,6 @@ const ORDER = [
   'MKS-UT-016', 'MKS-UT-025', 'MKS-UT-017',      // KARAKOL
   'MKS-UT-018', 'MKS-UT-019',                    // 3 BURCH
   // баки по объёму
-  'MKS-UT-029', 'MKS-UT-030', 'MKS-UT-032', 'MKS-UT-031', // 120, 120 педаль, 240, 240 педаль
   'СЗ0055',                                      // Tazalyk 660
   'MKS-UT-028',                                  // пластиковый 1100
   'MKS-СЗ0239',                                  // Tazalyk R 1100
@@ -53,7 +54,8 @@ const ORDER = [
   });
   plan.forEach(({ p, n }) => console.log(String(n).padStart(3), (p.sku || '—').padEnd(14), p.name));
   if (!process.argv.includes('--apply')) { console.log(`\nПредпросмотр: ${plan.length}. Запустите с --apply.`); return process.exit(0); }
-  fs.writeFileSync(BACKUP, JSON.stringify(all.map(p => ({ _id: p._id, pdfOrder: p.pdfOrder ?? null })), null, 1));
+  // Бэкап — только исходное состояние: повторный --apply его не затирает
+  if (!fs.existsSync(BACKUP)) fs.writeFileSync(BACKUP, JSON.stringify(all.map(p => ({ _id: p._id, pdfOrder: p.pdfOrder ?? null })), null, 1));
   for (const { p, n } of plan) await col.updateOne({ _id: p._id }, { $set: { pdfOrder: n } });
   console.log(`\nОбновлено: ${plan.length}. Бэкап: ${BACKUP}`);
   process.exit(0);
