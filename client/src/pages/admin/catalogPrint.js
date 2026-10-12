@@ -149,6 +149,25 @@ const printImg = url => {
   return url.replace(/\.webp(\?.*)?$/, '.jpg$1');
 };
 
+// ── Ничего про импорт ────────────────────────────────────────────────────────
+// Каталог уходит клиентам: в нём не должно быть ни намёка на то, что товар
+// привозной. Строки из закупочного прайса (название по-китайски, цена EXW в
+// юанях, страна производства, упаковка поставщика, штук в коробке) не печатаем,
+// как и любое значение с иероглифами или юанем.
+const IMPORT_KEY = /кит\.|китай|exw|страна|производител|поставщ|в прайсе|размер упаковки|тип упаковки|объ[её]м упаковки|брутто|в коробке|упаковки \d+ шт/i;
+const IMPORT_VAL = /[\u3400-\u9fff¥]|юан|китай|china|\bcn\b|made in/i;
+const isImportSpec = sp => IMPORT_KEY.test(sp?.key || '') || IMPORT_VAL.test(String(sp?.value ?? ''))
+  // «Объём 0.049 м³» у тумб — это объём коробки из прайса, а не товара
+  || (/^объ[её]м$/i.test(sp?.key || '') && /м³|м3/i.test(String(sp?.value ?? '')));
+const cleanSpecs = specs => (specs || []).filter(sp => sp?.value && !isImportSpec(sp))
+  .map(sp => (/цвет|отделк/i.test(sp.key || '') ? { ...sp, value: colorRu(sp.value) } : sp));
+
+// Цвет в базе бывает записан по-английски («white») — в каталоге по-русски
+const COLOR_RU = { white: 'белый', black: 'чёрный', grey: 'серый', gray: 'серый', silver: 'серебристый',
+  red: 'красный', blue: 'синий', green: 'зелёный', beige: 'бежевый', brown: 'коричневый', pink: 'розовый', gold: 'золотой' };
+const colorRu = c => String(c || '').split(/\s*([,/])\s*/)
+  .map(part => (/^[,/]$/.test(part) ? (part === ',' ? ', ' : ' / ') : (COLOR_RU[part.toLowerCase()] || part))).join('');
+
 // ── Карточка ──────────────────────────────────────────────────────────────────
 function cardHtml(product, priceType, currency) {
   if (!product) return '<div class="card card--empty"></div>';
@@ -165,14 +184,14 @@ function cardHtml(product, priceType, currency) {
     return { k: v.label, v: price > 0 ? `${price.toLocaleString('ru')} ${currency}` : '' };
   });
   if (product.dimensions) rows.push({ k: 'габариты (ДхШхВ)', v: product.dimensions });
-  (product.specs || []).forEach(s => {
+  cleanSpecs(product.specs).forEach(s => {
     if (s?.value && !rows.some(r => r.k === s.key)) {
       rows.push({ k: s.key, v: s.unit ? `${s.value} ${s.unit}` : s.value });
     }
   });
   // Код цвета краски («#F7F9EF») строкой не выводим — сам цвет залит в кадр
   if (product.color && !/^#[0-9a-f]{6}$/i.test(String(product.color).trim()) && !rows.some(r => /цвет/i.test(r.k))) {
-    rows.push({ k: 'цвет', v: product.color });
+    rows.push({ k: 'цвет', v: colorRu(product.color) });
   }
 
   // Кружки-образцы над текстом, как в макете: цвет может быть перечислением.
@@ -229,7 +248,7 @@ const plural = (n, one, few, many) => {
   const a = Math.abs(n) % 100, b = a % 10;
   return a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many;
 };
-const specOf = (p, re) => (p.specs || []).find(s => re.test(s.key || '') && s.value)?.value;
+const specOf = (p, re) => cleanSpecs(p.specs).find(s => re.test(s.key || '') && s.value)?.value;
 
 // Чем модель отличается от соседей по серии: двери, ящики или отделка — берём
 // то, что у моделей разное (у IS ящиков по два у всех, различает отделка).
@@ -265,8 +284,7 @@ function seriesHtml(series, priceType, currency) {
   const rows = [];
   const dims = [...new Set(items.map(dimsShort))];
   if (dims.length === 1 && dims[0]) rows.push({ k: 'габариты (В×Ш×Г)', v: dims[0] });
-  (hero.specs || []).forEach(sp => {
-    if (!sp?.value || /кит\.|EXW|упаков|брутто|кол-во в коробке/i.test(sp.key)) return;
+  cleanSpecs(hero.specs).forEach(sp => {
     if (rows.some(r => r.k.toLowerCase() === sp.key.toLowerCase())) return;
     if (items.every(i => (i.specs || []).some(t => norm(t.key) === norm(sp.key) && norm(t.value) === norm(sp.value)))) {
       rows.push({ k: sp.key, v: sp.unit ? `${sp.value} ${sp.unit}` : sp.value });
