@@ -198,6 +198,9 @@ const productSchema = new mongoose.Schema({
   // Один лист в PDF: товары с одинаковым pdfPage печатаются вместе на одной
   // полосе, по две в ряд; не влезают в два ряда — карточки мельче.
   pdfPage:          { type: String, default: '' },
+  // Соседний товар на листе линейки (pdfRange): не короб среди размеров, а
+  // карточка внизу листа — газовый щит под щитами IP31.
+  pdfRangeExtra:    { type: Boolean, default: false },
 
   // Video
   hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар

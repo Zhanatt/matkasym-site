@@ -93,8 +93,11 @@ const hasPdfOrder = p => p != null && p.pdfOrder != null && Number.isFinite(Numb
 // Без номера — после пронумерованных, как стояли.
 function byPdfOrder(groups, headFromGroups) {
   const all = groups.flatMap(g => g.products || []);
-  if (!all.some(hasPdfOrder)) return groups;
-  const list = headFromGroups ? groups : [{ ...groups[0], products: all }];
+  // Со страницы сета группы — его категории, а заголовков групп нет: сливаем
+  // всегда, иначе лист pdfPage, линейка или серия рвались на границе категорий
+  // (освещение MAZZA SEYIL — «Ландшафтное» + «Остальное» печаталось 4 + 1)
+  const list = headFromGroups || !groups.length ? groups : [{ ...groups[0], products: all }];
+  if (!all.some(hasPdfOrder)) return list;
   return list.map(g => {
     const ps = g.products || [];
     if (!ps.some(hasPdfOrder)) return g;
@@ -413,7 +416,8 @@ function collectSeries(products) {
 // В×Ш×Г в см: из названия («30*22*12» — высота, ширина, глубина), иначе из габаритов
 function boxDims(p) {
   const m = String(p.name || '').match(/(\d+(?:[.,]\d+)?)\s*[*xх×]\s*(\d+(?:[.,]\d+)?)\s*[*xх×]\s*(\d+(?:[.,]\d+)?)/i);
-  if (m) return m.slice(1, 4).map(v => +String(v).replace(',', '.'));
+  // «1000х800х300» в названии — это миллиметры: щитов в 10 м не бывает
+  if (m) { const v = m.slice(1, 4).map(x => +String(x).replace(',', '.')); return Math.max(...v) >= 300 ? v.map(x => x / 10) : v; }
   const parts = dimsParts(p);
   return parts && parts.length === 3 ? parts : null;
 }
@@ -437,7 +441,7 @@ function boxSvg([h, w, d], s) {
 }
 
 function rangeHtml(range, priceType, currency) {
-  const { title, items, hero } = range;
+  const { title, items, hero, extras = [] } = range;
   const norm = v => String(v ?? '').trim().toLowerCase();
   const rows = [];
   cleanSpecs(hero.specs).forEach(sp => {
@@ -452,7 +456,8 @@ function rangeHtml(range, priceType, currency) {
   const dims = items.map(boxDims);
   const perRow = items.length <= 6 ? items.length : Math.ceil(items.length / 2);
   // Один ряд — короба крупнее, иначе под ним пустует полстраницы
-  const cellW = (COL_W * 2 + GUTTER) / perRow - 8, cellH = items.length <= perRow ? 210 : 118;
+  const cellW = (COL_W * 2 + GUTTER) / perRow - 8,
+        cellH = (items.length <= perRow ? 210 : 118) - (extras.length ? 22 : 0);
   const s = Math.min(...dims.filter(Boolean).map(([h, w, d]) =>
     Math.min(cellW / (w + d * 0.435), cellH / (h + d * 0.25))));
 
@@ -480,11 +485,31 @@ function rangeHtml(range, priceType, currency) {
   // (set-drawing-first-photo.js) и стоят первыми. Берём первое фото-не-чертёж
   // у главного щита, затем у остальных; нет ни одного — первое фото главного.
   const isDrawing = u => /\/matkasym\/shaar\//.test(String(u || ''));
-  const render = [hero, ...items].flatMap(p => p.images || []).find(u => u && !isDrawing(u));
+  const sameCat = items.filter(i => i.category === hero.category);
+  const render = [hero, ...sameCat, ...items].flatMap(p => p.images || []).find(u => u && !isDrawing(u));
   const heroImg = printImg(render || hero.images?.[0]);
 
+  // Соседи по листу (pdfRangeExtra) — карточкой внизу: фото слева, текст справа
+  const extraHtml = p => {
+    const v = priceOf(p, priceType);
+    const img = printImg(p.images?.[0]);
+    const specs = cleanSpecs(p.specs).filter(sp => sp.value && !/^вес|габарит/i.test(sp.key)).slice(0, 2);
+    return `
+      <div class="rg-x">
+        <div class="rg-x-shot">${img ? `<img src="${esc(img)}" alt="">` : ''}</div>
+        <div>
+          <div class="kicker">${esc(categoryLabel(p.category))}</div>
+          <div class="rg-x-name">${esc(p.name)}</div>
+          <div class="rg-w">${esc(dimsShort(p))}</div>
+          ${v > 0 ? `<div class="rg-pill">${v.toLocaleString('ru')} ${esc(currency)}</div>` : ''}
+          <div class="specs">${specs.map(sp =>
+            `<div class="row"><span class="k">${esc(sp.key)}</span><span class="v">${esc(sp.value)}</span></div>`).join('')}</div>
+        </div>
+      </div>`;
+  };
+
   return `
-    <div class="range">
+    <div class="range${extras.length ? ' has-x' : ''}">
       <div class="rg-top">
         <div class="rg-hero">${heroImg ? `<img src="${esc(heroImg)}" alt="">` : ''}</div>
         <div class="rg-info">
@@ -496,6 +521,7 @@ function rangeHtml(range, priceType, currency) {
       </div>
       <div class="rg-legend">габариты (В×Ш×Г), см / вес</div>
       ${rowsHtml.join('')}
+      ${extras.length ? `<div class="rg-extras">${extras.map(extraHtml).join('')}</div>` : ''}
     </div>`;
 }
 
@@ -513,11 +539,20 @@ function collectRanges(products) {
   const vol = p => (boxDims(p) || [0, 0, 0]).reduce((a, b) => a * b, 1);
   return out.flatMap(p => {
     if (!p?.__range) return [p];
-    const all = byKey.get(p.__range);
+    const extras = byKey.get(p.__range).filter(i => i.pdfRangeExtra);
+    let all = byKey.get(p.__range).filter(i => !i.pdfRangeExtra);
+    if (!all.length) return extras;
+    // Главный — из самой частой категории линейки: подпись и рендер сверху
+    // берутся у него, а не у случайного ЩРн или щита без монтажной панели
+    const freq = new Map();
+    all.forEach(i => freq.set(i.category, (freq.get(i.category) || 0) + 1));
+    const mainCat = [...freq.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    all = [...all.filter(i => i.category === mainCat), ...all.filter(i => i.category !== mainCat)];
     const sorted = [...all].sort((a, b) => vol(a) - vol(b) || (Number(a.price) || 0) - (Number(b.price) || 0));
     const pages = [];
-    for (let i = 0; i < sorted.length; i += 12) pages.push({ __rangeBlock: { title: p.__range, items: sorted.slice(i, i + 12), hero: all[0] } });
-    return pages;
+    for (let i = 0; i < sorted.length; i += 12) pages.push({ __rangeBlock: { title: p.__range, items: sorted.slice(i, i + 12), hero: all[0], extras: i ? [] : extras.slice(0, 2) } });
+    // Соседей больше двух — остальные обычными карточками сразу за листом
+    return [...pages, ...extras.slice(2)];
   });
 }
 
@@ -895,6 +930,20 @@ html, body {
   column-gap: ${GUTTER}pt;
   height: 330pt;
 }
+.range.has-x .rg-top { height: 236pt; }
+.range.has-x .rg-hero img { max-height: 226pt; }
+.range.has-x .rg-legend { margin-top: 8pt; }
+.range.has-x .rg-row { margin-top: 10pt; }
+.rg-extras {
+  margin-top: auto; padding-top: 10pt; border-top: 0.5pt solid ${RULE};
+  display: grid; grid-template-columns: ${COL_W}pt ${COL_W}pt; column-gap: ${GUTTER}pt;
+}
+.rg-x { display: grid; grid-template-columns: 96pt 1fr; column-gap: 10pt; align-items: center; }
+.rg-x-shot { height: 96pt; display: flex; align-items: center; justify-content: center; }
+.rg-x-shot img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.rg-x-name { font-size: 11pt; font-weight: 700; line-height: 1.15; margin: 1pt 0 2pt; }
+.rg-x .rg-pill { margin: 3pt 0 2pt; }
+.rg-x .row { height: 15pt; font-size: 8pt; }
 .rg-hero { display: flex; align-items: center; justify-content: center; }
 .rg-hero img { max-width: 100%; max-height: 320pt; object-fit: contain; }
 .rg-info { display: flex; flex-direction: column; justify-content: center; }
@@ -995,6 +1044,10 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     ['light', /освещ|фонар|светил|прожектор|опор/],
     ['bike', /вело/],
     ['waste', /урн|бак|мусор|контейнер/],
+    // Щиты: серийные (настенные, ЩМП, распред.) и индивидуальные (этажные,
+    // сантехнические, пожарные) — на разных листах
+    ['panel-custom', /этаж|сантех|пожар/],
+    ['panel', /электрощит|распред|щмп|монтажн|щит/],
   ];
   const familyOf = product => {
     const p = product?.__seriesBlock?.hero || product?.__rangeBlock?.hero || product?.__pageBlock?.hero || product;
