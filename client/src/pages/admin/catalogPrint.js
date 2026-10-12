@@ -987,7 +987,25 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     pages.push(pageHtml(cards, section, pages.length + 1, priceType, currency));
     cards = []; used = 0;
   };
+  // Разные роды товаров на одном листе не печатаем: фонарь рядом с
+  // велопарковкой читается как случайный набор. Род — по слову в категории;
+  // категории без рода (их большинство) друг другу лист не ломают.
+  const FAMILIES = [
+    ['seat', /скамейк|навес|лавк|стул|кресл|диван/],
+    ['light', /освещ|фонар|светил|прожектор|опор/],
+    ['bike', /вело/],
+    ['waste', /урн|бак|мусор|контейнер/],
+  ];
+  const familyOf = product => {
+    const p = product?.__seriesBlock?.hero || product?.__rangeBlock?.hero || product?.__pageBlock?.hero || product;
+    const c = String(p?.category || '').toLowerCase();
+    return FAMILIES.find(([, re]) => re.test(c))?.[0] || '';
+  };
+  let family = '';
   stream.forEach(({ product, section: sec }) => {
+    const fam = familyOf(product);
+    if (fam && family && fam !== family && used && sec === section) flush();
+    if (fam) family = fam;
     // Линейка — целая полоса: начинается с новой страницы
     const span = product?.__rangeBlock || product?.__pageBlock ? PER_PAGE : product?.__seriesBlock ? COLS_PER_PAGE : 1;
     if (span === PER_PAGE && used) flush();
