@@ -85,6 +85,24 @@ CATEGORY_LABELS.other = '';   // «Другое» кикером не подпи
 
 let customLabels = {};
 
+const hasPdfOrder = p => p != null && p.pdfOrder != null && Number.isFinite(Number(p.pdfOrder));
+
+// pdfOrder — свой порядок товаров сета в печати, поверх категорий. Из страницы
+// сета группы — это категории одного сета, а порядок идёт через них, поэтому
+// там их сначала сливаем в одну (заголовков групп в этом режиме всё равно нет).
+// Без номера — после пронумерованных, как стояли.
+function byPdfOrder(groups, headFromGroups) {
+  const all = groups.flatMap(g => g.products || []);
+  if (!all.some(hasPdfOrder)) return groups;
+  const list = headFromGroups ? groups : [{ ...groups[0], products: all }];
+  return list.map(g => {
+    const ps = g.products || [];
+    if (!ps.some(hasPdfOrder)) return g;
+    const key = (p, i) => (hasPdfOrder(p) ? Number(p.pdfOrder) : 1e6 + i);
+    return { ...g, products: ps.map((p, i) => [p, key(p, i)]).sort((a, b) => a[1] - b[1]).map(([p]) => p) };
+  });
+}
+
 // Списки приходят урезанными (brief: 1 фото, 2 характеристики). Товарам из
 // линеек, серий и групп догружаем все характеристики и галерею; не вышло —
 // печатаем из того, что есть.
@@ -885,6 +903,8 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     let j = i;
     while (j < stream.length && kindOf(stream[j]) === kindOf(stream[i])) j++;
     const run = stream.slice(i, j);
+    // Порядок задан руками (pdfOrder) — не переставляем
+    if (run.some(x => hasPdfOrder(x.product?.__seriesBlock?.hero || x.product?.__rangeBlock?.hero || x.product))) { i = j; continue; }
     const big = x => x.product?.__seriesBlock || x.product?.__rangeBlock;
     const series = run.filter(big);
     if (series.length) stream.splice(i, run.length, ...series, ...run.filter(x => !big(x)));
@@ -986,7 +1006,8 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   const mobile = MOBILE();
   await loadCategoryLabels();
   groups = await withPdfDetails(groups);
-  groups = groups.map(g => ({ ...g, products: collectRanges(collectSeries(mergePdfGroups(g.products || []))) }));
+  groups = byPdfOrder(groups, headFromGroups)
+    .map(g => ({ ...g, products: collectRanges(collectSeries(mergePdfGroups(g.products || []))) }));
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
