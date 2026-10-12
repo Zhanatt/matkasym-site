@@ -521,6 +521,35 @@ function collectRanges(products) {
   });
 }
 
+// ── Один лист: pdfPage ───────────────────────────────────────────────────────
+// Товары с одинаковым pdfPage — вместе на одной полосе, по две в ряд. Три ряда
+// и больше — карточки ниже: кадр меньше, характеристик две строки.
+function collectPages(products) {
+  const out = [];
+  const byKey = new Map();
+  products.forEach(p => {
+    const key = p?.pdfPage;
+    if (!key) { out.push(p); return; }
+    if (!byKey.has(key)) { byKey.set(key, []); out.push({ __page: key }); }
+    byKey.get(key).push(p);
+  });
+  return out.flatMap(p => {
+    if (!p?.__page) return [p];
+    const items = byKey.get(p.__page);
+    if (items.length <= PER_PAGE) return items;          // и так влезают на лист
+    return [{ __pageBlock: { items: items.slice(0, COLS_PER_PAGE * 4), hero: items[0] } }];
+  });
+}
+
+function pageBlockHtml({ items }, priceType, currency) {
+  const rows = Math.ceil(items.length / COLS_PER_PAGE);
+  const rh = (CARD_PITCH * ROWS_PER_PAGE) / rows;
+  return `
+    <div class="pblock" style="--rh:${rh.toFixed(1)}pt;--ih:${Math.max(rh - 136, 60).toFixed(1)}pt">
+      ${items.map(p => cardHtml(p, priceType, currency)).join('')}
+    </div>`;
+}
+
 function coverHtml(src) {
   return `<section class="page"><div class="sheet cover"><img src="${esc(src)}" alt=""></div></section>`;
 }
@@ -537,7 +566,8 @@ function pageHtml(cards, setName, pageNumber, priceType, currency) {
       <div class="sheet">
         <header class="phead">${logoLeft ? logo + title : title + logo}</header>
         <div class="grid">
-          ${cards.map(c => (c?.__rangeBlock ? rangeHtml(c.__rangeBlock, priceType, currency)
+          ${cards.map(c => (c?.__pageBlock ? pageBlockHtml(c.__pageBlock, priceType, currency)
+            : c?.__rangeBlock ? rangeHtml(c.__rangeBlock, priceType, currency)
             : c?.__seriesBlock ? seriesHtml(c.__seriesBlock, priceType, currency) : cardHtml(c, priceType, currency))).join('')}
         </div>
       </div>
@@ -817,6 +847,21 @@ html, body {
 }
 .sv { min-width: 0; text-align: center; }
 
+/* ── Один лист (pdfPage): мельче карточки, по две в ряд ──────────────────── */
+.pblock {
+  grid-column: 1 / -1;
+  grid-row: span ${ROWS_PER_PAGE};
+  height: ${CARD_PITCH * ROWS_PER_PAGE}pt;
+  display: grid;
+  grid-template-columns: repeat(${COLS_PER_PAGE}, ${COL_W}pt);
+  grid-auto-rows: var(--rh);
+  column-gap: ${GUTTER}pt;
+  overflow: hidden;
+}
+.pblock .card { height: var(--rh); }
+.pblock .shot { height: var(--ih); margin-top: 12pt; }
+.pblock .specs .row:nth-child(n+3) { display: none; }
+
 /* ── Линейка размеров: вся полоса ────────────────────────────────────────── */
 .range {
   grid-column: 1 / -1;
@@ -896,7 +941,7 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
   // слову в категории; порядок внутри серий и внутри одиночных не меняется.
   const KIND = /шкаф|урн|тумб|стеллаж|скамейк|бак|щит|кронштейн|вешалк/;
   const kindOf = x => {
-    const p = x.product?.__seriesBlock?.hero || x.product?.__rangeBlock?.hero || x.product;
+    const p = x.product?.__seriesBlock?.hero || x.product?.__rangeBlock?.hero || x.product?.__pageBlock?.hero || x.product;
     const c = String(p?.category || '').toLowerCase();
     return `${x.section}|${c.match(KIND)?.[0] || c}`;
   };
@@ -905,7 +950,7 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     while (j < stream.length && kindOf(stream[j]) === kindOf(stream[i])) j++;
     const run = stream.slice(i, j);
     // Порядок задан руками (pdfOrder) — не переставляем
-    if (run.some(x => hasPdfOrder(x.product?.__seriesBlock?.hero || x.product?.__rangeBlock?.hero || x.product))) { i = j; continue; }
+    if (run.some(x => hasPdfOrder(x.product?.__seriesBlock?.hero || x.product?.__rangeBlock?.hero || x.product?.__pageBlock?.hero || x.product))) { i = j; continue; }
     const big = x => x.product?.__seriesBlock || x.product?.__rangeBlock;
     const series = run.filter(big);
     if (series.length) stream.splice(i, run.length, ...series, ...run.filter(x => !big(x)));
@@ -926,7 +971,7 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
   };
   stream.forEach(({ product, section: sec }) => {
     // Линейка — целая полоса: начинается с новой страницы
-    const span = product?.__rangeBlock ? PER_PAGE : product?.__seriesBlock ? COLS_PER_PAGE : 1;
+    const span = product?.__rangeBlock || product?.__pageBlock ? PER_PAGE : product?.__seriesBlock ? COLS_PER_PAGE : 1;
     if (span === PER_PAGE && used) flush();
     if (span > 1 && used % COLS_PER_PAGE) { cards.push(null); used++; }
     if (used + span > PER_PAGE) flush();
@@ -1011,7 +1056,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   await loadCategoryLabels();
   groups = await withPdfDetails(groups);
   groups = byPdfOrder(groups, headFromGroups)
-    .map(g => ({ ...g, products: collectRanges(collectSeries(mergePdfGroups(g.products || []))) }));
+    .map(g => ({ ...g, products: collectPages(collectRanges(collectSeries(mergePdfGroups(g.products || [])))) }));
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">

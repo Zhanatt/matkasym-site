@@ -29,9 +29,10 @@ const ORDER = [
   'MKS-UT-016', 'MKS-UT-025', 'MKS-UT-017',      // KARAKOL
   'MKS-UT-018', 'MKS-UT-019',                    // 3 BURCH
   // баки по объёму
-  'СЗ0055',                                      // Tazalyk 660
+  // большие баки — одним листом (pdf-page-bins-0-tashtandy.js): пластиковый 1100,
+  // Tazalyk 660, Tazalyk в цветах, Tazalyk с крышкой, Ecomayak. Tazalyk R 1100 убран из PDF.
   'MKS-UT-028',                                  // пластиковый 1100
-  'MKS-СЗ0239',                                  // Tazalyk R 1100
+  'СЗ0055',                                      // Tazalyk 660
   'MKS-СЗ0050', 'MKS-UTH-021', 'Мусорный бак «Tazalyk» (Синий)', 'Мусорный бак «Tazalyk» без крышки  (Желтый)',
   'Мусорный бак «Tazalyk» с крышкой (Зеленный)',
   'MKS-СЗ0058',                                  // Ecomayak — в самом конце

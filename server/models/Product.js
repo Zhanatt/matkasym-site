@@ -195,6 +195,9 @@ const productSchema = new mongoose.Schema({
   // экране). Если он задан хоть у одного товара сета, сет печатается по нему;
   // товары без номера — в конце, в прежнем порядке.
   pdfOrder:         { type: Number, default: null },
+  // Один лист в PDF: товары с одинаковым pdfPage печатаются вместе на одной
+  // полосе, по две в ряд; не влезают в два ряда — карточки мельче.
+  pdfPage:          { type: String, default: '' },
 
   // Video
   hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар
