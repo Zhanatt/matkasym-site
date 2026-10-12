@@ -260,15 +260,26 @@ const NOTES = [
 function noteFor(items) {
   const differs = NOTES.find(f => new Set(items.map(f)).size > 1);
   const pick = differs || NOTES.find(f => items.some(f));
-  return p => (pick ? pick(p) : '');
+  return p => p.pdfNote || (pick ? pick(p) : '');
 }
 
-// «H1850*W900*D500» → «185×90×50 см» (В×Ш×Г, как на этикетках шкафов)
+// «H1850*W900*D500» или «Д620×Г350×В860 мм» → «186×62×35 см» (В×Ш×Г, в см).
+// Прочие записи («105x30x89») печатаем как есть, только с настоящим знаком ×.
+function dimsParts(p) {
+  const raw = {};
+  for (const m of String(p.dimensions || '').matchAll(/([HWDВШДГ])\s*(\d+)/gi)) {
+    const k = m[1].toUpperCase();
+    if (!raw[k]) raw[k] = +m[2];
+  }
+  // «Д» — длина: это ширина, если «Ш» не указана, иначе — глубина
+  const ax = { H: raw.H || raw['В'], W: raw.W || raw['Ш'] || raw['Д'], D: raw.D || raw['Г'] || (raw['Ш'] ? raw['Д'] : 0) };
+  if (!(ax.H && ax.W)) return null;
+  const mm = /мм/i.test(p.dimensions) || Math.max(ax.H, ax.W) >= 300;
+  return [ax.H, ax.W, ax.D].filter(Boolean).map(v => (mm ? Math.round(v / 10) : v));
+}
 function dimsShort(p) {
-  const ax = {};
-  for (const m of String(p.dimensions || '').matchAll(/([HWD])\s*(\d+)/gi)) ax[m[1].toUpperCase()] = +m[2];
-  if (!(ax.H && ax.W)) return String(p.dimensions || '');
-  return [ax.H, ax.W, ax.D].filter(Boolean).map(v => Math.round(v / 10)).join('×') + ' см';
+  const parts = dimsParts(p);
+  return parts ? `${parts.join('×')} см` : String(p.dimensions || '').replace(/\s*[xх*]\s*/gi, '×');
 }
 
 const priceOf = (p, priceType) =>
@@ -283,8 +294,10 @@ function seriesHtml(series, priceType, currency) {
   const norm = v => String(v ?? '').trim().toLowerCase();
   const rows = [];
   const dims = [...new Set(items.map(dimsShort))];
-  if (dims.length === 1 && dims[0]) rows.push({ k: 'габариты (В×Ш×Г)', v: dims[0] });
+  if (dims.length === 1 && dims[0]) rows.push({ k: dimsParts(hero) ? 'габариты (В×Ш×Г)' : 'габариты', v: dims[0] });
   cleanSpecs(hero.specs).forEach(sp => {
+    // «Серия» повторяет заголовок блока; длинные описания в строку не влезают
+    if (/^серия$/i.test(sp.key || '') || String(sp.value).length > 32) return;
     if (rows.some(r => r.k.toLowerCase() === sp.key.toLowerCase())) return;
     if (items.every(i => (i.specs || []).some(t => norm(t.key) === norm(sp.key) && norm(t.value) === norm(sp.value)))) {
       rows.push({ k: sp.key, v: sp.unit ? `${sp.value} ${sp.unit}` : sp.value });
@@ -672,6 +685,25 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     const section = headFromGroups ? (group.groupName || setName) : setName;
     (group.products || []).forEach(product => stream.push({ product, section }));
   });
+
+  // Внутри одного рода товаров (все «шкафы»: гардеробные, офисные, инструментальные,
+  // карточные; все «урны») сначала идут серии, потом одиночные карточки — иначе
+  // одиночный шкаф стоял между сериями, а после него опять серии. Род берём по
+  // слову в категории; порядок внутри серий и внутри одиночных не меняется.
+  const KIND = /шкаф|урн|тумб|стеллаж|скамейк|бак|щит|кронштейн|вешалк/;
+  const kindOf = x => {
+    const p = x.product?.__seriesBlock?.hero || x.product;
+    const c = String(p?.category || '').toLowerCase();
+    return `${x.section}|${c.match(KIND)?.[0] || c}`;
+  };
+  for (let i = 0; i < stream.length;) {
+    let j = i;
+    while (j < stream.length && kindOf(stream[j]) === kindOf(stream[i])) j++;
+    const run = stream.slice(i, j);
+    const series = run.filter(x => x.product?.__seriesBlock);
+    if (series.length) stream.splice(i, run.length, ...series, ...run.filter(x => !x.product?.__seriesBlock));
+    i = j;
+  }
 
   // Серия занимает целый ряд (две ячейки) и встаёт с начала ряда: если ряд уже
   // начат карточкой, его вторая ячейка остаётся пустой.

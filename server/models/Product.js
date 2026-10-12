@@ -184,6 +184,9 @@ const productSchema = new mongoose.Schema({
   // Серия в PDF: товары с одинаковым pdfSeries печатаются одним блоком на всю
   // ширину полосы — большое фото серии и лента моделей (подпись — pdfVariant).
   pdfSeries:        { type: String, default: '' },
+  // Подпись под моделью в ленте серии («2 секции»). Пусто — берётся из
+  // характеристик: двери, ящики или отделка.
+  pdfNote:          { type: String, default: '' },
 
   // Video
   hasVideo:         { type: Boolean, default: false },  // есть ли видео на этот товар
