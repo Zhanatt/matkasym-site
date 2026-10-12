@@ -27,13 +27,13 @@ const rank = p => {
   if (c === 'Электрощиты настенные') return 7;
   if (c === 'Щиты этажные') return 8;
   if (c === 'Щиты сантехнические') return 9;
-  if (c === 'Шкафы пожарные') return 10;
+  if (c === 'Шкафы пожарные') return /ШПК/.test(p.name) ? 9.5 : 10;   // ШПК первыми среди пожарных
   if (/^ВРУ/.test(c) || /ВРУ/.test(p.name)) return 12;
   // Из чужих категорий («other» и т.п.) — по названию к своим
   if (/газов|ЩГР/i.test(p.name)) return 1;
   if (/этаж/i.test(p.name)) return 8;
   if (/сантех/i.test(p.name)) return 9;
-  if (/пожар/i.test(p.name)) return 10;
+  if (/пожар/i.test(p.name)) return /ШПК/.test(p.name) ? 9.5 : 10;
   return 11;
 };
 
