@@ -415,7 +415,8 @@ function collectSeries(products) {
 
 // В×Ш×Г в см: из названия («30*22*12» — высота, ширина, глубина), иначе из габаритов
 function boxDims(p) {
-  const m = String(p.name || '').match(/(\d+(?:[.,]\d+)?)\s*[*xх×]\s*(\d+(?:[.,]\d+)?)\s*[*xх×]\s*(\d+(?:[.,]\d+)?)/i);
+  // Название без трёх чисел («50х40 18») — тогда из габаритов «50x40x18»
+  const m = [p.name, p.dimensions].map(t => String(t || '').match(/(\d+(?:[.,]\d+)?)\s*[*xх×]\s*(\d+(?:[.,]\d+)?)\s*[*xх×]\s*(\d+(?:[.,]\d+)?)/i)).find(Boolean);
   // «1000х800х300» в названии — это миллиметры: щитов в 10 м не бывает
   if (m) { const v = m.slice(1, 4).map(x => +String(x).replace(',', '.')); return Math.max(...v) >= 300 ? v.map(x => x / 10) : v; }
   const parts = dimsParts(p);
