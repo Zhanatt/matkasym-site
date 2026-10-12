@@ -242,7 +242,6 @@ function cardHtml(product, priceType, currency) {
 // ряд полосы: слева общее фото, справа название и общие характеристики с ценой
 // «от», снизу лента моделей — у каждой свой снимок, двери или отделка, габариты
 // и цена. Так серию видно целиком и модели сравнивают рядом, а не листая.
-const SERIES_MAX = 6;   // моделей в ленте; больше — серия продолжается новым рядом
 
 const plural = (n, one, few, many) => {
   const a = Math.abs(n) % 100, b = a % 10;
@@ -286,28 +285,26 @@ const priceOf = (p, priceType) =>
   priceType !== 'none' && !p.priceUndefined ? Number(p[priceType]) || 0 : 0;
 
 function seriesHtml(series, priceType, currency) {
-  const { title, items, hero } = series;
-  const prices = items.map(i => priceOf(i, priceType)).filter(v => v > 0);
-  const from = prices.length ? Math.min(...prices) : 0;
+  const { title, hero, others, all } = series;
 
-  // Общие для всех моделей характеристики; различия видно в ленте
+  // Общие для всех моделей характеристики — под главной моделью слева
   const norm = v => String(v ?? '').trim().toLowerCase();
   const rows = [];
-  const dims = [...new Set(items.map(dimsShort))];
-  if (dims.length === 1 && dims[0]) rows.push({ k: dimsParts(hero) ? 'габариты (В×Ш×Г)' : 'габариты', v: dims[0] });
   cleanSpecs(hero.specs).forEach(sp => {
-    // «Серия» повторяет заголовок блока; длинные описания в строку не влезают
+    // «Серия» повторяет заголовок; длинные описания в строку не влезают
     if (/^серия$/i.test(sp.key || '') || String(sp.value).length > 32) return;
     if (rows.some(r => r.k.toLowerCase() === sp.key.toLowerCase())) return;
-    if (items.every(i => (i.specs || []).some(t => norm(t.key) === norm(sp.key) && norm(t.value) === norm(sp.value)))) {
+    if (all.every(i => cleanSpecs(i.specs).some(t => norm(t.key) === norm(sp.key) && norm(t.value) === norm(sp.value)))) {
       rows.push({ k: sp.key, v: sp.unit ? `${sp.value} ${sp.unit}` : sp.value });
     }
   });
-  rows.push({ k: 'моделей в серии', v: String(series.total) });
 
-  const note = noteFor(items);
-  const strip = items.map(i => {
-    const v = priceOf(i, priceType);
+  const note = noteFor(all);
+  const pill = (p, cls) => {
+    const v = priceOf(p, priceType);
+    return v > 0 ? `<div class="${cls}">${v.toLocaleString('ru')} ${esc(currency)}</div>` : '';
+  };
+  const mini = i => {
     const img = printImg(i.images?.[0]);
     return `
       <div class="sv">
@@ -315,32 +312,39 @@ function seriesHtml(series, priceType, currency) {
         <div class="sv-code">${esc(i.pdfVariant || i.name)}</div>
         <div class="sv-note">${esc(note(i))}</div>
         <div class="sv-dims">${esc(dimsShort(i))}</div>
-        ${v > 0 ? `<div class="sv-pill">${v.toLocaleString('ru')} ${esc(currency)}</div>` : ''}
+        ${pill(i, 'sv-pill')}
       </div>`;
-  }).join('');
+  };
+  const heroImg = printImg(hero.images?.[0]);
 
   return `
     <div class="series">
-      <div class="se-top">
-        <div class="se-hero">${hero.images?.[0] ? `<img src="${esc(printImg(hero.images[0]))}" alt="">` : ''}</div>
-        <div class="se-info">
-          <div class="kicker">${esc(categoryLabel(hero.category))}</div>
-          <div class="se-name">${esc(title)}</div>
-          ${from > 0 ? `
-          <div class="se-price">
-            <div class="plabel">${esc(PRICE_LABELS[priceType] || '')}${prices.length > 1 ? ' от' : ''}</div>
-            <div class="pill">${from.toLocaleString('ru')} ${esc(currency)}</div>
-          </div>` : ''}
-          <div class="specs">${rows.slice(0, 5).map(r =>
-            `<div class="row"><span class="k">${esc(r.k)}</span><span class="v">${esc(r.v)}</span></div>`).join('')}</div>
+      <div class="se-left">
+        <div class="se-hero">${heroImg ? `<img src="${esc(heroImg)}" alt="">` : ''}</div>
+        <div class="se-cap">
+          <div>
+            <div class="se-code">${esc(hero.pdfVariant || hero.name)}</div>
+            <div class="sv-note">${esc([note(hero), dimsShort(hero)].filter(Boolean).join(' · '))}</div>
+          </div>
+          ${pill(hero, 'pill')}
         </div>
+        <div class="specs">${rows.slice(0, 3).map(r =>
+          `<div class="row"><span class="k">${esc(r.k)}</span><span class="v">${esc(r.v)}</span></div>`).join('')}</div>
       </div>
-      <div class="se-strip" style="--n:${Math.max(items.length, 4)}">${strip}</div>
+      <div class="se-right">
+        <div class="kicker">${esc(categoryLabel(hero.category))}</div>
+        <div class="se-name">${esc(title)}</div>
+        <div class="se-others${others.length <= 2 ? ' few' : ''}">${others.map(mini).join('')}</div>
+      </div>
     </div>`;
 }
 
 // Товары с одинаковым pdfSeries сворачиваются в серию на месте первого из них.
-// Модели в ленте — от меньшей цены к большей; фото серии — у первого по порядку сета.
+// Главная модель — первая по порядку сета: её фото крупно слева, и в ленте она
+// не повторяется. Остальные — справа под названием, от меньшей цены к большей,
+// по две в ряд, не больше четырёх; если моделей больше, серия продолжается
+// следующим блоком.
+const SERIES_OTHERS = 4;
 function collectSeries(products) {
   const out = [];
   const byKey = new Map();
@@ -353,11 +357,15 @@ function collectSeries(products) {
   return out.flatMap(p => {
     if (!p?.__series) return [p];
     const all = byKey.get(p.__series);
-    const hero = all[0];
-    const sorted = [...all].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
-    const chunks = [];
-    for (let i = 0; i < sorted.length; i += SERIES_MAX) chunks.push(sorted.slice(i, i + SERIES_MAX));
-    return chunks.map(items => ({ __seriesBlock: { title: p.__series, items, hero, total: all.length } }));
+    // Серия из одной модели — обычная карточка
+    if (all.length === 1) return [all[0]];
+    const models = [all[0], ...all.slice(1).sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))];
+    const blocks = [];
+    for (let i = 0; i < models.length; i += 1 + SERIES_OTHERS) {
+      const [hero, ...others] = models.slice(i, i + 1 + SERIES_OTHERS);
+      blocks.push({ __seriesBlock: { title: p.__series, hero, others, all } });
+    }
+    return blocks;
   });
 }
 
@@ -621,39 +629,43 @@ html, body {
 .row .v { flex: 0 0 auto; font-weight: 500; text-align: right; white-space: nowrap; }
 
 /* ── Серия: блок на весь ряд ─────────────────────────────────────────────── */
+/* Слева главная модель: крупный снимок, под ним её подпись с ценой и общие
+   характеристики серии. Справа название серии и остальные модели по две. */
 .series {
   grid-column: 1 / -1;
   height: ${CARD_PITCH}pt;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.se-top {
   display: grid;
   grid-template-columns: ${COL_W}pt ${COL_W}pt;
   column-gap: ${GUTTER}pt;
-  height: 206pt;
 }
-.se-hero { height: 206pt; display: flex; align-items: flex-end; justify-content: center; }
+.se-left { display: flex; flex-direction: column; min-width: 0; }
+.se-hero { height: 232pt; display: flex; align-items: flex-end; justify-content: center; }
 .se-hero img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.se-info { display: flex; flex-direction: column; justify-content: flex-end; }
+.se-cap {
+  margin-top: 10pt; padding-bottom: 8pt; border-bottom: 1.5pt solid ${RULE};
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 8pt;
+}
+.se-code { font-size: 15pt; font-weight: 700; line-height: 1.15; }
+.se-cap .sv-note { margin-top: 2pt; }
+.se-left .specs { margin-top: 4pt; }
+
+.se-right { min-width: 0; display: flex; flex-direction: column; }
 .se-name {
   font-size: 19pt; font-weight: 700; line-height: 1.1; margin-top: 1pt;
   padding-bottom: 8pt; border-bottom: 1.5pt solid ${RULE};
 }
-.se-price { margin-top: 8pt; }
-.se-info .specs { margin-top: 4pt; }
-
-/* Лента моделей: колонки поровну, у каждой снимок на общей линии пола */
-.se-strip {
-  margin-top: 14pt;
-  padding-top: 10pt;
-  border-top: 0.5pt solid ${RULE};
+.se-others {
+  margin-top: 12pt;
   display: grid;
-  grid-template-columns: repeat(var(--n), 1fr);
-  column-gap: 10pt;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 14pt;
+  row-gap: 12pt;
 }
 .sv { min-width: 0; text-align: center; }
+/* Одна-две модели справа — один ряд: снимки крупнее, чтобы не пустовал низ */
+.se-others.few { margin-top: 20pt; }
+.se-others.few .sv-shot { height: 190pt; }
 .sv-shot { height: 92pt; display: flex; align-items: flex-end; justify-content: center; }
 .sv-shot img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .sv-code { margin-top: 6pt; font-size: 10.5pt; font-weight: 700; line-height: 1.15; }
