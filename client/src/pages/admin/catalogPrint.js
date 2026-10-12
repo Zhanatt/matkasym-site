@@ -369,6 +369,121 @@ function collectSeries(products) {
   });
 }
 
+// ── Линейка размеров: одна полоса ────────────────────────────────────────────
+// Щиты одной конструкции, которые отличаются только размером (настенные IP31),
+// печатаются одной полосой: сверху рендер и общие характеристики, снизу все
+// размеры схематичными коробами в одном масштабе — сразу видно, какой больше.
+
+// В×Ш×Г в см: из названия («30*22*12» — высота, ширина, глубина), иначе из габаритов
+function boxDims(p) {
+  const m = String(p.name || '').match(/(\d+(?:[.,]\d+)?)\s*[*xх×]\s*(\d+(?:[.,]\d+)?)\s*[*xх×]\s*(\d+(?:[.,]\d+)?)/i);
+  if (m) return m.slice(1, 4).map(v => +String(v).replace(',', '.'));
+  const parts = dimsParts(p);
+  return parts && parts.length === 3 ? parts : null;
+}
+
+// Короб в косоугольной проекции: фасад В×Ш, глубина уходит вверх-вправо.
+// Масштаб общий для всей линейки (s — пунктов на сантиметр).
+function boxSvg([h, w, d], s) {
+  const k = 0.5;                                    // сокращение глубины
+  const dx = d * s * k * 0.87, dy = d * s * k * 0.5;
+  const W = w * s, H = h * s, pad = 1;
+  const vw = W + dx + pad * 2, vh = H + dy + pad * 2;
+  const x0 = pad, y0 = dy + pad;                    // левый верх фасада
+  const inset = Math.min(W, H) * 0.09;
+  const line = 'fill="#fff" stroke="#2b3134" stroke-width="0.8" stroke-linejoin="round"';
+  return `<svg viewBox="0 0 ${vw.toFixed(1)} ${vh.toFixed(1)}" width="${vw.toFixed(1)}pt" height="${vh.toFixed(1)}pt">
+    <polygon ${line} points="${x0},${y0} ${x0 + dx},${y0 - dy} ${x0 + W + dx},${y0 - dy} ${x0 + W},${y0}"/>
+    <polygon ${line} points="${x0 + W},${y0} ${x0 + W + dx},${y0 - dy} ${x0 + W + dx},${y0 + H - dy} ${x0 + W},${y0 + H}"/>
+    <rect ${line} x="${x0}" y="${y0}" width="${W.toFixed(1)}" height="${H.toFixed(1)}"/>
+    <rect fill="none" stroke="#2b3134" stroke-width="0.6" x="${(x0 + inset).toFixed(1)}" y="${(y0 + inset).toFixed(1)}" width="${(W - inset * 2).toFixed(1)}" height="${(H - inset * 2).toFixed(1)}"/>
+  </svg>`;
+}
+
+function rangeHtml(range, priceType, currency) {
+  const { title, items, hero } = range;
+  const norm = v => String(v ?? '').trim().toLowerCase();
+  const rows = [];
+  cleanSpecs(hero.specs).forEach(sp => {
+    if (/^серия$|^вес|габарит/i.test(sp.key || '') || String(sp.value).length > 32) return;
+    if (rows.some(r => r.k.toLowerCase() === sp.key.toLowerCase())) return;
+    if (items.every(i => cleanSpecs(i.specs).some(t => norm(t.key) === norm(sp.key) && norm(t.value) === norm(sp.value)))) {
+      rows.push({ k: sp.key, v: sp.unit ? `${sp.value} ${sp.unit}` : sp.value });
+    }
+  });
+
+  // Общий масштаб: самый крупный короб занимает кадр ячейки целиком
+  const dims = items.map(boxDims);
+  const perRow = items.length <= 6 ? items.length : Math.ceil(items.length / 2);
+  const cellW = (COL_W * 2 + GUTTER) / perRow - 8, cellH = 118;
+  const s = Math.min(...dims.filter(Boolean).map(([h, w, d]) =>
+    Math.min(cellW / (w + d * 0.435), cellH / (h + d * 0.25))));
+
+  const cells = items.map((p, i) => {
+    const v = priceOf(p, priceType);
+    const weight = specOf(p, /^вес$/i);
+    const d = dims[i];
+    return `
+      <div class="rg-cell">
+        <div class="rg-box">${d ? boxSvg(d, s) : ''}</div>
+        <div class="rg-dims">${d ? esc(d.map(x => String(x).replace('.', ',')).join('×')) : esc(dimsShort(p))}</div>
+        ${p.pdfNote ? `<div class="rg-note">${esc(p.pdfNote)}</div>` : ''}
+        ${weight ? `<div class="rg-w">${esc(weight)}</div>` : ''}
+        ${v > 0 ? `<div class="rg-plabel">${esc(PRICE_LABELS[priceType] || '')}</div><div class="rg-pill">${v.toLocaleString('ru')} ${esc(currency)}</div>` : ''}
+      </div>`;
+  });
+  // Высота ряда коробов — по самому высокому в ряду, без пустоты сверху
+  const boxH = ([h, , d]) => (h + d * 0.25) * s + 2;
+  const rowsHtml = [];
+  for (let i = 0; i < cells.length; i += perRow) {
+    const hMax = Math.max(...dims.slice(i, i + perRow).filter(Boolean).map(boxH), 20);
+    rowsHtml.push(`<div class="rg-row" style="--n:${perRow};--bh:${hMax.toFixed(1)}pt">${cells.slice(i, i + perRow).join('')}</div>`);
+  }
+  // Сверху нужен рендер, а не чертёж: чертежи с сервера ДУ лежат в matkasym/shaar/
+  // (set-drawing-first-photo.js) и стоят первыми. Берём первое фото-не-чертёж
+  // у главного щита, затем у остальных; нет ни одного — первое фото главного.
+  const isDrawing = u => /\/matkasym\/shaar\//.test(String(u || ''));
+  const render = [hero, ...items].flatMap(p => p.images || []).find(u => u && !isDrawing(u));
+  const heroImg = printImg(render || hero.images?.[0]);
+
+  return `
+    <div class="range">
+      <div class="rg-top">
+        <div class="rg-hero">${heroImg ? `<img src="${esc(heroImg)}" alt="">` : ''}</div>
+        <div class="rg-info">
+          <div class="kicker">${esc(categoryLabel(hero.category))}</div>
+          <div class="se-name">${esc(title)}</div>
+          <div class="specs">${rows.slice(0, 5).map(r =>
+            `<div class="row"><span class="k">${esc(r.k)}</span><span class="v">${esc(r.v)}</span></div>`).join('')}</div>
+        </div>
+      </div>
+      <div class="rg-legend">габариты (В×Ш×Г), см / вес</div>
+      ${rowsHtml.join('')}
+    </div>`;
+}
+
+// Товары с одинаковым pdfRange — одна полоса на месте первого, размеры по
+// возрастанию объёма. Больше двенадцати — следующая полоса.
+function collectRanges(products) {
+  const out = [];
+  const byKey = new Map();
+  products.forEach(p => {
+    const key = p?.pdfRange;
+    if (!key) { out.push(p); return; }
+    if (!byKey.has(key)) { byKey.set(key, []); out.push({ __range: key }); }
+    byKey.get(key).push(p);
+  });
+  const vol = p => (boxDims(p) || [0, 0, 0]).reduce((a, b) => a * b, 1);
+  return out.flatMap(p => {
+    if (!p?.__range) return [p];
+    const all = byKey.get(p.__range);
+    const sorted = [...all].sort((a, b) => vol(a) - vol(b) || (Number(a.price) || 0) - (Number(b.price) || 0));
+    const pages = [];
+    for (let i = 0; i < sorted.length; i += 12) pages.push({ __rangeBlock: { title: p.__range, items: sorted.slice(i, i + 12), hero: all[0] } });
+    return pages;
+  });
+}
+
 function coverHtml(src) {
   return `<section class="page"><div class="sheet cover"><img src="${esc(src)}" alt=""></div></section>`;
 }
@@ -385,7 +500,8 @@ function pageHtml(cards, setName, pageNumber, priceType, currency) {
       <div class="sheet">
         <header class="phead">${logoLeft ? logo + title : title + logo}</header>
         <div class="grid">
-          ${cards.map(c => (c?.__seriesBlock ? seriesHtml(c.__seriesBlock, priceType, currency) : cardHtml(c, priceType, currency))).join('')}
+          ${cards.map(c => (c?.__rangeBlock ? rangeHtml(c.__rangeBlock, priceType, currency)
+            : c?.__seriesBlock ? seriesHtml(c.__seriesBlock, priceType, currency) : cardHtml(c, priceType, currency))).join('')}
         </div>
       </div>
     </section>`;
@@ -663,6 +779,45 @@ html, body {
   row-gap: 12pt;
 }
 .sv { min-width: 0; text-align: center; }
+
+/* ── Линейка размеров: вся полоса ────────────────────────────────────────── */
+.range {
+  grid-column: 1 / -1;
+  grid-row: span 2;
+  height: ${CARD_PITCH * 2}pt;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.rg-top {
+  display: grid;
+  grid-template-columns: ${COL_W}pt ${COL_W}pt;
+  column-gap: ${GUTTER}pt;
+  height: 330pt;
+}
+.rg-hero { display: flex; align-items: center; justify-content: center; }
+.rg-hero img { max-width: 100%; max-height: 320pt; object-fit: contain; }
+.rg-info { display: flex; flex-direction: column; justify-content: center; }
+.rg-info .specs { margin-top: 6pt; }
+.rg-legend {
+  margin-top: 18pt; padding-bottom: 5pt; border-bottom: 0.5pt solid ${RULE};
+  font-size: 9pt; color: #5a6a6d;
+}
+.rg-row {
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  margin-top: 16pt;
+}
+.rg-cell { min-width: 0; text-align: center; padding: 0 4pt; }
+.rg-box { height: var(--bh, 124pt); display: flex; align-items: flex-end; justify-content: center; }
+.rg-dims { margin-top: 7pt; font-size: 10pt; font-weight: 500; line-height: 1.2; }
+.rg-note { font-size: 7.5pt; line-height: 1.25; }
+.rg-w { font-size: 8pt; line-height: 1.3; color: #5a6a6d; }
+.rg-plabel { margin-top: 4pt; font-size: 6.5pt; line-height: 1.3; }
+.rg-pill {
+  display: inline-block; padding: 0 7pt; height: 16pt; line-height: 16pt; border-radius: 3pt;
+  background: ${RED}; color: #fff; font-size: 10pt; white-space: nowrap;
+}
 /* Одна-две модели справа — один ряд: снимки крупнее, чтобы не пустовал низ */
 .se-others.few { margin-top: 20pt; }
 .se-others.few .sv-shot { height: 190pt; }
@@ -704,7 +859,7 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
   // слову в категории; порядок внутри серий и внутри одиночных не меняется.
   const KIND = /шкаф|урн|тумб|стеллаж|скамейк|бак|щит|кронштейн|вешалк/;
   const kindOf = x => {
-    const p = x.product?.__seriesBlock?.hero || x.product;
+    const p = x.product?.__seriesBlock?.hero || x.product?.__rangeBlock?.hero || x.product;
     const c = String(p?.category || '').toLowerCase();
     return `${x.section}|${c.match(KIND)?.[0] || c}`;
   };
@@ -712,8 +867,9 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     let j = i;
     while (j < stream.length && kindOf(stream[j]) === kindOf(stream[i])) j++;
     const run = stream.slice(i, j);
-    const series = run.filter(x => x.product?.__seriesBlock);
-    if (series.length) stream.splice(i, run.length, ...series, ...run.filter(x => !x.product?.__seriesBlock));
+    const big = x => x.product?.__seriesBlock || x.product?.__rangeBlock;
+    const series = run.filter(big);
+    if (series.length) stream.splice(i, run.length, ...series, ...run.filter(x => !big(x)));
     i = j;
   }
 
@@ -730,7 +886,9 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     cards = []; used = 0;
   };
   stream.forEach(({ product, section: sec }) => {
-    const span = product?.__seriesBlock ? COLS_PER_PAGE : 1;
+    // Линейка — целая полоса: начинается с новой страницы
+    const span = product?.__rangeBlock ? PER_PAGE : product?.__seriesBlock ? COLS_PER_PAGE : 1;
+    if (span === PER_PAGE && used) flush();
     if (span > 1 && used % COLS_PER_PAGE) { cards.push(null); used++; }
     if (used + span > PER_PAGE) flush();
     cards.push(product); used += span; section = sec;
@@ -809,7 +967,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   const cover = COVERS[brand] || COVERS.home;
   const mobile = MOBILE();
   await loadCategoryLabels();
-  groups = groups.map(g => ({ ...g, products: collectSeries(mergePdfGroups(g.products || [])) }));
+  groups = groups.map(g => ({ ...g, products: collectRanges(collectSeries(mergePdfGroups(g.products || []))) }));
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
