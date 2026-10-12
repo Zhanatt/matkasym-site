@@ -546,7 +546,12 @@ function pageBlockHtml({ items }, priceType, currency) {
   const rh = (CARD_PITCH * ROWS_PER_PAGE) / rows;
   return `
     <div class="pblock" style="--rh:${rh.toFixed(1)}pt;--ih:${Math.max(rh - 136, 60).toFixed(1)}pt">
-      ${items.map(p => cardHtml(p, priceType, currency)).join('')}
+      ${items.map((p, i) => {
+        const html = cardHtml(p, priceType, currency);
+        // Последняя без пары — во всю ширину: фото слева крупно, текст справа
+        return rows > ROWS_PER_PAGE && i === items.length - 1 && items.length % COLS_PER_PAGE
+          ? html.replace('class="card"', 'class="card card--wide"') : html;
+      }).join('')}
     </div>`;
 }
 
@@ -861,6 +866,19 @@ html, body {
 .pblock .card { height: var(--rh); }
 .pblock .shot { height: var(--ih); margin-top: 12pt; }
 .pblock .specs .row:nth-child(n+3) { display: none; }
+.pblock .card--wide {
+  grid-column: 1 / -1;
+  width: auto;
+  display: grid;
+  grid-template-columns: ${COL_W}pt ${COL_W}pt;
+  grid-template-rows: 1fr auto auto auto 1fr;
+  column-gap: ${GUTTER}pt;
+}
+.pblock .card--wide .shot { grid-column: 1; grid-row: 1 / -1; height: calc(var(--rh) - 34pt); margin-top: 10pt; }
+.pblock .card--wide .swatches { grid-column: 2; grid-row: 2; }
+.pblock .card--wide .head { grid-column: 2; grid-row: 3; }
+.pblock .card--wide .specs { grid-column: 2; grid-row: 4; }
+.pblock .card--wide .specs .row:nth-child(n+3) { display: flex; }
 
 /* ── Линейка размеров: вся полоса ────────────────────────────────────────── */
 .range {
