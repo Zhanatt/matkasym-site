@@ -55,6 +55,7 @@ export const adminGetBufferStock = (zone) => api.get('/admin/buffer-stock', { pa
 export const adminGetNomenclature = (set) => api.get('/admin/nomenclature', { params: set ? { set } : {} });
 export const adminDeleteImage = (url)       => api.delete('/admin/images', { data: { url } });
 export const adminGetCustomCategories  = ()          => api.get('/admin/custom-categories');
+export const adminGetPdfDetails = (ids) => api.post('/admin/products/pdf-details', { ids });
 export const adminCreateCustomCategory = (data)      => api.post('/admin/custom-categories', data);
 export const adminGetCategorySpecs    = (cat)       => api.get(`/admin/category-specs/${cat}`);
 export const adminSaveCategorySpec    = (cat, data) => api.post(`/admin/category-specs/${cat}`, data);

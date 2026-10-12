@@ -546,6 +546,19 @@ router.get('/products/facets', async (req, res) => {
   }
 });
 
+// PDF-каталог печатает из brief-списка (1 фото, 2 характеристики). Линейкам,
+// сериям и группам этого мало: общие характеристики, вес у каждого размера,
+// рендер вместо чертежа. Догружаем им specs и галерею одним запросом.
+router.post('/products/pdf-details', async (req, res) => {
+  try {
+    const ids = (req.body?.ids || []).filter(id => mongoose.Types.ObjectId.isValid(id)).slice(0, 2000);
+    const products = await Product.find({ _id: { $in: ids } }).select('specs images').slice('images', 6).lean();
+    res.json({ products });
+  } catch (e) {
+    res.status(500).json({ error: mongoErr(e) });
+  }
+});
+
 router.get('/products/:id', async (req, res) => {
   if (!isValidId(req.params.id)) return res.status(400).json({ error: 'Неверный идентификатор товара' });
   try {

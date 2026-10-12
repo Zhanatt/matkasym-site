@@ -10,7 +10,7 @@
 // Все размеры ниже сняты замером с макета «Каталог хоум мой, пример.pdf»
 // (страницы 3 и 5) и приведены к пунктам A4.
 
-import { adminGetCustomCategories } from '../../api/index';
+import { adminGetCustomCategories, adminGetPdfDetails } from '../../api/index';
 import { CATEGORIES } from '../../config/categorySpecs';
 
 // ── Сетка полосы ──────────────────────────────────────────────────────────────
@@ -84,6 +84,23 @@ const CATEGORY_LABELS = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label
 CATEGORY_LABELS.other = '';   // «Другое» кикером не подписываем
 
 let customLabels = {};
+
+// Списки приходят урезанными (brief: 1 фото, 2 характеристики). Товарам из
+// линеек, серий и групп догружаем все характеристики и галерею; не вышло —
+// печатаем из того, что есть.
+async function withPdfDetails(groups) {
+  const needs = p => p && (p.pdfRange || p.pdfSeries || p.pdfGroup);
+  const ids = [...new Set(groups.flatMap(g => g.products || []).filter(needs).map(p => p._id).filter(Boolean))];
+  if (!ids.length) return groups;
+  try {
+    const { data } = await adminGetPdfDetails(ids);
+    const byId = new Map((data?.products || []).map(d => [String(d._id), d]));
+    return groups.map(g => ({ ...g, products: (g.products || []).map(p => {
+      const d = needs(p) && byId.get(String(p._id));
+      return d ? { ...p, specs: d.specs || p.specs, images: d.images?.length ? d.images : p.images } : p;
+    }) }));
+  } catch { return groups; }
+}
 
 async function loadCategoryLabels() {
   try {
@@ -967,6 +984,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   const cover = COVERS[brand] || COVERS.home;
   const mobile = MOBILE();
   await loadCategoryLabels();
+  groups = await withPdfDetails(groups);
   groups = groups.map(g => ({ ...g, products: collectRanges(collectSeries(mergePdfGroups(g.products || []))) }));
 
   const html = `<!doctype html>
