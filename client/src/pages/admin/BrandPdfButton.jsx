@@ -107,7 +107,12 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
         return;
       }
 
-      const setOrder = sets.map(s => s.key);
+      // Свой порядок для печати (pdfOrder у сетов), если задан; иначе — как на экране
+      const hasPdfOrder = sets.some(s => Number.isFinite(s.pdfOrder));
+      const setOrder = (hasPdfOrder
+        ? sets.map((s, i) => ({ s, i })).sort((a, b) =>
+            (Number.isFinite(a.s.pdfOrder) ? a.s.pdfOrder : 1e6 + a.i) - (Number.isFinite(b.s.pdfOrder) ? b.s.pdfOrder : 1e6 + b.i)).map(x => x.s)
+        : sets).map(s => s.key);
       const setLabels = {};
       sets.forEach(s => { setLabels[s.key] = s.label || s.key; });
 

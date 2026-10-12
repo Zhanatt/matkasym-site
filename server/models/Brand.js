@@ -11,6 +11,9 @@ const SetSchema = new mongoose.Schema({
   // Заморозка: сет не идёт в общий PDF-каталог направления (BrandPdfButton).
   // Вручную через «Все сеты» его отметить можно; на сайте и в админке виден как обычно.
   frozen:   { type: Boolean, default: false },
+  // Место сета в общем PDF-каталоге направления. Если задано хоть у одного сета,
+  // PDF идёт по нему (сеты без номера — в конце), а не по порядку на экране.
+  pdfOrder: { type: Number },
 });
 
 const BrandSchema = new mongoose.Schema({
