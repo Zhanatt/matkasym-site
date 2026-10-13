@@ -1057,6 +1057,8 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
   };
   let family = '';
   stream.forEach(({ product, section: sec }) => {
+    // Каждый сет — с нового листа: сет с сетом на одной полосе не делят
+    if (sec !== section && used) flush();
     const fam = familyOf(product);
     if (fam && family && fam !== family && used && sec === section) flush();
     if (fam) family = fam;
