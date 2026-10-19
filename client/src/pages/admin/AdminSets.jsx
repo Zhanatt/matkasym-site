@@ -25,7 +25,7 @@ import { canEditCatalog, canExportLalafo } from '../../constants/roles';
 import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
-import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS, canSetMaker } from '../../components/ProductBadges';
+import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS } from '../../components/ProductBadges';
 
 // ── страна учёта ───────────────────────────────────────────────────────────────
 
@@ -1422,9 +1422,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const words = useMemo(() => normSearch(query).split(/\s+/).filter(Boolean), [query]);
 
   // Вкладки по производителю (MATKASYM / IKEA / Китай) — только в HOME: там
-  // свои товары вперемешку с привозными. Поле maker сервер отдаёт лишь тем,
-  // кто его ставит, остальным вкладки были бы пустыми — им не показываем.
-  const showMakerTabs = brandKey === 'matkasym-home' && canSetMaker(user);
+  // свои товары вперемешку с привозными. Видны всем сотрудникам.
+  const showMakerTabs = brandKey === 'matkasym-home';
   const [makerTab, setMakerTab] = useState('matkasym');
 
   // Всё, что показываем: без деталей комплектов и с учётом поиска.

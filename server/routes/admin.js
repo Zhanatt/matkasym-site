@@ -444,8 +444,6 @@ router.get('/products', async (req, res) => {
       // товара ждёт детали целиком и дотянет их сама
       products.forEach(p => { delete p.kitParts; });
     }
-    // Производителя видят только владелец и дизайнеры
-    if (brief === '1' && !canSetMaker(req.user)) products.forEach(p => { delete p.maker; });
     res.json({
       products: asSetView ? products.map(p => viewForSet(p, set, country)) : products,
       total, page: Number(page), pages: Math.ceil(total / limit),

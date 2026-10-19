@@ -179,8 +179,8 @@ export function ProductImageBadges({ product }) {
 
 // ── Производитель ────────────────────────────────────────────────────────────
 // Значок в левом верхнем углу фото в каталоге сета: IKEA, MATKASYM или Китай.
-// Выбирают прямо на карточке, не открывая её. Видят и меняют только владелец
-// и дизайнеры — сервер остальным поле не отдаёт и менять не даёт.
+// Выбирают прямо на карточке, не открывая её. Видят все, меняют только
+// владелец и дизайнеры — сервер остальным менять не даёт.
 export const canSetMaker = user => ['owner', 'designer'].includes(user?.role);
 
 const BADGE_H = 18;
@@ -227,8 +227,11 @@ export function MakerPicker({ product, onChange }) {
     return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', esc); };
   }, [open]);
 
-  if (!canSetMaker(user)) return null;
   const current = MAKERS[product.maker];
+  // Значок видят все, а менять его — только владелец и дизайнеры
+  if (!canSetMaker(user)) {
+    return current ? <span title={`Производитель: ${current.label}`} style={{ display: 'block', lineHeight: 0 }}>{current.render()}</span> : null;
+  }
 
   const pick = async value => {
     setOpen(false);
