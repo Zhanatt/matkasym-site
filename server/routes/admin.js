@@ -353,9 +353,34 @@ const BRIEF_FIELDS = [
   'price', 'priceWholesale', 'priceDealer', 'priceCost', 'costCurrency', 'priceUndefined', 'currency',
   'stock', 'stockByBase', 'inBase', 'inStock', 'stockStatus', 'bufferStock',
   'isOnOrder', 'inTransit', 'inTransitQty', 'pendingReceive', 'pendingReceiveQty',
-  'productStatus', 'isKit', 'kitType', 'isSupplied', 'supplier', 'maker', 'hideInPdf', 'pdfGroup', 'pdfVariant', 'pdfSeries', 'pdfNote', 'pdfRange', 'pdfOrder', 'pdfPage', 'pdfRangeExtra', 'isNew', 'hasVideo',
+  'productStatus', 'isKit', 'kitType', 'kitParts', 'isSupplied', 'supplier', 'maker', 'hideInPdf', 'pdfGroup', 'pdfVariant', 'pdfSeries', 'pdfNote', 'pdfRange', 'pdfOrder', 'pdfPage', 'pdfRangeExtra', 'isNew', 'hasVideo',
   'images', 'specs', 'updatedAt', 'createdAt',
 ].join(' ');
+
+// Комплект без своей цены — цену по уровню считаем суммой деталей, как
+// «Итого за комплект» в карточке товара. Иначе в каталоге сета у него прочерк
+// (ANTILOP, ALA-TOO парта+стул). Нет цены хоть у одной детали — уровень не трогаем.
+const KIT_PRICE_TIERS = ['price', 'priceWholesale', 'priceDealer'];
+async function attachKitPrices(products) {
+  const kits = products.filter(p => p.isKit && p.kitParts?.length
+    && KIT_PRICE_TIERS.some(t => !(p[t] > 0)));
+  if (!kits.length) return;
+  const ids = [...new Set(kits.flatMap(k => k.kitParts.map(part => String(part.product))))];
+  const parts = await Product.find({ _id: { $in: ids } }).select(KIT_PRICE_TIERS.join(' ')).lean();
+  const byId = new Map(parts.map(p => [String(p._id), p]));
+  kits.forEach(kit => {
+    KIT_PRICE_TIERS.forEach(tier => {
+      if (kit[tier] > 0) return;
+      let sum = 0;
+      for (const part of kit.kitParts) {
+        const price = byId.get(String(part.product))?.[tier];
+        if (!(price > 0)) return;
+        sum += price * (part.qty || 1);
+      }
+      kit[tier] = sum;
+    });
+  });
+}
 
 router.get('/products', async (req, res) => {
   try {
@@ -413,6 +438,12 @@ router.get('/products', async (req, res) => {
     ]);
     // Объём урн — для плашки на фото; в brief-выборке нет нужных характеристик
     if (brief === '1') await attachUrnVolume(products);
+    if (brief === '1') {
+      await attachKitPrices(products);
+      // Состав нужен был только для суммы: без populate это голые id, а карточка
+      // товара ждёт детали целиком и дотянет их сама
+      products.forEach(p => { delete p.kitParts; });
+    }
     // Производителя видят только владелец и дизайнеры
     if (brief === '1' && !canSetMaker(req.user)) products.forEach(p => { delete p.maker; });
     res.json({
