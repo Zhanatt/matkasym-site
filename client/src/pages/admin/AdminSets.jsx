@@ -1248,14 +1248,23 @@ const CURRENCY = { KG: 'сом', KZ: '₸' };
 const fmtPrice = (price, country) =>
   price > 0 ? `${price.toLocaleString('ru')} ${CURRENCY[country] || CURRENCY.KG}` : '—';
 
-// Вкладки «Все / MATKASYM / IKEA / Китай» над сеткой HOME. Живут в шапке
+// Вкладки «MATKASYM / IKEA / Китай» над сеткой HOME. Живут в шапке
 // панели, а прокручивается только сетка — поэтому всегда на виду.
 const MAKER_TABS = [
-  { key: '',         label: 'Все' },
   { key: 'matkasym', logo: '/logos/logo-main.png', label: 'MATKASYM' },
   { key: 'ikea',     logo: '/logos/ikea.svg',      label: 'IKEA' },
   { key: 'china',    label: 'Китай' },
 ];
+
+// Значок проставлен у немногих, поэтому без него производителя угадываем:
+// поставщик IKEA — IKEA, любой другой привоз — Китай, свой товар — MATKASYM.
+function makerOf(p) {
+  if (MAKERS[p.maker]) return p.maker;
+  const company = (p.supplier?.company || '').trim();
+  if (company.toUpperCase() === 'IKEA') return 'ikea';
+  if (company || p.isSupplied) return 'china';
+  return 'matkasym';
+}
 
 function MakerTabs({ value, onChange, counts, accent, mobile = false }) {
   return (
@@ -1267,7 +1276,7 @@ function MakerTabs({ value, onChange, counts, accent, mobile = false }) {
         const active = value === t.key;
         const n = counts[t.key] || 0;
         return (
-          <button key={t.key || 'all'} role="tab" aria-selected={active} aria-label={t.label}
+          <button key={t.key} role="tab" aria-selected={active} aria-label={t.label}
             onClick={() => onChange(t.key)}
             style={{
               flex: mobile ? 1 : 'none', minWidth: 0,
@@ -1416,7 +1425,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   // свои товары вперемешку с привозными. Поле maker сервер отдаёт лишь тем,
   // кто его ставит, остальным вкладки были бы пустыми — им не показываем.
   const showMakerTabs = brandKey === 'matkasym-home' && canSetMaker(user);
-  const [makerTab, setMakerTab] = useState('');
+  const [makerTab, setMakerTab] = useState('matkasym');
 
   // Всё, что показываем: без деталей комплектов и с учётом поиска.
   // От этого списка считаются и группы, и счётчики, и PDF — что на экране, то и в выгрузке.
@@ -1433,17 +1442,19 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   // Сколько карточек (моделей) у каждого производителя — для цифр на вкладках
   const makerCounts = useMemo(() => {
     const byName = {};
-    searchedProducts.forEach(p => { if (!byName[p.name]) byName[p.name] = p.maker || ''; });
-    const counts = { '': 0 };
-    Object.values(byName).forEach(m => { counts[''] += 1; counts[m] = (counts[m] || 0) + 1; });
+    searchedProducts.forEach(p => { if (!byName[p.name]) byName[p.name] = makerOf(p); });
+    const counts = {};
+    Object.values(byName).forEach(m => { counts[m] = (counts[m] || 0) + 1; });
     return counts;
   }, [searchedProducts]);
 
   const shownProducts = useMemo(() => {
-    if (!showMakerTabs || !makerTab) return searchedProducts;
-    // Производитель общий у всех вариантов карточки — фильтруем по названию,
-    // чтобы карточка не теряла варианты, у которых значок не проставлен
-    const names = new Set(searchedProducts.filter(p => p.maker === makerTab).map(p => p.name));
+    if (!showMakerTabs) return searchedProducts;
+    // Производитель общий у всех вариантов карточки — решаем по первому
+    // варианту, как и счётчик, чтобы карточка не разъезжалась по вкладкам
+    const byName = {};
+    searchedProducts.forEach(p => { if (!byName[p.name]) byName[p.name] = makerOf(p); });
+    const names = new Set(Object.keys(byName).filter(n => byName[n] === makerTab));
     return searchedProducts.filter(p => names.has(p.name));
   }, [searchedProducts, showMakerTabs, makerTab]);
 
@@ -1971,15 +1982,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
           ) : models.length === 0 ? (
             <div style={{ textAlign: 'center', paddingTop: 60, color: '#bbb', fontSize: 14 }}>
-              {makerTab && showMakerTabs && searchedProducts.length ? (
-                <>
-                  <div>Товаров {MAKER_TABS.find(t => t.key === makerTab)?.label} здесь нет{query ? ` по запросу «${query}»` : ''}.</div>
-                  <button onClick={() => setMakerTab('')}
-                    style={{ marginTop: 12, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#fff',
-                      background: accent, border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-                    Показать все товары
-                  </button>
-                </>
+              {showMakerTabs && searchedProducts.length ? (
+                <div>Товаров {MAKER_TABS.find(t => t.key === makerTab)?.label} здесь нет{query ? ` по запросу «${query}»` : ''} — загляните в соседние вкладки.</div>
               ) : query ? (
                 <>
                   <div>По запросу «{query}» в этом сете ничего нет.</div>
