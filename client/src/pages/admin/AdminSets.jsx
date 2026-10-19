@@ -25,7 +25,7 @@ import { canEditCatalog, canExportLalafo } from '../../constants/roles';
 import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
-import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS } from '../../components/ProductBadges';
+import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS, canSetMaker } from '../../components/ProductBadges';
 
 // ── страна учёта ───────────────────────────────────────────────────────────────
 
@@ -1248,6 +1248,56 @@ const CURRENCY = { KG: 'сом', KZ: '₸' };
 const fmtPrice = (price, country) =>
   price > 0 ? `${price.toLocaleString('ru')} ${CURRENCY[country] || CURRENCY.KG}` : '—';
 
+// Вкладки «Все / MATKASYM / IKEA / Китай» над сеткой HOME. Живут в шапке
+// панели, а прокручивается только сетка — поэтому всегда на виду.
+const MAKER_TABS = [
+  { key: '',         label: 'Все' },
+  { key: 'matkasym', logo: '/logos/logo-main.png', label: 'MATKASYM' },
+  { key: 'ikea',     logo: '/logos/ikea.svg',      label: 'IKEA' },
+  { key: 'china',    label: 'Китай' },
+];
+
+function MakerTabs({ value, onChange, counts, accent, mobile = false }) {
+  return (
+    <div role="tablist" style={{
+      display: 'flex', gap: 3, padding: 3, borderRadius: 11, background: '#f1f3f5',
+      marginLeft: mobile ? 0 : 'auto', width: mobile ? '100%' : 'auto', boxSizing: 'border-box',
+    }}>
+      {MAKER_TABS.map(t => {
+        const active = value === t.key;
+        const n = counts[t.key] || 0;
+        return (
+          <button key={t.key || 'all'} role="tab" aria-selected={active} aria-label={t.label}
+            onClick={() => onChange(t.key)}
+            style={{
+              flex: mobile ? 1 : 'none', minWidth: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              height: mobile ? 36 : 32, padding: mobile ? '0 6px' : '0 14px',
+              border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+              background: active ? '#fff' : 'transparent',
+              boxShadow: active ? '0 1px 3px rgba(0,0,0,.12)' : 'none',
+              outline: active ? `1.5px solid ${accent}` : 'none',
+              color: active ? '#111' : '#5b6572',
+              fontSize: mobile ? 12.5 : 13, fontWeight: 700, whiteSpace: 'nowrap',
+              opacity: n || active ? 1 : 0.45,
+              transition: 'background .15s, box-shadow .15s',
+            }}>
+            {t.logo
+              ? <img src={t.logo} alt={t.label} style={{ height: t.key === 'ikea' ? (mobile ? 15 : 16) : (mobile ? 9 : 10), maxWidth: '100%', display: 'block' }} />
+              : t.key === 'china'
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>{MAKERS.china.render()}{!mobile && t.label}</span>
+                : <span>{t.label}</span>}
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
+              background: active ? accent : '#e2e6ea', color: active ? '#fff' : '#5b6572',
+            }}>{n}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOverride, fetchParams, brandSets }) {
   const country     = useCountry();
   const { user }    = useAuth();
@@ -1362,9 +1412,15 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const [query, setQuery] = useState('');
   const words = useMemo(() => normSearch(query).split(/\s+/).filter(Boolean), [query]);
 
+  // Вкладки по производителю (MATKASYM / IKEA / Китай) — только в HOME: там
+  // свои товары вперемешку с привозными. Поле maker сервер отдаёт лишь тем,
+  // кто его ставит, остальным вкладки были бы пустыми — им не показываем.
+  const showMakerTabs = brandKey === 'matkasym-home' && canSetMaker(user);
+  const [makerTab, setMakerTab] = useState('');
+
   // Всё, что показываем: без деталей комплектов и с учётом поиска.
   // От этого списка считаются и группы, и счётчики, и PDF — что на экране, то и в выгрузке.
-  const shownProducts = useMemo(() => {
+  const searchedProducts = useMemo(() => {
     const base = products.filter(p => p.productStatus !== 'kit_part' && p.category !== 'kit-part');
     if (!words.length) return base;
     return base.filter(p => {
@@ -1373,6 +1429,26 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       return words.every(w => hay.includes(w));
     });
   }, [products, words]);
+
+  // Сколько карточек (моделей) у каждого производителя — для цифр на вкладках
+  const makerCounts = useMemo(() => {
+    const byName = {};
+    searchedProducts.forEach(p => { if (!byName[p.name]) byName[p.name] = p.maker || ''; });
+    const counts = { '': 0 };
+    Object.values(byName).forEach(m => { counts[''] += 1; counts[m] = (counts[m] || 0) + 1; });
+    return counts;
+  }, [searchedProducts]);
+
+  const shownProducts = useMemo(() => {
+    if (!showMakerTabs || !makerTab) return searchedProducts;
+    // Производитель общий у всех вариантов карточки — фильтруем по названию,
+    // чтобы карточка не теряла варианты, у которых значок не проставлен
+    const names = new Set(searchedProducts.filter(p => p.maker === makerTab).map(p => p.name));
+    return searchedProducts.filter(p => names.has(p.name));
+  }, [searchedProducts, showMakerTabs, makerTab]);
+
+  // Переключили вкладку — к началу списка, иначе остаёмся посреди пустоты
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0 }); }, [makerTab]);
 
   const models = useMemo(() => {
     const grouped = {};
@@ -1868,6 +1944,16 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   {models.length ? `Найдено: ${models.length} поз.` : 'Ничего не найдено'}
                 </span>
               )}
+              {showMakerTabs && !isMobile && (
+                <MakerTabs value={makerTab} onChange={setMakerTab} counts={makerCounts} accent={accent} />
+              )}
+            </div>
+          )}
+
+          {/* На телефоне вкладки — отдельной строкой во всю ширину, под поиском */}
+          {!loading && showMakerTabs && isMobile && (
+            <div style={{ padding: '0 12px 8px' }}>
+              <MakerTabs value={makerTab} onChange={setMakerTab} counts={makerCounts} accent={accent} mobile />
             </div>
           )}
         </div>
@@ -1885,7 +1971,16 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
             <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingTop: 60 }}>Загрузка…</div>
           ) : models.length === 0 ? (
             <div style={{ textAlign: 'center', paddingTop: 60, color: '#bbb', fontSize: 14 }}>
-              {query ? (
+              {makerTab && showMakerTabs && searchedProducts.length ? (
+                <>
+                  <div>Товаров {MAKER_TABS.find(t => t.key === makerTab)?.label} здесь нет{query ? ` по запросу «${query}»` : ''}.</div>
+                  <button onClick={() => setMakerTab('')}
+                    style={{ marginTop: 12, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: '#fff',
+                      background: accent, border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+                    Показать все товары
+                  </button>
+                </>
+              ) : query ? (
                 <>
                   <div>По запросу «{query}» в этом сете ничего нет.</div>
                   <button onClick={() => setQuery('')}
