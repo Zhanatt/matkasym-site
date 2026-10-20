@@ -2475,8 +2475,11 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       const hasColorOnly = isSwatch(primary.color) && !cover.images?.[0];
                       const cardOpacity = isOutOfStock ? 0.5 : (stockInfo.isKitMissing ? 0.5 : 1);
                       // Варианты HOME — строками под карточкой, у каждого свой остаток
-                      const variantRows = isHomeBrand && variants.length > 1;
-                      const prices = variantRows ? variants.map(v => getPrice(v, priceMode) || 0) : [];
+                      // Строками — только те варианты, что есть: «Нет» в списке лишь
+                      // мешает. Остался один — обычная карточка (он первый, он и primary).
+                      const inStockVariants = isHomeBrand ? variants.filter(v => isProductAvailable(v, country)) : [];
+                      const variantRows = isHomeBrand && inStockVariants.length > 1;
+                      const prices = variantRows ? inStockVariants.map(v => getPrice(v, priceMode) || 0) : [];
                       const samePrice = !variantRows || prices.every(x => x === prices[0]);
                       return (
                         <Fragment key={name}>
@@ -2545,7 +2548,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                               {name}
                             </div>
-                            {variants.length > 1 && !variantRows && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
+                            {variants.length > 1 && !isHomeBrand && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
                             {!variantRows && primary.specs?.slice(0, 2).map(s => (
                               <div key={s.key} style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.2 }}>
                                 <span style={{ color: '#bbb' }}>{s.key}:</span> {s.value}
@@ -2576,7 +2579,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               )}
                             </div>
                             {variantRows ? (
-                              <VariantRows variants={variants} country={country} accent={accent}
+                              <VariantRows variants={inStockVariants} country={country} accent={accent}
                                 showPrice={!samePrice} priceMode={priceMode}
                                 onOpen={editMode ? null : setDetailProduct} />
                             ) : primary.sku && <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>}
