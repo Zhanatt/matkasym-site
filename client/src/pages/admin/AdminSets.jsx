@@ -2477,7 +2477,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       // Варианты HOME — строками под карточкой, у каждого свой остаток
                       // Строками — только те варианты, что есть: «Нет» в списке лишь
                       // мешает. Остался один — обычная карточка (он первый, он и primary).
-                      const inStockVariants = isHomeBrand ? variants.filter(v => isProductAvailable(v, country)) : [];
+                      // Нет ни одного — карточка в «Нет в наличии», и там видно все варианты.
+                      const available = isHomeBrand ? variants.filter(v => isProductAvailable(v, country)) : [];
+                      const inStockVariants = available.length ? available : variants;
                       const variantRows = isHomeBrand && inStockVariants.length > 1;
                       const prices = variantRows ? inStockVariants.map(v => getPrice(v, priceMode) || 0) : [];
                       const samePrice = !variantRows || prices.every(x => x === prices[0]);
