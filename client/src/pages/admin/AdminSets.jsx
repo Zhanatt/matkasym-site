@@ -25,6 +25,7 @@ import { canEditCatalog, canExportLalafo } from '../../constants/roles';
 import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
+import { variantKey, variantParts, variantTitle } from '../../utils/variantKey';
 import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS } from '../../components/ProductBadges';
 
 // ── страна учёта ───────────────────────────────────────────────────────────────
@@ -1248,6 +1249,59 @@ const CURRENCY = { KG: 'сом', KZ: '₸' };
 const fmtPrice = (price, country) =>
   price > 0 ? `${price.toLocaleString('ru')} ${CURRENCY[country] || CURRENCY.KG}` : '—';
 
+// Строки вариантов под карточкой HOME: чем отличается (цвет/размер), остаток
+// именно этого варианта и — если цены разные — его цена. Остатки не
+// складываем: «12 шт.» на карточке не скажет, есть ли нужный цвет.
+const COLOR_RU = {
+  white: 'белый', black: 'чёрный', grey: 'серый', gray: 'серый', green: 'зелёный', red: 'красный',
+  blue: 'синий', beige: 'бежевый', brown: 'коричневый', pink: 'розовый', yellow: 'жёлтый',
+};
+function variantLabel(v, siblings) {
+  const parts = variantParts(v.name);
+  if (parts.length) {
+    // Общее у всех вариантов («50x51x70» у трёх цветов) в подписи не нужно
+    const shared = parts.filter(x => siblings.every(s => variantParts(s.name).includes(x)));
+    const own = parts.filter(x => !shared.includes(x));
+    if (own.length) return own.join(', ');
+  }
+  const color = String(v.color || '').trim();
+  if (color && !isSwatch(color)) return COLOR_RU[color.toLowerCase()] || color;
+  return v.dimensions || v.sku || v.name;
+}
+
+function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }) {
+  return (
+    <div style={{ marginTop: 8, borderTop: '1px solid #f0f0f0', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {variants.map(v => {
+        const info = getStockInfo(v, country);
+        const swatch = isSwatch(v.color) ? v.color : null;
+        return (
+          <div key={v._id}
+            onClick={onOpen ? e => { e.stopPropagation(); onOpen(v); } : undefined}
+            title={v.name}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 4px', margin: '0 -4px',
+              borderRadius: 6, cursor: onOpen ? 'pointer' : undefined, fontSize: 11, lineHeight: 1.25 }}
+            onMouseEnter={e => { if (onOpen) e.currentTarget.style.background = '#f5f6f8'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            {swatch && <span style={{ width: 9, height: 9, borderRadius: '50%', background: swatch, border: '1px solid #ddd', flexShrink: 0 }} />}
+            <span style={{ flex: 1, minWidth: 0, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {variantLabel(v, variants)}
+            </span>
+            {showPrice && (
+              <span style={{ fontWeight: 700, color: accent, whiteSpace: 'nowrap' }}>
+                {v.priceUndefined ? '—' : fmtPrice(getPrice(v, priceMode), country)}
+              </span>
+            )}
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap',
+              background: info.bg, color: info.color }}>{info.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Вкладки «MATKASYM / IKEA / Китай / TEST» над сеткой HOME. Живут в шапке
 // панели, а прокручивается только сетка — поэтому всегда на виду.
 const MAKER_TABS = [
@@ -1429,7 +1483,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   // Вкладки по производителю (MATKASYM / IKEA / Китай) — только в HOME: там
   // свои товары вперемешку с привозными. Видны всем сотрудникам.
-  const showMakerTabs = brandKey === 'matkasym-home';
+  const isHomeBrand = brandKey === 'matkasym-home';
+  const showMakerTabs = isHomeBrand;
   const [makerTab, setMakerTab] = useState('matkasym');
 
   // Всё, что показываем: без деталей комплектов и с учётом поиска.
@@ -1466,14 +1521,31 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   // Переключили вкладку — к началу списка, иначе остаёмся посреди пустоты
   useEffect(() => { scrollRef.current?.scrollTo({ top: 0 }); }, [makerTab]);
 
+  // В HOME варианты одной модели (цвет, размер) — одна карточка, даже если
+  // цвет вписан в название: «Стул MARIUS 45 белый» и «…черный». Комплекты не
+  // склеиваем — у них свой расчёт остатка. В остальных брендах — по name, как было.
   const models = useMemo(() => {
     const grouped = {};
     shownProducts.forEach(p => {
-      if (!grouped[p.name]) grouped[p.name] = [];
-      grouped[p.name].push(p);
+      const key = isHomeBrand && !p.isKit ? `${p.category || ''}|${variantKey(p.name)}` : p.name;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(p);
     });
-    return Object.entries(grouped);
-  }, [shownProducts]);
+    const entries = Object.values(grouped).map(variants => {
+      // Первым — вариант в наличии: с него берутся фото и цена карточки
+      const sorted = [...variants].sort((a, b) =>
+        Number(isProductAvailable(b, country)) - Number(isProductAvailable(a, country)));
+      const names = new Set(sorted.map(v => v.name));
+      return [names.size > 1 ? variantTitle(sorted[0].name) : sorted[0].name, sorted];
+    });
+    // Заголовок — ключ карточки (порядок, удаление), он должен быть уникальным
+    const seen = new Set();
+    return entries.map(([title, variants]) => {
+      const name = seen.has(title) ? variants[0].name : title;
+      seen.add(name);
+      return [name, variants];
+    });
+  }, [shownProducts, isHomeBrand, country]);
 
   // Счётчик: в наличии / нет в наличии — позиции (модели) и количество (штук на складе)
   const stockSummary = useMemo(() => {
@@ -1515,7 +1587,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     const groupsMap = {};
     models.forEach(([name, variants]) => {
       const p = variants[0];
-      const hasStock = isProductAvailable(p, country);
+      const hasStock = variants.some(v => isProductAvailable(v, country));
       const cat = p.category || 'Прочее';
       const targetGroup = hasStock ? cat : 'Нет в наличии';
       if (!groupsMap[targetGroup]) groupsMap[targetGroup] = [];
@@ -2419,6 +2491,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       const cover      = coverOf(variants);
                       const hasColorOnly = isSwatch(primary.color) && !cover.images?.[0];
                       const cardOpacity = isOutOfStock ? 0.5 : (stockInfo.isKitMissing ? 0.5 : 1);
+                      // Варианты HOME — строками под карточкой, у каждого свой остаток
+                      const variantRows = isHomeBrand && variants.length > 1;
+                      const prices = variantRows ? variants.map(v => getPrice(v, priceMode) || 0) : [];
+                      const samePrice = !variantRows || prices.every(x => x === prices[0]);
                       return (
                         <Fragment key={name}>
                         {sizeHead && (
@@ -2486,8 +2562,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                               {name}
                             </div>
-                            {variants.length > 1 && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
-                            {primary.specs?.slice(0, 2).map(s => (
+                            {variants.length > 1 && !variantRows && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
+                            {!variantRows && primary.specs?.slice(0, 2).map(s => (
                               <div key={s.key} style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.2 }}>
                                 <span style={{ color: '#bbb' }}>{s.key}:</span> {s.value}
                               </div>
@@ -2498,6 +2574,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                                   <div style={{ fontSize: 11, color: '#7c3aed', fontStyle: 'italic' }}>Цены в деталях</div>
                                 ) : primary.priceUndefined ? (
                                   <div style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}>Цена не определена</div>
+                                ) : variantRows && !samePrice ? (
+                                  <div style={{ fontSize: 10.5, color: '#888' }}>{priceLabel}: у каждого варианта своя</div>
                                 ) : (
                                   <>
                                     <div style={{ fontSize: 9, color: '#aaa', fontWeight: 500, lineHeight: 1 }}>{priceLabel}</div>
@@ -2507,12 +2585,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                                   </>
                                 )}
                               </div>
-                              <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
-                                background: stockInfo.bg, color: stockInfo.color }}>
-                                {stockLabel}
-                              </div>
+                              {!variantRows && (
+                                <div style={{ fontSize: 10, fontWeight: 700, padding: '3px 7px', borderRadius: 5,
+                                  background: stockInfo.bg, color: stockInfo.color }}>
+                                  {stockLabel}
+                                </div>
+                              )}
                             </div>
-                            {primary.sku && <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>}
+                            {variantRows ? (
+                              <VariantRows variants={variants} country={country} accent={accent}
+                                showPrice={!samePrice} priceMode={priceMode}
+                                onOpen={editMode ? null : setDetailProduct} />
+                            ) : primary.sku && <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>}
                           </div>
                         </div>
                         </Fragment>
