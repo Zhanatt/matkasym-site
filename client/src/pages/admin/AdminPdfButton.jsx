@@ -52,8 +52,14 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           // Одноимённые карточки идут одной строкой: если первой стоит скрытая
           // (hideInPdf) или без остатка, печатаем следующую, а не теряем товар
           // (так пропадал SW3 — первым шёл его пустой дубль).
+          // В HOME на экране склеены и варианты с разными названиями (цвет и
+          // размер в названии) — в PDF они по-прежнему идут каждый своей карточкой.
           const groupProducts = items
-            .map(([, variants]) => variants.find(fitsCatalog))
+            .flatMap(([, variants]) => {
+              const byName = new Map();
+              variants.forEach(v => { if (!byName.has(v.name)) byName.set(v.name, []); byName.get(v.name).push(v); });
+              return [...byName.values()].map(same => same.find(fitsCatalog));
+            })
             .filter(Boolean);
           return { groupName, products: groupProducts };
         })
