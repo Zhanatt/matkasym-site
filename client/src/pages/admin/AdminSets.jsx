@@ -25,7 +25,7 @@ import { canEditCatalog, canExportLalafo } from '../../constants/roles';
 import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
-import { variantKey, variantParts, variantTitle } from '../../utils/variantKey';
+import { variantKey, variantLabel, variantTitle } from '../../utils/variantKey';
 import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS } from '../../components/ProductBadges';
 
 // ── страна учёта ───────────────────────────────────────────────────────────────
@@ -1252,23 +1252,6 @@ const fmtPrice = (price, country) =>
 // Строки вариантов под карточкой HOME: чем отличается (цвет/размер), остаток
 // именно этого варианта и — если цены разные — его цена. Остатки не
 // складываем: «12 шт.» на карточке не скажет, есть ли нужный цвет.
-const COLOR_RU = {
-  white: 'белый', black: 'чёрный', grey: 'серый', gray: 'серый', green: 'зелёный', red: 'красный',
-  blue: 'синий', beige: 'бежевый', brown: 'коричневый', pink: 'розовый', yellow: 'жёлтый',
-};
-function variantLabel(v, siblings) {
-  const parts = variantParts(v.name);
-  if (parts.length) {
-    // Общее у всех вариантов («50x51x70» у трёх цветов) в подписи не нужно
-    const shared = parts.filter(x => siblings.every(s => variantParts(s.name).includes(x)));
-    const own = parts.filter(x => !shared.includes(x));
-    if (own.length) return own.join(', ');
-  }
-  const color = String(v.color || '').trim();
-  if (color && !isSwatch(color)) return COLOR_RU[color.toLowerCase()] || color;
-  return v.dimensions || v.sku || v.name;
-}
-
 function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }) {
   return (
     <div style={{ marginTop: 8, borderTop: '1px solid #f0f0f0', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>

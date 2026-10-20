@@ -12,6 +12,7 @@
 
 import { adminGetCustomCategories, adminGetPdfDetails } from '../../api/index';
 import { CATEGORIES } from '../../config/categorySpecs';
+import { variantKey, variantLabel, variantTitle } from '../../utils/variantKey';
 
 // ── Сетка полосы ──────────────────────────────────────────────────────────────
 const PAGE_W = 595, PAGE_H = 842;
@@ -217,11 +218,18 @@ function cardHtml(product, priceType, currency) {
   // Порядок строк как в макете: сначала габариты, потом характеристики товара.
   // У объединённой карточки с размерами (pdfVariant) первыми идут варианты
   // строками «MINI 7-9 — 480 сом», общей цены у неё нет.
-  const variants = product.__variants || [];
+  let variants = product.__variants || [];
+  // Варианты HOME с одной ценой: цена — одна на карточке, варианты — одной строкой
+  const priceOf = v => (priceType !== 'none' && !v.priceUndefined ? Number(v[priceType]) || 0 : 0);
+  const sharedPrice = product.__homeVariants && variants.every(v => priceOf(v) === priceOf(variants[0]))
+    ? priceOf(variants[0]) : null;
+  const sharedRow = sharedPrice !== null ? { k: 'варианты', v: variants.map(v => v.label).join(', ') } : null;
+  if (sharedRow) variants = [];
   const rows = variants.map(v => {
     const price = priceType !== 'none' && !v.priceUndefined ? Number(v[priceType]) || 0 : 0;
     return { k: v.label, v: price > 0 ? `${price.toLocaleString('ru')} ${currency}` : '' };
   });
+  if (sharedRow) rows.push(sharedRow);
   if (product.dimensions) rows.push({ k: 'габариты (ДхШхВ)', v: product.dimensions });
   cleanSpecs(product.specs).forEach(s => {
     if (s?.value && !rows.some(r => r.k === s.key)) {
@@ -229,7 +237,7 @@ function cardHtml(product, priceType, currency) {
     }
   });
   // Код цвета краски («#F7F9EF») строкой не выводим — сам цвет залит в кадр
-  if (product.color && !/^#[0-9a-f]{6}$/i.test(String(product.color).trim()) && !rows.some(r => /цвет/i.test(r.k))) {
+  if (product.color && !product.__homeVariants && !/^#[0-9a-f]{6}$/i.test(String(product.color).trim()) && !rows.some(r => /цвет/i.test(r.k))) {
     rows.push({ k: 'цвет', v: colorRu(product.color) });
   }
 
@@ -240,7 +248,8 @@ function cardHtml(product, priceType, currency) {
 
   // «Цена ещё не определена» — в каталоге цифры быть не должно, даже если поле
   // заполнено: там лежит прикидка, а не цена, по которой продают.
-  const value = !variants.length && priceType !== 'none' && !product.priceUndefined ? Number(product[priceType]) || 0 : 0;
+  const value = sharedPrice !== null ? sharedPrice
+    : !variants.length && priceType !== 'none' && !product.priceUndefined ? Number(product[priceType]) || 0 : 0;
 
   // У красок фото нет, зато цвет записан кодом («#F7F9EF») — как на сайте, кадр
   // заливается самим цветом: по образцу краску и выбирают.
@@ -1097,6 +1106,35 @@ const variantColor = p => {
   return /^#[0-9a-f]{6}$/i.test(c) ? '' : c;
 };
 
+// Варианты одной модели HOME (цвет, размер в названии) — одной карточкой, как
+// на экране сета: название без цвета и размера, фото первого с фото, снизу
+// строки вариантов. Цена одинаковая — одна на карточке, разная — у каждой строки.
+// Ручная склейка (pdfGroup) и комплекты сюда не попадают.
+function mergeHomeVariants(products) {
+  const out = [];
+  const byKey = new Map();
+  products.forEach(p => {
+    if (!p || p.brand !== 'matkasym-home' || p.isKit || p.pdfGroup || p.__variants) { out.push(p); return; }
+    const key = `${p.category || ''}|${variantKey(p.name)}`;
+    if (!byKey.has(key)) { byKey.set(key, []); out.push({ __homeKey: key }); }
+    byKey.get(key).push(p);
+  });
+  return out.flatMap(p => {
+    if (!p?.__homeKey) return [p];
+    const items = byKey.get(p.__homeKey);
+    if (new Set(items.map(i => i.name)).size < 2) return items;
+    const cover = items.find(hasPhoto) || items[0];
+    const title = variantTitle(cover.name);
+    const merged = { ...cover, name: title, fullName: title, dimensions: '',
+      color: [...new Set(items.map(i => i.color).filter(Boolean))].join(', '),
+      specs: (cover.specs || []).filter(s => !/^цвет$/i.test(s.key || '')) };
+    merged.__variants = items.map(i => ({ label: variantLabel(i, items), price: i.price,
+      priceWholesale: i.priceWholesale, priceDealer: i.priceDealer, priceUndefined: i.priceUndefined }));
+    merged.__homeVariants = true;
+    return [merged];
+  });
+}
+
 // Товары с одинаковым pdfGroup печатаются одной карточкой: фото и характеристики
 // первого (в порядке сета), название — сам pdfGroup, цвета всех — строкой «цвет»
 // с кружками-образцами. Цена — общая, а если разная, то меньшая.
@@ -1148,7 +1186,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
   await loadCategoryLabels();
   groups = await withPdfDetails(groups);
   groups = byPdfOrder(groups, headFromGroups)
-    .map(g => ({ ...g, products: collectPages(collectRanges(collectSeries(mergePdfGroups(g.products || [])))) }));
+    .map(g => ({ ...g, products: collectPages(collectRanges(collectSeries(mergeHomeVariants(mergePdfGroups(g.products || []))))) }));
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">

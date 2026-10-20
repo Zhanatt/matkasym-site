@@ -48,3 +48,22 @@ export function variantTitle(name) {
   return s.replace(/\(\s*[/,]*\s*\)/g, ' ').replace(/,(\s*,)+/g, ',').replace(/\s+([,)])/g, '$1')
     .replace(/\s+/g, ' ').replace(/[\s,/\-–]+$/, '').replace(/^[\s,/\-–]+/, '').trim() || String(name || '');
 }
+
+// Чем вариант отличается от соседей по карточке: цвет и размер из названия,
+// без того, что у всех общее («50x51x70» у трёх цветов). Нет в названии —
+// поле цвета, габариты или артикул.
+const COLOR_RU = {
+  white: 'белый', black: 'чёрный', grey: 'серый', gray: 'серый', green: 'зелёный', red: 'красный',
+  blue: 'синий', beige: 'бежевый', brown: 'коричневый', pink: 'розовый', yellow: 'жёлтый',
+  silver: 'серебристый', gold: 'золотой',
+};
+export function variantLabel(v, siblings) {
+  const parts = variantParts(v.name);
+  if (parts.length) {
+    const own = parts.filter(x => !siblings.every(s => variantParts(s.name).includes(x)));
+    if (own.length) return own.join(', ');
+  }
+  const color = String(v.color || '').trim();
+  if (color && !/^#[0-9a-f]{3,8}$/i.test(color)) return COLOR_RU[color.toLowerCase()] || color;
+  return v.dimensions || v.sku || v.name;
+}
