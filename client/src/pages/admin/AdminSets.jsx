@@ -1185,7 +1185,16 @@ const NO_PHOTO      = '/logos/no-photo.png';
 // зависит от догрузки: у «Сушилки SAKURA» сначала приходили три варианта с фото,
 // после догрузки первым вставал белый без снимка — и картинка пропадала через
 // секунду после открытия страницы.
-const coverOf = variants => variants.find(v => v.images?.[0]) || variants[0];
+// «Первый с фото» тоже плавал: варианты сортируются по наличию, и после
+// обновления остатков вперёд вставал вариант со старым снимком вместо того, где
+// фото только что поменяли (ENIGMA, INFINITY). Берём вариант с самым свежим
+// фото — номер версии /v<секунды>/ в адресе Cloudinary растёт с каждой загрузкой.
+const photoTime = v => Number(String(v.images?.[0] || '').match(/\/v(\d+)\//)?.[1] || 0);
+const coverOf = variants => {
+  const withPhoto = variants.filter(v => v.images?.[0]);
+  if (!withPhoto.length) return variants[0];
+  return withPhoto.reduce((best, v) => (photoTime(v) > photoTime(best) ? v : best));
+};
 
 // Квадрат цвета вместо фото рисуем только для HEX — так заведены краски. Словом
 // в поле «Цвет» («white», «белый») помечены обычные товары, и у них вместо
