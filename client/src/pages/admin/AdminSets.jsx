@@ -1608,8 +1608,16 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       // Первым — вариант в наличии: с него берутся фото и цена карточки
       // сначала то, что в наличии; дальше — по первому числу варианта
       // (толщина 0,5–1 → 1–2 → 2–3, размер 50*80 → 60*90), иначе как пришли
-      const firstNum = v => (isTubeItem(v) ? tubeWall(v)
-        : parseFloat(String(variantParts(v.name)[0] || '').replace(',', '.'))) || 0;
+      // Лист «0,5×1000×2000»: сперва формат листа, внутри — толщина
+      const sheetKey = part => {
+        const n = String(part).match(/\d+(?:[.,]\d+)?/g)?.map(x => parseFloat(x.replace(',', '.'))) || [];
+        return n.length === 3 && n[0] < 20 && n[1] >= 100 ? n[1] * 100 + n[0] : null;
+      };
+      const firstNum = v => {
+        if (isTubeItem(v)) return tubeWall(v);
+        const part = variantParts(v.name)[0] || '';
+        return sheetKey(part) ?? (parseFloat(String(part).replace(',', '.')) || 0);
+      };
       const sorted = [...variants].sort((a, b) =>
         (Number(isProductAvailable(b, country)) - Number(isProductAvailable(a, country)))
         || (firstNum(a) - firstNum(b)));

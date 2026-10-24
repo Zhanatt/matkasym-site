@@ -19,6 +19,8 @@ const DIM_RE   = new RegExp(`${NUM}\\s*[xх×*]\\s*${NUM}(?:\\s*[xх×*]\\s*${NU
 const VOL_RE   = new RegExp(`${NUM}\\s*(?:мл|ml|л|l)(?![а-яёa-z])(?:\\s*/\\s*${NUM}\\s*(?:мл|ml|л|l)(?![а-яёa-z]))?`, 'gi');
 const PCS_RE   = new RegExp(`${NUM}\\s*(?:шт|предм[а-яё]*|п)(?![а-яёa-z])\\.?`, 'gi');
 const SUPPLY_RE = /(?<![а-яёa-z])(?:ap|jp|cn|ап|aп)(?![а-яёa-z])/gi;
+// Вид проката у металлических листов: х/к и г/к — как цвет, отличие варианта
+const STEEL_RE = /(?<![а-яёa-z])[хг]\/к(?![а-яёa-z])/gi;
 // Диапазон толщины в услугах KYZMAT: «Гибка 1–2 мм», «Laser Art 0,5-3мм»
 const RANGE_RE = new RegExp(`${NUM}\\s*[–-]\\s*${NUM}\\s*мм`, 'gi');
 
@@ -28,7 +30,7 @@ const norm = s => String(s || '').toLowerCase().replace(/ё/g, 'е');
 export function variantParts(name) {
   const s = String(name || '');
   const found = [];
-  [DIM_RE, RANGE_RE, VOL_RE, PCS_RE, COLOR_RE].forEach(re => {
+  [DIM_RE, RANGE_RE, VOL_RE, PCS_RE, STEEL_RE, COLOR_RE].forEach(re => {
     (s.match(re) || []).forEach(m => found.push(m.trim()));
   });
   return found;
@@ -36,7 +38,7 @@ export function variantParts(name) {
 
 export function variantKey(name) {
   let s = norm(name);
-  [DIM_RE, RANGE_RE, VOL_RE, PCS_RE, COLOR_RE, SUPPLY_RE].forEach(re => { s = s.replace(re, ' '); });
+  [DIM_RE, RANGE_RE, VOL_RE, PCS_RE, STEEL_RE, COLOR_RE, SUPPLY_RE].forEach(re => { s = s.replace(re, ' '); });
   const words = s.replace(/[(),/«»"'.:;]+/g, ' ').replace(/\s-\s|\s-|-\s/g, ' ')
     .split(/\s+/).filter(Boolean);
   return [...new Set(words)].sort().join(' ');
@@ -46,7 +48,7 @@ export function variantKey(name) {
 // «Стул MARIUS 45 белый AP JP» → «Стул MARIUS 45»
 export function variantTitle(name) {
   let s = String(name || '');
-  [DIM_RE, RANGE_RE, VOL_RE, PCS_RE, COLOR_RE, SUPPLY_RE].forEach(re => { s = s.replace(re, ' '); });
+  [DIM_RE, RANGE_RE, VOL_RE, PCS_RE, STEEL_RE, COLOR_RE, SUPPLY_RE].forEach(re => { s = s.replace(re, ' '); });
   return s.replace(/\(\s*[/,]*\s*\)/g, ' ').replace(/,(\s*,)+/g, ',').replace(/\s+([,)])/g, '$1')
     .replace(/\s+/g, ' ').replace(/[\s,/\-–]+$/, '').replace(/^[\s,/\-–]+/, '').trim() || String(name || '');
 }
