@@ -88,9 +88,38 @@ export function shelvingSize(product) {
   return cm.join('×');
 }
 
+// Размер для любого товара HOME — так же плашкой на фото, как у стеллажей:
+// габариты карточки, иначе характеристика «Габариты/Размер», иначе размер из
+// названия («Коврик 60*90»). Миллиметры («мм» или числа от 300) — в сантиметры.
+// Свободный текст («выс. 12 см, Ø 6,5 см») показываем как есть, если он короткий.
+const fmtNum = v => String(Math.round(v * 10) / 10).replace('.', ',');
+function toCm(parts, text) {
+  const max = Math.max(...parts);
+  if (max > 5000) return '';
+  const mm = /мм|mm/i.test(text) || max >= 300;
+  return (mm ? parts.map(v => Math.round(v / 10)) : parts).map(fmtNum).join('×');
+}
+export function homeSize(product) {
+  if (product?.brand !== 'matkasym-home') return '';
+  const dims = String(product.dimensions || '').trim();
+  const specVal = (product.specs || []).find(s => /габарит|размер/i.test(s?.key || '') && !/упаков/i.test(s?.key || ''))?.value || '';
+  for (const src of [dims, specVal]) {
+    const parts = sizeParts(src);
+    if (parts && parts.length >= 2) return { text: toCm(parts, src), cm: true };
+  }
+  if (dims && dims.length <= 24) return { text: dims, cm: false };
+  const nameParts = sizeParts(product.name || '');
+  if (nameParts && nameParts.length >= 2) return { text: toCm(nameParts, product.name), cm: true };
+  return '';
+}
+
 // Плашка в правом нижнем углу фото: у стеллажей — размер, у урн и баков — объём
 // (у сортировочных общий, по всем секциям). Объём считает сервер — поле volume.
-export function SizeBadge({ product }) {
+// variants — все товары склеенной карточки: если размеры у них разные (коврики
+// 60*90, 50*80, 90*90), плашку не показываем — размеры и так видны строками снизу.
+const sizeKey = p => shelvingSize(p) || homeSize(p)?.text || '';
+export function SizeBadge({ product, variants = null }) {
+  if (variants && variants.length > 1 && new Set(variants.map(sizeKey)).size > 1) return null;
   const size = shelvingSize(product);
   if (!size && product?.volume) {
     return (
@@ -99,6 +128,18 @@ export function SizeBadge({ product }) {
         fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 1px 4px rgba(0,0,0,.15)',
       }}>
         {product.volume}
+      </div>
+    );
+  }
+  const home = !size && !product?.volume ? homeSize(product) : '';
+  if (home && home.text) {
+    return (
+      <div title="Габариты" style={{
+        background: 'rgba(255,255,255,.92)', color: '#1c1e21', borderRadius: 6, padding: '3px 7px',
+        fontSize: 11, fontWeight: 700, letterSpacing: .2, whiteSpace: 'nowrap',
+        boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+      }}>
+        {home.text}{home.cm && <span style={{ fontWeight: 500, color: '#6b7280' }}> см</span>}
       </div>
     );
   }

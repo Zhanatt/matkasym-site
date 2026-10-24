@@ -2613,7 +2613,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                             )}
                             {/* Размер стеллажа — снизу справа, как значок IKEA сверху */}
                             <div style={{ position: 'absolute', bottom: 6, right: 6 }}>
-                              <SizeBadge product={primary} />
+                              <SizeBadge product={primary} variants={variants} />
                             </div>
                           </div>
                           <div style={{ padding: '10px 11px' }}>
@@ -2707,7 +2707,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       )}
                       {/* Размер стеллажа — снизу справа, как значок IKEA сверху */}
                       <div style={{ position: 'absolute', bottom: 6, right: 6 }}>
-                        <SizeBadge product={primary} />
+                        <SizeBadge product={primary} variants={variants} />
                       </div>
                     </div>
                     <div style={{ padding: '10px 11px' }}>
@@ -2805,7 +2805,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                         )}
                         {/* Размер стеллажа — снизу справа, как значок IKEA сверху */}
                         <div style={{ position: 'absolute', bottom: 6, right: 6 }}>
-                          <SizeBadge product={primary} />
+                          <SizeBadge product={primary} variants={variants} />
                         </div>
                       </div>
                       <div style={{ padding: '10px 11px' }}>
