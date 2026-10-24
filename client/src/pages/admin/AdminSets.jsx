@@ -13,6 +13,7 @@ import {
   adminCategoryUsage, adminRenameCategory,
   adminDeleteProduct,
   adminSetProductMaker,
+  adminUpdateProduct,
   adminSetBrandSetFrozen,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
@@ -1248,6 +1249,32 @@ const fmtPrice = (price, country) =>
 // Строки вариантов под карточкой HOME: чем отличается (цвет/размер), остаток
 // именно этого варианта и — если цены разные — его цена. Остатки не
 // складываем: «12 шт.» на карточке не скажет, есть ли нужный цвет.
+// Отметка «не в PDF» на фото карточки. В режиме выбора — кружок-галочка у каждой
+// карточки, вне режима — плашка только у отмеченных.
+function PdfHideMark({ variants, active }) {
+  const hidden = variants.length > 0 && variants.every(v => v.hideInPdf);
+  if (!active && !hidden) return null;
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
+      background: hidden ? 'rgba(255,255,255,.55)' : 'transparent' }}>
+      {active ? (
+        <span style={{ position: 'absolute', top: 8, right: 8, width: 26, height: 26, borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800,
+          background: hidden ? '#dc2626' : 'rgba(255,255,255,.95)', color: '#fff',
+          border: `2px solid ${hidden ? '#dc2626' : '#cbd5e1'}`, boxShadow: '0 1px 4px rgba(0,0,0,.15)' }}>
+          {hidden ? '✕' : ''}
+        </span>
+      ) : null}
+      {hidden && (
+        <span style={{ position: 'absolute', bottom: 8, left: 8, padding: '3px 8px', borderRadius: 6,
+          background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: .3 }}>
+          Не в PDF
+        </span>
+      )}
+    </div>
+  );
+}
+
 function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }) {
   // одинаковые подписи («60*90» дважды) — дубли; у них показываем артикул, чтобы различать
   const labels = variants.map(v => variantLabel(v, variants));
@@ -1372,6 +1399,21 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       setProducts(prev => prev.map(p => (ids.has(String(p._id)) ? { ...p, maker } : p)));
     } catch (err) {
       alert(err.response?.data?.error || 'Не удалось сохранить производителя');
+    }
+  };
+  // Режим «Скрыть из PDF»: нажатие на карточку не открывает её, а ставит или
+  // снимает отметку hideInPdf — такие карточки PDF-каталог не печатает.
+  // У склеенной карточки отметка ставится всем её вариантам сразу.
+  const [pdfHideMode, setPdfHideMode] = useState(false);
+  const toggleHidePdf = async (variants) => {
+    const hide = !variants.every(v => v.hideInPdf);
+    const ids = new Set(variants.map(v => String(v._id)));
+    setProducts(prev => prev.map(p => (ids.has(String(p._id)) ? { ...p, hideInPdf: hide } : p)));
+    try {
+      await Promise.all([...ids].map(id => adminUpdateProduct(id, { hideInPdf: hide })));
+    } catch (err) {
+      setProducts(prev => prev.map(p => (ids.has(String(p._id)) ? { ...p, hideInPdf: !hide } : p)));
+      alert(err.response?.data?.error || 'Не удалось сохранить отметку «не в PDF»');
     }
   };
   const [loading,   setLoading]           = useState(true);
@@ -1539,6 +1581,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
     const id = String(detailProduct._id);
     return models.find(([, vs]) => vs.some(v => String(v._id) === id))?.[1] || null;
   }, [detailProduct, models]);
+  // сколько карточек сета отмечено «не в PDF» — видно на кнопке
+  const hiddenPdfCount = useMemo(
+    () => models.filter(([, vs]) => vs.length && vs.every(v => v.hideInPdf)).length,
+    [models]);
 
   // Счётчик: в наличии / нет в наличии — позиции (модели) и количество (штук на складе)
   const stockSummary = useMemo(() => {
@@ -1917,6 +1963,20 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
             {!isMobile && canLalafo && (
               <LalafoExportButton brand={brandKey} set={setSlug} />
+            )}
+
+            {/* Какие карточки не печатать в PDF-каталоге — выбирают прямо на сетке */}
+            {canEdit && !editMode && (
+              <button onClick={() => setPdfHideMode(m => !m)}
+                title="Отметить карточки, которые не попадут в PDF-каталог"
+                style={{
+                  padding: '7px 12px', borderRadius: 9, cursor: 'pointer', whiteSpace: 'nowrap',
+                  border: `1.5px solid ${pdfHideMode ? '#2563eb' : '#e0e0e0'}`,
+                  background: pdfHideMode ? '#2563eb' : '#fff',
+                  color: pdfHideMode ? '#fff' : '#555', fontSize: 12, fontWeight: 600,
+                }}>
+                {pdfHideMode ? '✓ Готово' : `🙈 Скрыть из PDF${hiddenPdfCount ? ` · ${hiddenPdfCount}` : ''}`}
+              </button>
             )}
 
             {/* Порядок правится владельцем прямо на странице, без правки кода.
@@ -2509,7 +2569,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           ref={el => cardDrag.register(groupName, idx, el)}
                           // В режиме правки карточка тащится, а не открывается:
                           // иначе каждое перетаскивание кончалось бы модалкой товара.
-                          onClick={() => { if (!editMode) setDetailProduct(primary); }}
+                          onClick={() => { if (editMode) return; if (pdfHideMode) toggleHidePdf(variants); else setDetailProduct(primary); }}
                           onPointerDown={editMode ? cardDrag.start(groupName, idx) : undefined}
                           className={editMode ? 'set-jiggle' : undefined}
                           style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
@@ -2534,6 +2594,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                             >×</button>
                           )}
                           <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <PdfHideMark variants={variants} active={pdfHideMode} />
                             {!hasColorOnly && (
                               <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
@@ -2593,7 +2654,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                             {variantRows ? (
                               <VariantRows variants={inStockVariants} country={country} accent={accent}
                                 showPrice={!samePrice} priceMode={priceMode}
-                                onOpen={editMode ? null : setDetailProduct} />
+                                onOpen={editMode || pdfHideMode ? null : setDetailProduct} />
                             ) : primary.sku && <div style={{ fontSize: 9, color: '#ccc', marginTop: 2 }}>{primary.sku}</div>}
                           </div>
                         </div>
@@ -2619,7 +2680,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 const cover      = coverOf(variants);
                 const hasColorOnly = isSwatch(primary.color) && !cover.images?.[0];
                 return (
-                  <div key={name} onClick={() => setDetailProduct(primary)}
+                  <div key={name} onClick={() => (pdfHideMode ? toggleHidePdf(variants) : setDetailProduct(primary))}
                     style={{ border: '1px solid #e8e8e8', borderRadius: 12, overflow: 'hidden',
                       background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
                       cursor: 'pointer', transition: 'box-shadow .15s, transform .15s',
@@ -2628,6 +2689,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
                     <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <PdfHideMark variants={variants} active={pdfHideMode} />
                       {!hasColorOnly && (
                         <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                           style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
