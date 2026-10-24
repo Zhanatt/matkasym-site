@@ -847,6 +847,9 @@ router.patch('/products/:id', editor, async (req, res) => {
     // с пустым (скрытым) полем не обнулило цифру.
     if (!isOwner(req.user)) delete req.body.priceCost;
     delete req.body.maker;
+    // Пустая единица («») не входит в список и валила сохранение всей карточки —
+    // так не сохранялась «Услуга порошковой покраски». Пусто = не трогаем поле.
+    if (req.body.unit === '' || req.body.unit === null) delete req.body.unit;
 
     // Detect changed fields
     const changes = [];
