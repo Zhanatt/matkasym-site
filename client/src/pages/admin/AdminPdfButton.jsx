@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { printCatalog, fitsCatalog } from './catalogPrint';
 import { coverOf } from '../../utils/variantKey';
+import { printServicesCatalog } from './servicesPrint';
 
 const PRICE_MODE_TO_TYPE = {
   retail: 'price',
@@ -18,7 +19,9 @@ const PRICE_MODE_TO_TYPE = {
 // нажать: список товаров на экране пока неполный, а PDF собирается ровно из него
 // — так «весь каталог HOME» ушёл в печать на 54 карточки вместо 678, и по файлу
 // это никак не видно.
-export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail', currency = 'сом', choices = null, pending = false }) {
+// services — сет услуг (ÖNDÜRÜÜ): печатается своей вёрсткой, услуга на лист,
+// и в выборе есть «Весь сет» — титульный лист и все услуги подряд.
+export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail', currency = 'сом', choices = null, pending = false, services = false }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [picking,   setPicking]   = useState(false);
@@ -34,10 +37,13 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
     setLoading(true);
     setProgress(5);
 
-    const useGroups = pick
+    const all = pick?.all;
+    // У услуг фото не обязательно (у покраски его нет) — лист всё равно нужен
+    const fits = services ? (p => p && !p.hideInPdf && p.productStatus !== 'kit_part') : fitsCatalog;
+    const useGroups = pick && !all
       ? (groups || []).filter(([groupName]) => groupName === pick.category)
       : groups;
-    const title = pick ? pick.label : label;
+    const title = pick && !all ? pick.label : label;
 
     // Build grouped data for PDF
     // «В пути» в PDF не попадает: на складе товара нет, печатать его в каталоге
@@ -61,7 +67,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
               const siteCover = variants.length > 1 ? coverOf(variants)?.images?.[0] : null;
               const byName = new Map();
               variants.forEach(v => { if (!byName.has(v.name)) byName.set(v.name, []); byName.get(v.name).push(v); });
-              return [...byName.values()].map(same => same.find(fitsCatalog))
+              return [...byName.values()].map(same => same.find(fits))
                 .map(p => (p && siteCover ? { ...p, __siteCover: siteCover } : p));
             })
             .filter(Boolean);
@@ -76,7 +82,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
       }
     } else {
       // No groups — use flat list filtered by availability
-      const availableProducts = products.filter(fitsCatalog);
+      const availableProducts = products.filter(fits);
       if (availableProducts.length === 0) {
         alert('Нечего выгружать: в каталог идут товары с остатком, детали комплектов в него не входят');
         setLoading(false);
@@ -96,7 +102,8 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
                 : allProducts.some(p => p.brand === 'matkasym-shaar') ? 'shaar' : 'home';
 
     try {
-      await printCatalog(pdfGroups, title, priceType, brand, currency, { headFromGroups: false });
+      if (services) await printServicesCatalog(pdfGroups, label, priceType, { withCover: !pick || all });
+      else await printCatalog(pdfGroups, title, priceType, brand, currency, { headFromGroups: false });
       clearInterval(timerRef.current);
       setProgress(100);
     } catch (e) {
@@ -124,9 +131,19 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
         }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: '#111' }}>Какой каталог скачать?</div>
           <div style={{ fontSize: 11, color: '#aab3bd', marginTop: 3 }}>
-            Выгрузится один раздел — его название встанет в заголовок PDF.
+            {services ? 'Каждая услуга — на отдельном листе: фото, описание, цены, как заказать.' : 'Выгрузится один раздел — его название встанет в заголовок PDF.'}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 14 }}>
+            {services && (
+              <button onClick={() => handleClick({ all: true, label })}
+                style={{
+                  padding: '10px 14px', borderRadius: 10, textAlign: 'left',
+                  border: '1.5px solid #267846', background: '#f0f8f3', color: '#14532d',
+                  fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                }}>
+                Весь сет <span style={{ fontWeight: 500, fontSize: 11 }}>— титульный лист и все услуги, каждая на своём листе</span>
+              </button>
+            )}
             {choices.map(c => {
               // Пункт без товаров в наличии показываем, но не даём нажать:
               // иначе непонятно, куда делся раздел.

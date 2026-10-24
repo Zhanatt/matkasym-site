@@ -1237,3 +1237,6 @@ ${coverHtml(cover.end)}</body></html>`;
   win.focus();
   win.print();
 }
+
+// Общее с каталогом услуг (servicesPrint.js): обложки, экранирование, снимок под печать
+export { COVERS as PRINT_COVERS, esc as printEsc, printImg as printImage };

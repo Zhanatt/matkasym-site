@@ -2087,7 +2087,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                      вперемешку — горшки, мангал, коврик подряд. */
                   ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
                       currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
-                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} pending={loadingMore} />
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} />
             )}
           </div>
 
@@ -2111,7 +2111,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                      вперемешку — горшки, мангал, коврик подряд. */
                   ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
                       currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
-                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} pending={loadingMore} />}
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} />}
             </div>
           )}
 
