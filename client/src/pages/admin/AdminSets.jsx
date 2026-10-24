@@ -27,7 +27,7 @@ import { canEditCatalog, canExportLalafo } from '../../constants/roles';
 import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
-import { variantKey, variantLabel, variantTitle, coverOf } from '../../utils/variantKey';
+import { variantKey, variantLabel, variantTitle, variantParts, coverOf } from '../../utils/variantKey';
 import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS } from '../../components/ProductBadges';
 
 // ── страна учёта ───────────────────────────────────────────────────────────────
@@ -1534,6 +1534,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   // Вкладки по производителю (MATKASYM / IKEA / Китай) — только в HOME: там
   // свои товары вперемешку с привозными. Видны всем сотрудникам.
   const isHomeBrand = brandKey === 'matkasym-home';
+  // Варианты одной позиции — одной карточкой со строками снизу: в HOME (цвет,
+  // размер) и в KYZMAT (толщина услуги: «Гибка 1–2 мм», «Сварка 3–4 мм»).
+  // Трубы не склеиваем — у каждого сечения своя карточка и свой прайс.
+  // В DAYAR TÜTÜK своя раскладка-аккордеон без строк вариантов — там не склеиваем.
+  const mergesVariants = isHomeBrand || (brandKey === 'matkasym-kyzmat' && setSlug !== TUBES_SET);
+  const mergeable = p => !p.isKit && (isHomeBrand || !/^трубы/i.test(p.category || ''));
   const showMakerTabs = isHomeBrand;
   const [makerTab, setMakerTab] = useState('matkasym');
 
@@ -1577,14 +1583,18 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const models = useMemo(() => {
     const grouped = {};
     shownProducts.forEach(p => {
-      const key = isHomeBrand && !p.isKit ? `${p.category || ''}|${variantKey(p.name)}` : p.name;
+      const key = mergesVariants && mergeable(p) ? `${p.category || ''}|${variantKey(p.name)}` : p.name;
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(p);
     });
     const entries = Object.values(grouped).map(variants => {
       // Первым — вариант в наличии: с него берутся фото и цена карточки
+      // сначала то, что в наличии; дальше — по первому числу варианта
+      // (толщина 0,5–1 → 1–2 → 2–3, размер 50*80 → 60*90), иначе как пришли
+      const firstNum = v => parseFloat(String(variantParts(v.name)[0] || '').replace(',', '.')) || 0;
       const sorted = [...variants].sort((a, b) =>
-        Number(isProductAvailable(b, country)) - Number(isProductAvailable(a, country)));
+        (Number(isProductAvailable(b, country)) - Number(isProductAvailable(a, country)))
+        || (firstNum(a) - firstNum(b)));
       const names = new Set(sorted.map(v => v.name));
       return [names.size > 1 ? variantTitle(sorted[0].name) : sorted[0].name, sorted];
     });
@@ -1595,7 +1605,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       seen.add(name);
       return [name, variants];
     });
-  }, [shownProducts, isHomeBrand, country]);
+  }, [shownProducts, isHomeBrand, mergesVariants, country]);
 
   // Все товары склеенной карточки, к которой относится открытый товар, — для
   // списка вариантов в окне товара (переключиться, поправить, удалить дубль)
@@ -2577,9 +2587,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       // Строками — только те варианты, что есть: «Нет» в списке лишь
                       // мешает. Остался один — обычная карточка (он первый, он и primary).
                       // Нет ни одного — карточка в «Нет в наличии», и там видно все варианты.
-                      const available = isHomeBrand ? variants.filter(v => isProductAvailable(v, country)) : [];
+                      const available = mergesVariants ? variants.filter(v => isProductAvailable(v, country)) : [];
                       const inStockVariants = available.length ? available : variants;
-                      const variantRows = isHomeBrand && inStockVariants.length > 1;
+                      const variantRows = mergesVariants && inStockVariants.length > 1;
                       const prices = variantRows ? inStockVariants.map(v => getPrice(v, priceMode) || 0) : [];
                       const samePrice = !variantRows || prices.every(x => x === prices[0]);
                       return (
@@ -2650,7 +2660,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                               {name}
                             </div>
-                            {variants.length > 1 && !isHomeBrand && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
+                            {variants.length > 1 && !mergesVariants && <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{variants.length} вариантов</div>}
                             {!variantRows && primary.specs?.slice(0, 2).map(s => (
                               <div key={s.key} style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.2 }}>
                                 <span style={{ color: '#bbb' }}>{s.key}:</span> {s.value}
