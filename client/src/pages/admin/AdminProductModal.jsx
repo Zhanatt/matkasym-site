@@ -11,6 +11,7 @@ import { dimensionLabel, dimensionAxes } from '../../utils/dimensions';
 import { isTubes, pipesLabel } from '../../utils/tubes';
 import TechSheetDownload from './TechSheetDownload';
 import SearchSelect from '../../components/SearchSelect';
+import { variantLabel } from '../../utils/variantKey';
 
 // Прайсы, которые комплект складывает по деталям. Порядок тот же, что в шапке.
 const KIT_TIERS = [
@@ -114,7 +115,10 @@ function useIsMobile() {
 
 // zBase — этаж модалки. Деталь комплекта открывается такой же карточкой поверх родительской,
 // поэтому слои не зашиты, а сдвигаются: вложенная встаёт выше всех окон родителя.
-export default function AdminProductModal({ product, onClose, onDeleted, onSaved, extraActions, zBase = 1600, country }) {
+// siblings — все товары склеенной карточки сета (варианты HOME по цвету и размеру).
+// Сверху окна их видно списком: нажал — окно переключилось на этот товар, и его
+// можно поправить или удалить. Иначе до второго «60*90» было не добраться.
+export default function AdminProductModal({ product, onClose, onDeleted, onSaved, extraActions, zBase = 1600, country, siblings = null, onSwitch = null }) {
   const { user }    = useAuth();
   const navigate    = useNavigate();
   const isMobile    = useIsMobile();
@@ -685,6 +689,38 @@ export default function AdminProductModal({ product, onClose, onDeleted, onSaved
             background: UI.canvas, padding: isMobile ? 12 : 18,
             display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 16,
           }}>
+
+            {siblings && siblings.length > 1 && onSwitch && (
+              <div style={{ ...card, padding: isMobile ? 12 : 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: UI.ink, marginBottom: 4 }}>
+                  Варианты этой карточки на сайте · {siblings.length}
+                </div>
+                <div style={{ fontSize: 12, color: UI.muted, marginBottom: 10 }}>
+                  Нажмите на вариант, чтобы открыть его — изменить или удалить
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {siblings.map(v => {
+                    const cur = String(v._id) === String(product._id);
+                    return (
+                      <button key={v._id} type="button" onClick={() => !cur && onSwitch(v)} title={v.name}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2,
+                          padding: '7px 11px', borderRadius: 10, textAlign: 'left', maxWidth: 220,
+                          border: `1.5px solid ${cur ? UI.blue : UI.line}`,
+                          background: cur ? UI.blueWash : '#fff', cursor: cur ? 'default' : 'pointer',
+                        }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: UI.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                          {variantLabel(v, siblings) || v.name}{cur ? ' · открыт' : ''}
+                        </span>
+                        <span style={{ fontSize: 11, color: UI.muted, whiteSpace: 'nowrap' }}>
+                          {v.sku || 'без артикула'} · {Number(v.stock) || 0} шт.
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Верхний блок: галерея + основное */}
             <div style={{

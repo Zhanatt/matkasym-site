@@ -1249,6 +1249,9 @@ const fmtPrice = (price, country) =>
 // именно этого варианта и — если цены разные — его цена. Остатки не
 // складываем: «12 шт.» на карточке не скажет, есть ли нужный цвет.
 function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }) {
+  // одинаковые подписи («60*90» дважды) — дубли; у них показываем артикул, чтобы различать
+  const labels = variants.map(v => variantLabel(v, variants));
+  const dup = l => labels.filter(x => x === l).length > 1;
   return (
     <div style={{ marginTop: 8, borderTop: '1px solid #f0f0f0', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
       {variants.map(v => {
@@ -1266,6 +1269,9 @@ function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }
             {swatch && <span style={{ width: 9, height: 9, borderRadius: '50%', background: swatch, border: '1px solid #ddd', flexShrink: 0 }} />}
             <span style={{ flex: 1, minWidth: 0, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {variantLabel(v, variants)}
+              {dup(variantLabel(v, variants)) && (
+                <span style={{ color: '#aaa', marginLeft: 5, fontSize: 10 }}>{v.sku || 'без артикула'}</span>
+              )}
             </span>
             {showPrice && (
               <span style={{ fontWeight: 700, color: accent, whiteSpace: 'nowrap' }}>
@@ -1525,6 +1531,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       return [name, variants];
     });
   }, [shownProducts, isHomeBrand, country]);
+
+  // Все товары склеенной карточки, к которой относится открытый товар, — для
+  // списка вариантов в окне товара (переключиться, поправить, удалить дубль)
+  const detailSiblings = useMemo(() => {
+    if (!detailProduct) return null;
+    const id = String(detailProduct._id);
+    return models.find(([, vs]) => vs.some(v => String(v._id) === id))?.[1] || null;
+  }, [detailProduct, models]);
 
   // Счётчик: в наличии / нет в наличии — позиции (модели) и количество (штук на складе)
   const stockSummary = useMemo(() => {
@@ -2860,8 +2874,14 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
 
       {detailProduct && (
-        <AdminProductModal product={detailProduct} country={country} onClose={() => setDetailProduct(null)}
-          onDeleted={id => { setProducts(p => p.filter(x => x._id !== id)); setDetailProduct(null); }} />
+        <AdminProductModal key={detailProduct._id} product={detailProduct} country={country} onClose={() => setDetailProduct(null)}
+          siblings={detailSiblings} onSwitch={setDetailProduct}
+          onDeleted={id => {
+            setProducts(p => p.filter(x => x._id !== id));
+            // удалили один из вариантов — открываем соседний, чтобы дальше чистить дубли
+            const next = (detailSiblings || []).find(v => v._id !== id);
+            setDetailProduct(next || null);
+          }} />
       )}
 
       {/* Место, куда встанет карточка: рамка переезжает вслед за расступанием соседей */}
