@@ -116,6 +116,18 @@ const FIRST_CHUNK = 60;
 
 // Внутри категории трубы идут линейками одного сечения: Ø8, Ø12, 20×10… Список
 // длинный и весь на одно лицо, поэтому при смене линейки ставим подзаголовок.
+// Толщина стенки трубы: «Толщина стенки: 0.5 мм», иначе последнее число названия
+const tubeWall = (p) => {
+  const sp = (p?.specs || []).find(x => /толщина стенки/i.test(x?.key || ''))?.value;
+  const m = String(sp || '').match(/\d+(?:[.,]\d+)?/) || String(p?.name || '').match(/(\d+(?:[.,]\d+)?)\s*(?:мм)?\s*$/);
+  return m ? parseFloat(String(m[1] || m[0]).replace(',', '.')) : 0;
+};
+const tubeWallLabel = (p) => { const w = tubeWall(p); return w ? `${String(w).replace('.', ',')} мм` : (p?.name || ''); };
+// Карточка сечения: «Трубы круглые» + «Ø 12 мм» → «Труба круглая Ø 12 мм»
+const TUBE_SINGULAR = { 'трубы круглые': 'Труба круглая', 'трубы квадратные': 'Труба квадратная',
+  'трубы прямоугольные': 'Труба прямоугольная', 'трубы овальные': 'Труба овальная' };
+const tubeTitle = (p) => `${TUBE_SINGULAR[String(p?.category || '').toLowerCase()] || p?.category || 'Труба'} ${tubeSizeOf(p)}`;
+
 const tubeSizeOf = (p) => {
   const raw = String(p?.dimensions || '').replace(/\s*мм$/i, '').trim();
   // Труба без заполненных габаритов сортируется в конец, и без своей подписи
@@ -1300,7 +1312,8 @@ function PdfHideMark({ variants, active }) {
 
 function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }) {
   // одинаковые подписи («60*90» дважды) — дубли; у них показываем артикул, чтобы различать
-  const labels = variants.map(v => variantLabel(v, variants));
+  const labelOf = v => (/^трубы/i.test(v.category || '') ? tubeWallLabel(v) : variantLabel(v, variants));
+  const labels = variants.map(labelOf);
   const dup = l => labels.filter(x => x === l).length > 1;
   return (
     <div style={{ marginTop: 8, borderTop: '1px solid #f0f0f0', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -1318,8 +1331,8 @@ function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }
           >
             {swatch && <span style={{ width: 9, height: 9, borderRadius: '50%', background: swatch, border: '1px solid #ddd', flexShrink: 0 }} />}
             <span style={{ flex: 1, minWidth: 0, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {variantLabel(v, variants)}
-              {dup(variantLabel(v, variants)) && (
+              {labelOf(v)}
+              {dup(labelOf(v)) && (
                 <span style={{ color: '#aaa', marginLeft: 5, fontSize: 10 }}>{v.sku || 'без артикула'}</span>
               )}
             </span>
@@ -1537,9 +1550,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   // Варианты одной позиции — одной карточкой со строками снизу: в HOME (цвет,
   // размер) и в KYZMAT (толщина услуги: «Гибка 1–2 мм», «Сварка 3–4 мм»).
   // Трубы не склеиваем — у каждого сечения своя карточка и свой прайс.
-  // В DAYAR TÜTÜK своя раскладка-аккордеон без строк вариантов — там не склеиваем.
-  const mergesVariants = isHomeBrand || (brandKey === 'matkasym-kyzmat' && setSlug !== TUBES_SET);
-  const mergeable = p => !p.isKit && (isHomeBrand || !/^трубы/i.test(p.category || ''));
+  // Трубы склеиваются по сечению (Ø12, 20×10): одна карточка, строки — толщина стенки.
+  const mergesVariants = isHomeBrand || brandKey === 'matkasym-kyzmat';
+  const isTubeItem = p => !isHomeBrand && /^трубы/i.test(p.category || '');
+  const mergeable = p => !p.isKit;
   const showMakerTabs = isHomeBrand;
   const [makerTab, setMakerTab] = useState('matkasym');
 
@@ -1583,7 +1597,10 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const models = useMemo(() => {
     const grouped = {};
     shownProducts.forEach(p => {
-      const key = mergesVariants && mergeable(p) ? `${p.category || ''}|${variantKey(p.name)}` : p.name;
+      const tubeSize = isTubeItem(p) ? tubeSizeOf(p) : '';
+      const key = !mergesVariants || !mergeable(p) ? p.name
+        : tubeSize && tubeSize !== 'Размер не указан' ? `${p.category}|tube|${tubeSize}`
+        : `${p.category || ''}|${variantKey(p.name)}`;
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(p);
     });
@@ -1591,12 +1608,15 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
       // Первым — вариант в наличии: с него берутся фото и цена карточки
       // сначала то, что в наличии; дальше — по первому числу варианта
       // (толщина 0,5–1 → 1–2 → 2–3, размер 50*80 → 60*90), иначе как пришли
-      const firstNum = v => parseFloat(String(variantParts(v.name)[0] || '').replace(',', '.')) || 0;
+      const firstNum = v => (isTubeItem(v) ? tubeWall(v)
+        : parseFloat(String(variantParts(v.name)[0] || '').replace(',', '.'))) || 0;
       const sorted = [...variants].sort((a, b) =>
         (Number(isProductAvailable(b, country)) - Number(isProductAvailable(a, country)))
         || (firstNum(a) - firstNum(b)));
       const names = new Set(sorted.map(v => v.name));
-      return [names.size > 1 ? variantTitle(sorted[0].name) : sorted[0].name, sorted];
+      const title = names.size < 2 ? sorted[0].name
+        : isTubeItem(sorted[0]) ? tubeTitle(sorted[0]) : variantTitle(sorted[0].name);
+      return [title, sorted];
     });
     // Заголовок — ключ карточки (порядок, удаление), он должен быть уникальным
     const seen = new Set();
@@ -2372,7 +2392,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 }
               `}</style>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {accordionGroups.map(([groupName, items], groupIdx) => {
+                {accordionGroups.map(([groupName, groupItems], groupIdx) => {
+                  // в списке строк вариантов нет — склеенные позиции разворачиваем обратно
+                  const items = mergesVariants ? groupItems.flatMap(([n, vs]) => (vs.length > 1 ? vs.map(v => [v.name, [v]]) : [[n, vs]])) : groupItems;
                   const isOpen = openGroups[groupName] ?? false;
                   const isOutOfStockGroup = groupName === 'Нет в наличии';
                   const byTubeSize = setSlug === TUBES_SET
@@ -2530,8 +2552,9 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
               )}
               {accordionGroups.map(([groupName, items]) => {
                 const isOutOfStock = groupName === 'Нет в наличии';
-                // Разбивка по сечению нужна только там, где сечений в категории несколько
-                const byTubeSize = setSlug === TUBES_SET
+                // Разбивка по сечению нужна только там, где сечений в категории несколько;
+                // когда сечение — одна карточка со строками толщин, заголовок над ней лишний
+                const byTubeSize = setSlug === TUBES_SET && !mergesVariants
                   && new Set(items.map(([, v]) => tubeSizeOf(v[0]))).size > 1;
                 // «Прочее» и «Нет в наличии» всегда последние — их не двигаем.
                 const catDraggable = editMode && !isOutOfStock && groupName !== 'Прочее';
