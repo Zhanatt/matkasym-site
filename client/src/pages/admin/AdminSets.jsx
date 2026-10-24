@@ -102,12 +102,6 @@ const TUBES_SET = 'dayar-tutuk';
 // Слева — как категория называется в базе, справа — как она должна называться
 // в каталоге: «отдел-сварки» в заголовке PDF читалось бы как служебная пометка.
 const SERVICES_SET = 'onuguu-set';
-const SERVICES_PDF_CHOICES = [
-  { category: 'Покраска',              label: 'Покраска' },
-  { category: 'отдел-гибка',           label: 'Гибка' },
-  { category: 'отдел-сварки',          label: 'Сварка' },
-  { category: 'Лазерное оборудование', label: 'Лазерная резка' },
-];
 
 // Весь каталог бренда открывается той же панелью, что и сет: в адресе он стоит
 // на месте сета, поэтому ссылку на него можно переслать и открыть заново.
@@ -1691,6 +1685,12 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   // Общая переменная для групп — теперь только categoryGroups
   const accordionGroups = categoryGroups;
+  // Пункты PDF сета услуг — его настоящие разделы: названия категорий правят
+  // на сайте («Услуга сварки»), и вписанный в код список переставал совпадать.
+  const servicesPdfChoices = useMemo(
+    () => (accordionGroups || []).map(([g]) => g).filter(g => g !== 'Нет в наличии')
+      .map(g => ({ category: g, label: g })),
+    [accordionGroups]);
 
   // Перетаскивание карточек. Ссылка на группы — через ref: колбэк живёт дольше
   // одного рендера, а замыкание на accordionGroups устаревало бы после каждого.
@@ -2049,7 +2049,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                      вперемешку — горшки, мангал, коврик подряд. */
                   ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
                       currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
-                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} pending={loadingMore} />
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} pending={loadingMore} />
             )}
           </div>
 
@@ -2073,7 +2073,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                      вперемешку — горшки, мангал, коврик подряд. */
                   ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
                       currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
-                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? SERVICES_PDF_CHOICES : null} pending={loadingMore} />}
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} pending={loadingMore} />}
             </div>
           )}
 
