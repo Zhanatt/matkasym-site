@@ -524,6 +524,30 @@ router.get('/set-layouts', async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// Категории каждого сета бренда — для списка под названием сета на странице
+// направления. Берём из самих товаров (переименовали категорию — список
+// поменялся), порядок — сохранённый через «Порядок»; клиент досортирует
+// остальное тем же правилом, что и страница сета.
+router.get('/set-categories', async (req, res) => {
+  try {
+    const { brand } = req.query;
+    if (!brand) return res.status(400).json({ message: 'Нужен brand' });
+    const b = await Brand.findOne({ key: brand }).lean();
+    const slugs = (b?.sets || []).map(x => x.key).filter(Boolean);
+    const layouts = await SetLayout.find({ brand, set: { $in: slugs } }).lean();
+    const order = Object.fromEntries(layouts.map(l => [l.set, l.categories || []]));
+    const sets = {};
+    await Promise.all(slugs.map(async slug => {
+      const rows = await Product.aggregate([
+        { $match: { $and: [setMatch(slug), { productStatus: { $ne: 'kit_part' } }, { category: { $ne: 'kit-part' } }] } },
+        { $group: { _id: { $ifNull: ['$category', ''] }, count: { $sum: 1 } } },
+      ]);
+      sets[slug] = rows.map(r => ({ category: r._id || 'Прочее', count: r.count }));
+    }));
+    res.json({ sets, order });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 router.put('/set-layout', editor, async (req, res) => {
   try {
     const { brand, set, categories, products } = req.body;

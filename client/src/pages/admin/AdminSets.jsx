@@ -9,6 +9,7 @@ import {
   adminGetFacets, adminGetProducts,
   adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets,
   adminGetSetLayout,
+  adminGetSetCategories,
   adminSaveSetLayout,
   adminCategoryUsage, adminRenameCategory,
   adminDeleteProduct,
@@ -630,6 +631,31 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   const switchCountry = useCountrySwitch();
   const [editing, setEditing]     = useState(false);
   const [catalogSlug, setCatalog] = useState(() => autoOpenSet || null);
+  // KYZMAT: под сетом — его настоящие категории, в порядке страницы сета.
+  // Обновляем при открытии направления и после закрытия сета: там могли
+  // переименовать категорию или поменять порядок.
+  const liveSubs = brandKey === 'matkasym-kyzmat';
+  const [setCats, setSetCats] = useState(null);
+  useEffect(() => {
+    if (!liveSubs || catalogSlug) return;
+    adminGetSetCategories(brandKey).then(r => setSetCats(r.data)).catch(() => {});
+  }, [brandKey, catalogSlug, liveSubs]);
+  const subsFor = slug => {
+    if (!liveSubs) return subItems[slug] || null;
+    if (!setCats) return null;
+    const cats = (setCats.sets?.[slug] || []).map(c => c.category);
+    if (!cats.length) return null;
+    const saved = setCats.order?.[slug] || [];
+    const rank = saved.length
+      ? Object.fromEntries(saved.map((c, i) => [c, i]))
+      : (SET_CATEGORY_ORDER[slug] || {});
+    return [...cats].sort((a, b) => {
+      if (a === 'Прочее') return 1;
+      if (b === 'Прочее') return -1;
+      const d = (rank[a] ?? 999) - (rank[b] ?? 999);
+      return d || a.localeCompare(b, 'ru');
+    });
+  };
   const isMobile                  = useIsMobile();
 
   function handleOpenCatalog(slug) {
@@ -1147,9 +1173,9 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
               )}
             </div>
 
-            {subItems[slug] && (
+            {subsFor(slug) && (
               <div style={{ paddingLeft: 36, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {subItems[slug].map(sub => (
+                {subsFor(slug).map(sub => (
                   <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '2px 0' }}>
                     <div style={{ width: 3, height: 13, background: accent, borderRadius: 2, flexShrink: 0 }} />
                     <span style={{ color: '#bbb', fontSize: 11 }}>—</span>
@@ -1166,7 +1192,10 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
         <SetCatalogPanel
           brandKey={brandKey}
           setSlug={catalogSlug}
-          titleOverride={catalogSlug === ALL_SETS ? `${BRAND_META[brandKey].label} — весь каталог` : undefined}
+          // Название сета — то, что задали при правке сетов (ÖNDÜRÜÜ), а не из адреса (onuguu-set)
+          titleOverride={catalogSlug === ALL_SETS
+            ? `${BRAND_META[brandKey].label} — весь каталог`
+            : (customSets.find(cs => cs.key === catalogSlug)?.label || undefined)}
           fetchParams={catalogSlug === ALL_SETS ? { brand: brandKey } : undefined}
           brandSets={catalogSlug === ALL_SETS ? orderedSets : undefined}
           onClose={handleCloseCatalog}

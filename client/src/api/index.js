@@ -250,6 +250,7 @@ export const adminGetSetLayout  = (brand, set) => api.get('/admin/set-layout', {
 export const adminSaveSetLayout = (brand, set, categories, products) => api.put('/admin/set-layout', { brand, set, categories, products });
 // Расстановка по всем сетам бренда сразу — для PDF «весь каталог».
 export const adminGetSetLayouts = (brand) => api.get('/admin/set-layouts', { params: { brand } });
+export const adminGetSetCategories = (brand) => api.get('/admin/set-categories', { params: { brand } });
 
 // Переименование категории: сначала смотрим, где она используется, потом меняем
 // её во всех товарах разом — категория живёт строкой в каждой карточке.
