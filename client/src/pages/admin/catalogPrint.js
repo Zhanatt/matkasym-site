@@ -12,7 +12,7 @@
 
 import { adminGetCustomCategories, adminGetPdfDetails } from '../../api/index';
 import { CATEGORIES } from '../../config/categorySpecs';
-import { variantKey, variantLabel, variantTitle } from '../../utils/variantKey';
+import { variantKey, variantLabel, variantTitle, coverOf } from '../../utils/variantKey';
 
 // ── Сетка полосы ──────────────────────────────────────────────────────────────
 const PAGE_W = 595, PAGE_H = 842;
@@ -1123,9 +1123,13 @@ function mergeHomeVariants(products) {
     if (!p?.__homeKey) return [p];
     const items = byKey.get(p.__homeKey);
     if (new Set(items.map(i => i.name)).size < 2) return items;
+    // Фото — то же, что на обложке карточки на сайте: экран сета передаёт его
+    // в __siteCover (там видны и варианты без остатка), иначе — тем же правилом
     const cover = items.find(hasPhoto) || items[0];
+    const siteImg = items.find(i => i.__siteCover)?.__siteCover || coverOf(items)?.images?.[0];
     const title = variantTitle(cover.name);
     const merged = { ...cover, name: title, fullName: title, dimensions: '',
+      images: siteImg ? [siteImg, ...(cover.images || []).filter(u => u !== siteImg)] : cover.images,
       color: [...new Set(items.map(i => i.color).filter(Boolean))].join(', '),
       specs: (cover.specs || []).filter(s => !/^цвет$/i.test(s.key || '')) };
     merged.__variants = items.map(i => ({ label: variantLabel(i, items), price: i.price,

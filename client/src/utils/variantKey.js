@@ -67,3 +67,15 @@ export function variantLabel(v, siblings) {
   if (color && !/^#[0-9a-f]{3,8}$/i.test(color)) return COLOR_RU[color.toLowerCase()] || color;
   return v.dimensions || v.sku || v.name;
 }
+
+// Обложка карточки с вариантами — вариант с самым свежим фото: номер версии
+// /v<секунды>/ в адресе Cloudinary растёт с каждой загрузкой. «Первый с фото»
+// плавал — порядок вариантов зависит от остатков и догрузки, и вперёд вставал
+// вариант со старым снимком (ENIGMA, INFINITY). Одно правило для экрана сета
+// и для PDF, чтобы в каталоге печаталось то же фото, что стоит на сайте.
+const photoTime = v => Number(String(v?.images?.[0] || '').match(/\/v(\d+)\//)?.[1] || 0);
+export function coverOf(variants) {
+  const withPhoto = (variants || []).filter(v => v?.images?.[0]);
+  if (!withPhoto.length) return (variants || [])[0];
+  return withPhoto.reduce((best, v) => (photoTime(v) > photoTime(best) ? v : best));
+}

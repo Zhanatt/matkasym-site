@@ -25,7 +25,7 @@ import { canEditCatalog, canExportLalafo } from '../../constants/roles';
 import LalafoExportButton from './LalafoExportButton';
 import { useLazyItems } from '../../hooks/useLazyItems';
 import { cloudinaryOpt } from '../../utils/drive';
-import { variantKey, variantLabel, variantTitle } from '../../utils/variantKey';
+import { variantKey, variantLabel, variantTitle, coverOf } from '../../utils/variantKey';
 import { SupplierBadge, StatusBadge, SizeBadge, STATUS_BADGE, MakerPicker, MAKERS } from '../../components/ProductBadges';
 
 // ── страна учёта ───────────────────────────────────────────────────────────────
@@ -1181,20 +1181,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
 const RETAIL_BRANDS = new Set(['matkasym-home', 'matkasym-shaar']);
 const NO_PHOTO      = '/logos/no-photo.png';
 
-// Обложка группы вариантов — первый вариант с фото. Брали variants[0], а он
-// зависит от догрузки: у «Сушилки SAKURA» сначала приходили три варианта с фото,
-// после догрузки первым вставал белый без снимка — и картинка пропадала через
-// секунду после открытия страницы.
-// «Первый с фото» тоже плавал: варианты сортируются по наличию, и после
-// обновления остатков вперёд вставал вариант со старым снимком вместо того, где
-// фото только что поменяли (ENIGMA, INFINITY). Берём вариант с самым свежим
-// фото — номер версии /v<секунды>/ в адресе Cloudinary растёт с каждой загрузкой.
-const photoTime = v => Number(String(v.images?.[0] || '').match(/\/v(\d+)\//)?.[1] || 0);
-const coverOf = variants => {
-  const withPhoto = variants.filter(v => v.images?.[0]);
-  if (!withPhoto.length) return variants[0];
-  return withPhoto.reduce((best, v) => (photoTime(v) > photoTime(best) ? v : best));
-};
+// Обложка карточки с вариантами — coverOf из utils/variantKey (общий с PDF).
 
 // Квадрат цвета вместо фото рисуем только для HEX — так заведены краски. Словом
 // в поле «Цвет» («white», «белый») помечены обычные товары, и у них вместо

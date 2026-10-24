@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { printCatalog, fitsCatalog } from './catalogPrint';
+import { coverOf } from '../../utils/variantKey';
 
 const PRICE_MODE_TO_TYPE = {
   retail: 'price',
@@ -56,9 +57,12 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           // размер в названии) — в PDF они по-прежнему идут каждый своей карточкой.
           const groupProducts = items
             .flatMap(([, variants]) => {
+              // обложка карточки на экране — чтобы PDF напечатал то же фото
+              const siteCover = variants.length > 1 ? coverOf(variants)?.images?.[0] : null;
               const byName = new Map();
               variants.forEach(v => { if (!byName.has(v.name)) byName.set(v.name, []); byName.get(v.name).push(v); });
-              return [...byName.values()].map(same => same.find(fitsCatalog));
+              return [...byName.values()].map(same => same.find(fitsCatalog))
+                .map(p => (p && siteCover ? { ...p, __siteCover: siteCover } : p));
             })
             .filter(Boolean);
           return { groupName, products: groupProducts };
