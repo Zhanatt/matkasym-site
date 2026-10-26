@@ -1354,20 +1354,18 @@ function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }
 // панели, а прокручивается только сетка — поэтому всегда на виду.
 const MAKER_TABS = [
   { key: 'matkasym', logo: '/logos/logo-main.png', label: 'MATKASYM' },
-  { key: 'ikea',     logo: '/logos/ikea.svg',      label: 'IKEA' },
-  { key: 'china',    label: 'Китай' },
+  { key: 'cross',    label: 'КРОСС ТОВАРЫ' },
   { key: 'test',     label: 'TEST' },
 ];
 
 // Значок проставлен у немногих, поэтому без него производителя угадываем:
-// поставщик IKEA — IKEA, любой другой привоз — Китай, свой товар — MATKASYM.
+// привозной товар (IKEA, Китай и т.д.) — КРОСС ТОВАРЫ, свой — MATKASYM.
 // Тестовые продажи (test_sale) — отдельно, во вкладке TEST, кто бы их ни делал.
 function makerOf(p) {
   if (p.productStatus === 'test_sale') return 'test';
-  if (MAKERS[p.maker]) return p.maker;
   const company = (p.supplier?.company || '').trim();
-  if (company.toUpperCase() === 'IKEA') return 'ikea';
-  if (company || p.isSupplied) return 'china';
+  if (company || p.isSupplied) return 'cross';
+  if (p.maker && p.maker !== 'matkasym') return 'cross';
   return 'matkasym';
 }
 
@@ -1397,13 +1395,11 @@ function MakerTabs({ value, onChange, counts, accent, mobile = false }) {
               transition: 'background .15s, box-shadow .15s',
             }}>
             {t.logo
-              ? <img src={t.logo} alt={t.label} style={{ height: t.key === 'ikea' ? (mobile ? 15 : 16) : (mobile ? 9 : 10), maxWidth: '100%', display: 'block' }} />
-              : t.key === 'china'
-                ? <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>{MAKERS.china.render()}{!mobile && t.label}</span>
-                : t.key === 'test'
-                  ? <span style={{ padding: '1px 6px', borderRadius: 4, background: '#7c3aed', color: '#fff',
-                      fontSize: mobile ? 11 : 11.5, fontWeight: 800, letterSpacing: .5 }}>{t.label}</span>
-                  : <span>{t.label}</span>}
+              ? <img src={t.logo} alt={t.label} style={{ height: mobile ? 9 : 10, maxWidth: '100%', display: 'block' }} />
+              : t.key === 'test'
+                ? <span style={{ padding: '1px 6px', borderRadius: 4, background: '#7c3aed', color: '#fff',
+                    fontSize: mobile ? 11 : 11.5, fontWeight: 800, letterSpacing: .5 }}>{t.label}</span>
+                : <span>{t.label}</span>}
             <span style={{
               fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
               background: active ? accent : '#e2e6ea', color: active ? '#fff' : '#5b6572',
