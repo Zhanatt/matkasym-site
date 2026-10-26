@@ -1045,9 +1045,9 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
   // начат карточкой, его вторая ячейка остаётся пустой.
   const pages = [];
   let cards = [], used = 0, section = '';
-  const flush = () => {
+  const flush = (pad = true) => {
     if (!cards.length) return;
-    while (used < PER_PAGE) { cards.push(null); used++; }
+    if (pad) { while (used < PER_PAGE) { cards.push(null); used++; } }
     // Раздел, действующий к концу полосы: если новый начался в первой карточке,
     // вся полоса уже про него.
     pages.push(pageHtml(cards, section, pages.length + 1, priceType, currency));
@@ -1086,7 +1086,7 @@ function buildPages(groups, setName, priceType, currency, headFromGroups) {
     cards.push(product); used += span; section = sec;
     if (used >= PER_PAGE) flush();
   });
-  flush();
+  flush(false);
 
   return pages.join('');
 }
