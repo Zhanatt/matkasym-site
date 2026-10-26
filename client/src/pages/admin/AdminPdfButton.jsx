@@ -64,7 +64,7 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
           const groupProducts = items
             .flatMap(([, variants]) => {
               // обложка карточки на экране — чтобы PDF напечатал то же фото
-              const siteCover = variants.length > 1 ? coverOf(variants)?.images?.[0] : null;
+              const siteCover = coverOf(variants)?.images?.[0] || null;
               const byName = new Map();
               variants.forEach(v => { if (!byName.has(v.name)) byName.set(v.name, []); byName.get(v.name).push(v); });
               return [...byName.values()].map(same => same.find(fits))

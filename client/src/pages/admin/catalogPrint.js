@@ -1122,7 +1122,12 @@ function mergeHomeVariants(products) {
   return out.flatMap(p => {
     if (!p?.__homeKey) return [p];
     const items = byKey.get(p.__homeKey);
-    if (new Set(items.map(i => i.name)).size < 2) return items;
+    if (new Set(items.map(i => i.name)).size < 2) {
+      // Даже без слияния подставляем обложку с сайта, чтобы фото совпадало
+      const sc = items.find(i => i.__siteCover)?.__siteCover;
+      if (sc) return items.map(i => i.images?.[0] === sc ? i : { ...i, images: [sc, ...(i.images || []).filter(u => u !== sc)] });
+      return items;
+    }
     // Фото — то же, что на обложке карточки на сайте: экран сета передаёт его
     // в __siteCover (там видны и варианты без остатка), иначе — тем же правилом
     const cover = items.find(hasPhoto) || items[0];
