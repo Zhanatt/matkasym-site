@@ -99,7 +99,7 @@ function tubesPage(n, setLabel, info, products, priceType) {
         </div>
         <table class="tlist">
           <thead><tr><th>Сечение, мм</th><th>Стенка, мм</th>${priceType !== 'none' ? '<th>Цена за хлыст 6 м</th>' : ''}</tr></thead>
-          <tbody>${items.map(x => `<tr><td>${label(x.size)}</td><td>${dec(x.wall)}</td>${priceType !== 'none'
+          <tbody>${items.map(x => `<tr><td>${label(x.size)}</td><td>${dec(Number.isInteger(x.wall) ? x.wall.toFixed(1) : x.wall)}</td>${priceType !== 'none'
             ? `<td>${x.price > 0 ? `<b>${fmt(x.price)}</b> сом` : '<i>по запросу</i>'}</td>` : ''}</tr>`).join('')}</tbody>
         </table>
       </div>`,
@@ -391,18 +391,18 @@ h1 { font-size: 24pt; font-weight: 700; line-height: 1.1; margin-top: 2pt; }
 
 /* ── Трубы ── */
 .tubes { display: flex; gap: 22pt; align-items: flex-start; }
-.tcol { flex: 1; display: flex; flex-direction: column; gap: 20pt; min-width: 0; }
+.tcol { flex: 1; display: flex; flex-direction: column; gap: 12pt; min-width: 0; }
 .tube-h { display: flex; align-items: center; gap: 8pt; margin-bottom: 4pt; }
-.tube-ph { width: 52pt; height: 38pt; display: flex; align-items: center; justify-content: center; }
+.tube-ph { width: 40pt; height: 26pt; display: flex; align-items: center; justify-content: center; }
 .tube-ph img { max-width: 100%; max-height: 100%; object-fit: contain; }
 h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 .tube-sub { font-size: 7pt; color: ${MUTED}; margin-top: 1pt; }
-.tlist { width: 100%; border-collapse: collapse; font-size: 11pt; }
-.tlist th { text-align: left; font-size: 8pt; font-weight: 700; color: ${MUTED}; padding: 0 4pt 5pt 0; border-bottom: 1pt solid ${INK}; }
-.tlist td { padding: 5pt 4pt 5pt 0; border-bottom: .5pt solid ${LINE}; }
+.tlist { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+.tlist th { text-align: left; font-size: 7.5pt; font-weight: 700; color: ${MUTED}; padding: 0 4pt 3pt 0; border-bottom: 1pt solid ${INK}; }
+.tlist td { padding: 2.4pt 4pt 2.4pt 0; border-bottom: .5pt solid ${LINE}; }
 .tlist th:last-child, .tlist td:last-child { text-align: right; padding-right: 0; }
 .tlist td:first-child { font-weight: 700; }
-.tlist td b { color: ${RED}; font-size: 12pt; }
+.tlist td b { color: ${RED}; font-size: 10pt; }
 .tlist td i { font-style: normal; color: ${MUTED}; font-size: 8.5pt; }
 .grid { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
 .grid th, .grid td { padding: 4.6pt 3pt; text-align: center; border-bottom: .5pt solid ${LINE}; }
