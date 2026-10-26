@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { adminGetProducts, adminGetSetLayouts } from '../../api/index';
 import { printCatalog, fitsCatalog } from './catalogPrint';
+import { printKyzmatCatalog } from './kyzmatPrint';
 import { categoryRank } from '../../config/setCategoryOrder';
 
 // Порядок в каталоге целиком: сет → категория → карточка, как они стоят на
@@ -88,7 +89,10 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const allProducts = res.data.products || [];
       const layouts = layoutRes.data?.layouts || {};
 
-      const availableProducts = allProducts.filter(fitsCatalog)
+      // KYZMAT — своя вёрстка (kyzmatPrint.js): разделы сами отбирают товары,
+      // палитре красок нужны и позиции без остатка
+      const isKyzmat = brandKey === 'matkasym-kyzmat';
+      const availableProducts = allProducts.filter(isKyzmat ? (p => p.productStatus !== 'kit_part') : fitsCatalog)
         .filter(p => isPicked(p.set));
 
       if (picked && picked.size === 0) {
@@ -128,6 +132,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const pushSet = (setKey) => {
         if (!grouped[setKey]?.length) return;
         pdfGroups.push({
+          setKey,
           groupName: setLabels[setKey] || setKey,
           products: orderInSet(grouped[setKey], setKey, layouts[setKey]),
         });
@@ -150,7 +155,8 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       const brand = brandKey === 'matkasym-kyzmat' ? 'kyzmat'
                   : brandKey === 'matkasym-shaar' ? 'shaar' : 'home';
 
-      await printCatalog(pdfGroups, brandLabel, priceType, brand, currency);
+      if (isKyzmat) await printKyzmatCatalog(pdfGroups, priceType);
+      else await printCatalog(pdfGroups, brandLabel, priceType, brand, currency);
 
       clearInterval(timerRef.current);
       setProgress(100);

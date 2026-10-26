@@ -48,7 +48,7 @@ function servicePage(group, setName, priceType) {
   };
   const products = group.products || [];
   const photo = printImage(coverOf(products)?.images?.[0]);
-  const rows = priceRows(products, priceType);
+  const rows = priceRows(products, info.askPrice ? 'none' : priceType);
   const anyPrice = rows.some(r => r.price != null);
   const unit = info.unit ? `<small>${esc(info.unit)}</small>` : '';
 
