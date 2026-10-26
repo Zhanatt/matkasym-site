@@ -25,7 +25,7 @@ const LINE = '#e1e6e8';
 
 const fmt = n => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/ |,/g, ' ');
 const num = s => parseFloat(String(s ?? '').replace(',', '.').match(/\d+(?:\.\d+)?/)?.[0] || 'NaN');
-const dec = v => String(v).replace('.', ',');
+const dec = v => String(v).replace(/\./g, ',');
 const specOf = (p, re) => (p.specs || []).find(s => re.test(s?.key || '') && s?.value)?.value;
 const isExample = p => /\(пример\)/i.test(p.name || '');
 
@@ -107,11 +107,6 @@ function tubesPage(n, setLabel, info, products, priceType) {
   }).filter(Boolean);
 
   // Две колонки: каждый блок — в ту, где сейчас короче
-  // Фото торцов труб — по одному на вид — в пустое место под короткой колонкой
-  const art = TUBE_KINDS.map(kind => {
-    const p = products.find(q => tubeKind(q) === kind && q.images?.[0] && !/\.webp/.test(q.images[0]));
-    return p && { img: printImage(p.images[0]), label: kind.title.replace(/ые$/, 'ая') };
-  }).filter(Boolean);
   const cols = [[], []], h = [0, 0];
   blocks.sort((a, b) => b.rows - a.rows).forEach(b => {
     const i = h[0] <= h[1] ? 0 : 1;
@@ -123,11 +118,20 @@ function tubesPage(n, setLabel, info, products, priceType) {
     label: specOf(p, /толщина/i) || String(p.name || '').match(/\(([^)]+)\)/)?.[1] || p.name,
     price: priceFor(p, priceType),
   })).sort((a, b) => num(a.label) - num(b.label));
+  // Резка — блоком с фото в пустом месте под короткой колонкой
+  const cutPhoto = printImage(cuts.find(p => p.images?.[0])?.images[0]);
   const cutHtml = cutRows.length ? `
     <div class="cut">
-      <h2>Резка трубы в размер</h2>
-      <div class="cut-rows">${cutRows.map(r => `<div><span>стенка ${esc(dec(r.label).replace(/-/g, '–'))}</span>${
-        r.price ? `<b>${fmt(r.price)} сом</b><small>за рез</small>` : '<i>по запросу</i>'}</div>`).join('')}</div>
+      ${cutPhoto ? `<div class="cut-ph"><img src="${esc(cutPhoto)}" alt=""></div>` : ''}
+      <div>
+        <h2>Резка трубы в размер</h2>
+        <p class="cut-sub">Режем лазером в нужную длину</p>
+        <table class="tlist">
+          <thead><tr><th>Стенка, мм</th>${priceType !== 'none' ? '<th>Цена за рез</th>' : ''}</tr></thead>
+          <tbody>${cutRows.map(r => `<tr><td>${esc(dec(r.label).replace(/-/g, '–').replace(/\s*мм/, ''))}</td>${priceType !== 'none'
+            ? `<td>${r.price ? `<b>${fmt(r.price)}</b> сом` : '<i>по запросу</i>'}</td>` : ''}</tr>`).join('')}</tbody>
+        </table>
+      </div>
     </div>` : '';
 
   return [page(`
@@ -135,8 +139,7 @@ function tubesPage(n, setLabel, info, products, priceType) {
     ${sectionHead(n, setLabel, info)}
     ${priceType !== 'none' && info.priceNote ? `<div class="note-bar">${esc(info.priceNote)}.</div>` : ''}
     <div class="tubes">${cols.map((c, i) => `<div class="tcol">${c.join('')}${
-      i === shortCol && art.length ? `<div class="tube-art">${art.map(x => `<figure><img src="${esc(x.img)}" alt=""><figcaption>${esc(x.label)}</figcaption></figure>`).join('')}</div>` : ''}</div>`).join('')}</div>
-    ${cutHtml}
+      i === shortCol ? cutHtml : ''}</div>`).join('')}</div>
     ${foot()}`)];
 }
 
@@ -152,8 +155,8 @@ function byCategory(products) {
 }
 
 function servicesPage(n, setLabel, info, products, priceType) {
-  // Резка картона и ткани — сразу после лазерной резки металла
-  const rank = c => (/лазер/i.test(c) ? 0 : /картон|ткан/i.test(c) ? 1 : 2);
+  // Резка картона, затем ткани — сразу после лазерной резки металла
+  const rank = c => (/лазер/i.test(c) ? 0 : /картон/i.test(c) ? 1 : /ткан/i.test(c) ? 2 : 3);
   const cats = byCategory(products).map((e, i) => [e, i])
     .sort((a, b) => rank(a[0][0]) - rank(b[0][0]) || a[1] - b[1]).map(([e]) => e);
   const blocks = cats.map(([cat, items]) => {
@@ -166,7 +169,7 @@ function servicesPage(n, setLabel, info, products, priceType) {
     const rows = items.map(p => {
       const th = specOf(p, unit.rowSpec || /толщин/i);
       return {
-        label: th ? `${dec(th)}`.replace(/-/g, '–') : (items.length > 1 ? p.name : '1 кг изделия'),
+        label: unit.rowLabel || (th ? `${dec(th)}`.replace(/-/g, '–') : (items.length > 1 ? p.name : '1 кг изделия')),
         price: unit.ask ? 0 : priceFor(p, priceType),
       };
     }).sort((a, b) => num(a.label) - num(b.label));
@@ -419,10 +422,6 @@ h1 { font-size: 24pt; font-weight: 700; line-height: 1.1; margin-top: 2pt; }
 
 /* ── Трубы ── */
 .tubes { display: flex; gap: 22pt; align-items: flex-start; }
-.tube-art { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; margin-top: 16pt; height: 74pt; }
-.tube-art figure { display: flex; flex-direction: column; align-items: center; min-height: 0; overflow: hidden; }
-.tube-art img { width: 100%; height: 58pt; object-fit: contain; mix-blend-mode: multiply; }
-.tube-art figcaption { font-size: 7pt; color: ${MUTED}; margin-top: 2pt; white-space: nowrap; }
 .tcol { flex: 1; display: flex; flex-direction: column; gap: 12pt; min-width: 0; }
 .tube-h { display: flex; align-items: center; gap: 8pt; margin-bottom: 4pt; }
 .tube-ph { width: 40pt; height: 26pt; display: flex; align-items: center; justify-content: center; }
@@ -446,15 +445,14 @@ h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 .grid td { font-weight: 500; }
 .grid td.no { color: #c3ccd0; font-weight: 400; }
 .grid td i { font-style: normal; color: ${MUTED}; font-size: 7.5pt; font-weight: 400; }
-.cut { margin-top: 16pt; padding-top: 10pt; border-top: 1pt solid ${INK}; }
-.cut-rows { display: flex; flex-wrap: wrap; gap: 6pt 26pt; margin-top: 6pt; font-size: 9.5pt; }
-.cut-rows div { display: flex; align-items: baseline; gap: 6pt; }
-.cut-rows b { color: ${RED}; }
-.cut-rows small, .cut-rows i { font-size: 7.5pt; color: ${MUTED}; font-style: normal; }
+.cut { display: grid; grid-template-columns: 96pt 1fr; gap: 12pt; align-items: start; margin-top: 18pt;
+  padding-top: 12pt; border-top: 1pt solid ${INK}; }
+.cut-ph img { width: 96pt; height: 96pt; object-fit: contain; mix-blend-mode: multiply; display: block; }
+.cut-sub { font-size: 8pt; color: ${MUTED}; margin: 2pt 0 6pt; }
 
 /* ── Услуги ── */
 .svcs { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt 22pt; }
-.svc-ph { height: 84pt; border-radius: 4pt; overflow: hidden; background: #f2f4f6; margin-bottom: 6pt; }
+.svc-ph { height: 70pt; border-radius: 4pt; overflow: hidden; background: #f2f4f6; margin-bottom: 6pt; }
 .svc-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .svc-poster { display: grid; grid-template-columns: 104pt 1fr; gap: 10pt; align-items: start; }
 .svc-pst img { width: 104pt; height: 130pt; object-fit: cover; border-radius: 4pt; display: block; }
