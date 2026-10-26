@@ -281,8 +281,10 @@ function gridPages(n, setLabel, info, products, priceType, { prices = true } = {
 
 // ── Расходные материалы: палитра красок и листы ──────────────────────────────
 // Фон нижней части листа со сталью — фото стопки листов (прислал руководитель
-// 26.10.2026), на белом фоне, поэтому сливается с полосой
-const SHEETS_BG = 'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_auto:good,w_1686/v1793005691/matkasym/covers/kyzmat-sheets-bg.png';
+// 26.10.2026). Переход в белый сверху «вшит» в сам JPEG: CSS-маска даёт в PDF
+// полупрозрачность, и просмотрщик iPhone рисовал фото кусками
+// (исходник и запечённый вариант — server/data/renders/kyzmat-sheets-bg-baked.jpg)
+const SHEETS_BG = 'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_auto:good,w_1686/v1793018880/matkasym/covers/kyzmat-sheets-bg-baked.jpg';
 const HEX = /^#[0-9a-f]{6}$/i;
 const FINISH = [[/шагрен/i, 'шагрень'], [/полумат/i, 'полумат'], [/metallic|металлик/i, 'металлик'],
   [/глян/i, 'глянец'], [/термостойк/i, 'термостойкая'], [/\bмат\b|\bmat\b|матов/i, 'мат']];
@@ -533,7 +535,7 @@ h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 .grid td i { font-style: normal; color: ${MUTED}; font-size: 7.5pt; font-weight: 400; }
 .cut { display: grid; grid-template-columns: 96pt 1fr; gap: 12pt; align-items: start; margin-top: 18pt;
   padding-top: 12pt; border-top: 1pt solid ${INK}; }
-.cut-ph img { width: 96pt; height: 96pt; object-fit: contain; mix-blend-mode: multiply; display: block; }
+.cut-ph img { width: 96pt; height: 96pt; object-fit: contain; display: block; }
 .cut-sub { font-size: 8pt; color: ${MUTED}; margin: 2pt 0 6pt; }
 
 /* ── Услуги ── */
@@ -610,12 +612,11 @@ h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
 h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bottom: 6pt; }
 .sheet-tables .tlist td:first-child { font-weight: 500; }
 .good-big { height: 330pt; display: flex; align-items: center; justify-content: center; margin: 10pt 0; }
-.good-big img { max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; }
+.good-big img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .good-t { font-size: 12pt; margin-top: 8pt; }
 .good-t td { padding: 7pt 4pt 7pt 0; }
 .good-t th { font-size: 9pt; }
-.sheets-bg { position: absolute; left: 0; right: 0; bottom: 34pt; width: 100%; z-index: 0;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%); mask-image: linear-gradient(to bottom, transparent 0, #000 22%); }
+.sheets-bg { position: absolute; left: 0; right: 0; bottom: 34pt; width: 100%; z-index: 0;}
 .has-bg > :not(.sheets-bg):not(.foot) { position: relative; z-index: 1; }
 .has-bg > .foot { z-index: 1; }
 .sheets td { font-weight: 400; }
