@@ -294,6 +294,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} ${x.kind}`))].sort();
     const ths = [...new Set(sheets.map(x => x.t))].sort((a, b) => a - b);
     const anyPrice = sheets.some(x => x.price > 0);
+    const sheetPhoto = printImage(sheets.find(x => x.p.images?.[0])?.p.images[0]);
     const cell = (t, k) => {
       const x = sheets.find(s => s.t === t && `${s.fmt} ${s.kind}` === k);
       if (!x) return '<td class="no">—</td>';
@@ -302,7 +303,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     pages.push(page(`
       ${head(setLabel)}
       ${sheets.length ? `
-      <h2 class="big">Лист стальной</h2>
+      <div class="big-h">${sheetPhoto ? `<img src="${esc(sheetPhoto)}" alt="">` : ''}<h2 class="big">Лист стальной</h2></div>
       <div class="note-bar">Холоднокатаный (х/к) и горячекатаный (г/к). В клетке — ${anyPrice ? 'цена листа, сом, и ' : ''}масса листа${anyPrice ? '' : '; цену уточняйте у менеджера'}.</div>
       <table class="grid sheets">
         <thead><tr><th>толщина, мм</th>${colsK.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead>
@@ -461,6 +462,9 @@ h2.sub { margin: 4pt 0 6pt; }
 .sw span { display: block; font-size: 7pt; line-height: 1.25; color: ${MUTED}; }
 
 h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
+.big-h { display: flex; align-items: center; gap: 12pt; margin: 14pt 0 8pt; }
+.big-h img { width: 86pt; height: 86pt; object-fit: contain; }
+.big-h h2.big { margin: 0; }
 .sheets td { font-weight: 400; }
 .sheets td b { display: block; font-weight: 700; }
 .sheets td small { font-size: 7.5pt; color: ${MUTED}; }
