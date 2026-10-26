@@ -297,23 +297,26 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     && fitsCatalog(p));
   if (sheets.length || rest.length) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} мм`))].sort();
-    const ths = [...new Set(sheets.map(x => x.t))].sort((a, b) => a - b);
     const anyPrice = sheets.some(x => x.price > 0);
-    const cell = (t, k) => {
-      const x = sheets.find(s => s.t === t && `${s.fmt} мм` === k);
-      if (!x) return '<td class="no">—</td>';
-      return `<td>${x.price > 0 ? `<b>${fmt(x.price)}</b>` : ''}${x.mass ? `<small>${esc(String(x.mass).replace(/\.(\d)/, ',$1'))}</small>` : ''}</td>`;
-    };
     pages.push(page(`
       ${sheets.length ? `<img class="sheets-bg" src="${SHEETS_BG}" alt="">` : ''}
       ${head(setLabel)}
       ${sheets.length ? `
       <h2 class="big">Лист стальной холоднокатаный</h2>
-      <div class="note-bar">${anyPrice ? 'Цена — за 1 лист, сом. Рядом — масса листа.' : 'В клетке — масса листа; цену уточняйте у менеджера.'}</div>
-      <table class="grid sheets">
-        <thead><tr><th>Толщина, мм</th>${colsK.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead>
-        <tbody>${ths.map(t => `<tr><th>${dec(Number.isInteger(t) ? t.toFixed(1) : t)}</th>${colsK.map(k => cell(t, k)).join('')}</tr>`).join('')}</tbody>
-      </table>` : ''}
+      <div class="note-bar">${anyPrice ? 'Цена — за 1 лист.' : 'Цену уточняйте у менеджера.'}</div>
+      <div class="sheet-tables">${colsK.map(k => {
+        const rows = sheets.filter(x => `${x.fmt} мм` === k).sort((a, b) => a.t - b.t);
+        return `
+        <div>
+          <h3 class="fmt">Формат ${esc(k)}</h3>
+          <table class="tlist">
+            <thead><tr><th>Толщина, мм</th><th>Вес листа, кг</th>${anyPrice ? '<th>Цена за лист</th>' : ''}</tr></thead>
+            <tbody>${rows.map(x => `<tr><td>${dec(Number.isInteger(x.t) ? x.t.toFixed(1) : x.t)}</td><td>${
+              esc(String(x.mass).replace(/\s*кг/i, '').replace('.', ','))}</td>${anyPrice
+              ? `<td>${x.price > 0 ? `<b>${fmt(x.price)}</b> сом` : '<i>по запросу</i>'}</td>` : ''}</tr>`).join('')}</tbody>
+          </table>
+        </div>`;
+      }).join('')}</div>` : ''}
       ${rest.length ? `<h2 class="big">Ещё в наличии</h2><ul class="rest">${rest.map(p => {
         const v = priceFor(p, priceType);
         return `<li><span>${esc(p.name)}</span>${v > 0 ? `<b>${fmt(v)} сом</b>` : '<i>по запросу</i>'}</li>`;
@@ -467,6 +470,9 @@ h2.sub { margin: 4pt 0 6pt; }
 .sw span { display: block; font-size: 7pt; line-height: 1.25; color: ${MUTED}; }
 
 h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
+.sheet-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; }
+h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bottom: 6pt; }
+.sheet-tables .tlist td:first-child { font-weight: 500; }
 .sheets-bg { position: absolute; left: 0; right: 0; bottom: 34pt; width: 100%; z-index: 0;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%); mask-image: linear-gradient(to bottom, transparent 0, #000 22%); }
 .has-bg > :not(.sheets-bg):not(.foot) { position: relative; z-index: 1; }
