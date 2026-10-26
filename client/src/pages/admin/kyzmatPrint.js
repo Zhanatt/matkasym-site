@@ -155,54 +155,95 @@ function byCategory(products) {
   return [...m.entries()];
 }
 
+// Одна услуга (категория сайта): заголовок, фото, строки цен — общая заготовка листов
+function serviceData(cat, items, priceType) {
+  const unit = kyzmatServiceUnit(cat);
+  const pg = unit.title ? { title: unit.title, tagline: unit.tagline || '' }
+    : servicePageFor(cat) || { title: cat, tagline: '' };
+  // Фото — то же, что обложка карточки на сайте (самое новое из вариантов)
+  const pick = (unit.photoFrom && items.find(p => unit.photoFrom.test(p.name || '') && p.images?.[0])) || coverOf(items);
+  const rows = items.map(p => {
+    const th = specOf(p, unit.rowSpec || /толщин/i);
+    return {
+      label: unit.rowLabel || (th ? `${dec(th)}`.replace(/-/g, '–') : (items.length > 1 ? p.name : '1 кг изделия')),
+      price: unit.ask ? 0 : priceFor(p, priceType),
+    };
+  }).sort((a, b) => num(a.label) - num(b.label));
+  const anyPrice = rows.some(r => r.price > 0);
+  const table = rows.length && !(priceType === 'none' && !anyPrice) ? `
+    <table class="svc-t">${rows.map(r => `<tr><td>${esc(r.label)}</td><td>${r.price > 0
+      ? `<b>${fmt(r.price)}</b> <small>${esc(unit.unit || 'сом')}</small>`
+      : '<i>по запросу</i>'}</td></tr>`).join('')}</table>` : '';
+  return { unit, pg, photo: printImage(pick?.images[0]), table, info: servicePageFor(cat) };
+}
+
+const listCol = (title, items) => (items?.length ? `
+  <div class="lc"><h3>${esc(title)}</h3><ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '');
+
+const stepsHtml = () => `
+  <div class="steps">
+    <h3>Как заказать</h3>
+    <ol>${SERVICES_STEPS.map(([t, d], i) => `<li><span>${i + 1}</span><b>${esc(t)}</b><em>${esc(d)}</em></li>`).join('')}</ol>
+  </div>`;
+
+// Услуги: лазер (металл, картон, ткань) — один лист; сварка, гибка, покраска — по листу
 function servicesPage(n, setLabel, info, products, priceType) {
-  // Резка картона, затем ткани — сразу после лазерной резки металла
-  const rank = c => (/лазер/i.test(c) ? 0 : /картон/i.test(c) ? 1 : /ткан/i.test(c) ? 2 : 3);
+  const rank = c => (/лазер/i.test(c) ? 0 : /картон/i.test(c) ? 1 : /ткан/i.test(c) ? 2
+    : /свар/i.test(c) ? 3 : /гиб/i.test(c) ? 4 : /покрас/i.test(c) ? 5 : 6);
   const cats = byCategory(products).map((e, i) => [e, i])
     .sort((a, b) => rank(a[0][0]) - rank(b[0][0]) || a[1] - b[1]).map(([e]) => e);
-  const blocks = cats.map(([cat, items]) => {
-    const unit = kyzmatServiceUnit(cat);
-    const page = unit.title ? { title: unit.title, tagline: unit.tagline || '' }
-      : servicePageFor(cat) || { title: cat, tagline: '' };
-    // Фото — то же, что обложка карточки на сайте (самое новое из вариантов)
-    const pick = (unit.photoFrom && items.find(p => unit.photoFrom.test(p.name || '') && p.images?.[0]))
-      || coverOf(items);
-    const photo = printImage(pick?.images[0]);
-    const rows = items.map(p => {
-      const th = specOf(p, unit.rowSpec || /толщин/i);
-      return {
-        label: unit.rowLabel || (th ? `${dec(th)}`.replace(/-/g, '–') : (items.length > 1 ? p.name : '1 кг изделия')),
-        price: unit.ask ? 0 : priceFor(p, priceType),
-      };
-    }).sort((a, b) => num(a.label) - num(b.label));
-    const anyPrice = rows.some(r => r.price > 0);
-    const table = rows.length ? `
-      <table class="svc-t">${rows.map(r => `<tr><td>${esc(r.label)}</td><td>${r.price > 0
-        ? `<b>${fmt(r.price)}</b> <small>${esc(unit.unit || 'сом')}</small>`
-        : '<i>по запросу</i>'}</td></tr>`).join('')}</table>` : '';
-    const body = `
-        <h2>${esc(page.title)}</h2>
-        ${page.tagline ? `<p class="svc-tag">${esc(page.tagline)}</p>` : ''}
-        ${priceType === 'none' && !anyPrice ? '' : table}
-        ${unit.note ? `<p class="svc-note">${esc(unit.note)}</p>` : ''}`;
-    // Вертикальный постер (лазер) — слева целиком, текст справа
-    const html = unit.poster && photo ? `
-      <div class="svc svc-poster">
-        <div class="svc-pst"><img src="${esc(photo)}" alt=""></div>
-        <div>${body}</div>
-      </div>` : `
-      <div class="svc${rows.length > 4 ? ' long' : ''}">
-        ${photo ? `<div class="svc-ph${unit.photoContain ? ' svc-ph-contain' : ''}"><img src="${esc(photo)}" alt=""></div>` : ''}
-        ${body}
-      </div>`;
-    return html;
-  });
+  const isLaser = c => /лазер|картон|ткан/i.test(c);
+  const pages = [];
+  let first = true;
+  const top = () => {
+    const h = `${head(setLabel)}${first ? sectionHead(n, setLabel, info) : ''}`;
+    first = false;
+    return h;
+  };
 
-  return [page(`
-    ${head(setLabel)}
-    ${sectionHead(n, setLabel, info)}
-    <div class="svcs">${blocks.join('')}</div>
-    ${foot()}`, 'svc-sheet')];
+  const laser = cats.filter(([c]) => isLaser(c));
+  if (laser.length) {
+    const metal = laser.find(([c]) => /лазер/i.test(c));
+    const intro = metal ? servicePageFor(metal[0])?.intro : '';
+    pages.push(page(`
+      ${top()}
+      <div class="svc-head"><div class="kicker">Услуга</div><h1 class="svc-h1">Лазерная резка</h1>
+        <p class="svc-lead">Металл, картон и ткань — по вашему чертежу или макету</p></div>
+      ${intro ? `<p class="svc-intro">${esc(intro)}</p>` : ''}
+      <div class="lz">${laser.map(([cat, items]) => {
+        const d = serviceData(cat, items, priceType);
+        return `
+        <div class="lz-row">
+          <div class="lz-ph">${d.photo ? `<img src="${esc(d.photo)}" alt="">` : ''}</div>
+          <div>
+            <h2>${esc(d.pg.title)}</h2>
+            ${d.pg.tagline ? `<p class="svc-tag">${esc(d.pg.tagline)}</p>` : ''}
+            ${d.table}
+            ${d.unit.note ? `<p class="svc-note">${esc(d.unit.note)}</p>` : ''}
+          </div>
+        </div>`;
+      }).join('')}</div>
+      ${stepsHtml()}
+      ${foot()}`, 'svc-page'));
+  }
+
+  cats.filter(([c]) => !isLaser(c)).forEach(([cat, items]) => {
+    const d = serviceData(cat, items, priceType);
+    pages.push(page(`
+      ${top()}
+      <div class="svc-head"><div class="kicker">Услуга</div><h1 class="svc-h1">${esc(d.pg.title)}</h1>
+        ${d.pg.tagline ? `<p class="svc-lead">${esc(d.pg.tagline)}</p>` : ''}</div>
+      ${d.photo ? `<div class="svc-big"><img src="${esc(d.photo)}" alt=""></div>` : ''}
+      ${d.info?.intro ? `<p class="svc-intro">${esc(d.info.intro)}</p>` : ''}
+      <div class="svc-cols">
+        <div><h3>Цены</h3>${d.table || '<p class="svc-tag">по запросу</p>'}
+          ${d.unit.note ? `<p class="svc-note">${esc(d.unit.note)}</p>` : ''}</div>
+        <div>${listCol('Что делаем', d.info?.does)}${listCol('Преимущества', d.info?.pros)}</div>
+      </div>
+      ${stepsHtml()}
+      ${foot()}`, 'svc-page'));
+  });
+  return pages;
 }
 
 // ── Полуфабрикаты и прочее: сетка фото ───────────────────────────────────────
@@ -336,31 +377,31 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   const cartons = products.filter(p => /^картон/i.test(p.category || '') && !isExample(p) && !p.hideInPdf);
   const cartonPhoto = printImage(cartons.find(p => p.images?.[0])?.images[0]);
   const priceCell = v => (v > 0 ? `<b>${fmt(v)}</b> сом` : '<i>по запросу</i>');
-  const goods = [
-    rollRows.length && `
-      <div class="good">
-        ${rollPhoto ? `<div class="good-ph"><img src="${esc(rollPhoto)}" alt=""></div>` : ''}
-        <h2 class="good-h">Рулон металлический</h2>
-        <table class="tlist">
-          <thead><tr><th>Ширина, мм</th><th>Длина</th><th>Цена</th></tr></thead>
-          <tbody>${rollRows.map(r => `<tr><td>${esc(r.w)}</td><td>${esc(r.length)}</td><td>${priceCell(r.price)}</td></tr>`).join('')}</tbody>
-        </table>
-      </div>`,
-    cartons.length && `
-      <div class="good">
-        ${cartonPhoto ? `<div class="good-ph"><img src="${esc(cartonPhoto)}" alt=""></div>` : ''}
-        <h2 class="good-h">${esc(cartons.length === 1 ? cartons[0].name : 'Картон')}</h2>
-        <table class="tlist">
-          <thead><tr><th>Формат, мм</th><th>Слои</th><th>Цена</th></tr></thead>
-          <tbody>${cartons.map(p => `<tr><td>${esc(String(specOf(p, /формат/i) || '—').replace(/\s*мм/, ''))}</td><td>${
-            esc(String(specOf(p, /слой/i) || '—').replace(/\s*сло[её]в?/i, ''))}</td><td>${priceCell(priceFor(p, priceType))}</td></tr>`).join('')}</tbody>
-        </table>
-      </div>`,
-  ].filter(Boolean);
-  const rollHtml = goods.length ? `<div class="goods">${goods.join('')}</div>` : '';
+  // Рулон и картон — каждый на своём листе: крупное фото, описание, таблица
+  const goodPage = (title, photo, desc, thead, rows) => page(`
+      ${head(setLabel)}
+      <div class="svc-head"><div class="kicker">Расходные материалы</div><h1 class="svc-h1">${esc(title)}</h1></div>
+      ${photo ? `<div class="good-big"><img src="${esc(photo)}" alt=""></div>` : ''}
+      ${desc ? `<p class="svc-intro">${esc(desc)}</p>` : ''}
+      <table class="tlist good-t"><thead><tr>${thead.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows.join('')}</tbody></table>
+      ${foot()}`);
+  const extraPages = [];
+  if (rollRows.length) {
+    extraPages.push(goodPage('Рулон металлический', rollPhoto, rolls[0].description,
+      ['Ширина, мм', 'Длина', 'Цена'],
+      rollRows.map(r => `<tr><td>${esc(r.w)}</td><td>${esc(r.length)}</td><td>${priceCell(r.price)}</td></tr>`)));
+  }
+  if (cartons.length) {
+    extraPages.push(goodPage(cartons.length === 1 ? cartons[0].name : 'Картон', cartonPhoto, cartons[0].description,
+      ['Формат, мм', 'Слои', 'Цена'],
+      cartons.map(p => `<tr><td>${esc(String(specOf(p, /формат/i) || '—').replace(/\s*мм/, ''))}</td><td>${
+        esc(String(specOf(p, /слой/i) || '—').replace(/\s*сло[её]в?/i, ''))}</td><td>${priceCell(priceFor(p, priceType))}</td></tr>`)));
+  }
+  const rollHtml = '';
   const rest = products.filter(p => !paints.includes(p) && !rolls.includes(p) && !cartons.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
     && fitsCatalog(p));
-  if (sheets.length || rest.length || rollHtml) {
+  if (sheets.length || rest.length) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} мм`))].sort();
     const anyPrice = sheets.some(x => x.price > 0);
     pages.push(page(`
@@ -389,6 +430,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
       }).join('')}</ul>` : ''}
       ${foot()}`, sheets.length ? 'has-bg' : ''));
   }
+  pages.push(...extraPages);
   return pages;
 }
 
@@ -498,6 +540,26 @@ h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 .svcs { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt 22pt; }
 .svc-ph { height: 70pt; border-radius: 4pt; overflow: hidden; background: #f2f4f6; margin-bottom: 6pt; }
 .svc-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.svc-head { margin: 16pt 0 8pt; }
+.svc-head .kicker { font-size: 7.5pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: ${RED}; }
+.svc-h1 { font-size: 24pt; margin-top: 2pt; }
+.svc-lead { font-size: 11pt; color: ${MUTED}; margin-top: 4pt; }
+.svc-intro { font-size: 9.5pt; line-height: 1.55; color: #333b40; margin: 10pt 0 12pt; }
+.svc-big { height: 210pt; border-radius: 6pt; overflow: hidden; margin-top: 10pt; }
+.svc-big img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.svc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; }
+.svc-cols .svc-t { margin-top: 0; font-size: 10.5pt; }
+.svc-cols .svc-t td { padding: 4pt 0; }
+.svc-cols .svc-t b { font-size: 11.5pt; }
+.lc + .lc { margin-top: 10pt; }
+.lc ul { list-style: none; }
+.lc li { font-size: 9pt; line-height: 1.45; padding-left: 11pt; position: relative; margin-bottom: 2pt; color: #333b40; }
+.lc li::before { content: ''; position: absolute; left: 0; top: 5pt; width: 4pt; height: 4pt; border-radius: 50%; background: ${RED}; }
+.lz { display: flex; flex-direction: column; gap: 14pt; }
+.lz-row { display: grid; grid-template-columns: 190pt 1fr; gap: 16pt; align-items: start; padding-top: 12pt; border-top: 1pt solid ${LINE}; }
+.lz-ph { height: 118pt; border-radius: 5pt; overflow: hidden; background: #f2f4f6; }
+.lz-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lz-row h2 { font-size: 14pt; }
 .svc-poster { display: grid; grid-template-columns: 104pt 1fr; gap: 10pt; align-items: start; }
 .svc-pst img { width: 104pt; height: 130pt; object-fit: cover; border-radius: 4pt; display: block; }
 .svc-ph-contain { background: #fff; }
@@ -547,10 +609,11 @@ h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
 .sheet-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; }
 h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bottom: 6pt; }
 .sheet-tables .tlist td:first-child { font-weight: 500; }
-.goods { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; margin-top: 16pt; padding-top: 10pt; border-top: 1pt solid ${INK}; }
-.good-ph { height: 64pt; display: flex; justify-content: center; }
-.good-ph img { height: 64pt; max-width: 100%; object-fit: contain; mix-blend-mode: multiply; }
-.good-h { font-size: 12pt; margin: 6pt 0 5pt; }
+.good-big { height: 330pt; display: flex; align-items: center; justify-content: center; margin: 10pt 0; }
+.good-big img { max-width: 100%; max-height: 100%; object-fit: contain; mix-blend-mode: multiply; }
+.good-t { font-size: 12pt; margin-top: 8pt; }
+.good-t td { padding: 7pt 4pt 7pt 0; }
+.good-t th { font-size: 9pt; }
 .sheets-bg { position: absolute; left: 0; right: 0; bottom: 34pt; width: 100%; z-index: 0;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%); mask-image: linear-gradient(to bottom, transparent 0, #000 22%); }
 .has-bg > :not(.sheets-bg):not(.foot) { position: relative; z-index: 1; }
