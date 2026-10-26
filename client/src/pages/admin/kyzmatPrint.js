@@ -284,21 +284,28 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   const common = paintPrices.length ? [...paintPrices.reduce((m, v) => m.set(v, (m.get(v) || 0) + 1), new Map())]
     .sort((a, b) => b[1] - a[1])[0][0] : 0;
 
+  // Цена у всех цветов одна — плашка одна, у заголовка группы; у цвета — только если отличается
+  let groupPrice = 0;
   const swatchHtml = s => `
     <div class="sw">
       <div class="sw-c" style="background:${esc(s.hex)}"></div>
-      <div class="sw-h"><b>${esc(s.code)}</b>${(s.price || common) > 0 ? `<em>${fmt(s.price || common)} сом</em>` : ''}</div>
+      <div class="sw-h"><b>${esc(s.code)}</b>${s.price > 0 && s.price !== groupPrice ? `<em>${fmt(s.price)} сом</em>` : ''}</div>
       <span>${esc([s.name, s.finish].filter(Boolean).join(' · '))}</span>
     </div>`;
-  const group = (title, list) => (list.length ? `
-    <h2 class="sub">${title}</h2>
-    <div class="sws">${list.map(swatchHtml).join('')}</div>` : '');
+  const group = (title, list) => {
+    if (!list.length) return '';
+    const ps = list.map(x => x.price).filter(v => v > 0);
+    groupPrice = ps.length ? [...ps.reduce((m, v) => m.set(v, (m.get(v) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[0][0] : common;
+    return `
+    <div class="sub-h"><h2 class="sub">${title}</h2>${groupPrice > 0 ? `<span class="pill-lg">${fmt(groupPrice)} сом <small>за 1 кг</small></span>` : ''}</div>
+    <div class="sws">${list.map(swatchHtml).join('')}</div>`;
+  };
 
   const pages = [];
   pages.push(page(`
     ${head(setLabel)}
     ${sectionHead(n, setLabel, info)}
-    <div class="note-bar">Палитра красок${common ? '. Цена — за 1 кг' : ''}. По этой же палитре красим изделия на порошковой покраске.</div>
+    <div class="note-bar">Палитра красок. По этой же палитре красим изделия на порошковой покраске.</div>
     ${group('Краски', sorted.filter(s => !s.enamel))}
     ${group('Эмаль по металлу', sorted.filter(s => s.enamel))}
     ${foot()}`, 'paint-sheet'));
@@ -488,7 +495,10 @@ h3 { font-size: 8.5pt; font-weight: 700; letter-spacing: .12em; text-transform: 
   background: ${RED}; color: #fff; font-size: 8.5pt; }
 
 /* ── Палитра ── */
-h2.sub { margin: 4pt 0 6pt; }
+h2.sub { margin: 0; }
+.sub-h { display: flex; align-items: center; gap: 10pt; margin: 4pt 0 7pt; }
+.pill-lg { background: ${RED}; color: #fff; font-size: 11pt; font-weight: 700; padding: 3pt 8pt; border-radius: 3pt; white-space: nowrap; }
+.pill-lg small { font-size: 8pt; font-weight: 400; opacity: .9; }
 .sws { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10pt 10pt; margin-bottom: 12pt; }
 .sw-c { height: 34pt; border-radius: 3pt; box-shadow: inset 0 0 0 .75pt ${RULE}; }
 .sw-h { display: flex; align-items: center; justify-content: space-between; gap: 4pt; margin-top: 3pt; }
