@@ -281,8 +281,10 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     ${group('Эмаль по металлу', sorted.filter(s => s.enamel))}
     ${foot()}`, 'paint-sheet'));
 
-  // Стальной лист: толщина × формат и прокат; в клетке — масса листа
-  const sheets = products.filter(p => /лист/i.test(p.category || '') && !isExample(p))
+  // Стальной лист: только холоднокатаный (г/к не продаём, 26.10.2026).
+  // Толщина × формат, в клетке — цена за лист и масса
+  const sheets = products.filter(p => /лист/i.test(p.category || '') && !isExample(p)
+    && !/г\/к|горяче/i.test(`${p.name} ${specOf(p, /^сталь/i) || ''}`))
     .map(p => ({
       p,
       t: num(specOf(p, /^толщина/i) || p.name),
@@ -294,11 +296,11 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   const rest = products.filter(p => !paints.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
     && fitsCatalog(p));
   if (sheets.length || rest.length) {
-    const colsK = [...new Set(sheets.map(x => `${x.fmt} ${x.kind}`))].sort();
+    const colsK = [...new Set(sheets.map(x => `${x.fmt} мм`))].sort();
     const ths = [...new Set(sheets.map(x => x.t))].sort((a, b) => a - b);
     const anyPrice = sheets.some(x => x.price > 0);
     const cell = (t, k) => {
-      const x = sheets.find(s => s.t === t && `${s.fmt} ${s.kind}` === k);
+      const x = sheets.find(s => s.t === t && `${s.fmt} мм` === k);
       if (!x) return '<td class="no">—</td>';
       return `<td>${x.price > 0 ? `<b>${fmt(x.price)}</b>` : ''}${x.mass ? `<small>${esc(String(x.mass).replace(/\.(\d)/, ',$1'))}</small>` : ''}</td>`;
     };
@@ -306,11 +308,11 @@ function suppliesPages(n, setLabel, info, products, priceType) {
       ${sheets.length ? `<img class="sheets-bg" src="${SHEETS_BG}" alt="">` : ''}
       ${head(setLabel)}
       ${sheets.length ? `
-      <h2 class="big">Лист стальной</h2>
-      <div class="note-bar">Холоднокатаный (х/к) и горячекатаный (г/к). В клетке — ${anyPrice ? 'цена листа, сом, и ' : ''}масса листа${anyPrice ? '' : '; цену уточняйте у менеджера'}.</div>
+      <h2 class="big">Лист стальной холоднокатаный</h2>
+      <div class="note-bar">${anyPrice ? 'Цена — за 1 лист, сом. Рядом — масса листа.' : 'В клетке — масса листа; цену уточняйте у менеджера.'}</div>
       <table class="grid sheets">
-        <thead><tr><th>толщина, мм</th>${colsK.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead>
-        <tbody>${ths.map(t => `<tr><th>${dec(t)}</th>${colsK.map(k => cell(t, k)).join('')}</tr>`).join('')}</tbody>
+        <thead><tr><th>Толщина, мм</th>${colsK.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead>
+        <tbody>${ths.map(t => `<tr><th>${dec(Number.isInteger(t) ? t.toFixed(1) : t)}</th>${colsK.map(k => cell(t, k)).join('')}</tr>`).join('')}</tbody>
       </table>` : ''}
       ${rest.length ? `<h2 class="big">Ещё в наличии</h2><ul class="rest">${rest.map(p => {
         const v = priceFor(p, priceType);
@@ -470,7 +472,7 @@ h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
 .has-bg > :not(.sheets-bg):not(.foot) { position: relative; z-index: 1; }
 .has-bg > .foot { z-index: 1; }
 .sheets td { font-weight: 400; }
-.sheets td b { display: block; font-weight: 700; }
+.sheets td b { font-weight: 700; color: ${RED}; font-size: 10.5pt; margin-right: 6pt; }
 .sheets td small { font-size: 7.5pt; color: ${MUTED}; }
 .rest { list-style: none; font-size: 10pt; }
 .rest li { display: flex; justify-content: space-between; padding: 4pt 0; border-bottom: .5pt solid ${LINE}; }
