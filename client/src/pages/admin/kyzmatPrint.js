@@ -83,29 +83,24 @@ function tubesPage(n, setLabel, info, products, priceType) {
     const items = products.filter(p => !cuts.includes(p) && tubeKind(p) === kind)
       .map(p => ({ p, ...tubeSize(p), price: priceFor(p, priceType) })).filter(x => x.size);
     if (!items.length) return null;
-    const sizeKey = x => x.size.join('×');
-    const sizes = [...new Map(items.map(x => [sizeKey(x), x.size])).entries()]
-      .sort((a, b) => a[1].reduce((m, v) => m * v, 1) - b[1].reduce((m, v) => m * v, 1));
-    const walls = [...new Set(items.map(x => x.wall))].sort((a, b) => a - b);
-    const cell = (sk, w) => {
-      const hit = items.filter(x => sizeKey(x) === sk && x.wall === w);
-      if (!hit.length) return '<td class="no">—</td>';
-      const prices = hit.map(x => x.price).filter(v => v > 0);
-      return `<td>${prices.length ? fmt(Math.min(...prices)) : '<i>есть</i>'}</td>`;
-    };
+    // Простой список: строка = одна труба. Сетка «стенка × сечение» читалась
+    // плохо — было непонятно, где сечение, где стенка, где цена (26.10.2026).
+    const area = x => x.size.reduce((m, v) => m * v, 1);
+    items.sort((a, b) => area(a) - area(b) || a.wall - b.wall);
     const photo = printImage(items.find(x => x.p.images?.[0])?.p.images[0]);
-    const label = s => (kind.key === 'round' ? `⌀${s[0]}` : s.join('×'));
+    const label = s => (kind.key === 'round' ? `⌀ ${s[0]}` : s.join(' × '));
     return {
-      rows: walls.length,
+      rows: items.length,
       html: `
       <div class="tube">
         <div class="tube-h">
           ${photo ? `<div class="tube-ph"><img src="${esc(photo)}" alt=""></div>` : ''}
-          <div><h2>${kind.title}</h2><div class="tube-sub">сечение, мм · стенка, мм</div></div>
+          <h2>${kind.title}</h2>
         </div>
-        <table class="grid">
-          <thead><tr><th>стенка</th>${sizes.map(([, s]) => `<th>${label(s)}</th>`).join('')}</tr></thead>
-          <tbody>${walls.map(w => `<tr><th>${dec(w)}</th>${sizes.map(([sk]) => cell(sk, w)).join('')}</tr>`).join('')}</tbody>
+        <table class="tlist">
+          <thead><tr><th>Сечение, мм</th><th>Стенка, мм</th>${priceType !== 'none' ? '<th>Цена за хлыст 6 м</th>' : ''}</tr></thead>
+          <tbody>${items.map(x => `<tr><td>${label(x.size)}</td><td>${dec(x.wall)}</td>${priceType !== 'none'
+            ? `<td>${x.price > 0 ? `<b>${fmt(x.price)}</b> сом` : '<i>по запросу</i>'}</td>` : ''}</tr>`).join('')}</tbody>
         </table>
       </div>`,
     };
@@ -132,7 +127,7 @@ function tubesPage(n, setLabel, info, products, priceType) {
   return [page(`
     ${head(setLabel)}
     ${sectionHead(n, setLabel, info)}
-    ${priceType !== 'none' && info.priceNote ? `<div class="note-bar">${esc(info.priceNote)}. Прочерк — такого размера нет.</div>` : ''}
+    ${priceType !== 'none' && info.priceNote ? `<div class="note-bar">${esc(info.priceNote)}.</div>` : ''}
     <div class="tubes">${cols.map(c => `<div class="tcol">${c.join('')}</div>`).join('')}</div>
     ${cutHtml}
     ${foot()}`)];
@@ -402,6 +397,13 @@ h1 { font-size: 24pt; font-weight: 700; line-height: 1.1; margin-top: 2pt; }
 .tube-ph img { max-width: 100%; max-height: 100%; object-fit: contain; }
 h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 .tube-sub { font-size: 7pt; color: ${MUTED}; margin-top: 1pt; }
+.tlist { width: 100%; border-collapse: collapse; font-size: 11pt; }
+.tlist th { text-align: left; font-size: 8pt; font-weight: 700; color: ${MUTED}; padding: 0 4pt 5pt 0; border-bottom: 1pt solid ${INK}; }
+.tlist td { padding: 5pt 4pt 5pt 0; border-bottom: .5pt solid ${LINE}; }
+.tlist th:last-child, .tlist td:last-child { text-align: right; padding-right: 0; }
+.tlist td:first-child { font-weight: 700; }
+.tlist td b { color: ${RED}; font-size: 12pt; }
+.tlist td i { font-style: normal; color: ${MUTED}; font-size: 8.5pt; }
 .grid { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
 .grid th, .grid td { padding: 4.6pt 3pt; text-align: center; border-bottom: .5pt solid ${LINE}; }
 .grid thead th { font-size: 8.5pt; font-weight: 700; border-bottom: 1pt solid ${INK}; white-space: nowrap; }

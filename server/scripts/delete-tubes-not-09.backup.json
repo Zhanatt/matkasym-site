@@ -1,0 +1,8316 @@
+[
+ {
+  "_id": {
+   "$oid": "6a1ed2dd034a3b5e4d07cbdf"
+  },
+  "name": "Труба круглая 32×1,1",
+  "fullName": "Труба круглая 32×1,1",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "productStatus": "for_sale",
+  "stockStatus": "out_of_stock",
+  "price": {
+   "$numberInt": "77"
+  },
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.1 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "driveImages": [],
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780404957955"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "inStock": false,
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "sku": "MKS-Tkr-32-11",
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "category": "Трубы круглые",
+  "color": "",
+  "currency": "KGS",
+  "description": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "⌀32 мм",
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "isNew": false,
+  "isSupplied": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "setLevel": "",
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "tags": [],
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userId": null,
+   "assignedAt": null,
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null
+ },
+ {
+  "_id": {
+   "$oid": "6a201c307e86332bf8ce0da4"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба квадратная 15x15x1,0",
+  "fullName": "Труба квадратная 15x15x1,0",
+  "sku": "MKS-Tkv-1515-10",
+  "category": "Трубы квадратные",
+  "price": {
+   "$numberInt": "41"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "isSupplied": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412135/matkasym/products/truba-kvadratnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Квадратная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "квадратная"
+  ],
+  "description": "",
+  "isNew": false,
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780489264032"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "inStock": false,
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "15×15 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a201c307e86332bf8ce0da7"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба квадратная 15x15x1,2",
+  "fullName": "Труба квадратная 15x15x1,2",
+  "sku": "MKS-Tkv-1515-12",
+  "category": "Трубы квадратные",
+  "price": {
+   "$numberInt": "48"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "isSupplied": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412135/matkasym/products/truba-kvadratnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Квадратная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.2 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "квадратная"
+  ],
+  "description": "",
+  "isNew": false,
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780489264530"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "inStock": false,
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "15×15 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a201c317e86332bf8ce0dad"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба квадратная 20x20x1,0",
+  "fullName": "Труба квадратная 20x20x1,0",
+  "sku": "MKS-Tkv-2020-10",
+  "category": "Трубы квадратные",
+  "price": {
+   "$numberInt": "54"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "isSupplied": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412135/matkasym/products/truba-kvadratnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Квадратная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "квадратная"
+  ],
+  "description": "",
+  "isNew": false,
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780489265629"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "inStock": false,
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "20×20 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a201c327e86332bf8ce0db0"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба квадратная 20x20x1,2",
+  "fullName": "Труба квадратная 20x20x1,2",
+  "sku": "MKS-Tkv-2020-12",
+  "category": "Трубы квадратные",
+  "price": {
+   "$numberInt": "63"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "isSupplied": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412135/matkasym/products/truba-kvadratnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Квадратная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.2 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "квадратная"
+  ],
+  "description": "",
+  "isNew": false,
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780489266150"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "inStock": false,
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "20×20 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a201c337e86332bf8ce0db6"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба квадратная 25x25x1,0",
+  "fullName": "Труба квадратная 25x25x1,0",
+  "sku": "MKS-Tkv-2525-10",
+  "category": "Трубы квадратные",
+  "price": {
+   "$numberInt": "71"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "isSupplied": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412135/matkasym/products/truba-kvadratnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Квадратная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "квадратная"
+  ],
+  "description": "",
+  "isNew": false,
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780489267165"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "inStock": false,
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "25×25 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a201c337e86332bf8ce0db9"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба квадратная 25x25x1,2",
+  "fullName": "Труба квадратная 25x25x1,2",
+  "sku": "MKS-Tkv-2525-12",
+  "category": "Трубы квадратные",
+  "price": {
+   "$numberInt": "84"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "isSupplied": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412135/matkasym/products/truba-kvadratnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Квадратная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.2 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "квадратная"
+  ],
+  "description": "",
+  "isNew": false,
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780489267694"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "inStock": false,
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "25×25 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a201da75f30340436c88192"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба овальная 39x20x1,0",
+  "fullName": "Труба овальная 39x20x1,0",
+  "sku": "MKS-Tov-3920-10",
+  "category": "Трубы овальные",
+  "price": {
+   "$numberInt": "81"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1789101398/vlsdxn6tpt8czwx0i3v9.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1788148361/fyzlbjhglqfxawt2dxuy.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Овальная",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38550fdcb36aea4f12f93"
+    }
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38550fdcb36aea4f12f94"
+    }
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38550fdcb36aea4f12f95"
+    }
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38550fdcb36aea4f12f96"
+    }
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ],
+    "_id": {
+     "$oid": "6aa38550fdcb36aea4f12f97"
+    }
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ],
+    "_id": {
+     "$oid": "6aa38550fdcb36aea4f12f98"
+    }
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38550fdcb36aea4f12f99"
+    }
+   }
+  ],
+  "tags": [
+   "труба",
+   "овальная"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780489639256"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "39×20 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "tubes": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userId": null,
+   "assignedAt": null,
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "costCurrency": "KGS",
+  "unit": "шт"
+ },
+ {
+  "_id": {
+   "$oid": "6a201da75f30340436c88195"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба овальная 39x20x1,2",
+  "fullName": "Труба овальная 39x20x1,2",
+  "sku": "MKS-Tov-3920-12",
+  "category": "Трубы овальные",
+  "price": {
+   "$numberInt": "84"
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "priceUndefined": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412490/matkasym/products/truba-ovalnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Овальная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.2 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "овальная"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780489639754"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "39×20 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a2021f985193401ed37d4cc"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба круглая 16×1,0",
+  "fullName": "Труба круглая 16×1,0",
+  "sku": "MKS-Tkr-16-10",
+  "category": "Трубы круглые",
+  "price": {
+   "$numberInt": "43"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "круглая"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780490745208"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "⌀16 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userId": null,
+   "assignedAt": null,
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null
+ },
+ {
+  "_id": {
+   "$oid": "6a2021fb85193401ed37d4d6"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба круглая 19×1,0",
+  "fullName": "Труба круглая 19×1,0",
+  "sku": "MKS-Tkr-19-10",
+  "category": "Трубы круглые",
+  "price": {
+   "$numberInt": "46"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "круглая"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780490747068"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "⌀19 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userId": null,
+   "assignedAt": null,
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null
+ },
+ {
+  "_id": {
+   "$oid": "6a2021fc85193401ed37d4dd"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба круглая 25×1,0",
+  "fullName": "Труба круглая 25×1,0",
+  "sku": "MKS-Tkr-25-10",
+  "category": "Трубы круглые",
+  "price": {
+   "$numberInt": "57"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "круглая"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780490748628"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "⌀25 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userId": null,
+   "assignedAt": null,
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null
+ },
+ {
+  "_id": {
+   "$oid": "6a2021fd85193401ed37d4e0"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба круглая 25×1,1",
+  "fullName": "Труба круглая 25×1,1",
+  "sku": "MKS-Tkr-25-11",
+  "category": "Трубы круглые",
+  "price": {
+   "$numberInt": "60"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.1 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "круглая"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780490749348"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "⌀25 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a2021fd85193401ed37d4e3"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба круглая 25×1,2",
+  "fullName": "Труба круглая 25×1,2",
+  "sku": "MKS-Tkr-25-12",
+  "category": "Трубы круглые",
+  "price": {
+   "$numberInt": "66"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.2 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "круглая"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780490749896"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "⌀25 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userId": null,
+   "assignedAt": null,
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null
+ },
+ {
+  "_id": {
+   "$oid": "6a2021ff85193401ed37d4ed"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "ПФ Труба Ф32*1мм",
+  "fullName": "ПФ Труба Ф32*1мм",
+  "sku": "MKS-Tkr-32-10",
+  "category": "Трубы круглые",
+  "price": {
+   "$numberInt": "73"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "круглая"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780490751739"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "⌀32 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false,
+  "unit": "м"
+ },
+ {
+  "_id": {
+   "$oid": "6a20220085193401ed37d4f1"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба круглая 32×1,2",
+  "fullName": "Труба круглая 32×1,2",
+  "sku": "MKS-Tkr-32-12",
+  "category": "Трубы круглые",
+  "price": {
+   "$numberInt": "86"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.2 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "круглая"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780490752485"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "⌀32 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userId": null,
+   "assignedAt": null,
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null
+ },
+ {
+  "_id": {
+   "$oid": "6a2025c86244fb9b5c66204e"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба прямоугольная 20×10×1,0",
+  "fullName": "Труба прямоугольная 20×10×1,0",
+  "sku": "MKS-Tpr-2010-10",
+  "category": "Трубы прямоугольные",
+  "price": {
+   "$numberInt": "41"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "прямоугольная"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780491720161"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "20×10 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a2025c86244fb9b5c662051"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба прямоугольная 20×10×1,1",
+  "fullName": "Труба прямоугольная 20×10×1,1",
+  "sku": "MKS-Tpr-2010-11",
+  "category": "Трубы прямоугольные",
+  "price": {
+   "$numberInt": "43"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.1 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "прямоугольная"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780491720716"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "20×10 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a2025c96244fb9b5c662054"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба прямоугольная 20×10×1,2",
+  "fullName": "Труба прямоугольная 20×10×1,2",
+  "sku": "MKS-Tpr-2010-12",
+  "category": "Трубы прямоугольные",
+  "price": {
+   "$numberInt": "46"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.2 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "прямоугольная"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780491721261"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "20×10 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a2025ca6244fb9b5c66205d"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба прямоугольная 30×20×1,0",
+  "fullName": "Труба прямоугольная 30×20×1,0",
+  "sku": "MKS-Tpr-3020-10",
+  "category": "Трубы прямоугольные",
+  "price": {
+   "$numberInt": "69"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "прямоугольная"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780491722802"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "30×20 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a2025cb6244fb9b5c662060"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба прямоугольная 30×20×1,1",
+  "fullName": "Труба прямоугольная 30×20×1,1",
+  "sku": "MKS-Tpr-3020-11",
+  "category": "Трубы прямоугольные",
+  "price": {
+   "$numberInt": "75"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.1 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "прямоугольная"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780491723429"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "30×20 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a2025cb6244fb9b5c662063"
+  },
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "name": "Труба прямоугольная 30×20×1,2",
+  "fullName": "Труба прямоугольная 30×20×1,2",
+  "sku": "MKS-Tpr-3020-12",
+  "category": "Трубы прямоугольные",
+  "price": {
+   "$numberInt": "84"
+  },
+  "priceUndefined": false,
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockStatus": "out_of_stock",
+  "inStock": false,
+  "inTransit": false,
+  "isSupplied": false,
+  "isNew": false,
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.2 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "tags": [
+   "труба",
+   "прямоугольная"
+  ],
+  "description": "",
+  "createdAt": {
+   "$date": {
+    "$numberLong": "1780491723970"
+   }
+  },
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "isOnOrder": true,
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "inBase": {
+   "matkasym": false,
+   "qtop": false,
+   "makein": false,
+   "tubes": false
+  },
+  "stockByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "bufferByBase": {
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "makein": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "color": "",
+  "currency": "KGS",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "dimensions": "30×20 мм",
+  "driveImages": [],
+  "hasVideo": false,
+  "improvementHistory": [],
+  "improvementTZ": {
+   "files": [],
+   "problem": "",
+   "solution": ""
+  },
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitParts": [],
+  "kitType": "dependent",
+  "nameKk": "",
+  "nameKy": "",
+  "nomenclature1C": "",
+  "pauseNote": "",
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "pricesByBase": {
+   "makein": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "cost": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    },
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "productStatus": "for_sale",
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderAssignee": {
+   "userEmail": "",
+   "userName": ""
+  },
+  "tenderCompleted": false
+ },
+ {
+  "_id": {
+   "$oid": "6a9174dd99ebc4d41a8a2e24"
+  },
+  "name": "Труба прямоугольная 20×10×0,5",
+  "fullName": "Труба прямоугольная 20×10×0,5",
+  "sku": "MKS-Tpr-2010-05",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы прямоугольные",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "20"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "tubes": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "20×10 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38610fdcb36aea4f13c5d"
+    }
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.5 мм",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38610fdcb36aea4f13c5e"
+    }
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38610fdcb36aea4f13c5f"
+    }
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38610fdcb36aea4f13c60"
+    }
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ],
+    "_id": {
+     "$oid": "6aa38610fdcb36aea4f13c61"
+    }
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ],
+    "_id": {
+     "$oid": "6aa38610fdcb36aea4f13c62"
+    }
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38610fdcb36aea4f13c63"
+    }
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "прямоугольная",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1789101589/bqv3bunulvtoseiedwtn.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1788150222/kzbwsxbt1pfrdhya4ld8.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  },
+  "costCurrency": "KGS",
+  "unit": "шт"
+ },
+ {
+  "_id": {
+   "$oid": "6a9174dd99ebc4d41a8a2e2c"
+  },
+  "name": "Труба прямоугольная 20×10×0,6",
+  "fullName": "Труба прямоугольная 20×10×0,6",
+  "sku": "MKS-Tpr-2010-06",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы прямоугольные",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "25"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "20×10 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.6 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "прямоугольная",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  }
+ },
+ {
+  "_id": {
+   "$oid": "6a9174de99ebc4d41a8a2e3c"
+  },
+  "name": "Труба прямоугольная 20×10×0,85",
+  "fullName": "Труба прямоугольная 20×10×0,85",
+  "sku": "MKS-Tpr-2010-085",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы прямоугольные",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "34"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "20×10 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.85 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "прямоугольная",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  }
+ },
+ {
+  "_id": {
+   "$oid": "6a9174df99ebc4d41a8a2e4c"
+  },
+  "name": "Труба прямоугольная 30×20×0,85",
+  "fullName": "Труба прямоугольная 30×20×0,85",
+  "sku": "MKS-Tpr-3020-085",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы прямоугольные",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "58"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "30×20 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Прямоугольная",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.85 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "прямоугольная",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780412782/matkasym/products/truba-pryamougolnaya.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "1"
+  }
+ },
+ {
+  "_id": {
+   "$oid": "6a9174df99ebc4d41a8a2e54"
+  },
+  "name": "Труба круглая 8×0,5",
+  "fullName": "Труба круглая 8×0,5",
+  "sku": "MKS-Tkr-8-05",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы круглые",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "18"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "tubes": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "⌀8 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38512fdcb36aea4f12b65"
+    }
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.5 мм",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38512fdcb36aea4f12b66"
+    }
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38512fdcb36aea4f12b67"
+    }
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38512fdcb36aea4f12b68"
+    }
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ],
+    "_id": {
+     "$oid": "6aa38512fdcb36aea4f12b69"
+    }
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ],
+    "_id": {
+     "$oid": "6aa38512fdcb36aea4f12b6a"
+    }
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38512fdcb36aea4f12b6b"
+    }
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "круглая",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787989135/e6xf9zsvgbj9bnww2ray.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787989154/qmua65u3uasw81m6ixjk.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787989169/h9jdnfhibsefbtumm6qu.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "0"
+  },
+  "costCurrency": "KGS",
+  "unit": "шт"
+ },
+ {
+  "_id": {
+   "$oid": "6a9174e099ebc4d41a8a2e5c"
+  },
+  "name": "Труба круглая 8×1,0",
+  "fullName": "Труба круглая 8×1,0",
+  "sku": "MKS-Tkr-8-10",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы круглые",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "22"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "tubes": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "⌀8 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38500fdcb36aea4f1293e"
+    }
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38500fdcb36aea4f1293f"
+    }
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38500fdcb36aea4f12940"
+    }
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38500fdcb36aea4f12941"
+    }
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ],
+    "_id": {
+     "$oid": "6aa38500fdcb36aea4f12942"
+    }
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ],
+    "_id": {
+     "$oid": "6aa38500fdcb36aea4f12943"
+    }
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": [],
+    "_id": {
+     "$oid": "6aa38500fdcb36aea4f12944"
+    }
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "круглая",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787990320/cvi9b1yvkkxkaeeqixgc.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787990329/bd3c7srqxlnlr89qbkiy.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "0"
+  },
+  "costCurrency": "KGS",
+  "unit": "шт"
+ },
+ {
+  "_id": {
+   "$oid": "6a9174e199ebc4d41a8a2e64"
+  },
+  "name": "Труба круглая 12×0,5",
+  "fullName": "Труба круглая 12×0,5",
+  "sku": "MKS-Tkr-12-05",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы круглые",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "17"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "tubes": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "⌀12 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": [],
+    "_id": {
+     "$oid": "6a953681c434eb5045628da5"
+    }
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.5 мм",
+    "options": [],
+    "_id": {
+     "$oid": "6a953681c434eb5045628da6"
+    }
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": [],
+    "_id": {
+     "$oid": "6a953681c434eb5045628da7"
+    }
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": {
+     "$oid": "6a953681c434eb5045628da8"
+    }
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ],
+    "_id": {
+     "$oid": "6a953681c434eb5045628da9"
+    }
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ],
+    "_id": {
+     "$oid": "6a953681c434eb5045628daa"
+    }
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": [],
+    "_id": {
+     "$oid": "6a953681c434eb5045628dab"
+    }
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "круглая",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1789101266/yjyxsjk6ziyfhodzdnla.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1788163736/uzxg6kbpdf2ayhsvau9p.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1788163752/dtsaygyox6zhe2hejzha.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1788163765/tpcefp9ogbxbkfdk3oyc.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1788163778/isme5ffnnrixgp03h1hz.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "0"
+  },
+  "costCurrency": "KGS",
+  "unit": "шт"
+ },
+ {
+  "_id": {
+   "$oid": "6a9174e199ebc4d41a8a2e6c"
+  },
+  "name": "Труба круглая 12×0,6",
+  "fullName": "Труба круглая 12×0,6",
+  "sku": "MKS-Tkr-12-06",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы круглые",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "19"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "⌀12 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536d0c434eb504562915e"
+    }
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.6 мм",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536d0c434eb504562915f"
+    }
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536d0c434eb5045629160"
+    }
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536d0c434eb5045629161"
+    }
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ],
+    "_id": {
+     "$oid": "6a9536d0c434eb5045629162"
+    }
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ],
+    "_id": {
+     "$oid": "6a9536d0c434eb5045629163"
+    }
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536d0c434eb5045629164"
+    }
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "круглая",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1788238270/pyrr4gqot7b3kd3tprl0.webp"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "0"
+  }
+ },
+ {
+  "_id": {
+   "$oid": "6a9174e299ebc4d41a8a2e74"
+  },
+  "name": "Труба круглая 12×0,7",
+  "fullName": "Труба круглая 12×0,7",
+  "sku": "MKS-Tkr-12-07",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы круглые",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "22"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "⌀12 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536e3c434eb5045629430"
+    }
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.7 мм",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536e3c434eb5045629431"
+    }
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536e3c434eb5045629432"
+    }
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536e3c434eb5045629433"
+    }
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ],
+    "_id": {
+     "$oid": "6a9536e3c434eb5045629434"
+    }
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ],
+    "_id": {
+     "$oid": "6a9536e3c434eb5045629435"
+    }
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": [],
+    "_id": {
+     "$oid": "6a9536e3c434eb5045629436"
+    }
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "круглая",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1788238300/omg3ljoitwi9vtl2slqe.webp"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "0"
+  }
+ },
+ {
+  "_id": {
+   "$oid": "6a9174e299ebc4d41a8a2e7c"
+  },
+  "name": "ПФ Труба Ф12*1мм",
+  "fullName": "ПФ Труба Ф12*1мм",
+  "sku": "MKS-Tkr-12-10",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы круглые",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "30"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "⌀12 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "1.0 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "круглая",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": true
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "0"
+  },
+  "unit": "м"
+ },
+ {
+  "_id": {
+   "$oid": "6a9174e399ebc4d41a8a2e8c"
+  },
+  "name": "Труба круглая 32×0,7",
+  "fullName": "Труба круглая 32×0,7",
+  "sku": "MKS-Tkr-32-07",
+  "nomenclature1C": "",
+  "brand": "matkasym-kyzmat",
+  "set": "dayar-tutuk",
+  "setLevel": "Трубопрокат",
+  "color": "",
+  "category": "Трубы круглые",
+  "isSupplied": false,
+  "supplier": {
+   "company": "",
+   "contactName": "",
+   "sku": ""
+  },
+  "priceCost": {
+   "$numberInt": "0"
+  },
+  "priceWholesale": {
+   "$numberInt": "0"
+  },
+  "priceDealer": {
+   "$numberInt": "0"
+  },
+  "price": {
+   "$numberInt": "53"
+  },
+  "priceUndefined": false,
+  "currency": "KGS",
+  "pricesByBase": {
+   "makein": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "matkasym": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   },
+   "qtop": {
+    "retail": {
+     "$numberInt": "0"
+    },
+    "wholesale": {
+     "$numberInt": "0"
+    },
+    "dealer": {
+     "$numberInt": "0"
+    },
+    "cost": {
+     "$numberInt": "0"
+    },
+    "export": {
+     "$numberInt": "0"
+    }
+   }
+  },
+  "dimensions": "⌀32 мм",
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Круглая",
+    "options": []
+   },
+   {
+    "key": "Толщина стенки",
+    "value": "0.7 мм",
+    "options": []
+   },
+   {
+    "key": "Длина трубы",
+    "value": "6 м",
+    "options": []
+   },
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": []
+   },
+   {
+    "key": "Шов",
+    "value": "Нет",
+    "options": [
+     "Есть",
+     "Нет"
+    ]
+   },
+   {
+    "key": "Прокат",
+    "value": "Холоднокатаная",
+    "options": [
+     "Холоднокатаная",
+     "Горячекатаная"
+    ]
+   },
+   {
+    "key": "Страна производства",
+    "value": "Россия",
+    "options": []
+   }
+  ],
+  "description": "",
+  "tags": [
+   "труба",
+   "круглая",
+   "price-2026-08-28"
+  ],
+  "nameKy": "",
+  "nameKk": "",
+  "driveImages": [],
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1780405084/matkasym/products/truba-kruglaya.png"
+  ],
+  "isNew": false,
+  "inStock": false,
+  "stock": {
+   "$numberInt": "0"
+  },
+  "stockByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "skuByBase": {
+   "makein": "",
+   "matkasym": "",
+   "qtop": "",
+   "tubes": ""
+  },
+  "inBase": {
+   "makein": false,
+   "matkasym": false,
+   "qtop": false,
+   "tubes": false
+  },
+  "bufferStock": {
+   "$numberInt": "0"
+  },
+  "bufferByBase": {
+   "makein": {
+    "$numberInt": "0"
+   },
+   "matkasym": {
+    "$numberInt": "0"
+   },
+   "qtop": {
+    "$numberInt": "0"
+   },
+   "tubes": {
+    "$numberInt": "0"
+   }
+  },
+  "stockStatus": "out_of_stock",
+  "inTransit": false,
+  "inTransitQty": {
+   "$numberInt": "0"
+  },
+  "pendingReceive": false,
+  "pendingReceiveQty": {
+   "$numberInt": "0"
+  },
+  "isOnOrder": true,
+  "hasVideo": false,
+  "productStatus": "for_sale",
+  "pauseNote": "",
+  "developmentStage": "",
+  "developmentTZ": {
+   "description": "",
+   "files": []
+  },
+  "improvementTZ": {
+   "problem": "",
+   "solution": "",
+   "files": []
+  },
+  "techSheet": {
+   "files": []
+  },
+  "tenderCompleted": false,
+  "tenderCompletedAt": null,
+  "tenderAssignee": {
+   "userId": null,
+   "userName": "",
+   "userEmail": "",
+   "assignedAt": null
+  },
+  "rating": {
+   "$numberInt": "0"
+  },
+  "reviewCount": {
+   "$numberInt": "0"
+  },
+  "isKit": false,
+  "kitType": "dependent",
+  "improvementHistory": [],
+  "kitParts": [],
+  "updatedAt": {
+   "$date": {
+    "$numberLong": "1792733972053"
+   }
+  },
+  "__v": {
+   "$numberInt": "0"
+  }
+ }
+]
