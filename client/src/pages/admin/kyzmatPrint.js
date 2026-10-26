@@ -152,12 +152,19 @@ function byCategory(products) {
 }
 
 function servicesPage(n, setLabel, info, products, priceType) {
-  const blocks = byCategory(products).map(([cat, items]) => {
-    const page = servicePageFor(cat) || { title: cat, tagline: '' };
+  // Резка картона и ткани — сразу после лазерной резки металла
+  const rank = c => (/лазер/i.test(c) ? 0 : /картон|ткан/i.test(c) ? 1 : 2);
+  const cats = byCategory(products).map((e, i) => [e, i])
+    .sort((a, b) => rank(a[0][0]) - rank(b[0][0]) || a[1] - b[1]).map(([e]) => e);
+  const blocks = cats.map(([cat, items]) => {
     const unit = kyzmatServiceUnit(cat);
-    const photo = printImage(items.find(p => p.images?.[0])?.images[0]);
+    const page = unit.title ? { title: unit.title, tagline: unit.tagline || '' }
+      : servicePageFor(cat) || { title: cat, tagline: '' };
+    const pick = (unit.photoFrom && items.find(p => unit.photoFrom.test(p.name || '') && p.images?.[0]))
+      || items.find(p => p.images?.[0]);
+    const photo = printImage(pick?.images[0]);
     const rows = items.map(p => {
-      const th = specOf(p, /толщин/i);
+      const th = specOf(p, unit.rowSpec || /толщин/i);
       return {
         label: th ? `${dec(th)}`.replace(/-/g, '–') : (items.length > 1 ? p.name : '1 кг изделия'),
         price: unit.ask ? 0 : priceFor(p, priceType),
@@ -168,24 +175,28 @@ function servicesPage(n, setLabel, info, products, priceType) {
       <table class="svc-t">${rows.map(r => `<tr><td>${esc(r.label)}</td><td>${r.price > 0
         ? `<b>${fmt(r.price)}</b> <small>${esc(unit.unit || 'сом')}</small>`
         : '<i>по запросу</i>'}</td></tr>`).join('')}</table>` : '';
-    return `
-      <div class="svc${rows.length > 4 ? ' long' : ''}">
-        ${photo ? `<div class="svc-ph"><img src="${esc(photo)}" alt=""></div>` : ''}
+    const body = `
         <h2>${esc(page.title)}</h2>
         ${page.tagline ? `<p class="svc-tag">${esc(page.tagline)}</p>` : ''}
         ${priceType === 'none' && !anyPrice ? '' : table}
-        ${unit.note ? `<p class="svc-note">${esc(unit.note)}</p>` : ''}
+        ${unit.note ? `<p class="svc-note">${esc(unit.note)}</p>` : ''}`;
+    // Вертикальный постер (лазер) — слева целиком, текст справа
+    const html = unit.poster && photo ? `
+      <div class="svc svc-poster">
+        <div class="svc-pst"><img src="${esc(photo)}" alt=""></div>
+        <div>${body}</div>
+      </div>` : `
+      <div class="svc${rows.length > 4 ? ' long' : ''}">
+        ${photo ? `<div class="svc-ph${unit.photoContain ? ' svc-ph-contain' : ''}"><img src="${esc(photo)}" alt=""></div>` : ''}
+        ${body}
       </div>`;
+    return html;
   });
 
   return [page(`
     ${head(setLabel)}
     ${sectionHead(n, setLabel, info)}
     <div class="svcs">${blocks.join('')}</div>
-    <div class="steps">
-      <h3>Как заказать</h3>
-      <ol>${SERVICES_STEPS.map(([t, d], i) => `<li><span>${i + 1}</span><b>${esc(t)}</b><em>${esc(d)}</em></li>`).join('')}</ol>
-    </div>
     ${foot()}`, 'svc-sheet')];
 }
 
@@ -261,7 +272,8 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     if (!hex) return;
     const key = `${x.enamel ? 'e' : 'k'}|${x.code}|${x.finish}`;
     const prev = swatches.get(key);
-    if (!prev || (!prev.name && x.name)) swatches.set(key, { ...x, hex });
+    const price = Math.max(prev?.price || 0, priceFor(p, priceType));
+    swatches.set(key, !prev || (!prev.name && x.name) ? { ...x, hex, price } : { ...prev, price });
   });
   const sorted = [...swatches.values()].sort((a, b) => a.code.localeCompare(b.code, 'ru', { numeric: true }));
   const paintPrices = paints.map(p => priceFor(p, priceType)).filter(v => v > 0);
@@ -272,7 +284,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   const swatchHtml = s => `
     <div class="sw">
       <div class="sw-c" style="background:${esc(s.hex)}"></div>
-      <b>${esc(s.code)}</b>
+      <div class="sw-h"><b>${esc(s.code)}</b>${(s.price || common) > 0 ? `<em>${fmt(s.price || common)} сом</em>` : ''}</div>
       <span>${esc([s.name, s.finish].filter(Boolean).join(' · '))}</span>
     </div>`;
   const group = (title, list) => (list.length ? `
@@ -283,7 +295,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   pages.push(page(`
     ${head(setLabel)}
     ${sectionHead(n, setLabel, info)}
-    <div class="note-bar">Палитра красок${common ? ` · фасовка 1 кг — ${fmt(common)} сом` : ''}. По этой же палитре красим изделия на порошковой покраске.</div>
+    <div class="note-bar">Палитра красок${common ? '. Цена — за 1 кг' : ''}. По этой же палитре красим изделия на порошковой покраске.</div>
     ${group('Краски', sorted.filter(s => !s.enamel))}
     ${group('Эмаль по металлу', sorted.filter(s => s.enamel))}
     ${foot()}`, 'paint-sheet'));
@@ -442,8 +454,12 @@ h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 
 /* ── Услуги ── */
 .svcs { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt 22pt; }
-.svc-ph { height: 92pt; border-radius: 4pt; overflow: hidden; background: #f2f4f6; margin-bottom: 6pt; }
+.svc-ph { height: 84pt; border-radius: 4pt; overflow: hidden; background: #f2f4f6; margin-bottom: 6pt; }
 .svc-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.svc-poster { display: grid; grid-template-columns: 104pt 1fr; gap: 10pt; align-items: start; }
+.svc-pst img { width: 104pt; height: 130pt; object-fit: cover; border-radius: 4pt; display: block; }
+.svc-ph-contain { background: #fff; }
+.svc-ph-contain img { object-fit: contain; }
 .svc-tag { font-size: 8pt; color: ${MUTED}; margin-top: 2pt; line-height: 1.35; }
 .svc-t { width: 100%; border-collapse: collapse; margin-top: 5pt; font-size: 9pt; }
 .svc-t td { padding: 2.6pt 0; border-bottom: .5pt solid ${LINE}; }
@@ -477,7 +493,9 @@ h3 { font-size: 8.5pt; font-weight: 700; letter-spacing: .12em; text-transform: 
 h2.sub { margin: 4pt 0 6pt; }
 .sws { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10pt 10pt; margin-bottom: 12pt; }
 .sw-c { height: 34pt; border-radius: 3pt; box-shadow: inset 0 0 0 .75pt ${RULE}; }
-.sw b { display: block; font-size: 8.5pt; margin-top: 3pt; }
+.sw-h { display: flex; align-items: center; justify-content: space-between; gap: 4pt; margin-top: 3pt; }
+.sw b { display: block; font-size: 8.5pt; white-space: nowrap; }
+.sw em { font-style: normal; background: ${RED}; color: #fff; font-size: 7.5pt; line-height: 1; padding: 2.5pt 4pt; border-radius: 2.5pt; white-space: nowrap; }
 .sw span { display: block; font-size: 7pt; line-height: 1.25; color: ${MUTED}; }
 
 h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
@@ -539,7 +557,9 @@ export function kyzmatHtml(groups, priceType = 'price', { base = '' } = {}) {
     const info = KYZMAT_SECTIONS[g.setKey] || { title: g.groupName };
     const layout = LAYOUTS[g.setKey];
     const products = layout === suppliesPages ? (g.products || []).filter(p => !p.hideInPdf)
-      :(g.products || []).filter(p => fitsCatalog(p) && !isExample(p));
+      // Услуге фото не обязательно: строка «Ткань» печатается и без снимка
+      : layout === servicesPage ? (g.products || []).filter(p => fitsCatalog({ ...p, images: ['-'] }) && !isExample(p))
+      : (g.products || []).filter(p => fitsCatalog(p) && !isExample(p));
     const pages = layout ? layout(i + 1, g.groupName, info, products, priceType)
       : gridPages(i + 1, g.groupName, info, products, priceType);
     sections.push({ n: i + 1, label: g.groupName, info, page: pageNo, pages });
