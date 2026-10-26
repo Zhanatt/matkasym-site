@@ -1,0 +1,11 @@
+{
+ "_id": "6adc2f85e9ba04e4167b8ab6",
+ "name": "Картон (пример)",
+ "fullName": "Картон (пример)",
+ "specs": [],
+ "description": "Пример карточки: картон, продаётся поштучно. Укажите плотность и формат листа.",
+ "images": [
+  "https://res.cloudinary.com/dnbg21ef8/image/upload/v1793005152/matkasym/products/karton.png"
+ ],
+ "dimensions": ""
+}

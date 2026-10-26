@@ -332,19 +332,33 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     return (widths.length ? widths : ['—']).map(w => ({ w, length, price: priceFor(p, priceType), p }));
   });
   const rollPhoto = printImage(rolls.find(p => p.images?.[0])?.images[0]);
-  const rollHtml = rollRows.length ? `
-      <div class="roll">
-        ${rollPhoto ? `<div class="roll-ph"><img src="${esc(rollPhoto)}" alt=""></div>` : ''}
-        <div>
-          <h2 class="big">Рулон металлический</h2>
-          <table class="tlist">
-            <thead><tr><th>Ширина, мм</th><th>Длина</th><th>Цена</th></tr></thead>
-            <tbody>${rollRows.map(r => `<tr><td>${esc(r.w)}</td><td>${esc(r.length)}</td><td>${
-              r.price > 0 ? `<b>${fmt(r.price)}</b> сом` : '<i>по запросу</i>'}</td></tr>`).join('')}</tbody>
-          </table>
-        </div>
-      </div>` : '';
-  const rest = products.filter(p => !paints.includes(p) && !rolls.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
+  // Картон: формат и слойность из характеристик
+  const cartons = products.filter(p => /^картон/i.test(p.category || '') && !isExample(p) && !p.hideInPdf);
+  const cartonPhoto = printImage(cartons.find(p => p.images?.[0])?.images[0]);
+  const priceCell = v => (v > 0 ? `<b>${fmt(v)}</b> сом` : '<i>по запросу</i>');
+  const goods = [
+    rollRows.length && `
+      <div class="good">
+        ${rollPhoto ? `<div class="good-ph"><img src="${esc(rollPhoto)}" alt=""></div>` : ''}
+        <h2 class="good-h">Рулон металлический</h2>
+        <table class="tlist">
+          <thead><tr><th>Ширина, мм</th><th>Длина</th><th>Цена</th></tr></thead>
+          <tbody>${rollRows.map(r => `<tr><td>${esc(r.w)}</td><td>${esc(r.length)}</td><td>${priceCell(r.price)}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>`,
+    cartons.length && `
+      <div class="good">
+        ${cartonPhoto ? `<div class="good-ph"><img src="${esc(cartonPhoto)}" alt=""></div>` : ''}
+        <h2 class="good-h">${esc(cartons.length === 1 ? cartons[0].name : 'Картон')}</h2>
+        <table class="tlist">
+          <thead><tr><th>Формат, мм</th><th>Слои</th><th>Цена</th></tr></thead>
+          <tbody>${cartons.map(p => `<tr><td>${esc(String(specOf(p, /формат/i) || '—').replace(/\s*мм/, ''))}</td><td>${
+            esc(String(specOf(p, /слой/i) || '—').replace(/\s*сло[её]в?/i, ''))}</td><td>${priceCell(priceFor(p, priceType))}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>`,
+  ].filter(Boolean);
+  const rollHtml = goods.length ? `<div class="goods">${goods.join('')}</div>` : '';
+  const rest = products.filter(p => !paints.includes(p) && !rolls.includes(p) && !cartons.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
     && fitsCatalog(p));
   if (sheets.length || rest.length || rollHtml) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} мм`))].sort();
@@ -533,10 +547,10 @@ h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
 .sheet-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; }
 h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bottom: 6pt; }
 .sheet-tables .tlist td:first-child { font-weight: 500; }
-.roll { display: grid; grid-template-columns: 110pt 1fr; gap: 16pt; align-items: center; margin-top: 18pt;
-  padding-top: 6pt; border-top: 1pt solid ${INK}; }
-.roll-ph img { width: 110pt; height: 96pt; object-fit: contain; mix-blend-mode: multiply; display: block; }
-.roll h2.big { margin: 4pt 0 6pt; font-size: 15pt; }
+.goods { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; margin-top: 16pt; padding-top: 10pt; border-top: 1pt solid ${INK}; }
+.good-ph { height: 64pt; display: flex; justify-content: center; }
+.good-ph img { height: 64pt; max-width: 100%; object-fit: contain; mix-blend-mode: multiply; }
+.good-h { font-size: 12pt; margin: 6pt 0 5pt; }
 .sheets-bg { position: absolute; left: 0; right: 0; bottom: 34pt; width: 100%; z-index: 0;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%); mask-image: linear-gradient(to bottom, transparent 0, #000 22%); }
 .has-bg > :not(.sheets-bg):not(.foot) { position: relative; z-index: 1; }
