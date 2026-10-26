@@ -249,6 +249,7 @@ function servicesPage(n, setLabel, info, products, priceType) {
 // ── Полуфабрикаты и прочее: сетка фото ───────────────────────────────────────
 const CAT_RU = { 'узоры': 'Узор', 'декоративная-деталь': 'Декоративная деталь' };
 // Размеры в названии не печатаем: «Накладка … (140×18 мм) — Деталь 1» → «Накладка … — Деталь 1»
+// Исключение — SANJYRA: её габариты руководитель прислал чертежом и просил печатать (26.10.2026)
 const noSizes = s => String(s || '')
   .replace(/\(?\s*\d+(?:[.,]\d+)?\s*[×xх*]\s*\d+(?:[.,]\d+)?\s*(?:мм)?\s*\)?/gi, ' ')
   .replace(/\s{2,}/g, ' ').replace(/\s+—/g, ' —').trim();
@@ -271,6 +272,8 @@ function gridPages(n, setLabel, info, products, priceType, { prices = true } = {
           <div class="card-ph"><img src="${esc(printImage(p.images[0]))}" alt=""></div>
           ${cat ? `<div class="card-k">${esc(cat)}</div>` : ''}
           <div class="card-n">${esc(prices ? p.name : noSizes(p.name))}</div>
+          ${/SANJYRA/i.test(p.name || '') && /\d+\s*[×xх*]\s*\d+/.test(p.dimensions || '') ? `<div class="card-d">${esc(String(p.dimensions).replace(/\s*[xх*]\s*/g, '×'))}${
+            specOf(p, /выступ/i) ? ` · стойка +${esc(String(specOf(p, /выступ/i)).replace(/\s*с каждой стороны/, ''))}` : ''}</div>` : ''}
           ${v > 0 ? `<div class="card-p">${fmt(v)} сом</div>` : ''}
         </div>`;
       }).join('')}</div>
@@ -592,6 +595,7 @@ h3 { font-size: 8.5pt; font-weight: 700; letter-spacing: .12em; text-transform: 
 .card-k { font-size: 6.5pt; color: ${MUTED}; margin-top: 4pt; text-transform: uppercase; letter-spacing: .08em; }
 .card-n { font-size: 9pt; font-weight: 700; line-height: 1.2; margin-top: 1pt;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-d { font-size: 7.5pt; color: ${MUTED}; margin-top: 1pt; }
 .card-p { display: inline-block; margin-top: 3pt; padding: 0 6pt; height: 14pt; line-height: 14pt; border-radius: 3pt;
   background: ${RED}; color: #fff; font-size: 8.5pt; }
 
