@@ -216,6 +216,9 @@ function gridPages(n, setLabel, info, products, priceType, { prices = true } = {
 }
 
 // ── Расходные материалы: палитра красок и листы ──────────────────────────────
+// Фон нижней части листа со сталью — фото стопки листов (прислал руководитель
+// 26.10.2026), на белом фоне, поэтому сливается с полосой
+const SHEETS_BG = 'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_auto:good,w_1686/v1793005691/matkasym/covers/kyzmat-sheets-bg.png';
 const HEX = /^#[0-9a-f]{6}$/i;
 const FINISH = [[/шагрен/i, 'шагрень'], [/полумат/i, 'полумат'], [/metallic|металлик/i, 'металлик'],
   [/глян/i, 'глянец'], [/термостойк/i, 'термостойкая'], [/\bмат\b|\bmat\b|матов/i, 'мат']];
@@ -294,16 +297,16 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} ${x.kind}`))].sort();
     const ths = [...new Set(sheets.map(x => x.t))].sort((a, b) => a - b);
     const anyPrice = sheets.some(x => x.price > 0);
-    const sheetPhoto = printImage(sheets.find(x => x.p.images?.[0])?.p.images[0]);
     const cell = (t, k) => {
       const x = sheets.find(s => s.t === t && `${s.fmt} ${s.kind}` === k);
       if (!x) return '<td class="no">—</td>';
       return `<td>${x.price > 0 ? `<b>${fmt(x.price)}</b>` : ''}${x.mass ? `<small>${esc(String(x.mass).replace(/\.(\d)/, ',$1'))}</small>` : ''}</td>`;
     };
     pages.push(page(`
+      ${sheets.length ? `<img class="sheets-bg" src="${SHEETS_BG}" alt="">` : ''}
       ${head(setLabel)}
       ${sheets.length ? `
-      <div class="big-h">${sheetPhoto ? `<img src="${esc(sheetPhoto)}" alt="">` : ''}<h2 class="big">Лист стальной</h2></div>
+      <h2 class="big">Лист стальной</h2>
       <div class="note-bar">Холоднокатаный (х/к) и горячекатаный (г/к). В клетке — ${anyPrice ? 'цена листа, сом, и ' : ''}масса листа${anyPrice ? '' : '; цену уточняйте у менеджера'}.</div>
       <table class="grid sheets">
         <thead><tr><th>толщина, мм</th>${colsK.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead>
@@ -313,7 +316,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
         const v = priceFor(p, priceType);
         return `<li><span>${esc(p.name)}</span>${v > 0 ? `<b>${fmt(v)} сом</b>` : '<i>по запросу</i>'}</li>`;
       }).join('')}</ul>` : ''}
-      ${foot()}`));
+      ${foot()}`, sheets.length ? 'has-bg' : ''));
   }
   return pages;
 }
@@ -462,9 +465,10 @@ h2.sub { margin: 4pt 0 6pt; }
 .sw span { display: block; font-size: 7pt; line-height: 1.25; color: ${MUTED}; }
 
 h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
-.big-h { display: flex; align-items: center; gap: 12pt; margin: 14pt 0 8pt; }
-.big-h img { width: 86pt; height: 86pt; object-fit: contain; }
-.big-h h2.big { margin: 0; }
+.sheets-bg { position: absolute; left: 0; right: 0; bottom: 34pt; width: 100%; z-index: 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%); mask-image: linear-gradient(to bottom, transparent 0, #000 22%); }
+.has-bg > :not(.sheets-bg):not(.foot) { position: relative; z-index: 1; }
+.has-bg > .foot { z-index: 1; }
 .sheets td { font-weight: 400; }
 .sheets td b { display: block; font-weight: 700; }
 .sheets td small { font-size: 7.5pt; color: ${MUTED}; }
