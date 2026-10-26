@@ -324,9 +324,29 @@ function suppliesPages(n, setLabel, info, products, priceType) {
       mass: specOf(p, /масса/i) || '',
       price: priceFor(p, priceType),
     })).filter(x => x.t && x.fmt);
-  const rest = products.filter(p => !paints.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
+  // Рулон: строки — ширина (из «Ширина рулона»), длина разная, цена — из карточки или «по запросу»
+  const rolls = products.filter(p => /рулон/i.test(p.category || '') && !isExample(p) && !p.hideInPdf);
+  const rollRows = rolls.flatMap(p => {
+    const widths = (String(specOf(p, /ширин/i) || '').match(/\d{3,4}/g) || []);
+    const length = specOf(p, /^длина/i) || 'разная';
+    return (widths.length ? widths : ['—']).map(w => ({ w, length, price: priceFor(p, priceType), p }));
+  });
+  const rollPhoto = printImage(rolls.find(p => p.images?.[0])?.images[0]);
+  const rollHtml = rollRows.length ? `
+      <div class="roll">
+        ${rollPhoto ? `<div class="roll-ph"><img src="${esc(rollPhoto)}" alt=""></div>` : ''}
+        <div>
+          <h2 class="big">Рулон металлический</h2>
+          <table class="tlist">
+            <thead><tr><th>Ширина, мм</th><th>Длина</th><th>Цена</th></tr></thead>
+            <tbody>${rollRows.map(r => `<tr><td>${esc(r.w)}</td><td>${esc(r.length)}</td><td>${
+              r.price > 0 ? `<b>${fmt(r.price)}</b> сом` : '<i>по запросу</i>'}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>` : '';
+  const rest = products.filter(p => !paints.includes(p) && !rolls.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
     && fitsCatalog(p));
-  if (sheets.length || rest.length) {
+  if (sheets.length || rest.length || rollHtml) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} мм`))].sort();
     const anyPrice = sheets.some(x => x.price > 0);
     pages.push(page(`
@@ -348,6 +368,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
           </table>
         </div>`;
       }).join('')}</div>` : ''}
+      ${rollHtml}
       ${rest.length ? `<h2 class="big">Ещё в наличии</h2><ul class="rest">${rest.map(p => {
         const v = priceFor(p, priceType);
         return `<li><span>${esc(p.name)}</span>${v > 0 ? `<b>${fmt(v)} сом</b>` : '<i>по запросу</i>'}</li>`;
@@ -512,6 +533,10 @@ h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
 .sheet-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; }
 h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bottom: 6pt; }
 .sheet-tables .tlist td:first-child { font-weight: 500; }
+.roll { display: grid; grid-template-columns: 110pt 1fr; gap: 16pt; align-items: center; margin-top: 18pt;
+  padding-top: 6pt; border-top: 1pt solid ${INK}; }
+.roll-ph img { width: 110pt; height: 96pt; object-fit: contain; mix-blend-mode: multiply; display: block; }
+.roll h2.big { margin: 4pt 0 6pt; font-size: 15pt; }
 .sheets-bg { position: absolute; left: 0; right: 0; bottom: 34pt; width: 100%; z-index: 0;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%); mask-image: linear-gradient(to bottom, transparent 0, #000 22%); }
 .has-bg > :not(.sheets-bg):not(.foot) { position: relative; z-index: 1; }
