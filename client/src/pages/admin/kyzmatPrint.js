@@ -107,11 +107,17 @@ function tubesPage(n, setLabel, info, products, priceType) {
   }).filter(Boolean);
 
   // Две колонки: каждый блок — в ту, где сейчас короче
+  // Фото торцов труб — по одному на вид — в пустое место под короткой колонкой
+  const art = TUBE_KINDS.map(kind => {
+    const p = products.find(q => tubeKind(q) === kind && q.images?.[0] && !/\.webp/.test(q.images[0]));
+    return p && { img: printImage(p.images[0]), label: kind.title.replace(/ые$/, 'ая') };
+  }).filter(Boolean);
   const cols = [[], []], h = [0, 0];
   blocks.sort((a, b) => b.rows - a.rows).forEach(b => {
     const i = h[0] <= h[1] ? 0 : 1;
     cols[i].push(b.html); h[i] += b.rows + 4;
   });
+  const shortCol = h[0] <= h[1] ? 0 : 1;
 
   const cutRows = cuts.map(p => ({
     label: specOf(p, /толщина/i) || String(p.name || '').match(/\(([^)]+)\)/)?.[1] || p.name,
@@ -128,7 +134,8 @@ function tubesPage(n, setLabel, info, products, priceType) {
     ${head(setLabel)}
     ${sectionHead(n, setLabel, info)}
     ${priceType !== 'none' && info.priceNote ? `<div class="note-bar">${esc(info.priceNote)}.</div>` : ''}
-    <div class="tubes">${cols.map(c => `<div class="tcol">${c.join('')}</div>`).join('')}</div>
+    <div class="tubes">${cols.map((c, i) => `<div class="tcol">${c.join('')}${
+      i === shortCol && art.length ? `<div class="tube-art">${art.map(x => `<figure><img src="${esc(x.img)}" alt=""><figcaption>${esc(x.label)}</figcaption></figure>`).join('')}</div>` : ''}</div>`).join('')}</div>
     ${cutHtml}
     ${foot()}`)];
 }
@@ -400,6 +407,10 @@ h1 { font-size: 24pt; font-weight: 700; line-height: 1.1; margin-top: 2pt; }
 
 /* ── Трубы ── */
 .tubes { display: flex; gap: 22pt; align-items: flex-start; }
+.tube-art { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; margin-top: 16pt; height: 74pt; }
+.tube-art figure { display: flex; flex-direction: column; align-items: center; min-height: 0; overflow: hidden; }
+.tube-art img { width: 100%; height: 58pt; object-fit: contain; mix-blend-mode: multiply; }
+.tube-art figcaption { font-size: 7pt; color: ${MUTED}; margin-top: 2pt; white-space: nowrap; }
 .tcol { flex: 1; display: flex; flex-direction: column; gap: 12pt; min-width: 0; }
 .tube-h { display: flex; align-items: center; gap: 8pt; margin-bottom: 4pt; }
 .tube-ph { width: 40pt; height: 26pt; display: flex; align-items: center; justify-content: center; }
