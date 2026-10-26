@@ -15,6 +15,7 @@
 import { adminGetPdfDetails } from '../../api/index';
 import { PRINT_COVERS, printEsc as esc, printImage, fitsCatalog } from './catalogPrint';
 import { SERVICES_CONTACTS as C, SERVICES_STEPS, servicePageFor } from '../../config/servicesCatalog';
+import { coverOf } from '../../utils/variantKey';
 import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, kyzmatServiceUnit } from '../../config/kyzmatCatalog';
 
 const RED = '#E30521';
@@ -163,8 +164,9 @@ function servicesPage(n, setLabel, info, products, priceType) {
     const unit = kyzmatServiceUnit(cat);
     const page = unit.title ? { title: unit.title, tagline: unit.tagline || '' }
       : servicePageFor(cat) || { title: cat, tagline: '' };
+    // Фото — то же, что обложка карточки на сайте (самое новое из вариантов)
     const pick = (unit.photoFrom && items.find(p => unit.photoFrom.test(p.name || '') && p.images?.[0]))
-      || items.find(p => p.images?.[0]);
+      || coverOf(items);
     const photo = printImage(pick?.images[0]);
     const rows = items.map(p => {
       const th = specOf(p, unit.rowSpec || /толщин/i);
