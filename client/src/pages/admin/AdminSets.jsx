@@ -1222,7 +1222,32 @@ const NO_PHOTO      = '/logos/no-photo.png';
 // Квадрат цвета вместо фото рисуем только для HEX — так заведены краски. Словом
 // в поле «Цвет» («white», «белый») помечены обычные товары, и у них вместо
 // заглушки «нет фото» выходил пустой белый квадрат.
-const isSwatch = c => /^#[0-9a-f]{3,8}$/i.test(String(c || '').trim());
+const TEXT_COLORS = {
+  'black': '#222', 'белый': '#fff', 'белая': '#fff', 'white': '#fff',
+  'чёрный': '#222', 'черный': '#222', 'черная': '#222', 'чёрная': '#222',
+  'серый': '#999', 'серая': '#999', 'gray': '#999', 'grey': '#999',
+  'красный': '#e53935', 'красная': '#e53935', 'red': '#e53935',
+  'синий': '#1e88e5', 'синяя': '#1e88e5', 'blue': '#1e88e5',
+  'зелёный': '#43a047', 'зеленый': '#43a047', 'зелёная': '#43a047', 'зеленая': '#43a047', 'green': '#43a047',
+  'жёлтый': '#fdd835', 'желтый': '#fdd835', 'yellow': '#fdd835',
+  'розовый': '#ec407a', 'розовая': '#ec407a', 'pink': '#ec407a',
+  'бежевый': '#d4c5a9', 'бежевая': '#d4c5a9', 'beige': '#d4c5a9',
+  'коричневый': '#795548', 'коричневая': '#795548', 'brown': '#795548',
+  'оранжевый': '#ff9800', 'оранжевая': '#ff9800', 'orange': '#ff9800',
+  'фиолетовый': '#7b1fa2', 'фиолетовая': '#7b1fa2', 'purple': '#7b1fa2',
+  'бирюзовый': '#00bcd4', 'бирюзовая': '#00bcd4',
+  'голубой': '#42a5f5', 'голубая': '#42a5f5',
+  'тёмно-серый': '#555', 'темно-серый': '#555', 'антрацит': '#444',
+  'светло-серый': '#ccc', 'светло-серая': '#ccc',
+  'золотой': '#c9a84c', 'золотая': '#c9a84c',
+  'серебристый': '#bbb', 'серебристая': '#bbb',
+};
+const colorToHex = c => {
+  const s = String(c || '').trim();
+  if (/^#[0-9a-f]{3,8}$/i.test(s)) return s;
+  return TEXT_COLORS[s.toLowerCase()] || null;
+};
+const isSwatch = c => colorToHex(c) !== null;
 
 // Компонент для отображения изображения или цвета (для красок)
 function ProductImage({ product, size = 80, className = '', style = {} }) {
@@ -1237,7 +1262,7 @@ function ProductImage({ product, size = 80, className = '', style = {} }) {
           width: size,
           height: size,
           minWidth: size,
-          background: product.color,
+          background: colorToHex(product.color) || product.color,
           borderRadius: 8,
           border: '1px solid rgba(0,0,0,0.1)',
           boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2)',
@@ -1319,7 +1344,7 @@ function VariantRows({ variants, country, accent, showPrice, priceMode, onOpen }
     <div style={{ marginTop: 8, borderTop: '1px solid #f0f0f0', paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
       {variants.map(v => {
         const info = getStockInfo(v, country);
-        const swatch = isSwatch(v.color) ? v.color : null;
+        const swatch = colorToHex(v.color);
         return (
           <div key={v._id}
             onClick={onOpen ? e => { e.stopPropagation(); onOpen(v); } : undefined}
@@ -2659,7 +2684,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                               onClick={e => { e.stopPropagation(); setToDelete({ name, variants }); }}
                             >×</button>
                           )}
-                          <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? (colorToHex(primary.color) || primary.color) : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <PdfHideMark variants={variants} active={pdfHideMode} />
                             {!hasColorOnly && (
                               <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
@@ -2754,7 +2779,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                   >
-                    <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? (colorToHex(primary.color) || primary.color) : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <PdfHideMark variants={variants} active={pdfHideMode} />
                       {!hasColorOnly && (
                         <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
@@ -2853,7 +2878,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.05)';  e.currentTarget.style.transform = 'none'; }}
                     >
-                      <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? primary.color : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div className="set-photo" style={{ aspectRatio: '1', overflow: 'hidden', background: hasColorOnly ? (colorToHex(primary.color) || primary.color) : '#f8f8f8', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {!hasColorOnly && (
                           <img src={cloudinaryOpt(cover.images?.[0] || NO_PHOTO, 400)} alt={name}
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
