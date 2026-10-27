@@ -16,7 +16,7 @@ import { adminGetPdfDetails } from '../../api/index';
 import { PRINT_COVERS, printEsc as esc, printImage, fitsCatalog } from './catalogPrint';
 import { SERVICES_CONTACTS as C, SERVICES_STEPS, servicePageFor } from '../../config/servicesCatalog';
 import { coverOf } from '../../utils/variantKey';
-import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, kyzmatServiceUnit } from '../../config/kyzmatCatalog';
+import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
 
 const RED = '#E30521';
 const INK = '#14181c';
@@ -610,7 +610,9 @@ h3 { font-size: 8.5pt; font-weight: 700; letter-spacing: .12em; text-transform: 
 .sj-uses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
 .sj-use { height: 168pt; border-radius: 4pt; overflow: hidden; background: #f2f4f6; }
 .sj-use img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.sj-uses figcaption { font-size: 7.5pt; color: ${MUTED}; margin-top: 3pt; }
+.sj-uses figcaption { font-size: 8pt; color: ${MUTED}; margin-top: 4pt; line-height: 1.3; }
+.sj-uses figcaption b { display: block; color: ${INK}; font-size: 9.5pt; }
+.sj-uses figcaption span { display: block; }
 .card-d { font-size: 7.5pt; color: ${MUTED}; margin-top: 1pt; }
 .card-p { display: inline-block; margin-top: 3pt; padding: 0 6pt; height: 14pt; line-height: 14pt; border-radius: 3pt;
   background: ${RED}; color: #fff; font-size: 8.5pt; }
@@ -701,7 +703,7 @@ function sanjyraPage(setLabel, items) {
     ${uses.length ? `
     <h3 class="sj-h">В применении</h3>
     <div class="sj-uses">${uses.map(x => `
-      <figure><div class="sj-use"><img src="${esc(printImage(x.u))}" alt=""></div><figcaption>${esc(x.name)}</figcaption></figure>`).join('')}
+      <figure><div class="sj-use"><img src="${esc(printImage(x.u))}" alt=""></div><figcaption>${sanjyraUseCaption(x.u) ? `<b>${esc(sanjyraUseCaption(x.u))}</b>` : ''}<span>${esc(x.name)}</span></figcaption></figure>`).join('')}
     </div>` : ''}
     ${foot()}`);
 }

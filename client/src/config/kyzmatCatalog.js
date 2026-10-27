@@ -64,3 +64,14 @@ export const KYZMAT_SERVICE_UNITS = [
 export const kyzmatServiceUnit = category =>
   KYZMAT_SERVICE_UNITS.find(u => u.match.test(String(category || ''))) || { unit: '', note: '' };
 
+
+// Подписи к фото SANJYRA «в применении» — где стоит рамка. Ключ — id картинки
+// в Cloudinary (часть адреса). Новое фото без подписи печатается только с моделью.
+export const SANJYRA_USE_CAPTIONS = {
+  jjecwvpamdaoqn3u7rov: 'Ограждение балкона',
+  kztoeaz3emrak1qvtaw6: 'Беседка',
+  u9vdqkjdu0bzwxrt6nvc: 'Ограждение террасы',
+  amugfpxu3kk3cmpyakje: 'Перила лестницы',
+};
+export const sanjyraUseCaption = url =>
+  Object.entries(SANJYRA_USE_CAPTIONS).find(([id]) => String(url || '').includes(id))?.[1] || '';
