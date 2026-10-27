@@ -417,7 +417,10 @@ function suppliesPages(n, setLabel, info, products, priceType) {
       ${sheets.length ? `
       <h2 class="big">Лист металлический</h2>
       <p class="sh-lead">Российская сталь. Продаём три вида листа:</p>
-      <div class="sh-kinds">${KYZMAT_SHEET_KINDS.map(k => `<div><b>${esc(k.title)}</b><span>${esc(k.note)}</span></div>`).join('')}</div>
+      <div class="sh-kinds">${KYZMAT_SHEET_KINDS.map(k => {
+        const ph = k.photo || products.find(p => k.card?.test(p.name || '') && p.images?.[0])?.images[0];
+        return `<div>${ph ? `<div class="sh-ph"><img src="${esc(printImage(ph))}" alt=""></div>` : ''}<b>${esc(k.title)}</b><span>${esc(k.note)}</span></div>`;
+      }).join('')}</div>
       <h3 class="sh-h">Чёрный лист, холоднокатаный</h3>
       <div class="note-bar">${anyPrice ? 'Цена — за 1 лист.' : 'Цену уточняйте у менеджера.'}</div>
       <div class="sheet-tables">${colsK.map(k => {
@@ -639,6 +642,8 @@ h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
 .sh-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10pt; margin-bottom: 12pt; }
 .sh-kinds div { border: 1pt solid ${LINE}; border-left: 3pt solid ${RED}; border-radius: 3pt; padding: 6pt 8pt; }
 .sh-kinds b { display: block; font-size: 10.5pt; }
+.sh-ph { height: 62pt; margin: -2pt -4pt 4pt; display: flex; align-items: center; justify-content: center; }
+.sh-ph img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .sh-kinds span { display: block; font-size: 8pt; color: ${MUTED}; margin-top: 1pt; }
 .sh-h { font-size: 11pt; letter-spacing: 0; text-transform: none; margin: 0 0 6pt; }
 .sheet-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; }
