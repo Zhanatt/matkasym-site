@@ -1,0 +1,88 @@
+[
+ {
+  "_id": "6adf215d2593b4d72302f3f6",
+  "name": "Лазерная резка ткани",
+  "fullName": "Лазерная резка ткани",
+  "specs": [
+   {
+    "key": "Тип услуги",
+    "value": "Лазерная резка"
+   },
+   {
+    "key": "Материал",
+    "value": "Ткань"
+   },
+   {
+    "key": "Что нужно для заказа",
+    "value": "макет или эскиз"
+   }
+  ],
+  "description": "Режем ткань лазером по вашему макету: выкройки, аппликации, нашивки, детали одежды и декора. Лазер оплавляет край — синтетика не сыпется.",
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1793009513/matkasym/products/lazernaya-rezka-tkani.jpg"
+  ]
+ },
+ {
+  "_id": "6adf215c2593b4d72302f3f5",
+  "name": "Лазерная резка картона",
+  "fullName": "Лазерная резка картона",
+  "specs": [
+   {
+    "key": "Тип услуги",
+    "value": "Лазерная резка"
+   },
+   {
+    "key": "Материал",
+    "value": "Картон"
+   },
+   {
+    "key": "Что нужно для заказа",
+    "value": "макет или эскиз"
+   }
+  ],
+  "description": "Режем картон лазером по вашему макету: шаблоны, лекала, упаковка, вырубка деталей и декор. Ровный край без заусенцев, сложный контур — одним проходом.",
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1793009512/matkasym/products/lazernaya-rezka-kartona.jpg"
+  ]
+ },
+ {
+  "_id": "6a2652074c585cd56fcc7fa0",
+  "name": "Laser Art 0,5-3мм",
+  "fullName": "Laser Art  0,5-3мм",
+  "specs": [
+   {
+    "key": "Тип услуги",
+    "value": "Лазерная резка листового металла",
+    "options": [],
+    "_id": "6adc72d78b89e90444e7ff3d"
+   },
+   {
+    "key": "Толщина",
+    "value": "0,5–3 мм",
+    "options": [],
+    "_id": "6adc72d78b89e90444e7ff3e"
+   },
+   {
+    "key": "Единица",
+    "value": "сом/мин",
+    "options": [],
+    "_id": "6adc72d78b89e90444e7ff3f"
+   },
+   {
+    "key": "Что нужно для заказа",
+    "value": "чертёж или эскиз изделия",
+    "options": [],
+    "_id": "6adc72d78b89e90444e7ff40"
+   }
+  ],
+  "description": "Лазерная резка листового металла толщиной 0,5–3 мм по вашему чертежу или эскизу.\n\nПодходит для декоративных панелей, ажурных перегородок, табличек, фигурных деталей и заготовок для дальнейшей гибки и сварки. Лазер режет сложный контур одним проходом — края ровные, деталь сразу готова к покраске.\n\nСтоимость считается по времени работы станка — 80 сом за минуту. Точную цену и сроки менеджер рассчитает по вашему чертежу.",
+  "images": [
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1792832227/gvp8bcnosai4uvewuhfg.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787895421/s6yucvobgicgkaaffise.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787896310/onhp30rl121gunymbnqs.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787905880/vyiujg2fmqkiwmgjfxrt.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787905879/m829eobacbdztcmcskfv.png",
+   "https://res.cloudinary.com/dnbg21ef8/image/upload/v1787905879/psl1y9hepaaney4sf1ol.png"
+  ]
+ }
+]

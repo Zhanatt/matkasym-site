@@ -207,8 +207,8 @@ function servicesPage(n, setLabel, info, products, priceType) {
     const intro = metal ? servicePageFor(metal[0])?.intro : '';
     pages.push(page(`
       ${top()}
-      <div class="svc-head"><div class="kicker">Услуга</div><h1 class="svc-h1">Лазерная резка</h1>
-        <p class="svc-lead">Металл, картон и ткань — по вашему чертежу или макету</p></div>
+      <div class="svc-head"><div class="kicker">Услуга</div><h1 class="svc-h1">Резка металла, картона и ткани</h1>
+        <p class="svc-lead">Металл — лазером, картон и ткань — ножом. По вашему чертежу или макету</p></div>
       ${intro ? `<p class="svc-intro">${esc(intro)}</p>` : ''}
       <div class="lz">${laser.map(([cat, items]) => {
         const d = serviceData(cat, items, priceType);
