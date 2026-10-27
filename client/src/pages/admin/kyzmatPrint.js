@@ -595,6 +595,22 @@ h3 { font-size: 8.5pt; font-weight: 700; letter-spacing: .12em; text-transform: 
 .card-k { font-size: 6.5pt; color: ${MUTED}; margin-top: 4pt; text-transform: uppercase; letter-spacing: .08em; }
 .card-n { font-size: 9pt; font-weight: 700; line-height: 1.2; margin-top: 1pt;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sj-models { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10pt; margin-top: 6pt; }
+.sj-models figure { text-align: center; }
+.sj-ph { height: 170pt; display: flex; align-items: center; justify-content: center; }
+.sj-ph img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.sj-models figcaption { font-size: 9pt; font-weight: 700; margin-top: 4pt; }
+.sj-dims { display: grid; grid-template-columns: 150pt 1fr; gap: 20pt; align-items: center; margin-top: 14pt;
+  padding-top: 12pt; border-top: 1pt solid ${INK}; }
+.sj-draw { height: 150pt; display: flex; align-items: center; justify-content: center; }
+.sj-draw img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.sj-dims .tlist td:first-child { font-weight: 400; color: ${MUTED}; }
+.sj-dims .tlist td:last-child { text-align: right; font-weight: 700; }
+.sj-h { margin: 14pt 0 6pt; padding-top: 12pt; border-top: 1pt solid ${INK}; }
+.sj-uses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.sj-use { height: 168pt; border-radius: 4pt; overflow: hidden; background: #f2f4f6; }
+.sj-use img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sj-uses figcaption { font-size: 7.5pt; color: ${MUTED}; margin-top: 3pt; }
 .card-d { font-size: 7.5pt; color: ${MUTED}; margin-top: 1pt; }
 .card-p { display: inline-block; margin-top: 3pt; padding: 0 6pt; height: 14pt; line-height: 14pt; border-radius: 3pt;
   background: ${RED}; color: #fff; font-size: 8.5pt; }
@@ -657,10 +673,48 @@ h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bo
 `;
 
 // ── Сборка ───────────────────────────────────────────────────────────────────
+// SANJYRA — свой лист (26.10.2026). Фото в карточках идут так: первое — товар,
+// последнее — чертёж габаритов (у всех один и тот же, печатаем один раз),
+// между ними — фото в применении (балкон, беседка, лестница).
+function sanjyraPage(setLabel, items) {
+  const sorted = [...items].sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru', { numeric: true }));
+  const imgs = p => p.images || [];
+  const drawing = sorted.map(p => (imgs(p).length >= 2 ? imgs(p)[imgs(p).length - 1] : '')).find(Boolean);
+  const uses = sorted.flatMap(p => imgs(p).slice(1, -1).map(u => ({ u, name: p.name })));
+  const sp = (re) => sorted.map(p => specOf(p, re)).find(Boolean);
+  const rows = [['Размер рамки', sp(/размер рамки/i)], ['Толщина рамки', sp(/толщина рамки/i)],
+    ['Выступ стойки', sp(/выступ/i)], ['Узор', 'у каждой модели свой']].filter(r => r[1]);
+  return page(`
+    ${head(setLabel)}
+    <div class="svc-head"><div class="kicker">Полуфабрикаты для мастеров</div><h1 class="svc-h1">SANJYRA — декоративные рамки</h1>
+      <p class="svc-lead">Рамка у всех моделей одна и та же — отличается только лист с узором</p></div>
+    <div class="sj-models">${sorted.map(p => `
+      <figure><div class="sj-ph"><img src="${esc(printImage(imgs(p)[0]))}" alt=""></div><figcaption>${esc(p.name)}</figcaption></figure>`).join('')}
+    </div>
+    <div class="sj-dims">
+      ${drawing ? `<div class="sj-draw"><img src="${esc(printImage(drawing))}" alt=""></div>` : ''}
+      <div><h3>Габариты</h3>
+        <table class="tlist">${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
+        <p class="svc-note">Технология — лазерная резка, сталь, окраска. Цену уточняйте у менеджера.</p>
+      </div>
+    </div>
+    ${uses.length ? `
+    <h3 class="sj-h">В применении</h3>
+    <div class="sj-uses">${uses.map(x => `
+      <figure><div class="sj-use"><img src="${esc(printImage(x.u))}" alt=""></div><figcaption>${esc(x.name)}</figcaption></figure>`).join('')}
+    </div>` : ''}
+    ${foot()}`);
+}
+
 const LAYOUTS = {
   'dayar-tutuk': tubesPage,
   'onuguu-set': servicesPage,
-  'poly-fabrikat': (n, l, i, ps, pt) => gridPages(n, l, i, ps, pt, { prices: false }),
+  'poly-fabrikat': (n, l, i, ps, pt) => {
+    const sj = ps.filter(p => /^SANJYRA/i.test(p.name || ''));
+    const pages = gridPages(n, l, i, ps.filter(p => !sj.includes(p)), pt, { prices: false });
+    if (sj.length) pages.push(sanjyraPage(l, sj));
+    return pages;
+  },
   'yntymak-zakup': suppliesPages,
 };
 
