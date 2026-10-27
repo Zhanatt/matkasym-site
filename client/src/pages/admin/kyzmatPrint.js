@@ -16,7 +16,7 @@ import { adminGetPdfDetails } from '../../api/index';
 import { PRINT_COVERS, printEsc as esc, printImage, fitsCatalog } from './catalogPrint';
 import { SERVICES_CONTACTS as C, SERVICES_STEPS, servicePageFor } from '../../config/servicesCatalog';
 import { coverOf } from '../../utils/variantKey';
-import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
+import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, KYZMAT_SHEET_KINDS, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
 
 const RED = '#E30521';
 const INK = '#14181c';
@@ -383,9 +383,10 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   const cartonPhoto = printImage(cartons.find(p => p.images?.[0])?.images[0]);
   const priceCell = v => (v > 0 ? `<b>${fmt(v)}</b> сом` : '<i>по запросу</i>');
   // Рулон и картон — каждый на своём листе: крупное фото, описание, таблица
-  const goodPage = (title, photo, desc, thead, rows) => page(`
+  const goodPage = (title, photo, desc, thead, rows, lead = '') => page(`
       ${head(setLabel)}
-      <div class="svc-head"><div class="kicker">Расходные материалы</div><h1 class="svc-h1">${esc(title)}</h1></div>
+      <div class="svc-head"><div class="kicker">Расходные материалы</div><h1 class="svc-h1">${esc(title)}</h1>
+        ${lead ? `<p class="svc-lead">${esc(lead)}</p>` : ''}</div>
       ${photo ? `<div class="good-big"><img src="${esc(photo)}" alt=""></div>` : ''}
       ${desc ? `<p class="svc-intro">${esc(desc)}</p>` : ''}
       <table class="tlist good-t"><thead><tr>${thead.map(h => `<th>${h}</th>`).join('')}</tr></thead>
@@ -395,7 +396,8 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   if (rollRows.length) {
     extraPages.push(goodPage('Рулон металлический', rollPhoto, rolls[0].description,
       ['Ширина, мм', 'Длина', 'Цена'],
-      rollRows.map(r => `<tr><td>${esc(r.w)}</td><td>${esc(r.length)}</td><td>${priceCell(r.price)}</td></tr>`)));
+      rollRows.map(r => `<tr><td>${esc(r.w)}</td><td>${esc(r.length)}</td><td>${priceCell(r.price)}</td></tr>`),
+      'Российское качество'));
   }
   if (cartons.length) {
     extraPages.push(goodPage(cartons.length === 1 ? cartons[0].name : 'Картон', cartonPhoto, cartons[0].description,
@@ -413,7 +415,10 @@ function suppliesPages(n, setLabel, info, products, priceType) {
       ${sheets.length ? `<img class="sheets-bg" src="${SHEETS_BG}" alt="">` : ''}
       ${head(setLabel)}
       ${sheets.length ? `
-      <h2 class="big">Лист стальной холоднокатаный</h2>
+      <h2 class="big">Лист металлический</h2>
+      <p class="sh-lead">Российская сталь. Продаём три вида листа:</p>
+      <div class="sh-kinds">${KYZMAT_SHEET_KINDS.map(k => `<div><b>${esc(k.title)}</b><span>${esc(k.note)}</span></div>`).join('')}</div>
+      <h3 class="sh-h">Чёрный лист, холоднокатаный</h3>
       <div class="note-bar">${anyPrice ? 'Цена — за 1 лист.' : 'Цену уточняйте у менеджера.'}</div>
       <div class="sheet-tables">${colsK.map(k => {
         const rows = sheets.filter(x => `${x.fmt} мм` === k).sort((a, b) => a.t - b.t);
@@ -630,6 +635,12 @@ h2.sub { margin: 0; }
 .sw span { display: block; font-size: 7pt; line-height: 1.25; color: ${MUTED}; }
 
 h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
+.sh-lead { font-size: 10pt; color: #333b40; margin: -2pt 0 6pt; }
+.sh-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10pt; margin-bottom: 12pt; }
+.sh-kinds div { border: 1pt solid ${LINE}; border-left: 3pt solid ${RED}; border-radius: 3pt; padding: 6pt 8pt; }
+.sh-kinds b { display: block; font-size: 10.5pt; }
+.sh-kinds span { display: block; font-size: 8pt; color: ${MUTED}; margin-top: 1pt; }
+.sh-h { font-size: 11pt; letter-spacing: 0; text-transform: none; margin: 0 0 6pt; }
 .sheet-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; }
 h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bottom: 6pt; }
 .sheet-tables .tlist td:first-child { font-weight: 500; }
