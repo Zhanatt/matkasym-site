@@ -441,7 +441,6 @@ function suppliesPages(n, setLabel, info, products, priceType) {
         const ph = k.photo || products.find(p => k.card?.test(p.name || '') && p.images?.[0])?.images[0];
         return `<div>${ph ? `<div class="sh-ph"><img src="${esc(printImage(ph))}" alt=""></div>` : ''}<b>${esc(k.title)}</b><span>${esc(k.note)}</span></div>`;
       }).join('')}</div>
-      <h3 class="sh-h">Чёрный лист, холоднокатаный</h3>
       <div class="note-bar">${anyPrice ? 'Цена — за 1 лист.' : 'Цену уточняйте у менеджера.'}</div>
       <div class="sheet-tables">${colsK.map(k => {
         const rows = sheets.filter(x => `${x.fmt} мм` === k).sort((a, b) => a.t - b.t);
