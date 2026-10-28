@@ -86,3 +86,13 @@ export const KYZMAT_SHEET_KINDS = [
   { title: 'Оцинкованный лист', note: 'размеры и цену уточняйте', card: /оцинк/i },
   { title: 'Нержавеющий лист', note: 'размеры и цену уточняйте', card: /нерж/i },
 ];
+
+// Порошковая покраска — как красим, по шагам (фото прислал руководитель 28.10.2026).
+// У печи своего фото пока нет — вместо него плашка с температурой (big).
+const PK = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
+export const KYZMAT_PAINT_STEPS = [
+  { title: 'Мойка', text: 'Деталь моют — снимают масло, пыль и окалину', photo: `${PK}/v1793163656/matkasym/kyzmat/pokraska-1-mojka.jpg` },
+  { title: 'Сушка', text: 'Сушим, чтобы на металле не осталось влаги', photo: `${PK}/v1793163657/matkasym/kyzmat/pokraska-2-sushka.jpg` },
+  { title: 'Покраска', text: 'Наносим порошок распылителем ровным слоем', photo: `${PK}/v1793163658/matkasym/kyzmat/pokraska-3-pokraska.jpg` },
+  { title: 'Печь 220 °C', text: 'Порошок запекается в прочное гладкое покрытие', big: '220 °C' },
+];

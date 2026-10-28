@@ -16,7 +16,7 @@ import { adminGetPdfDetails } from '../../api/index';
 import { PRINT_COVERS, printEsc as esc, printImage, fitsCatalog } from './catalogPrint';
 import { SERVICES_CONTACTS as C, SERVICES_STEPS, servicePageFor } from '../../config/servicesCatalog';
 import { coverOf } from '../../utils/variantKey';
-import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, KYZMAT_SHEET_KINDS, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
+import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, KYZMAT_SHEET_KINDS, KYZMAT_PAINT_STEPS, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
 
 const RED = '#E30521';
 const INK = '#14181c';
@@ -233,7 +233,15 @@ function servicesPage(n, setLabel, info, products, priceType) {
       ${top()}
       <div class="svc-head"><div class="kicker">Услуга</div><h1 class="svc-h1">${esc(d.pg.title)}</h1>
         ${d.pg.tagline ? `<p class="svc-lead">${esc(d.pg.tagline)}</p>` : ''}</div>
-      ${d.photo ? `<div class="svc-big"><img src="${esc(d.photo)}" alt=""></div>` : ''}
+      ${/покрас/i.test(cat) && KYZMAT_PAINT_STEPS.length ? `
+      <h3 class="pk-h">Как мы красим</h3>
+      <div class="pk-steps">${KYZMAT_PAINT_STEPS.map((st, i) => `
+        <figure>
+          <div class="pk-ph">${st.photo ? `<img src="${esc(printImage(st.photo))}" alt="">` : `<div class="pk-big">${esc(st.big || '')}</div>`}
+            <span class="pk-n">${i + 1}</span></div>
+          <figcaption><b>${esc(st.title)}</b>${esc(st.text)}</figcaption>
+        </figure>`).join('')}
+      </div>` : d.photo ? `<div class="svc-big"><img src="${esc(d.photo)}" alt=""></div>` : ''}
       ${d.info?.intro ? `<p class="svc-intro">${esc(d.info.intro)}</p>` : ''}
       <div class="svc-cols">
         <div><h3>Цены</h3>${d.table || '<p class="svc-tag">по запросу</p>'}
@@ -564,6 +572,16 @@ h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 .svc-cols .svc-t { margin-top: 0; font-size: 10.5pt; }
 .svc-cols .svc-t td { padding: 4pt 0; }
 .svc-cols .svc-t b { font-size: 11.5pt; }
+.pk-h { margin: 12pt 0 6pt; }
+.pk-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10pt; }
+.pk-ph { position: relative; height: 150pt; border-radius: 5pt; overflow: hidden; background: #f2f4f6; }
+.pk-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pk-big { height: 100%; display: flex; align-items: center; justify-content: center; background: ${RED}; color: #fff;
+  font-size: 26pt; font-weight: 700; letter-spacing: -.01em; }
+.pk-n { position: absolute; left: 6pt; top: 6pt; width: 18pt; height: 18pt; border-radius: 50%; background: #fff; color: ${RED};
+  font-size: 9pt; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.pk-steps figcaption { font-size: 8pt; line-height: 1.35; color: ${MUTED}; margin-top: 5pt; }
+.pk-steps figcaption b { display: block; font-size: 10pt; color: ${INK}; margin-bottom: 1pt; }
 .lc + .lc { margin-top: 10pt; }
 .lc ul { list-style: none; }
 .lc li { font-size: 9pt; line-height: 1.45; padding-left: 11pt; position: relative; margin-bottom: 2pt; color: #333b40; }
