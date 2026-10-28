@@ -16,7 +16,7 @@ import { adminGetPdfDetails } from '../../api/index';
 import { PRINT_COVERS, printEsc as esc, printImage, fitsCatalog } from './catalogPrint';
 import { SERVICES_CONTACTS as C, SERVICES_STEPS, servicePageFor } from '../../config/servicesCatalog';
 import { coverOf } from '../../utils/variantKey';
-import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, KYZMAT_SHEET_KINDS, KYZMAT_PAINT_STEPS, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
+import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, KYZMAT_SHEET_KINDS, KYZMAT_PAINT_STEPS, KYZMAT_GOODS_INFO, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
 
 const RED = '#E30521';
 const INK = '#14181c';
@@ -391,27 +391,39 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   const cartonPhoto = printImage(cartons.find(p => p.images?.[0])?.images[0]);
   const priceCell = v => (v > 0 ? `<b>${fmt(v)}</b> сом` : '<i>по запросу</i>');
   // Рулон и картон — каждый на своём листе: крупное фото, описание, таблица
-  const goodPage = (title, photo, desc, thead, rows, lead = '') => page(`
+  const goodPage = (title, photo, desc, thead, rows, lead = '', info = null) => page(`
       ${head(setLabel)}
       <div class="svc-head"><div class="kicker">Расходные материалы</div><h1 class="svc-h1">${esc(title)}</h1>
         ${lead ? `<p class="svc-lead">${esc(lead)}</p>` : ''}</div>
-      ${photo ? `<div class="good-big"><img src="${esc(photo)}" alt=""></div>` : ''}
-      ${desc ? `<p class="svc-intro">${esc(desc)}</p>` : ''}
-      <table class="tlist good-t"><thead><tr>${thead.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-        <tbody>${rows.join('')}</tbody></table>
+      <div class="gd-top">
+        ${photo ? `<div class="good-big"><img src="${esc(photo)}" alt=""></div>` : ''}
+        <div>
+          ${desc ? `<p class="svc-intro">${esc(desc)}</p>` : ''}
+          <table class="tlist good-t"><thead><tr>${thead.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+            <tbody>${rows.join('')}</tbody></table>
+        </div>
+      </div>
+      ${info ? `
+      <div class="svc-cols gd-cols">
+        <div>${listCol('Где применяют', info.uses)}</div>
+        <div>${listCol('Почему у нас', info.pros)}</div>
+      </div>
+      ${info.combo ? `<div class="note-bar gd-combo">${esc(info.combo)}</div>` : ''}` : ''}
+      ${stepsHtml()}
       ${foot()}`);
   const extraPages = [];
   if (rollRows.length) {
     extraPages.push(goodPage('Рулон металлический', rollPhoto, rolls[0].description,
       ['Ширина, мм', 'Длина', 'Цена'],
       rollRows.map(r => `<tr><td>${esc(r.w)}</td><td>${esc(r.length)}</td><td>${priceCell(r.price)}</td></tr>`),
-      'Российское качество'));
+      'Российское качество', KYZMAT_GOODS_INFO.roll));
   }
   if (cartons.length) {
     extraPages.push(goodPage(cartons.length === 1 ? cartons[0].name : 'Картон', cartonPhoto, cartons[0].description,
       ['Формат, мм', 'Слои', 'Цена'],
       cartons.map(p => `<tr><td>${esc(String(specOf(p, /формат/i) || '—').replace(/\s*мм/, ''))}</td><td>${
-        esc(String(specOf(p, /слой/i) || '—').replace(/\s*сло[её]в?/i, ''))}</td><td>${priceCell(priceFor(p, priceType))}</td></tr>`)));
+        esc(String(specOf(p, /слой/i) || '—').replace(/\s*сло[её]в?/i, ''))}</td><td>${priceCell(priceFor(p, priceType))}</td></tr>`),
+      'Гофрокартон для упаковки и защиты', KYZMAT_GOODS_INFO.carton));
   }
   const rollHtml = '';
   const rest = products.filter(p => !paints.includes(p) && !rolls.includes(p) && !cartons.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
@@ -667,7 +679,14 @@ h2.big { font-size: 18pt; margin: 18pt 0 8pt; }
 .sheet-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 26pt; }
 h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bottom: 6pt; }
 .sheet-tables .tlist td:first-child { font-weight: 500; }
-.good-big { height: 330pt; display: flex; align-items: center; justify-content: center; margin: 10pt 0; }
+.gd-top { display: grid; grid-template-columns: 270pt 1fr; gap: 20pt; align-items: center; margin-top: 6pt; }
+.good-big { height: 300pt; display: flex; align-items: center; justify-content: center; }
+.gd-top .svc-intro { margin-top: 0; }
+.gd-cols { margin-top: 18pt; padding-top: 12pt; border-top: 1pt solid ${INK}; }
+.gd-combo { margin-top: 16pt; font-size: 9.5pt; padding: 7pt 10pt; }
+.gd-cols .lc li { font-size: 10pt; margin-bottom: 4pt; }
+.gd-cols .lc li::before { top: 5.5pt; }
+.gd-top .svc-intro { font-size: 10.5pt; }
 .good-big img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .good-t { font-size: 12pt; margin-top: 8pt; }
 .good-t td { padding: 7pt 4pt 7pt 0; }
