@@ -275,6 +275,16 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .cover-plate { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:var(--metal); color:#fff;
   font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:30pt; letter-spacing:.04em; line-height:1;
   padding:5mm 10mm; border-radius:3mm; white-space:nowrap; }
+/* логотип в подвале, вступление на стр. 2, логотип на последней */
+.foot-l { display:flex; align-items:center; gap:3mm; }
+.foot-l img { height:3.4mm; width:auto; }
+.foot-l i { font-style:normal; }
+.intro { display:grid; grid-template-columns:1fr 1fr; gap:10mm; align-items:end; padding-bottom:8mm; border-bottom:1px solid var(--metal); }
+.intro h2 { font-size:30pt; font-weight:700; }
+.intro p { color:var(--text); font-size:10pt; line-height:1.5; }
+.end-logo { flex:1 1 0; display:flex; align-items:center; justify-content:center; }
+.end-logo img { width:62mm; height:auto; }
+
 /* содержание */
 .mood { height:125mm; overflow:hidden; flex:0 0 auto; }
 .mood--fill { height:auto; flex:1 1 0; min-height:0; }
