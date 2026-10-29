@@ -22,8 +22,9 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const SITE = 'https://matkasym-site.onrender.com';
 const CLOUD = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
-const img = (url, w) => url ? url.replace('/upload/', `/upload/f_jpg,q_auto:good,w_${w},c_limit/`) : '';
-const seriesImg = (key, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/matkasym/uzak-koldon/series-${key}.jpg`;
+// e_trim — Cloudinary срезает белые поля вокруг шкафа, чтобы фото на полосе было крупнее
+const img = (url, w) => url ? url.replace('/upload/', `/upload/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`) : '';
+const seriesImg = (key, w) => `${CLOUD}/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/matkasym/uzak-koldon/series-${key}.jpg`;
 // Интерьерные кадры с карточек товаров на сайте: обложка — IS K в офисе,
 // страница GK — GK 9 в раздевалке, содержание — тумба T 4 у рабочего стола
 const mood = (id, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/${id}`;
@@ -227,7 +228,7 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .s-lead { color:var(--text); font-size:8.6pt; max-width:80mm; justify-self:end; }
 .s-mat { display:block; margin-top:1.5mm; color:var(--mute); font-size:7.4pt; }
 .s-photo { flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; }
-.s-photo img { max-height:100%; width:auto; object-fit:contain; }
+.s-photo img { max-height:100%; max-width:100%; width:auto; object-fit:contain; }
 .series--big .s-photo { flex:0 0 auto; }
 .series--big .s-photo img { width:100%; height:auto; }
 .vars { display:grid; grid-template-columns:repeat(var(--n), 1fr); border-top:1px solid var(--line); }
@@ -239,13 +240,15 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .v-price { margin-top:2mm; }
 
 /* фото слева — таблица справа */
-.split { display:grid; grid-template-columns:50% 1fr; gap:9mm; align-items:center; flex:1 1 0; min-height:0; }
+.split { display:grid; grid-template-columns:54% 1fr; gap:9mm; align-items:center; flex:1 1 0; min-height:0; }
 .split .s-photo { height:100%; }
-.split--one { grid-template-columns:50% 1fr; }
-.tbl { width:100%; border-collapse:collapse; font-size:8.4pt; }
+.split--one { grid-template-columns:52% 1fr; }
+.tbl { width:100%; border-collapse:collapse; font-size:8pt; }
 .tbl th { text-align:left; font-weight:500; font-size:6.8pt; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);
-  padding:0 0 2mm; border-bottom:1px solid var(--metal); }
+  padding:0 3mm 2mm 0; border-bottom:1px solid var(--metal); white-space:nowrap; }
+.tbl th:last-child { padding-right:0; }
 .tbl td { padding:2.4mm 2mm 2.4mm 0; vertical-align:middle; border-bottom:1px solid var(--line); vertical-align:top; }
+.tbl td:nth-child(3) { white-space:nowrap; }
 .tbl .b { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; white-space:nowrap; }
 .tbl .r { text-align:right; white-space:nowrap; font-weight:600; padding-right:0; }
 .dl { display:grid; grid-template-columns:auto 1fr; margin-top:6mm; border-top:1px solid var(--metal); }
@@ -257,7 +260,7 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .ones { display:grid; grid-template-columns:repeat(3, 1fr); gap:7mm; border-top:1px solid var(--line); padding-top:7mm; flex:1 1 0; min-height:0; }
 .one { display:flex; flex-direction:column; min-height:0; }
 .one-photo { flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; margin-bottom:4mm; }
-.one-photo img { max-height:100%; width:auto; }
+.one-photo img { max-height:100%; max-width:100%; width:auto; }
 .one h3 { min-height:2.4em; display:flex; align-items:flex-end; }
 .one-desc { color:var(--text); min-height:2.8em; }
 .one-row { display:flex; justify-content:space-between; align-items:center; margin-top:3mm; padding-top:2.4mm; border-top:1px solid var(--line); }
