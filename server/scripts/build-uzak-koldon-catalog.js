@@ -47,7 +47,7 @@ const SERIES = {
     skus: ['MKS-W082K', 'MKS-W080K', 'MKS-W078K', 'MKS-W076K', 'MKS-W075K', 'MKS-W074K'] },
   mr: { sec: '01', name: 'AICHUROK M R', kind: 'Раздевальный шкаф',
     lead: 'Светло-серые шкафы на 3, 4 и 6 ячеек. Узкая секция — 38 см.',
-    skus: ['MKS-W001-3', 'MKS-W001-4', 'MKS-W078'] },
+    skus: ['MKS-W078', 'MKS-W001-3', 'MKS-W001-4'] },
   go: { sec: '02', name: 'AICHUROK GO', kind: 'Шкаф со стеклянными дверцами',
     lead: 'Двухстворчатые шкафы с прозрачными дверцами: папки и документы видно, не открывая.',
     skus: ['MKS-W052', 'MKS-W052H', 'MKS-W052K', 'MKS-W052ZY'] },
@@ -83,6 +83,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 const plural = (n, a, b, c) => { const m = n % 10, h = n % 100;
   return `${n} ${m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c}`; };
 const money = n => n > 0 ? `${n.toLocaleString('ru-RU').replace(/ |,/g, ' ')} сом` : 'по запросу';
+const tag = p => `<span class="tag">${money(p.price)}</span>`;
 const spec = (p, re) => (p.specs || []).find(s => re.test(s.key || ''))?.value || '';
 
 // Размеры: «H1850*W900*D500» в поле или в номенклатуре 1С → [В, Ш, Г] в см
@@ -140,7 +141,7 @@ function variantCols(s, cells) {
       <div class="v-name">${esc(variant(p))}</div>
       <div class="v-desc">${esc(vdesc(s, p, cells, ' · '))}</div>
       <div class="v-dim">${dimsText(p)}</div>
-      <div class="v-price${p.price > 0 ? '' : ' v-ask'}">${money(p.price)}</div>
+      <div class="v-price">${tag(p)}</div>
     </div>`).join('')}</div>`;
 }
 // Серия: групповой кадр + колонки моделей в том же порядке, что на кадре
@@ -163,7 +164,7 @@ function seriesSplit(s, { cells = false } = {}) {
           <td class="b">${esc(variant(p))}</td>
           <td>${esc(vdesc(s, p, cells, ', '))}</td>
           <td>${dimsText(p)}</td>
-          <td class="r${p.price > 0 ? '' : ' v-ask'}">${money(p.price)}</td></tr>`).join('')}</tbody>
+          <td class="r">${tag(p)}</td></tr>`).join('')}</tbody>
       </table>
     </div>
   </article>`;
@@ -174,7 +175,7 @@ function singleCard(p, title, desc) {
     <div class="s-kind">${esc(p.category)}</div>
     <h3>${esc(title)}</h3>
     <p class="one-desc">${esc(desc)}</p>
-    <div class="one-row"><span>${dimsText(p)} см</span><span class="${p.price > 0 ? '' : 'v-ask'}">${money(p.price)}</span></div>
+    <div class="one-row"><span>${dimsText(p)} см</span>${tag(p)}</div>
   </article>`;
 }
 function singleWide(p, title, kind, desc, dimText) {
@@ -186,7 +187,7 @@ function singleWide(p, title, kind, desc, dimText) {
         <p class="s-lead">${esc(desc)}</p>
         <dl class="dl">
           <dt>Размеры</dt><dd>${esc(dimText)}</dd>
-          <dt>Цена</dt><dd class="${p.price > 0 ? '' : 'v-ask'}">${money(p.price)}</dd>
+          <dt>Цена</dt><dd>${tag(p)}</dd>
         </dl>
       </div>
     </div>
@@ -194,11 +195,13 @@ function singleWide(p, title, kind, desc, dimText) {
 }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@500;600;700&display=block');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@500;600;700&display=block');
 @page { size: A4; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-:root { --ink:#141414; --mute:#7c8286; --line:#e4e4e2; --red:#c8102e; --pad:16mm; }
-html, body { background:#fff; color:var(--ink); font-family:Inter, Arial, sans-serif; font-size:8.6pt; line-height:1.4;
+/* брендбук MATKASYM 2024: красный — акцент, металлический серый — заполнение/линии,
+   чёрный — заголовки, серый 80% — текст */
+:root { --ink:#000; --text:#4d4d4d; --mute:#7d96a0; --metal:#7d96a0; --line:#dfe5e7; --red:#e10523; --pad:16mm; }
+html, body { background:#fff; color:var(--ink); font-family:Roboto, Helvetica, Arial, sans-serif; font-size:8.6pt; line-height:1.4;
   -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 img { display:block; max-width:100%; }
 .page { width:210mm; height:297mm; padding:var(--pad) var(--pad) 22mm; position:relative; overflow:hidden;
@@ -206,22 +209,23 @@ img { display:block; max-width:100%; }
 .page:last-child { break-after:auto; }
 .foot { position:absolute; left:var(--pad); right:var(--pad); bottom:10mm; display:flex; justify-content:space-between;
   font-size:6.8pt; letter-spacing:.12em; color:var(--mute); text-transform:uppercase; }
-h2 { font-family:Montserrat, sans-serif; font-weight:600; font-size:17pt; letter-spacing:.01em; line-height:1.1; }
-h3 { font-family:Montserrat, sans-serif; font-weight:600; font-size:11pt; line-height:1.2; margin:1.5mm 0 1.5mm; }
+h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:17pt; letter-spacing:.01em; line-height:1.1; }
+h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:11pt; line-height:1.2; margin:1.5mm 0 1.5mm; }
 .s-kind { font-size:6.8pt; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); margin-bottom:1.5mm; }
-.v-ask { color:var(--mute); font-weight:400 !important; }
+.tag { display:inline-block; background:var(--red); color:#fff; font-family:Roboto, Helvetica, Arial, sans-serif;
+  font-weight:500; font-size:9pt; line-height:1; padding:1.5mm 2.4mm; border-radius:.8mm; white-space:nowrap; }
 
 /* раздел */
-.sec { display:flex; align-items:baseline; gap:4mm; padding-bottom:3mm; border-bottom:1px solid var(--ink); }
-.sec-n { font-family:Montserrat; font-weight:600; font-size:9pt; color:var(--red); }
-.sec-t { font-family:Montserrat; font-weight:600; font-size:9pt; letter-spacing:.14em; text-transform:uppercase; }
+.sec { display:flex; align-items:baseline; gap:4mm; padding-bottom:3mm; border-bottom:1px solid var(--metal); }
+.sec-n { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:9pt; color:var(--red); }
+.sec-t { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:9pt; letter-spacing:.14em; text-transform:uppercase; }
 .sec-note { margin-left:auto; color:var(--mute); font-size:7.6pt; }
 
 /* серия */
 .series { display:flex; flex-direction:column; gap:5mm; flex:1 1 0; min-height:0; }
 .series + .series { border-top:1px solid var(--line); padding-top:8mm; }
 .s-head { display:grid; grid-template-columns:1fr 1fr; gap:8mm; align-items:end; }
-.s-lead { color:#3c4043; font-size:8.6pt; max-width:80mm; justify-self:end; }
+.s-lead { color:var(--text); font-size:8.6pt; max-width:80mm; justify-self:end; }
 .s-mat { display:block; margin-top:1.5mm; color:var(--mute); font-size:7.4pt; }
 .s-photo { flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; }
 .s-photo img { max-height:100%; width:auto; object-fit:contain; }
@@ -230,10 +234,10 @@ h3 { font-family:Montserrat, sans-serif; font-weight:600; font-size:11pt; line-h
 .vars { display:grid; grid-template-columns:repeat(var(--n), 1fr); border-top:1px solid var(--line); }
 .var { padding:3mm 2mm 0 0; }
 .var + .var { padding-left:3mm; border-left:1px solid var(--line); }
-.v-name { font-family:Montserrat; font-weight:600; font-size:10pt; }
-.v-desc { color:#3c4043; margin-top:.6mm; min-height:2.6em; }
+.v-name { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:10pt; }
+.v-desc { color:var(--text); margin-top:.6mm; min-height:2.6em; }
 .v-dim { color:var(--mute); font-size:7.6pt; margin-top:1mm; }
-.v-price { font-weight:600; font-size:9.4pt; margin-top:1.6mm; }
+.v-price { margin-top:2mm; }
 
 /* фото слева — таблица справа */
 .split { display:grid; grid-template-columns:50% 1fr; gap:9mm; align-items:center; flex:1 1 0; min-height:0; }
@@ -241,11 +245,11 @@ h3 { font-family:Montserrat, sans-serif; font-weight:600; font-size:11pt; line-h
 .split--one { grid-template-columns:50% 1fr; }
 .tbl { width:100%; border-collapse:collapse; font-size:8.4pt; }
 .tbl th { text-align:left; font-weight:500; font-size:6.8pt; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);
-  padding:0 0 2mm; border-bottom:1px solid var(--ink); }
-.tbl td { padding:2.6mm 2mm 2.6mm 0; border-bottom:1px solid var(--line); vertical-align:top; }
-.tbl .b { font-family:Montserrat; font-weight:600; white-space:nowrap; }
+  padding:0 0 2mm; border-bottom:1px solid var(--metal); }
+.tbl td { padding:2.4mm 2mm 2.4mm 0; vertical-align:middle; border-bottom:1px solid var(--line); vertical-align:top; }
+.tbl .b { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; white-space:nowrap; }
 .tbl .r { text-align:right; white-space:nowrap; font-weight:600; padding-right:0; }
-.dl { display:grid; grid-template-columns:auto 1fr; margin-top:6mm; border-top:1px solid var(--ink); }
+.dl { display:grid; grid-template-columns:auto 1fr; margin-top:6mm; border-top:1px solid var(--metal); }
 .dl dt, .dl dd { padding:2.4mm 0; border-bottom:1px solid var(--line); }
 .dl dt { color:var(--mute); font-size:7.4pt; text-transform:uppercase; letter-spacing:.1em; padding-right:8mm; }
 .dl dd { text-align:right; font-weight:600; }
@@ -256,10 +260,10 @@ h3 { font-family:Montserrat, sans-serif; font-weight:600; font-size:11pt; line-h
 .one-photo { flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; margin-bottom:4mm; }
 .one-photo img { max-height:100%; width:auto; }
 .one h3 { min-height:2.4em; display:flex; align-items:flex-end; }
-.one-desc { color:#3c4043; min-height:2.8em; }
-.one-row { display:flex; justify-content:space-between; margin-top:3mm; padding-top:2.4mm; border-top:1px solid var(--line); }
+.one-desc { color:var(--text); min-height:2.8em; }
+.one-row { display:flex; justify-content:space-between; align-items:center; margin-top:3mm; padding-top:2.4mm; border-top:1px solid var(--line); }
 .one-row span:first-child { color:var(--mute); }
-.one-row span:last-child { font-weight:600; }
+
 
 /* обложка */
 .cover { padding:0; gap:0; }
@@ -267,9 +271,9 @@ h3 { font-family:Montserrat, sans-serif; font-weight:600; font-size:11pt; line-h
 .cover-photo img { width:100%; height:100%; object-fit:cover; object-position:50% 40%; }
 .cover-body { flex:1 1 0; padding:12mm var(--pad) 12mm; display:flex; flex-direction:column; justify-content:space-between; }
 .cover .logo { height:5.2mm; width:auto; align-self:flex-start; }
-.cover h1 { font-family:Montserrat; font-weight:700; font-size:44pt; letter-spacing:.02em; line-height:1; }
-.cover .sub { font-size:12pt; color:#3c4043; margin-top:4mm; }
-.cover .meta { display:flex; justify-content:space-between; padding-top:4mm; border-top:1px solid var(--ink);
+.cover h1 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:44pt; letter-spacing:.02em; line-height:1; }
+.cover .sub { font-size:12pt; color:var(--text); margin-top:4mm; }
+.cover .meta { display:flex; justify-content:space-between; padding-top:4mm; border-top:1px solid var(--metal);
   font-size:7.6pt; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); }
 .cover .foot { display:none; }
 
@@ -280,35 +284,35 @@ h3 { font-family:Montserrat, sans-serif; font-weight:600; font-size:11pt; line-h
 .toc { display:grid; grid-template-columns:1fr 1fr; gap:10mm; }
 .toc h2 { margin-bottom:5mm; }
 .toc-row { display:grid; grid-template-columns:9mm 1fr auto; padding:2.6mm 0; border-bottom:1px solid var(--line); align-items:baseline; }
-.toc-row .n { font-family:Montserrat; font-weight:600; color:var(--red); font-size:8pt; }
+.toc-row .n { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; color:var(--red); font-size:8pt; }
 .toc-row .t { font-weight:500; }
 .toc-row .m { display:block; color:var(--mute); font-size:7.4pt; font-weight:400; }
 .toc-row .p { color:var(--mute); }
 .legend { display:flex; flex-direction:column; gap:3.4mm; }
 .sw { display:grid; grid-template-columns:12mm 1fr; gap:4mm; align-items:center; }
 .sw i { display:block; height:8mm; border:1px solid var(--line); }
-.sw b { font-family:Montserrat; font-weight:600; }
+.sw b { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; }
 .sw span { display:block; color:var(--mute); font-size:7.6pt; }
-.notes { color:#3c4043; font-size:8pt; border-top:1px solid var(--line); padding-top:4mm; display:grid; gap:1.6mm; }
+.notes { color:var(--text); font-size:8pt; border-top:1px solid var(--line); padding-top:4mm; display:grid; gap:1.6mm; }
 
 /* цифры */
-.stats { margin-top:auto; display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--ink); }
+.stats { margin-top:auto; display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--metal); }
 .stats div { padding:5mm 4mm 0 0; }
 .stats div + div { padding-left:5mm; border-left:1px solid var(--line); }
-.stats b { display:block; font-family:Montserrat; font-weight:600; font-size:22pt; line-height:1; }
+.stats b { display:block; font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:22pt; line-height:1; }
 .stats span { display:block; margin-top:2mm; color:var(--mute); font-size:7.6pt; }
 
 /* как заказать */
-.order { display:grid; grid-template-columns:1fr 1fr; gap:10mm; border-top:1px solid var(--ink); padding-top:7mm; }
+.order { display:grid; grid-template-columns:1fr 1fr; gap:10mm; border-top:1px solid var(--metal); padding-top:7mm; }
 .order h2 { margin-bottom:4mm; }
 .steps { counter-reset:s; display:grid; gap:3mm; }
 .steps li { list-style:none; display:grid; grid-template-columns:7mm 1fr; }
-.steps li::before { counter-increment:s; content:counter(s, decimal-leading-zero); font-family:Montserrat; font-weight:600; color:var(--red); font-size:8pt; }
+.steps li::before { counter-increment:s; content:counter(s, decimal-leading-zero); font-family:Montserrat, Helvetica, sans-serif; font-weight:600; color:var(--red); font-size:8pt; }
 .contacts { display:grid; gap:3.4mm; }
 .contacts div { display:grid; grid-template-columns:24mm 1fr; padding-bottom:3mm; border-bottom:1px solid var(--line); }
 .contacts dt { color:var(--mute); font-size:7.2pt; text-transform:uppercase; letter-spacing:.1em; }
 .contacts dd { font-weight:500; }
-.contacts .big { font-family:Montserrat; font-weight:600; font-size:12pt; }
+.contacts .big { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:12pt; }
 `;
 
 (async () => {
