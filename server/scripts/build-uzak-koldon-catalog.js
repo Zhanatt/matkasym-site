@@ -31,7 +31,8 @@ const mood = (id, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/${id}`;
 // Обложка — коллаж 2×2 из интерьеров (сгенерированы по фото товаров, 29.10.2026)
 const coverImg = id => `${CLOUD}/f_jpg,q_auto:good,w_1300,c_limit/matkasym/uzak-koldon/${id}`;
 const COVER = ['cover-office', 'cover-locker', 'cover-files', 'cover-factory'].map(coverImg);
-const MOOD_GK = mood('v1784621268/vxtmdltin3w3ggianrys.png', 1800);
+// GK 12 в коридоре — прислал пользователь 29.10.2026 вместо кадра со студентами
+const MOOD_GK = mood('matkasym/uzak-koldon/mood-gk', 1800);
 
 
 // ── Структура каталога ─────────────────────────────────────────────────────
@@ -288,6 +289,14 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .end-logo { flex:1 1 0; display:flex; align-items:center; justify-content:center; }
 .end-logo img { width:62mm; height:auto; }
 
+/* GK: фото в интерьере целиком + где ставят */
+.gk-room { flex:1 1 0; min-height:0; overflow:hidden; display:grid; grid-template-columns:62% 1fr; grid-template-rows:100%; gap:8mm; }
+.gk-photo { height:100%; min-height:0; overflow:hidden; }
+.gk-photo img { width:100%; height:100%; object-fit:cover; object-position:50% 60%; }
+.gk-side { display:flex; flex-direction:column; justify-content:center; gap:3mm; }
+.gk-list { list-style:none; display:grid; margin-bottom:5mm; border-top:1px solid var(--metal); }
+.gk-list li { padding:2.4mm 0; border-bottom:1px solid var(--line); font-size:9pt; }
+
 /* содержание */
 .mood { height:125mm; overflow:hidden; flex:0 0 auto; }
 .mood--fill { height:auto; flex:1 1 0; min-height:0; }
@@ -395,7 +404,15 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   // 3. GK во всю полосу
   pages.push(page(`${secHead('01')}${seriesBlock(S.gk, { cells: true, big: true })}
-    <div class="mood mood--fill"><img src="${MOOD_GK}" alt=""></div>`));
+    <div class="gk-room">
+      <div class="gk-photo"><img src="${MOOD_GK}" alt=""></div>
+      <div class="gk-side">
+        <div class="s-kind">Где ставят</div>
+        <ul class="gk-list"><li>Школы и колледжи</li><li>Спортзалы и фитнес-клубы</li><li>Производства и склады</li><li>Общежития и офисы</li></ul>
+        <div class="s-kind">Особенности</div>
+        <ul class="gk-list"><li>Замок с ключом на каждой дверце</li><li>Перфорация для вентиляции</li><li>Ячейки от 2 до 12 в одном корпусе</li></ul>
+      </div>
+    </div>`));
   // 4. M R + отдельные шкафы
   pages.push(page(`${seriesSplit(S.mr, { cells: true })}
     <div class="ones">
