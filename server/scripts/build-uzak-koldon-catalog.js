@@ -59,7 +59,7 @@ const SERIES = {
     skus: ['MKS-W062H', 'MKS-W062K', 'MKS-W062ZY'] },
   bi: { sec: '02', name: 'AICHUROK BI', kind: 'Комбинированный шкаф',
     lead: 'Сверху — полки за стеклом, снизу — закрытая секция.',
-    skus: ['MKS-W053H', 'MKS-W053K', 'MKS-W053ZY'] },
+    skus: ['MKS-W053K', 'MKS-W053H', 'MKS-W053ZY'] },
   is: { sec: '02', name: 'AICHUROK IS', kind: 'Комбинированный шкаф с ящиками',
     lead: 'Стеклянные дверцы, два выдвижных ящика и закрытая нижняя секция.',
     skus: ['MKS-W055H', 'MKS-W055K', 'MKS-W055ZY'] },
