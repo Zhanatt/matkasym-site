@@ -27,7 +27,9 @@ const seriesImg = (key, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/matkasy
 // Интерьерные кадры с карточек товаров на сайте: обложка — IS K в офисе,
 // страница GK — GK 9 в раздевалке, содержание — тумба T 4 у рабочего стола
 const mood = (id, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/${id}`;
-const MOOD_COVER = mood('v1784694884/md0a944uwiosxsymrovm.png', 2000);
+// Обложка — коллаж 2×2 из интерьеров (сгенерированы по фото товаров, 29.10.2026)
+const coverImg = id => `${CLOUD}/f_jpg,q_auto:good,w_1300,c_limit/matkasym/uzak-koldon/${id}`;
+const COVER = ['cover-office', 'cover-locker', 'cover-files', 'cover-factory'].map(coverImg);
 const MOOD_GK = mood('v1784621268/vxtmdltin3w3ggianrys.png', 1800);
 
 
@@ -264,24 +266,15 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
 /* обложка */
 .cover { padding:0; gap:0; }
-.cover-photo { height:178mm; overflow:hidden; }
-.cover-photo img { width:100%; height:100%; object-fit:cover; object-position:50% 40%; }
-.cover-body { flex:1 1 0; padding:12mm var(--pad) 12mm; display:flex; flex-direction:column; justify-content:space-between; }
-.cover .logo { height:5.2mm; width:auto; align-self:flex-start; }
-.cover h1 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:44pt; letter-spacing:.02em; line-height:1; }
-.cover .sub { font-size:12pt; color:var(--text); margin-top:4mm; }
-.cover .meta { display:flex; justify-content:space-between; padding-top:4mm; border-top:1px solid var(--metal);
-  font-size:7.6pt; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); }
 .cover .foot { display:none; }
-.foot-l { display:flex; align-items:center; gap:3mm; }
-.foot-l img { height:3.4mm; width:auto; }
-.foot-l i { font-style:normal; }
-.intro { display:grid; grid-template-columns:1fr 1fr; gap:10mm; align-items:end; padding-bottom:8mm; border-bottom:1px solid var(--metal); }
-.intro h2 { font-size:30pt; font-weight:700; }
-.intro p { color:var(--text); font-size:10pt; line-height:1.5; }
-.end-logo { flex:1 1 0; display:flex; align-items:center; justify-content:center; }
-.end-logo img { width:62mm; height:auto; }
-
+.cover-grid { position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:1.6mm; background:#fff; }
+.cover-grid div { overflow:hidden; }
+.cover-grid img { width:100%; height:100%; object-fit:cover; }
+.cover-tab { position:absolute; top:0; left:50%; transform:translateX(-50%); background:var(--red); padding:7mm 8mm 6mm; }
+.cover-tab img { width:44mm; height:auto; }
+.cover-plate { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:var(--metal); color:#fff;
+  font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:30pt; letter-spacing:.04em; line-height:1;
+  padding:5mm 10mm; border-radius:3mm; white-space:nowrap; }
 /* содержание */
 .mood { height:125mm; overflow:hidden; flex:0 0 auto; }
 .mood--fill { height:auto; flex:1 1 0; min-height:0; }
@@ -348,17 +341,11 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   const TOC_PAGES = { '01': 3, '02': 5, '03': 8 };
 
   const pages = [];
-  // 1. Обложка
+  // 1. Обложка: коллаж, красный ярлык с логотипом сверху, серая плашка с названием по центру
   pages.push(page(`
-    <div class="cover-photo"><img src="${MOOD_COVER}" alt=""></div>
-    <div class="cover-body">
-      <img class="logo" src="${LOGO}" alt="MATKASYM">
-      <div>
-        <h1>UZAK KOLDON</h1>
-        <p class="sub">Металлические шкафы и тумбы для офиса, раздевалок и архива</p>
-      </div>
-      <div class="meta"><span>Каталог 2026</span><span>Бренд MATKASYM SHAAR</span></div>
-    </div>`, 'cover'));
+    <div class="cover-grid">${COVER.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>
+    <div class="cover-tab"><img src="${SITE}/logos/logo-white.png" alt="MATKASYM"></div>
+    <div class="cover-plate">UZAK KOLDON</div>`, 'cover'));
 
   // 2. Содержание и обозначения
   pages.push(page(`
