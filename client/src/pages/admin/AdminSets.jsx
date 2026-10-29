@@ -18,6 +18,15 @@ import {
   adminSetBrandSetFrozen,
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
+
+// Сеты с готовым свёрстанным каталогом: кнопка «PDF» скачивает файл, а не собирает
+// его на лету. Файл заливает scripts/build-uzak-koldon-catalog.js --upload.
+const READY_PDF = {
+  'uzak-koldon': {
+    url: 'https://res.cloudinary.com/dnbg21ef8/raw/upload/matkasym/catalogs/uzak-koldon.pdf',
+    filename: 'Каталог UZAK KOLDON.pdf',
+  },
+};
 import BrandPdfButton from './BrandPdfButton';
 import { SET_CATEGORY_ORDER } from '../../config/setCategoryOrder';
 import BrandAboutButton from './BrandAboutButton';
@@ -2108,7 +2117,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                      вперемешку — горшки, мангал, коврик подряд. */
                   ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
                       currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
-                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} />
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} readyPdf={READY_PDF[setSlug]} />
             )}
           </div>
 
@@ -2132,7 +2141,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                      вперемешку — горшки, мангал, коврик подряд. */
                   ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
                       currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
-                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} />}
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} readyPdf={READY_PDF[setSlug]} />}
             </div>
           )}
 

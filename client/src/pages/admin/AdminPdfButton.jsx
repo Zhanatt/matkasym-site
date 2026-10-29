@@ -21,7 +21,24 @@ const PRICE_MODE_TO_TYPE = {
 // это никак не видно.
 // services — сет услуг (ÖNDÜRÜÜ): печатается своей вёрсткой, услуга на лист,
 // и в выборе есть «Весь сет» — титульный лист и все услуги подряд.
-export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail', currency = 'сом', choices = null, pending = false, services = false }) {
+// readyPdf — { url, filename }: у сета есть готовый свёрстанный каталог (UZAK KOLDON).
+// Кнопка его скачивает, а не собирает PDF на лету. Цены в нём розничные, поэтому
+// для опта и дилеров по-прежнему собираем как раньше.
+async function downloadReady({ url, filename }) {
+  try {
+    // ?t= — не отдавать из кэша браузера прошлую версию файла
+    const res = await fetch(`${url}?t=${Date.now()}`);
+    if (!res.ok) throw new Error(res.status);
+    const href = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href, download: filename });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
+  } catch {
+    window.open(url, '_blank');
+  }
+}
+
+export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail', currency = 'сом', choices = null, pending = false, services = false, readyPdf = null }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [picking,   setPicking]   = useState(false);
@@ -36,6 +53,14 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
     setPicking(false);
     setLoading(true);
     setProgress(5);
+
+    if (readyPdf && priceType === 'price') {
+      setProgress(60);
+      await downloadReady(readyPdf);
+      setProgress(100);
+      setTimeout(() => { setLoading(false); setProgress(0); }, 600);
+      return;
+    }
 
     const all = pick?.all;
     // У услуг фото не обязательно (у покраски его нет) — лист всё равно нужен

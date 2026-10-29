@@ -8,7 +8,10 @@
 // В каталоге нет ни поставщика, ни страны, ни остатков: это правило для всех
 // каталогов наружу (см. IMPORT_KEY в client/src/pages/admin/catalogPrint.js).
 //
-//   node scripts/build-uzak-koldon-catalog.js <папка для HTML и PDF>
+//   node scripts/build-uzak-koldon-catalog.js <папка для HTML и PDF> [--upload]
+//
+// --upload — залить готовый PDF в Cloudinary (raw) matkasym/catalogs/uzak-koldon.pdf.
+// Его скачивает кнопка «PDF» в сете UZAK KOLDON (READY_PDF в AdminSets.jsx).
 
 const fs = require('fs');
 const path = require('path');
@@ -457,5 +460,11 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     '--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=90000',
     `--print-to-pdf=${pdf}`, `file://${htmlFile}`], { stdio: 'ignore', timeout: 240000 });
   console.log('PDF:', pdf, `(${pageNo} стр.)`);
+  if (process.argv.includes('--upload')) {
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+    const cloudinary = require('../lib/cloudinary');
+    const up = await cloudinary.uploader.upload(pdf, { resource_type: 'raw', public_id: 'matkasym/catalogs/uzak-koldon.pdf', overwrite: true, invalidate: true });
+    console.log('Залит на сайт:', up.secure_url);
+  }
   process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });
