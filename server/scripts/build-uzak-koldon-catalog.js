@@ -29,16 +29,13 @@ const seriesImg = (key, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/matkasy
 const mood = (id, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/${id}`;
 const MOOD_COVER = mood('v1784694884/md0a944uwiosxsymrovm.png', 2000);
 const MOOD_GK = mood('v1784621268/vxtmdltin3w3ggianrys.png', 1800);
-const MOOD_TOC = mood('v1784694205/jsa5cppyxyoq81ckb7ta.png', 1800);
 
-const CARD_ID = '6aa7ae3943f109a689024caa';
 
 // ── Структура каталога ─────────────────────────────────────────────────────
 const SECTIONS = [
   { n: '01', title: 'Гардеробные шкафы', note: 'Для раздевалок, спортзалов, школ и производств' },
   { n: '02', title: 'Офисные шкафы', note: 'Для документов, папок и архива' },
   { n: '03', title: 'Тумбы для документов', note: 'Картотечные тумбы с выдвижными ящиками' },
-  { n: '04', title: 'Карточные шкафы', note: 'Для картотек и мелкого хранения' },
 ];
 
 const SERIES = {
@@ -120,7 +117,7 @@ let pageNo = 0;
 const page = (body, cls = '') => {
   pageNo++;
   return `<section class="page ${cls}">${body}
-    <footer class="foot"><span>MATKASYM · UZAK KOLDON</span><span>${String(pageNo).padStart(2, '0')}</span></footer></section>`;
+    <footer class="foot"><span class="foot-l"><img src="${LOGO}" alt="MATKASYM"><i>UZAK KOLDON</i></span><span>${String(pageNo).padStart(2, '0')}</span></footer></section>`;
 };
 const secHead = n => { const s = SECTIONS.find(x => x.n === n);
   return `<div class="sec"><span class="sec-n">${s.n}</span><span class="sec-t">${s.title}</span><span class="sec-note">${s.note}</span></div>`; };
@@ -276,12 +273,29 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .cover .meta { display:flex; justify-content:space-between; padding-top:4mm; border-top:1px solid var(--metal);
   font-size:7.6pt; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); }
 .cover .foot { display:none; }
+.foot-l { display:flex; align-items:center; gap:3mm; }
+.foot-l img { height:3.4mm; width:auto; }
+.foot-l i { font-style:normal; }
+.intro { display:grid; grid-template-columns:1fr 1fr; gap:10mm; align-items:end; padding-bottom:8mm; border-bottom:1px solid var(--metal); }
+.intro h2 { font-size:30pt; font-weight:700; }
+.intro p { color:var(--text); font-size:10pt; line-height:1.5; }
+.end-logo { flex:1 1 0; display:flex; align-items:center; justify-content:center; }
+.end-logo img { width:62mm; height:auto; }
 
 /* содержание */
 .mood { height:125mm; overflow:hidden; flex:0 0 auto; }
 .mood--fill { height:auto; flex:1 1 0; min-height:0; }
 .mood img { width:100%; height:100%; object-fit:cover; }
-.toc { display:grid; grid-template-columns:1fr 1fr; gap:10mm; }
+.toc { display:flex; flex-direction:column; gap:14mm; }
+.toc-list .toc-row { grid-template-columns:16mm 1fr auto; padding:5mm 0; }
+.toc-list .toc-row .n { font-size:14pt; }
+.toc-list .toc-row .t { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:14pt; color:var(--ink); }
+.toc-list .toc-row .m { font-family:Roboto, Helvetica, Arial, sans-serif; font-size:9pt; margin-top:1mm; }
+.toc-list .toc-row .p { font-size:12pt; }
+.toc-legend .legend { display:grid; grid-template-columns:repeat(3,1fr); gap:6mm; align-items:start; }
+.toc-legend .sw { grid-template-columns:1fr; gap:3mm; }
+.toc-legend .sw i { height:14mm; }
+.toc-legend .notes { grid-column:1 / -1; }
 .toc h2 { margin-bottom:5mm; }
 .toc-row { display:grid; grid-template-columns:9mm 1fr auto; padding:2.6mm 0; border-bottom:1px solid var(--line); align-items:baseline; }
 .toc-row .n { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; color:var(--red); font-size:8pt; }
@@ -320,7 +334,6 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   const col = mongoose.connection.db.collection('products');
   const all = await col.find({ set: 'uzak-koldon', hideInPdf: { $ne: true } }).toArray();
   const bySku = Object.fromEntries(all.filter(p => p.sku && p.images?.length).map(p => [p.sku, p]));
-  const card = all.find(p => String(p._id) === CARD_ID);
 
   for (const [key, s] of Object.entries(SERIES)) {
     s.key = key;
@@ -330,9 +343,9 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   const [w001, w074, kiyim] = SINGLES_WARDROBE.map(s => bySku[s]);
   const w066 = bySku['MKS-UK-W066'];
 
-  const models = Object.values(SERIES).reduce((a, x) => a + x.items.length, 0) + SINGLES_WARDROBE.length + 2; // + W066 и карточный
+  const models = Object.values(SERIES).reduce((a, x) => a + x.items.length, 0) + SINGLES_WARDROBE.length + 1; // + W066
   // Номера страниц разделов — для содержания (обложка 1, содержание 2)
-  const TOC_PAGES = { '01': 3, '02': 5, '03': 8, '04': 10 };
+  const TOC_PAGES = { '01': 3, '02': 5, '03': 8 };
 
   const pages = [];
   // 1. Обложка
@@ -349,19 +362,23 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   // 2. Содержание и обозначения
   pages.push(page(`
-    <div class="mood"><img src="${MOOD_TOC}" alt=""></div>
+    <div class="intro">
+      <h2>UZAK KOLDON</h2>
+      <p>Металлические шкафы и тумбы MATKASYM для офисов, школ, спортзалов, раздевалок и архивов.
+        ${models} моделей в ${Object.keys(SERIES).length} сериях AICHUROK — от узкого шкафчика на 38 см до гардероба на 12 ячеек.</p>
+    </div>
     <div class="toc">
-      <div>
+      <div class="toc-list">
         <h2>Содержание</h2>
         ${SECTIONS.map(s => `<div class="toc-row"><span class="n">${s.n}</span>
           <span class="t">${s.title}<span class="m">${s.note}</span></span><span class="p">${String(TOC_PAGES[s.n]).padStart(2, '0')}</span></div>`).join('')}
       </div>
-      <div>
+      <div class="toc-legend">
         <h2>Исполнения</h2>
         <div class="legend">
           <div class="sw"><i style="background:linear-gradient(90deg,#5f6468 0 35%,#f4f4f2 35%)"></i><div><b>H</b> — серый / белый<span>Графитовый корпус, белые дверцы</span></div></div>
           <div class="sw"><i style="background:linear-gradient(90deg,#6e4b36 0 35%,#f4f4f2 35%)"></i><div><b>K</b> — кофейный / белый<span>Корпус цвета кофе, белые дверцы</span></div></div>
-          <div class="sw"><i style="background:linear-gradient(90deg,#5f6468 0 35%,#c98b50 35%)"></i><div><b>Z</b> — под дерево<span>Дверцы с текстурой дерева (трансферная печать)</span></div></div>
+          <div class="sw"><i style="background:linear-gradient(90deg,#5f6468 0 35%,#c98b50 35%)"></i><div><b>Z</b> — под дерево<span>Дверцы с текстурой дерева</span></div></div>
           <div class="notes">
             <span>Размеры — высота × ширина × глубина, в сантиметрах.</span>
             <span>Цены — розничные, в сомах. Для оптовых заказов — отдельные условия.</span>
@@ -394,10 +411,9 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // 8–9. Тумбы
   pages.push(page(`${secHead('03')}${seriesBlock(S.t)}${seriesSplit(S.tp)}`));
   pages.push(page(`${seriesSplit(S.tr)}${seriesBlock(S.tsh)}`));
-  // 10. Карточный шкаф + как заказать
-  pages.push(page(`${secHead('04')}
-    ${singleWide({ ...card, images: card.images }, 'Карточный шкаф', 'Карточный шкаф',
-      'Восемь выдвижных ящиков с ячейками и держателями для подписей — для карточек, образцов и мелочей.', '890 × 646 × 512 мм')}
+  // 10. Как заказать
+  pages.push(page(`
+    <div class="end-logo"><img src="${SITE}/logos/logo-vertical.png" alt="MATKASYM"></div>
     <div class="order">
       <div>
         <h2>Как заказать</h2>
