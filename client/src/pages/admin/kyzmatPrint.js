@@ -340,12 +340,14 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   const common = paintPrices.length ? [...paintPrices.reduce((m, v) => m.set(v, (m.get(v) || 0) + 1), new Map())]
     .sort((a, b) => b[1] - a[1])[0][0] : 0;
 
-  // Цена у всех цветов одна — плашка одна, у заголовка группы; у цвета — только если отличается
+  // Палитра красок печатается без цен — попросили 30.10.2026. Чтобы вернуть цены,
+  // поставьте PAINT_PRICES = true: плашка у заголовка группы, у цвета — если отличается.
+  const PAINT_PRICES = false;
   let groupPrice = 0;
   const swatchHtml = s => `
     <div class="sw">
       <div class="sw-c" style="background:${esc(s.hex)}"></div>
-      <div class="sw-h"><b>${esc(s.code)}</b>${s.price > 0 && s.price !== groupPrice ? `<em>${fmt(s.price)} сом</em>` : ''}</div>
+      <div class="sw-h"><b>${esc(s.code)}</b>${PAINT_PRICES && s.price > 0 && s.price !== groupPrice ? `<em>${fmt(s.price)} сом</em>` : ''}</div>
       <span>${esc([s.name, s.finish].filter(Boolean).join(' · '))}</span>
     </div>`;
   const group = (title, list) => {
@@ -353,7 +355,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     const ps = list.map(x => x.price).filter(v => v > 0);
     groupPrice = ps.length ? [...ps.reduce((m, v) => m.set(v, (m.get(v) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[0][0] : common;
     return `
-    <div class="sub-h"><h2 class="sub">${title}</h2>${groupPrice > 0 ? `<span class="pill-lg">${fmt(groupPrice)} сом <small>за 1 кг</small></span>` : ''}</div>
+    <div class="sub-h"><h2 class="sub">${title}</h2>${PAINT_PRICES && groupPrice > 0 ? `<span class="pill-lg">${fmt(groupPrice)} сом <small>за 1 кг</small></span>` : ''}</div>
     <div class="sws">${list.map(swatchHtml).join('')}</div>`;
   };
 
@@ -367,7 +369,8 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     ${foot()}`, 'paint-sheet'));
 
   // Стальной лист: только холоднокатаный (г/к не продаём, 26.10.2026).
-  // Толщина × формат, в клетке — цена за лист и масса
+  // Толщина × формат, в клетке — цена за лист. Массу (кг) не печатаем — только
+  // размеры (попросили 30.10.2026)
   const sheets = products.filter(p => /лист/i.test(p.category || '') && !isExample(p)
     && !/г\/к|горяче/i.test(`${p.name} ${specOf(p, /^сталь/i) || ''}`))
     .map(p => ({
@@ -448,9 +451,9 @@ function suppliesPages(n, setLabel, info, products, priceType) {
         <div>
           <h3 class="fmt">Формат ${esc(k)}</h3>
           <table class="tlist">
-            <thead><tr><th>Толщина, мм</th><th>Вес листа, кг</th>${anyPrice ? '<th>Цена за лист</th>' : ''}</tr></thead>
-            <tbody>${rows.map(x => `<tr><td>${dec(Number.isInteger(x.t) ? x.t.toFixed(1) : x.t)}</td><td>${
-              esc(String(x.mass).replace(/\s*кг/i, '').replace('.', ','))}</td>${anyPrice
+            <thead><tr><th>Размер листа, мм</th>${anyPrice ? '<th>Цена за лист</th>' : ''}</tr></thead>
+            <tbody>${rows.map(x => `<tr><td>${dec(Number.isInteger(x.t) ? x.t.toFixed(1) : x.t)} × ${
+              esc(x.fmt.replace(/×/g, ' × '))}</td>${anyPrice
               ? `<td>${x.price > 0 ? `<b>${fmt(x.price)}</b> сом` : '<i>по запросу</i>'}</td>` : ''}</tr>`).join('')}</tbody>
           </table>
         </div>`;
