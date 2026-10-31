@@ -32,8 +32,9 @@ const SECTIONS = [
   { n: '02', title: 'Круглая стойка', note: 'Лёгкие стеллажи для дома и балкона' },
   { n: '03', title: 'Перфорированная стойка', note: 'Полки переставляются по высоте, нагрузка до 60 кг' },
   { n: '04', title: 'Промышленные стеллажи', note: 'Склады, гаражи, магазины и производства' },
+  { n: '05', title: 'Индивидуальные заказы', note: 'Партии стеллажей по вашему техлисту' },
 ];
-const TOC_PAGES = { '01': 3, '02': 4, '03': 5, '04': 6 };
+const TOC_PAGES = { '01': 3, '02': 4, '03': 5, '04': 6, '05': 8 };
 
 // Модель = одна колонка: фото (photo — артикул, чьё images[0] печатаем) + цвета
 const M = (v, skus, photo = skus[0]) => ({ v, skus, photo });
@@ -63,7 +64,7 @@ const BLOCKS = {
 
 // ── Данные ─────────────────────────────────────────────────────────────────
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const money = n => n > 0 ? `${n.toLocaleString('ru-RU').replace(/ |,/g, ' ')} сом` : 'по запросу';
+const money = n => n > 0 ? `${n.toLocaleString('ru-RU').replace(/ |,/g, ' ')} сом` : 'индивидуальный';
 const tag = n => `<span class="tag">${money(n)}</span>`;
 const spec = (p, re) => (p.specs || []).find(s => re.test(s.key || ''))?.value || '';
 // «80x35x95» / «150х50х200» → «80 × 35 × 95»
@@ -118,6 +119,27 @@ function wide({ kind, title, lead, photo, rows }) {
       <dl class="dl">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl></div>
   </div></article>`;
 }
+
+// Схема стеллажа в стиле техлиста: вид спереди с размерными линиями Ш и В
+const RACK_SVG = (() => {
+  const L = '#7d96a0', R = '#e10523';
+  const shelves = [40, 105, 170, 235].map(y => `<rect x="40" y="${y}" width="180" height="6" fill="none" stroke="${L}" stroke-width="1.6"/>`).join('');
+  const holes = [];
+  for (let y = 30; y < 250; y += 9) holes.push(`<rect x="43" y="${y}" width="3" height="5" fill="${L}"/><rect x="214" y="${y}" width="3" height="5" fill="${L}"/>`);
+  return `<svg viewBox="0 0 280 300" xmlns="http://www.w3.org/2000/svg" font-family="Roboto, Helvetica, Arial" font-size="10">
+    <rect x="36" y="24" width="14" height="230" fill="none" stroke="#000" stroke-width="1.8"/>
+    <rect x="210" y="24" width="14" height="230" fill="none" stroke="#000" stroke-width="1.8"/>
+    ${holes.join('')}${shelves}
+    <line x1="36" y1="272" x2="224" y2="272" stroke="${R}" stroke-width="1"/>
+    <line x1="36" y1="266" x2="36" y2="278" stroke="${R}"/><line x1="224" y1="266" x2="224" y2="278" stroke="${R}"/>
+    <text x="130" y="292" text-anchor="middle" fill="${R}">Ш — по техлисту</text>
+    <line x1="250" y1="24" x2="250" y2="254" stroke="${R}" stroke-width="1"/>
+    <line x1="244" y1="24" x2="256" y2="24" stroke="${R}"/><line x1="244" y1="254" x2="256" y2="254" stroke="${R}"/>
+    <text x="264" y="139" text-anchor="middle" fill="${R}" transform="rotate(-90 264 139)">В — по техлисту</text>
+    <line x1="60" y1="72" x2="60" y2="105" stroke="${L}" stroke-dasharray="3 2"/>
+    <text x="66" y="92" fill="${L}">шаг полок</text>
+  </svg>`;
+})();
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@500;600;700&display=block');
@@ -180,11 +202,21 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .dl dd { text-align:right; font-weight:600; }
 
 /* интерьер + список */
-.room { flex:1 1 0; min-height:0; display:grid; grid-template-columns:62% 1fr; grid-template-rows:100%; gap:8mm; }
-.room-photo { height:100%; overflow:hidden; }
-.room-photo img { width:100%; height:100%; object-fit:cover; }
-.room-side { display:flex; flex-direction:column; justify-content:center; gap:3mm; }
-.list { list-style:none; display:grid; margin-bottom:5mm; border-top:1px solid var(--metal); }
+.uses { display:grid; grid-template-columns:1fr 1fr; gap:10mm; }
+/* индивидуальные заказы */
+.cust-top { display:grid; grid-template-columns:1fr 82mm; gap:10mm; align-items:center; }
+.cust-h { font-size:24pt; font-weight:700; margin-bottom:5mm; }
+.cust-lead { color:var(--text); font-size:10pt; line-height:1.55; }
+.cust-ask { margin-top:7mm; }
+.cust-draw svg { width:100%; height:auto; display:block; }
+.cust-cols { display:grid; grid-template-columns:1fr 1fr; gap:10mm; }
+.cust-steps { margin-top:auto; }
+.cust-stats { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--metal); }
+.cust-stats div { padding:4mm 4mm 0 0; }
+.cust-stats div + div { padding-left:4mm; border-left:1px solid var(--line); }
+.cust-stats b { display:block; font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:10.5pt; line-height:1.2; }
+.cust-stats span { display:block; margin-top:1.5mm; color:var(--mute); font-size:7.6pt; }
+.list { list-style:none; display:grid; margin-top:1.5mm; border-top:1px solid var(--metal); }
 .list li { padding:2.4mm 0; border-bottom:1px solid var(--line); font-size:9pt; }
 
 /* под заказ */
@@ -212,7 +244,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .intro { display:grid; grid-template-columns:1fr 1fr; gap:10mm; align-items:end; padding-bottom:5mm; border-bottom:1px solid var(--metal); }
 .intro h2 { font-size:30pt; font-weight:700; }
 .intro p { color:var(--text); font-size:10pt; line-height:1.5; }
-.toc-row { display:grid; grid-template-columns:12mm 1fr auto; padding:1.8mm 0; border-bottom:1px solid var(--line); align-items:baseline; }
+.toc-row { display:grid; grid-template-columns:12mm 1fr auto; padding:1.3mm 0; border-bottom:1px solid var(--line); align-items:baseline; }
 .toc-row .n { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; color:var(--red); font-size:11pt; }
 .toc-row .t { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:12pt; }
 .toc-row .m { display:block; font-family:Roboto, Helvetica, Arial, sans-serif; font-weight:400; color:var(--mute); font-size:8pt; margin-top:.6mm; }
@@ -220,7 +252,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .tbl { width:100%; border-collapse:collapse; font-size:8pt; }
 .tbl th { text-align:left; font-weight:500; font-size:6.8pt; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);
   padding:0 2mm 2mm 0; border-bottom:1px solid var(--metal); white-space:nowrap; }
-.tbl td { padding:1.1mm 2mm 1.25mm 0; border-bottom:1px solid var(--line); white-space:nowrap; }
+.tbl td { padding:1mm 2mm 1.25mm 0; border-bottom:1px solid var(--line); white-space:nowrap; }
 .tbl .b { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; }
 .tbl .r { text-align:right; padding-right:0; }
 .tbl .g td { padding-top:2mm; color:var(--red); font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:7pt; letter-spacing:.12em; text-transform:uppercase; }
@@ -252,7 +284,6 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // Интерьеры без людей и без надписей — кадры с карточек на сайте
   const pic = (sku, i) => { const u = bySku[sku]?.images?.[i]; if (!u) throw new Error(`нет фото ${sku} #${i}`); return u; };
   const COVER = [pic('MKS-AH-G-M3-BLK', 3), pic('MKS-AH-S-A5-WHT', 3), pic('MKS-AH-R-S3-WHT', 3), pic('MKS-AH-R-X5-BLK', 2)];
-  const ROOM_GUARDAIL = pic('MKS-AH-G-M4-WHT', 3);
   const ROOM_END = pic('MKS-AH-S-A5-WHT', 3);
 
   const light = bySku['MKS-OS-Х50'], medium = bySku['MKS-OS-Х60'];
@@ -292,16 +323,13 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
         <tbody>${tblRows}</tbody></table>
     </div>`));
 
-  // 3. На колёсах + интерьер
+  // 3. На колёсах + где пригодится (интерьер убран по просьбе пользователя)
   pages.push(page(`${secHead('01')}${block(B.guardail)}
-    <div class="room">
-      <div class="room-photo"><img src="${room(ROOM_GUARDAIL, 1600)}" alt=""></div>
-      <div class="room-side">
-        <div class="s-kind">Где пригодится</div>
-        <ul class="list"><li>Кухня — овощи, посуда, бытовая химия</li><li>Ванная и прачечная</li><li>Детская — игрушки и книги</li><li>Рабочее место — бумаги и принтер</li></ul>
-        <div class="s-kind">Особенности</div>
-        <ul class="list"><li>Колёса с тормозом</li><li>Бортики — ничего не падает</li><li>Белый и чёрный цвет</li></ul>
-      </div>
+    <div class="uses">
+      <div><div class="s-kind">Где пригодится</div>
+        <ul class="list"><li>Кухня — овощи, посуда, бытовая химия</li><li>Ванная и прачечная</li><li>Детская — игрушки и книги</li><li>Рабочее место — бумаги и принтер</li></ul></div>
+      <div><div class="s-kind">Особенности</div>
+        <ul class="list"><li>Колёса с тормозом</li><li>Бортики — ничего не падает</li><li>Белый и чёрный цвет</li></ul></div>
     </div>`));
   // 4. Круглая стойка
   pages.push(page(`${secHead('02')}${block(B.roundS)}${block(B.roundX)}`));
@@ -327,16 +355,50 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       <article><div class="p-photo"><img src="${PALLET_PHOTO}" alt=""></div>
         <div class="s-kind">${esc(pallet.category)}</div><h2>Паллетные стеллажи</h2>
         <p>Для хранения грузов на поддонах. Ярусы под высоту склада, балки под вес паллеты.</p>
-        <div class="ask"><span>Стоимость</span>${tag(0)}</div></article>
+        <div class="ask"><span>Расчёт</span>${tag(0)}</div></article>
       <article><div class="p-photo"><img src="${CANTI_PHOTO}" alt=""></div>
         <div class="s-kind">${esc(canti.category)}</div><h2>Консольные стеллажи</h2>
         <p>Для длинномеров: трубы, профиль, доски, листовой металл. Одно- и двусторонние.</p>
-        <div class="ask"><span>Стоимость</span>${tag(0)}</div></article>
+        <div class="ask"><span>Расчёт</span>${tag(0)}</div></article>
     </div>
     <div class="order" style="grid-template-columns:1fr">
       <ol class="steps"><li>Присылаете размеры помещения и что храните.</li><li>Готовим схему и расчёт.</li><li>Привозим и монтируем.</li></ol>
     </div>`));
-  // 8. Как заказать
+  // 8. Индивидуальные заказы — партии по техлисту заказчика
+  pages.push(page(`${secHead('05')}
+    <div class="cust-top">
+      <div><div class="s-kind">Производство под заказ</div>
+        <h2 class="cust-h">Стеллажи по вашему техлисту</h2>
+        <p class="cust-lead">Берём индивидуальные заказы на стеллажи большими партиями. Пришлите техлист, чертёж
+          или эскиз — конструкторский отдел MATKASYM подготовит чертёж и расчёт, а производство изготовит
+          партию под ваши размеры, нагрузку и цвет.</p>
+        <div class="ask cust-ask"><span>Стоимость партии</span>${tag(0)}</div>
+      </div>
+      <div class="cust-draw">${RACK_SVG}</div>
+    </div>
+    <div class="cust-cols">
+      <div><div class="s-kind">Что меняем под вас</div>
+        <ul class="list"><li>Ширина, глубина и высота — под помещение и товар</li><li>Количество полок и расстояние между ними</li>
+          <li>Нагрузка на полку — подбираем толщину металла</li><li>Цвет порошковой покраски по каталогу RAL</li>
+          <li>Тип стойки: круглая, перфорированная, промышленная</li><li>Колёса, бортики, перегородки, логотип</li></ul></div>
+      <div><div class="s-kind">Для кого</div>
+        <ul class="list"><li>Магазины и торговые сети</li><li>Склады и логистические компании</li><li>Производства и мастерские</li>
+          <li>Школы, офисы, больницы, архивы</li><li>Застройщики и дилеры</li></ul></div>
+    </div>
+    <div class="cust-stats">
+      <div><b>Конструкторский отдел</b><span>Чертёж и расчёт по вашему техлисту</span></div>
+      <div><b>Лазерная резка и гибка</b><span>Стойки и полки на своём оборудовании</span></div>
+      <div><b>Порошковая покраска</b><span>Любой цвет по каталогу RAL</span></div>
+      <div><b>Доставка и монтаж</b><span>Привозим и собираем на объекте</span></div>
+    </div>
+    <div class="order cust-steps">
+      <div><h2>Как работаем</h2></div>
+      <ol class="steps"><li>Присылаете техлист, чертёж или эскиз и нужное количество.</li>
+        <li>Конструкторы готовят чертёж и расчёт стоимости.</li>
+        <li>Согласовываем образец.</li>
+        <li>Производим партию, доставляем и при необходимости монтируем.</li></ol>
+    </div>`));
+  // 9. Как заказать
   pages.push(page(`
     <div class="end-photo"><img src="${room(ROOM_END, 1800)}" alt=""></div>
     <div class="order">
