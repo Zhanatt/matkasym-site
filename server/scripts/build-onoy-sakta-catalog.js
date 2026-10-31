@@ -23,7 +23,10 @@ fs.mkdirSync(OUT, { recursive: true });
 const SITE = 'https://matkasym-site.onrender.com';
 const CLOUD = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
 // b_white — прозрачные PNG на белом; e_trim — срезать белые поля, чтобы стеллаж был крупнее
-const cut = (url, w) => url.replace('/upload/', `/upload/b_white/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`);
+// FLIP — кадры, где стеллаж развёрнут в другую сторону: зеркалим, чтобы все смотрели одинаково
+const FLIP_SKUS = ['MKS-AH-G-M4-WHT', 'MKS-AH-R-S4-BLK', 'MKS-AH-S-A4-WHT', 'MKS-AH-S-C4-BLK'];
+const FLIP = new Set();
+const cut = (url, w) => url.replace('/upload/', `/upload/${FLIP.has(url) ? 'a_hflip/' : ''}b_white/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`);
 const room = (url, w) => url.replace('/upload/', `/upload/f_jpg,q_auto:good,w_${w},c_limit/`);
 
 // ── Структура ──────────────────────────────────────────────────────────────
@@ -294,6 +297,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   const col = mongoose.connection.db.collection('products');
   const all = await col.find({ $or: [{ set: 'onoi-sakta' }, { sku: /^MKS-AH-/ }] }).toArray();
   const bySku = Object.fromEntries(all.filter(p => p.sku).map(p => [p.sku, p]));
+  for (const s of FLIP_SKUS) FLIP.add(bySku[s].images[0]);
   const B = {};
   for (const [k, b] of Object.entries(BLOCKS)) B[k] = { ...b, items: b.models.map(m => modelData(m, bySku)) };
 
@@ -309,7 +313,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   const PALLET_PHOTO = cut(pallet.images[2], 1400), PALLET_PHOTO_S = cut(pallet.images[2], 240);
   // Чистого консольного на белом пока нет — правая половина общего кадра (OS-CANTILEVER #3)
-  const cantiCut = w => canti.images[3].replace('/upload/', `/upload/c_crop,g_east,w_0.5/b_white/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`);
+  const cantiCut = w => canti.images[3].replace('/upload/', `/upload/c_crop,g_east,w_0.5/a_hflip/b_white/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`);
   const CANTI_PHOTO = cantiCut(1400), CANTI_PHOTO_S = cantiCut(240);
 
   const blocks = Object.values(B);
