@@ -108,11 +108,10 @@ const head = b => `<div class="s-head"><div><div class="s-kind">${esc(b.kind)}</
 
 function modelCol(m) {
   return `<div class="mdl">
-    <div class="m-photo"><img src="${cut(m.photo, 900)}" alt=""></div>
+    <div class="m-photo dim" data-w="${m.dims[0]}" data-d="${m.dims[1]}" data-h="${m.dims[2]}"><img src="${cut(m.photo, 900)}" alt=""></div>
     <div class="m-name">${esc(m.v)}</div>
     <div class="m-desc">${esc(m.desc)}</div>
     <dl class="m-dl">
-      ${dimRows(m.dims).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}
       <dt${m.load ? '' : ' class="ghost"'}>На полку</dt><dd${m.load ? '' : ' class="ghost"'}>${esc(m.load) || '—'}</dd>
     </dl>
     <div class="m-prices">${m.colors.map(c => `<div class="m-pr"><span><i style="background:${SW[c.c] || '#ccc'}"></i>${esc(c.c)}</span>${tag(c.price)}</div>`).join('')}</div>
@@ -121,9 +120,9 @@ function modelCol(m) {
 const block = b => `<article class="series">${head(b)}<div class="mdls" style="--n:${b.items.length}">${b.items.map(modelCol).join('')}</div></article>`;
 
 // Промышленный стеллаж: фото слева, таблица справа
-function wide({ kind, title, lead, photo, rows, extra }) {
+function wide({ kind, title, lead, photo, rows, extra, dims }) {
   return `<article class="series series--one"><div class="split">
-    <div class="s-photo"><img src="${photo}" alt=""></div>
+    <div class="s-photo dim" data-w="${dims[0]}" data-d="${dims[1]}" data-h="${dims[2]}"><img src="${photo}" alt=""></div>
     <div><div class="s-kind">${esc(kind)}</div><h2>${esc(title)}</h2><p class="s-lead s-lead--l">${esc(lead)}</p>
       <dl class="dl">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>
       ${extra ? `<div class="s-extra"><img src="${extra}" alt=""></div>` : ''}</div>
@@ -150,6 +149,43 @@ const RACK_SVG = (() => {
     <text x="66" y="92" fill="${L}">шаг полок</text>
   </svg>`;
 })();
+
+// Размерные линии со стрелками вокруг фото (рисуются в браузере после загрузки картинок):
+// высота — вертикаль слева, ширина — горизонталь снизу, глубина — короткая наклонная
+// стрелка у правого нижнего угла (все стеллажи сняты ближним краем слева, глубина уходит вправо).
+const DIM_JS = `
+window.addEventListener('load', () => {
+  const MM = 96 / 25.4, C = '#7d96a0', T = '#4d4d4d';
+  const arrow = (x1, y1, x2, y2) => {
+    const a = Math.atan2(y2 - y1, x2 - x1), s = 1.6 * MM, w = 0.45;
+    const head = (x, y, ang) => '<path d="M' + x + ' ' + y + ' L' + (x - s * Math.cos(ang - w)) + ' ' + (y - s * Math.sin(ang - w)) +
+      ' L' + (x - s * Math.cos(ang + w)) + ' ' + (y - s * Math.sin(ang + w)) + ' Z" fill="' + C + '"/>';
+    return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + C + '" stroke-width="0.9"/>' + head(x2, y2, a) + head(x1, y1, a + Math.PI);
+  };
+  const label = (x, y, t, rot) => '<text x="' + x + '" y="' + y + '" fill="' + T + '" font-family="Roboto, Helvetica, Arial" font-size="' + (2.7 * MM) +
+    '" font-weight="500" text-anchor="middle" dominant-baseline="middle"' + (rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '') +
+    ' paint-order="stroke" stroke="#fff" stroke-width="' + (1.2 * MM) + '">' + t + '</text>';
+  document.querySelectorAll('.dim').forEach(box => {
+    const img = box.querySelector('img'); if (!img || !img.naturalWidth) return;
+    const { w, d, h } = box.dataset;
+    box.style.position = 'relative'; box.style.padding = '0';
+    const W = box.clientWidth, H = box.clientHeight;
+    const L = 8 * MM, B = 7 * MM, R = 11 * MM, TOP = 1 * MM;
+    const k = Math.min((W - L - R) / img.naturalWidth, (H - B - TOP) / img.naturalHeight);
+    const iw = img.naturalWidth * k, ih = img.naturalHeight * k;
+    const x0 = L + (W - L - R - iw) / 2, y0 = H - B - ih;
+    Object.assign(img.style, { position: 'absolute', left: x0 + 'px', top: y0 + 'px', width: iw + 'px', height: ih + 'px', maxWidth: 'none', maxHeight: 'none' });
+    const hx = x0 - 4 * MM, wy = y0 + ih + 4 * MM;
+    // глубина: от правого нижнего угла вверх-вправо, под углом бока стеллажа
+    const dx = 5 * MM, dy = dx * 0.55, ox = 1.5 * MM;
+    const d1 = [x0 + iw + ox, y0 + ih + 1 * MM], d2 = [x0 + iw + ox + dx, y0 + ih + 1 * MM - dy];
+    let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" style="position:absolute;left:0;top:0;overflow:visible">';
+    svg += arrow(hx, y0, hx, y0 + ih) + label(hx, y0 + ih / 2, h + ' см', true);
+    svg += arrow(x0, wy, x0 + iw, wy) + label(x0 + iw / 2, wy, w + ' см');
+    if (d) svg += arrow(d1[0], d1[1], d2[0], d2[1]) + label(d2[0] - 0.5 * MM, d2[1] - 2.6 * MM, d + ' см');
+    box.insertAdjacentHTML('beforeend', svg + '</svg>');
+  });
+});`;
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@500;600;700&display=block');
@@ -404,10 +440,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   pages.push(page(`${secHead('04')}
     ${wide({ kind: 'Промышленный стеллаж', title: 'ADIK STORAGE LIGHT', photo: cut(light.images[0], 1400), extra: ownRoom('room-light', 1000),
       lead: 'Усиленная рама с раскосами для гаража, мастерской и склада. Чёрный порошковый окрас.',
-      rows: [...dimRows(dimsArr(light.name)), ['Цена', tag(light.price)]] })}
+      dims: dimsArr(light.name), rows: [...dimRows(dimsArr(light.name)), ['Цена', tag(light.price)]] })}
     ${wide({ kind: 'Промышленный стеллаж', title: 'ADIK STORAGE MEDIUM', photo: cut(medium.images[0], 1400), extra: ownRoom('room-medium', 1000),
       lead: 'Синие стойки и серые полки шириной 2 метра. К основной секции можно пристроить дополнительную на общей стойке.',
-      rows: [...dimRows(dimsArr(medium.name)), ['Основная секция', tag(medium.price)],
+      dims: dimsArr(medium.name), rows: [...dimRows(dimsArr(medium.name)), ['Основная секция', tag(medium.price)],
         ...(mediumSub ? [['Дополнительная секция', tag(mediumSub.price)]] : [])] })}`));
   // 7. Под заказ
   pages.push(page(`
@@ -491,7 +527,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     </div>`));
 
   const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Каталог ONOY SAKTA</title>
-<style>${CSS}</style></head><body>${pages.join('\n')}</body></html>`;
+<style>${CSS}</style></head><body>${pages.join('\n')}<script>${DIM_JS}</script></body></html>`;
   const htmlFile = path.join(OUT, 'onoy-sakta.html');
   fs.writeFileSync(htmlFile, html);
   const pdf = path.join(OUT, 'Каталог ONOY SAKTA.pdf');
