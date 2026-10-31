@@ -446,8 +446,15 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       </div>
     </article>`));
   // 7. С навесом + интерьер
-  pages.push(page(`${secHead('03')}${block(B.roof)}
-    <div class="room-band room-band--fill"><img src="${room(pic('esAluu', 2), 1800)}" alt=""></div>`));
+  // Навесы — строками (фото слева, текст справа), без интерьера снизу: так фото крупнее (просил пользователь)
+  const dimText = d => d.filter(Boolean).length ? [['Ширина', d[0]], ['Глубина', d[1]], ['Высота', d[2]]].filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${v} см</dd>`).join('') : '';
+  pages.push(page(`${secHead('03')}
+    <div class="s-head"><div><div class="s-kind">${esc(B.roof.kind)}</div><h2>${esc(B.roof.name)}</h2></div><p class="s-lead">${esc(B.roof.lead)}</p></div>
+    <div class="rows">${B.roof.items.map(m => `<article class="row">
+      <div class="row-photo dim" data-w="${m.dims[0] || ''}" data-d="${m.dims[1] || ''}" data-h="${m.dims[2] || ''}"><img src="${cut(m.photo, 1400)}" alt=""></div>
+      <div class="row-text"><h3 class="kb-h">${esc(m.v)}</h3><p class="m-desc">${esc(m.desc)}</p>
+        <dl class="dl">${dimText(m.dims)}<dt>Цена</dt><dd>${tag(m.price)}</dd></dl></div>
+    </article>`).join('')}</div>`));
   // 8. Освещение: три высоких фонаря, каждый во всю высоту колонки (просил пользователь 31.10.2026;
   // общий масштаб по высоте делал их мелкими). Высота — подписью-стрелкой.
   // Фото без фона и обрезаны по силуэту; ширина каждой колонки = ширине фонаря при общей высоте h,
@@ -586,6 +593,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .lamp-img { display:flex; justify-content:center; align-items:flex-end; padding-bottom:3mm; }
 .lamp-img img { height:100%; width:auto; max-width:none; }
 .lamp-price { margin-top:2mm; }
+.rows { flex:1 1 0; min-height:0; display:grid; grid-template-rows:repeat(3, minmax(0,1fr)); }
+.row { display:grid; grid-template-columns:58% 1fr; gap:9mm; align-items:center; min-height:0; border-top:1px solid var(--line); padding:4mm 0; }
+.row-photo { height:100%; min-height:0; }
+.row-text .dl { margin-top:3mm; }
 .nm { flex:1 1 0; min-height:0; display:grid; grid-template-columns:45% 1fr; gap:10mm; }
 .nm-photo { height:100%; min-height:0; display:flex; align-items:center; justify-content:center; }
 .nm-photo img { max-height:100%; max-width:100%; object-fit:contain; }
