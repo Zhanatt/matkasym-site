@@ -188,12 +188,7 @@ window.addEventListener('load', () => {
   });
 });`;
 
-// Шрифты — статичные файлы @fontsource, НЕ Google Fonts: тот отдаёт variable-шрифты, Chrome
-// вшивает их в PDF как Type 3, и просмотрщики на Android не показывают текст вообще (31.10.2026)
-const FONT_CSS = [['Roboto', 'roboto', [400, 500, 700]], ['Montserrat', 'montserrat', [500, 600, 700]]]
-  .flatMap(([fam, pkg, ws]) => ws.flatMap(w => [['cyrillic', 'U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116'], ['latin', 'U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212']]
-    .map(([sub, range]) => `@font-face { font-family:'${fam}'; font-style:normal; font-weight:${w}; font-display:block;
-  src:url('https://cdn.jsdelivr.net/npm/@fontsource/${pkg}@5.1.0/files/${pkg}-${sub}-${w}-normal.woff2') format('woff2'); unicode-range:${range}; }`))).join('\n');
+const { FONT_CSS, LIGHT_META } = require('../lib/catalogFonts');
 
 const CSS = `
 ${FONT_CSS}
@@ -539,7 +534,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       </dl>
     </div>`));
 
-  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Каталог ONOY SAKTA</title>
+  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8">${LIGHT_META}<title>Каталог ONOY SAKTA</title>
 <style>${CSS}</style></head><body>${pages.join('\n')}<script>${DIM_JS}</script></body></html>`;
   const htmlFile = path.join(OUT, 'onoy-sakta.html');
   fs.writeFileSync(htmlFile, html);

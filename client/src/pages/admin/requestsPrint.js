@@ -94,7 +94,7 @@ export function buildSheetHtml(sections, { title = 'Заявки на заказ
   </div>`;
 
   return `<!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
+<html lang="ru"><head><meta charset="utf-8"><meta name="color-scheme" content="only light">
 <base href="${origin}/">
 <title>${esc(title)}</title>
 <style>${css}</style>

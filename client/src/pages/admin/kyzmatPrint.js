@@ -795,7 +795,7 @@ export function kyzmatHtml(groups, priceType = 'price', { base = '' } = {}) {
   });
   const cover = PRINT_COVERS.kyzmat;
   return `<!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
+<html lang="ru"><head><meta charset="utf-8"><meta name="color-scheme" content="only light">
 ${base ? `<base href="${base}/">` : ''}
 <title>Каталог — KYZMAT</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=block">

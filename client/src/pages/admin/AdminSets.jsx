@@ -19,14 +19,7 @@ import {
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 
-// Сеты с готовым свёрстанным каталогом: кнопка «PDF» скачивает файл, а не собирает
-// его на лету. Файл заливает scripts/build-uzak-koldon-catalog.js --upload.
-const READY_PDF = {
-  'uzak-koldon': {
-    url: 'https://res.cloudinary.com/dnbg21ef8/raw/upload/matkasym/catalogs/uzak-koldon.pdf',
-    filename: 'Каталог UZAK KOLDON.pdf',
-  },
-};
+import { READY_PDF } from '../../config/readyCatalogs';
 import BrandPdfButton from './BrandPdfButton';
 import { SET_CATEGORY_ORDER } from '../../config/setCategoryOrder';
 import BrandAboutButton from './BrandAboutButton';

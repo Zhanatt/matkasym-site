@@ -5,13 +5,16 @@
 // Треугольных парт на сайте нет (так решили 29.10.2026): данные о них заданы здесь,
 // цена «по запросу». У ALA-TOO розницы нет — печатаем оптовую, с подписью.
 //
-//   node scripts/build-bilim-kelechek-catalog.js <папка для HTML и PDF>
+//   node scripts/build-bilim-kelechek-catalog.js <папка для HTML и PDF> [--upload]
+//
+// --upload — залить PDF в Cloudinary (raw) matkasym/catalogs/bilim-kelechek.pdf (кнопка «PDF» сета).
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const mongoose = require('mongoose');
 const MONGO_URI = require('../lib/atlas');
+const { FONT_CSS, LIGHT_META } = require('../lib/catalogFonts');
 
 const OUT = process.argv[2];
 if (!OUT) { console.error('Укажите папку вывода'); process.exit(1); }
@@ -50,7 +53,7 @@ function productPage({ n, kind, title, lead, hero, second, rows, price, priceLab
 }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@500;600;700&display=block');
+${FONT_CSS}
 @page { size: A4; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 /* брендбук MATKASYM 2024: красный — акцент, металлический серый — линии, чёрный — заголовки, #4d4d4d — текст */
@@ -171,7 +174,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:2
     </div>`,
   }));
 
-  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Каталог BILIM KELECHEK</title>
+  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8">${LIGHT_META}<title>Каталог BILIM KELECHEK</title>
 <style>${CSS}</style></head><body>${pages.join('\n')}</body></html>`;
   const htmlFile = path.join(OUT, 'bilim-kelechek.html');
   fs.writeFileSync(htmlFile, html);
@@ -180,5 +183,11 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:2
     '--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=90000',
     `--print-to-pdf=${pdf}`, `file://${htmlFile}`], { stdio: 'ignore', timeout: 240000 });
   console.log('PDF:', pdf, `(${pageNo} стр.)`);
+  if (process.argv.includes('--upload')) {
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+    const cloudinary = require('../lib/cloudinary');
+    const up = await cloudinary.uploader.upload(pdf, { resource_type: 'raw', public_id: 'matkasym/catalogs/bilim-kelechek.pdf', overwrite: true, invalidate: true });
+    console.log('Залит на сайт:', up.secure_url);
+  }
   process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });

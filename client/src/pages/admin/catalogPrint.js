@@ -681,6 +681,7 @@ const css = `
 
 html, body {
   background: #fff;
+  color-scheme: only light;
   font-family: Roboto, Arial, sans-serif;
   color: ${INK};
   -webkit-print-color-adjust: exact;
@@ -1205,7 +1206,7 @@ export async function printCatalog(groups, setName, priceType = 'price', brand =
     .map(g => ({ ...g, products: collectPages(collectRanges(collectSeries(mergeHomeVariants(mergePdfGroups(g.products || []))))) }));
 
   const html = `<!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
+<html lang="ru"><head><meta charset="utf-8"><meta name="color-scheme" content="only light">
 <base href="${location.origin}/">
 <title>Каталог — ${esc(setName)}</title>
 <style>${css}</style>

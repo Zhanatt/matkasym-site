@@ -193,7 +193,7 @@ const MOBILE = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 export async function printServicesCatalog(groups, setName, priceType = 'price', { withCover = false } = {}) {
   const pages = groups.filter(g => g.products?.length);
   const html = `<!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
+<html lang="ru"><head><meta charset="utf-8"><meta name="color-scheme" content="only light">
 <base href="${location.origin}/">
 <title>Каталог — ${esc(pages.length === 1 ? (servicePageFor(pages[0].groupName)?.title || pages[0].groupName) : setName)}</title>
 <style>${css}</style>
@@ -222,5 +222,5 @@ ${pages.map(g => servicePage(g, setName, priceType)).join('')}
 
 // для проверки вёрстки без браузерной печати
 export const __servicesHtml = (groups, setName, priceType, withCover) =>
-  `<!doctype html><html lang="ru"><head><meta charset="utf-8"><style>${css}</style></head><body>${
+  `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="color-scheme" content="only light"><style>${css}</style></head><body>${
     withCover ? coverPage(groups, setName) : ''}${groups.map(g => servicePage(g, setName, priceType)).join('')}</body></html>`;

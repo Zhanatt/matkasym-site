@@ -3,6 +3,7 @@ import { adminGetProducts, adminGetSetLayouts } from '../../api/index';
 import { printCatalog, fitsCatalog } from './catalogPrint';
 import { printKyzmatCatalog } from './kyzmatPrint';
 import { categoryRank } from '../../config/setCategoryOrder';
+import { READY_PDF, downloadReady } from '../../config/readyCatalogs';
 
 // Порядок в каталоге целиком: сет → категория → карточка, как они стоят на
 // экране. Сеты идут в порядке линеек бренда, категории и карточки внутри сета —
@@ -69,6 +70,16 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
 
   const handleClick = async () => {
     if (loading) return;
+    // Отмечен один сет с готовым свёрстанным каталогом (UZAK KOLDON, ONOY SAKTA, BILIM KELECHEK)
+    // и розничные цены — отдаём его, а не собираем общий генератором
+    const onlyPicked = picked && picked.size === 1 ? [...picked][0] : null;
+    if (onlyPicked && READY_PDF[onlyPicked] && priceType === 'price') {
+      setLoading(true); setProgress(60);
+      await downloadReady(READY_PDF[onlyPicked]);
+      setProgress(100);
+      setTimeout(() => { setLoading(false); setProgress(0); }, 600);
+      return;
+    }
     setLoading(true);
     setProgress(5);
 

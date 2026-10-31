@@ -18,6 +18,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const mongoose = require('mongoose');
 const MONGO_URI = require('../lib/atlas');
+const { FONT_CSS, LIGHT_META } = require('../lib/catalogFonts');
 
 const OUT = process.argv[2];
 if (!OUT) { console.error('Укажите папку вывода'); process.exit(1); }
@@ -199,7 +200,7 @@ function singleWide(p, title, kind, desc, dimText) {
 }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@500;600;700&display=block');
+${FONT_CSS}
 @page { size: A4; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 /* брендбук MATKASYM 2024: красный — акцент, металлический серый — заполнение/линии,
@@ -244,7 +245,7 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .v-price { margin-top:2mm; }
 
 /* фото слева — таблица справа */
-.split { display:grid; grid-template-columns:54% 1fr; gap:9mm; align-items:center; flex:1 1 0; min-height:0; }
+.split { display:grid; grid-template-columns:48% minmax(0, 1fr); gap:9mm; align-items:center; flex:1 1 0; min-height:0; }
 .split .s-photo { height:100%; }
 .split--one { grid-template-columns:52% 1fr; }
 .tbl { width:100%; border-collapse:collapse; font-size:8pt; }
@@ -451,7 +452,7 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       </dl>
     </div>`));
 
-  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Каталог UZAK KOLDON</title>
+  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8">${LIGHT_META}<title>Каталог UZAK KOLDON</title>
 <style>${CSS}</style></head><body>${pages.join('\n')}</body></html>`;
   const htmlFile = path.join(OUT, 'uzak-koldon.html');
   fs.writeFileSync(htmlFile, html);

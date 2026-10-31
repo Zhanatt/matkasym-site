@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { printCatalog, fitsCatalog } from './catalogPrint';
 import { coverOf } from '../../utils/variantKey';
 import { printServicesCatalog } from './servicesPrint';
+import { downloadReady } from '../../config/readyCatalogs';
 
 const PRICE_MODE_TO_TYPE = {
   retail: 'price',
@@ -21,23 +22,9 @@ const PRICE_MODE_TO_TYPE = {
 // это никак не видно.
 // services — сет услуг (ÖNDÜRÜÜ): печатается своей вёрсткой, услуга на лист,
 // и в выборе есть «Весь сет» — титульный лист и все услуги подряд.
-// readyPdf — { url, filename }: у сета есть готовый свёрстанный каталог (UZAK KOLDON).
+// readyPdf — { url, filename }: у сета есть готовый свёрстанный каталог (config/readyCatalogs.js).
 // Кнопка его скачивает, а не собирает PDF на лету. Цены в нём розничные, поэтому
 // для опта и дилеров по-прежнему собираем как раньше.
-async function downloadReady({ url, filename }) {
-  try {
-    // ?t= — не отдавать из кэша браузера прошлую версию файла
-    const res = await fetch(`${url}?t=${Date.now()}`);
-    if (!res.ok) throw new Error(res.status);
-    const href = URL.createObjectURL(await res.blob());
-    const a = Object.assign(document.createElement('a'), { href, download: filename });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(href), 10000);
-  } catch {
-    window.open(url, '_blank');
-  }
-}
-
 export default function AdminPdfButton({ products, groups, label = 'Каталог', priceMode = 'retail', currency = 'сом', choices = null, pending = false, services = false, readyPdf = null }) {
   const [loading,   setLoading]   = useState(false);
   const [progress,  setProgress]  = useState(0);
