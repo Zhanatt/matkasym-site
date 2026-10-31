@@ -70,7 +70,7 @@ const P = {
   burkut:     { id: '6a1d55f1654da1cc132f5a32', v: 'Bürküt',      desc: 'Фонарь с двумя светильниками', dims: ['250', '30', '600'], scaleH: 600 },
   skeitPark:  { id: '6ae5c8112600514b6a809ffa', v: 'Skeit Park',  desc: 'Силуэт скейтбордиста, металл 5 мм, антрацит', dims: ['250', '30', '800'] },
   velo5:      { id: '6aa12ee03c2e09e2836f3fd9', v: 'Velopark 5',  desc: 'Арочная, на 5 мест', dims: ['160', '39', '47,5'] },
-  velo7:      { id: '6a7ef672a47d9fa5e2190020', v: 'Velopark 7',  desc: 'Арочная двусторонняя, на 8 мест', dims: ['210', '75', '60'] },
+  velo7:      { id: '6a7ef672a47d9fa5e2190020', v: 'Velopark 7',  desc: 'Арочная двусторонняя, на 8 мест', dims: ['210', '75', '60'], photo: 'https://res.cloudinary.com/dnbg21ef8/image/upload/v1793447135/matkasym/mazza-seyil/velopark-7.png' }, // фото от пользователя 31.10.2026
   bp:         { id: '6a7ef663a47d9fa5e2190001', v: 'BP velopark', desc: 'Модульная, силуэт велосипеда лазером', dims: ['150', '60', '80'] },
   stoika:     { id: '6a7efa52ff1030c8b93e9e22', v: 'Koopsuzbike Stoika', desc: 'Одиночная стойка, крепление на 4 анкера', dims: ['70', '15', '90'] },
   kbike:      { id: '6a7ef66da47d9fa5e219000b', v: 'Koopsuzbike', desc: 'Крытая велостанция на 20 мест, насос и ремонтная станция', dims: ['900', '240', '250'], price: 118500, from: true },
@@ -360,7 +360,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   for (const [k, p] of Object.entries(P)) {
     const d = byId[p.id]; if (!d) throw new Error('нет товара ' + p.v);
     if (!d.images?.length) throw new Error('нет фото ' + p.v);
-    M[k] = { ...p, key: k, photo: d.images[0], price: p.price ?? (d.price || 0), doc: d };
+    M[k] = { ...p, key: k, photo: p.photo || d.images[0], price: p.price ?? (d.price || 0), doc: d };
   }
   const B = {};
   for (const [k, b] of Object.entries(BLOCKS)) B[k] = { ...b, items: b.keys.map(x => M[x]) };
