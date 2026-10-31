@@ -49,28 +49,30 @@ const PAGE_PURPOSE = 3;
 
 // id товара → подпись в каталоге, короткое описание, размеры [ширина, глубина, высота] в см
 // (ширина = длина скамейки). Пусто — в базе размеров нет, стрелки не рисуем.
+// Оценены по фото 31.10.2026 (в базе и техлистах нет, пользователь просил «примерно предположи»):
+// JYLUU, Ailana (выс.), KÖLÖKÖ, все фонари, Velopark 7, BP velopark, стойка. Seyil — из техлиста ОсОО Монс.
 const P = {
   jyrgalDem:  { id: '6a23a1b5a94b9094a84fa23e', v: 'Jyrgal Dem',  desc: 'Металлический корпус, деревянное сиденье', dims: ['200', '45', '43'] },
   jyrgalPark: { id: '6a05bec87f2c7b50e45986ee', v: 'Jyrgal Park', desc: 'Деревянное сиденье на металлическом каркасе', dims: ['200', '45', '43'] }, // как у Jyrgal Dem (сказал пользователь)
-  seyil:      { id: '6a23c2629c5e3c48479dacff', v: 'Seyil',       desc: 'Металлический каркас, деревянное сиденье', dims: ['200', '62', '75'] },
-  jyluu:      { id: '6a1d49b2393874d4c353b447', v: 'JYLUU',       desc: 'Изогнутые боковины, деревянные ламели', dims: ['200', '', ''] },
+  seyil:      { id: '6a23c2629c5e3c48479dacff', v: 'Seyil',       desc: 'Металлический каркас, деревянное сиденье', dims: ['200', '65', '85'] },
+  jyluu:      { id: '6a1d49b2393874d4c353b447', v: 'JYLUU',       desc: 'Изогнутые боковины, деревянные ламели', dims: ['200', '65', '80'] },
   yngai:      { id: '6a646a5356c79e863c5a72bd', v: 'Yngai',       desc: 'Подлокотники, порошковая покраска каркаса', dims: ['200', '46', '85'] },
   kichine:    { id: '6a643e54228fc37217d7a32c', v: 'Kichine',     desc: 'Компактная, с подлокотниками', dims: ['120', '45', '80'] },
   kalyn:      { id: '6a643e56228fc37217d7a342', v: 'Kalyn',       desc: 'Термообработанная лиственница или дуб', dims: ['180', '50', '85'] },
   demAluu:    { id: '6a643e57228fc37217d7a34e', v: 'Dem Aluu',    desc: 'Массив ясеня или лиственницы', dims: ['180', '45', '80'] },
   salttyk:    { id: '6a643e5b228fc37217d7a370', v: 'Salttyk',     desc: 'Классическая, с подлокотниками', dims: ['150–170', '40–45', '85–90'] },
-  ailana:     { id: '6a1d373ea7d1feff77747b47', v: 'Ailana',      desc: 'Круглая скамейка вокруг дерева', dims: [] },
+  ailana:     { id: '6a1d373ea7d1feff77747b47', v: 'Ailana',      desc: 'Круглая скамейка вокруг дерева', dims: ['300', '300', '80'] },
   esAluu:     { id: '6a05bddc7f2c7b50e4597c9d', v: 'ES ALUU',     desc: 'Изогнутый деревянный навес', dims: ['200', '140', '230'] },
   bakyt:      { id: '6a23c5a162432d59269b0287', v: 'Bakyt',       desc: '6–8 мест, обшивка из термодревесины', dims: ['160', '50', '220'] },
-  koloko:     { id: '6a05c3217f2c7b50e45989ec', v: 'KÖLÖKÖ',      desc: 'Навес-тень для скамейки', dims: [] },
-  nurjolMini: { id: '6a1d3ddea7d1feff7774904a', v: 'NURJOL mini', desc: 'Ландшафтный светильник-столбик', dims: [], scaleH: 100 },
-  nurjol:     { id: '6a1d3af4a7d1feff777485bb', v: 'Nurjol Standart', desc: 'Парковый фонарь', dims: ['', '', '300'] },
-  burkut:     { id: '6a1d55f1654da1cc132f5a32', v: 'Bürküt',      desc: 'Фонарь с двумя светильниками', dims: [], scaleH: 600 },
-  skeitPark:  { id: '6ae5c8112600514b6a809ffa', v: 'Skeit Park',  desc: 'Силуэт скейтбордиста, металл 5 мм, антрацит', dims: ['', '', '800'] },
+  koloko:     { id: '6a05c3217f2c7b50e45989ec', v: 'KÖLÖKÖ',      desc: 'Навес-тень для скамейки', dims: ['200', '120', '240'] },
+  nurjolMini: { id: '6a1d3ddea7d1feff7774904a', v: 'NURJOL mini', desc: 'Ландшафтный светильник-столбик', dims: ['20', '20', '80'], scaleH: 100 },
+  nurjol:     { id: '6a1d3af4a7d1feff777485bb', v: 'Nurjol Standart', desc: 'Парковый фонарь', dims: ['40', '20', '300'] },
+  burkut:     { id: '6a1d55f1654da1cc132f5a32', v: 'Bürküt',      desc: 'Фонарь с двумя светильниками', dims: ['250', '30', '600'], scaleH: 600 },
+  skeitPark:  { id: '6ae5c8112600514b6a809ffa', v: 'Skeit Park',  desc: 'Силуэт скейтбордиста, металл 5 мм, антрацит', dims: ['250', '30', '800'] },
   velo5:      { id: '6aa12ee03c2e09e2836f3fd9', v: 'Velopark 5',  desc: 'Арочная, на 5 мест', dims: ['160', '39', '47,5'] },
-  velo7:      { id: '6a7ef672a47d9fa5e2190020', v: 'Velopark 7',  desc: 'Арочная двусторонняя, на 8 мест', dims: [] },
-  bp:         { id: '6a7ef663a47d9fa5e2190001', v: 'BP velopark', desc: 'Модульная, силуэт велосипеда лазером', dims: [] },
-  stoika:     { id: '6a7efa52ff1030c8b93e9e22', v: 'Koopsuzbike Stoika', desc: 'Одиночная стойка, крепление на 4 анкера', dims: [] },
+  velo7:      { id: '6a7ef672a47d9fa5e2190020', v: 'Velopark 7',  desc: 'Арочная двусторонняя, на 8 мест', dims: ['210', '75', '60'] },
+  bp:         { id: '6a7ef663a47d9fa5e2190001', v: 'BP velopark', desc: 'Модульная, силуэт велосипеда лазером', dims: ['150', '60', '80'] },
+  stoika:     { id: '6a7efa52ff1030c8b93e9e22', v: 'Koopsuzbike Stoika', desc: 'Одиночная стойка, крепление на 4 анкера', dims: ['70', '15', '90'] },
   kbike:      { id: '6a7ef66da47d9fa5e219000b', v: 'Koopsuzbike', desc: 'Крытая велостанция на 20 мест, насос и ремонтная станция', dims: ['900', '240', '250'], price: 118500, from: true },
 };
 const BLOCKS = {
@@ -382,7 +384,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   // 2. Вступление, содержание, сводная таблица
   const sec = Object.fromEntries(Object.values(BLOCKS).flatMap(b => b.keys.map(k => [k, b.sec])));
-  sec.ailana = '02'; sec.kbike = '05'; sec.stoika = '05';
+  sec.ailana = '02'; sec.kbike = '05'; sec.stoika = '05'; sec.nurjolMini = '04';
   const groups = SECTIONS.filter(s => s.n !== '06').map(s => [s, Object.keys(M).filter(k => sec[k] === s.n)]);
   const tbl = groups.map(([s, keys]) => `<tr class="g"><td colspan="5">${esc(s.title)}</td></tr>` + keys.map(k => { const m = M[k], d = m.dims;
     return `<tr><td class="b">${esc(m.v)}</td><td class="c">${d[0] || '—'}</td><td class="c">${d[1] || '—'}</td><td class="c">${d[2] || '—'}</td><td class="r">${priceText(m)}</td></tr>`; }).join('')).join('');
@@ -444,7 +446,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       <div class="ail-text">
         <div><div class="s-kind">Круглая скамейка</div><h2>Ailana</h2></div>
         <p class="s-lead">Скамейка по кругу вокруг дерева или клумбы: деревянная спинка в центре, сиденье по всей окружности.</p>
-        <dl class="dl"><dt>Диаметр</dt><dd>300 см</dd><dt>Цена</dt><dd>${tag(ail.price)}</dd></dl>
+        <dl class="dl"><dt>Диаметр</dt><dd>300 см</dd><dt>Высота</dt><dd>80 см</dd><dt>Цена</dt><dd>${tag(ail.price)}</dd></dl>
       </div>
     </article>`));
   // 7. С навесом + интерьер
@@ -486,7 +488,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     <div class="nm">
       <div class="nm-photo"><img src="${cut(nm.photo, 1400)}" alt=""></div>
       <div class="nm-side">
-        <dl class="dl"><dt>Тип</dt><dd>столбик</dd><dt>Корпус</dt><dd>металл</dd><dt>Цена</dt><dd>${tag(nm.price)}</dd></dl>
+        <dl class="dl"><dt>Высота</dt><dd>80 см</dd><dt>Сечение</dt><dd>20 × 20 см</dd><dt>Корпус</dt><dd>металл</dd><dt>Цена</dt><dd>${tag(nm.price)}</dd></dl>
         <div class="nm-room"><img src="${room(pic('nurjolMini', 1), 1200)}" alt=""></div>
       </div>
     </div>`));
