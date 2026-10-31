@@ -65,6 +65,7 @@ const P = {
   nurjolMini: { id: '6a1d3ddea7d1feff7774904a', v: 'NURJOL mini', desc: 'Ландшафтный светильник-столбик', dims: [] },
   nurjol:     { id: '6a1d3af4a7d1feff777485bb', v: 'Nurjol Standart', desc: 'Парковый фонарь', dims: ['', '', '300'] },
   burkut:     { id: '6a1d55f1654da1cc132f5a32', v: 'Bürküt',      desc: 'Фонарь с двумя светильниками', dims: [] },
+  skeitPark:  { id: '6ae5c8112600514b6a809ffa', v: 'Skeit Park',  desc: 'Силуэт скейтбордиста, металл 5 мм, антрацит', dims: ['', '', '800'] },
   velo5:      { id: '6aa12ee03c2e09e2836f3fd9', v: 'Velopark 5',  desc: 'Арочная, на 5 мест', dims: ['160', '39', '47,5'] },
   velo7:      { id: '6a7ef672a47d9fa5e2190020', v: 'Velopark 7',  desc: 'Арочная двусторонняя, на 8 мест', dims: [] },
   bp:         { id: '6a7ef663a47d9fa5e2190001', v: 'BP velopark', desc: 'Модульная, силуэт велосипеда лазером', dims: [] },
@@ -77,7 +78,7 @@ const BLOCKS = {
   back2:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Классические скамейки длиной от 120 до 180 см для дворов, школ и офисов.', keys: ['kichine', 'kalyn'] },
   back3:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Подлокотники с двух сторон — удобно вставать пожилым людям.', keys: ['demAluu', 'salttyk'] },
   roof:    { sec: '03', name: 'С навесом', kind: 'Скамейки с навесом', lead: 'Навес даёт тень летом и укрывает от дождя — для дворов, парков и остановок.', keys: ['esAluu', 'bakyt', 'koloko'] },
-  light:   { sec: '04', name: 'Освещение', kind: 'Уличные светильники', lead: 'Светильники в одном стиле со скамейками — для аллей, дорожек и площадей.', keys: ['nurjolMini', 'nurjol', 'burkut'] },
+  light:   { sec: '04', name: 'Освещение', kind: 'Уличные светильники', lead: 'Светильники в одном стиле со скамейками — от столбика у дорожки до 8-метрового фонаря для площадки.', keys: ['nurjolMini', 'nurjol', 'burkut', 'skeitPark'] },
   bike1:   { sec: '05', name: 'Велопарковки', kind: 'Открытые', lead: 'Крепятся анкерами к бетону или асфальту, порошковая покраска в любой цвет RAL.', keys: ['velo5', 'velo7', 'stoika'] },
 };
 
@@ -387,7 +388,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     ['Набережная и зоны отдыха', 'Скамейки без спинки и с навесом от солнца', ['jyrgalDem', 'yngai', 'esAluu']],
     ['Школа, вуз, офис', 'Компактные скамейки у входа и во дворе', ['kichine', 'demAluu', 'salttyk']],
     ['Аллеи и дорожки', 'Свет в одном стиле со скамейками', ['nurjolMini', 'nurjol', 'burkut']],
-    ['Остановка и площадка', 'Навес-тень над скамейкой', ['koloko']],
+    ['Площадка и скейт-парк', 'Навес-тень и фонарь со спортивным силуэтом', ['koloko', 'skeitPark']],
     ['Подъезд и детская площадка', 'Компактные арочные велопарковки', ['velo5', 'velo7']],
     ['ТЦ, АЗС, бизнес-центр', 'Велопарковки с фирменным видом и велостанция', ['bp', 'stoika', 'kbike']],
     ['Большой объект', 'Своя форма, размер и цвет — по вашему проекту', ['custom']],
@@ -498,7 +499,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .room-band--fill { flex:1 1 0; height:auto; min-height:0; }
 .toc-row .m { display:none; }
 .toc-row { padding:1.6mm 0; }
-.tbl td { padding:.7mm 2mm .8mm 0; }
+.tbl td { padding:.5mm 2mm .6mm 0; }
+/* в четыре колонки подпись «Цена» не помещается рядом с «индивидуальный» */
+.mdls[style*="--n:4"] .m-pr > span:first-child { display:none; }
+.mdls[style*="--n:4"] .m-pr { justify-content:flex-start; }
 .tbl .g td { padding-top:1.4mm; }
 .room-band { height:72mm; flex:0 0 auto; overflow:hidden; }
 .room-band img { width:100%; height:100%; object-fit:cover; }
