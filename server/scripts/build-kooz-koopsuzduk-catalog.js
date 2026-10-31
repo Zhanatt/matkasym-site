@@ -41,7 +41,7 @@ const PHOTO = {
   ip31: '6a599ed97ea85014c74f6e87', ip54: '6a0d469f7b357c1c052d4c20', ip30: '6a2c2f88599b2d1c30936ac3',
   ip44: '6a2c2f8a599b2d1c30936ad7', gas: '69f2d85050420bce3b53b736',
   san1: '69f49790028b571f055a2396', san2: '6a72f6e2583b96ba59308519', san3: '69f49791028b571f055a239a',
-  et1: '69f2d85050420bce3b53b73b', et2: '6a7ec10c65f3c690d0e5d4a0', et3: '69f2d85050420bce3b53b73c',
+  et1: '69f2d85050420bce3b53b73b', et2: '6a7ec10c65f3c690d0e5d4a0', et3: '69f2d85050420bce3b53b73c', et4: '6a7ec10c65f3c690d0e5d49e', et5: '6a9fcd05c2d96d24df36e06e', et6: '6ab0db743c7eb676679abf89', gas2: '69f2d85050420bce3b53b737',
   f1: '6a2374cc547875f908ac75ba', f5: '69f496fd028b571f055a1fd6', f6: '6a599ee17ea85014c74f6ee0', f2: '6a2374cc547875f908ac75b4', f3: '69f496fe028b571f055a1fdc', f4: '6a599ee27ea85014c74f6ee2',
   vru: '6a2c2f8f599b2d1c30936b09', vru2: '6a599ed67ea85014c74f6e6d', box1: '6a2c2f8b599b2d1c30936ae1', box2: '6a2c2f8e599b2d1c30936aff',
   luk: '6a672690e871489c0884269d',
@@ -254,7 +254,13 @@ const FAMILIES = {
   const all = (await mongoose.connection.db.collection('products').find({ set: 'kooz-koopsuzduk', hideInPdf: { $ne: true } }).toArray())
     .map(p => ({ ...p, cat: p.category, nm: String(p.name || '').replace(/\s+/g, ' ').trim() }));
   const byId = Object.fromEntries(all.map(p => [String(p._id), p]));
-  const ph = (k, w = 1200) => { const p = byId[PHOTO[k]]; if (!p?.images?.[0]) throw new Error('нет фото ' + k); return cut(p.images[0], w); };
+  // Рендеры вместо чертежей: пользователь делает по «рендеры щитов/ПРОМПТ.txt» → matkasym/kooz/render-<ключ>.
+  // Есть рендер — ставим его, нет — пока чертёж с сайта.
+  const RENDER = new Set();
+  for (const k of [...Object.keys(PHOTO), 'vru-1800x800', 'vru-1800x800-rev', 'vru-1800x600', 'vru-1500x1400'])
+    if ((await fetch(`${CLOUD}/matkasym/kooz/render-${k}`, { method: 'HEAD' })).ok) RENDER.add(k);
+  const rnd = (k, w) => `${CLOUD}/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/matkasym/kooz/render-${k}`;
+  const ph = (k, w = 1200) => { if (RENDER.has(k)) return rnd(k, w); const p = byId[PHOTO[k]]; if (!p?.images?.[0]) throw new Error('нет фото ' + k); return cut(p.images[0], w); };
 
   // Строки таблицы семейства: одна на размер+исполнение, цена — максимальная из найденных (>0)
   const used = new Set();
@@ -285,9 +291,9 @@ const FAMILIES = {
     return `<div class="sec"><span class="sec-n">${s.n}</span><span class="sec-t">${s.title}</span><span class="sec-note">${s.note}</span></div>`; };
   const head = (kind, title, lead) => `<div class="s-head"><div><div class="s-kind">${esc(kind)}</div><h2>${esc(title)}</h2></div><p class="s-lead">${esc(lead)}</p></div>`;
   // Блок «фото слева — характеристики и таблица справа»
-  const fam = ({ kind, title, lead, photo, photos, sp, rs, variant = true, note = '' }) => `<article class="fam">
+  const fam = ({ kind, title, lead, photo, photos, stack, sp, rs, variant = true, note = '', ph: phH }) => `<article class="fam"${phH ? ` style="--ph:${phH}mm"` : ''}>
     ${head(kind, title, lead)}
-    <div class="fam-body"><div class="fam-photo"><img src="${photos ? photos[0] : photo}" alt=""></div>
+    <div class="fam-body">${stack ? `<div class="fam-stack">${stack.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>` : `<div class="fam-photo"><img src="${photos ? photos[0] : photo}" alt=""></div>`}
       <div class="fam-right">${specs(sp)}${note}${rs?.length ? table(rs, { variant }) : ''}</div></div>
     ${photos ? `<div class="fam-strip">${photos.slice(1).map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>` : ''}</article>`;
 
@@ -350,20 +356,20 @@ const FAMILIES = {
     rs: R.ip31 })}`));
   // Китайские щиты (К.IP30, К.IP44 нержавейка, «защита от дождя») убраны по просьбе пользователя 31.10.2026;
   // из китайских оставлены только ВРУ GGD и модульные боксы IP40
-  pages.push(page(`<div class="duo2">
+  pages.push(page(`${secHead('01')}<div class="duo2">
     ${fam({ kind: 'Щиты монтажные', title: 'ЩМП IP54', photo: ph('ip54', 900), lead: 'Пыле- и влагозащищённые — подвалы, паркинги, техпомещения, улица под навесом.',
-      sp: [['Степень защиты', 'IP54'], ['Материал', 'сталь х/к 0,9 мм, ГОСТ 16523-97'], ['Монтажная панель', 'оцинковка 1,5 мм'], ['Дверь', 'уплотнитель, замок IP54'], ['Цвет', 'RAL 7035']], rs: R.ip54, variant: false })}
-    ${fam({ kind: 'Газовое оборудование', title: 'Щиты газовые', photo: ph('gas', 900), lead: 'Для газовых счётчиков и кранов на фасадах домов. Размер — по проекту газоснабжения.',
+      sp: [['Степень защиты', 'IP54'], ['Материал', 'сталь х/к 0,9 мм, ГОСТ 16523-97'], ['Монтажная панель', 'оцинковка 1,5 мм'], ['Дверь', 'уплотнитель, замок IP54'], ['Цвет', 'RAL 7035']], rs: R.ip54, variant: false, ph: 80 })}
+    ${fam({ kind: 'Газовое оборудование', title: 'Щиты газовые', photo: ph('gas', 900), ph: 110, lead: 'Для газовых счётчиков и кранов на фасадах домов. Размер — по проекту газоснабжения.',
       sp: [['Материал', 'сталь 0,5 мм'], ['Покрытие', 'порошковая краска'], ['Цвет', 'жёлтый RAL 1018'], ['Замок', 'почтовый ЗП 20 мм'], ['Исполнение', 'вертикальный, горизонтальный']], rs: R.gas })}
   </div>`));
   // 9. Сантехнические
-  pages.push(page(`${secHead('02')}${fam({ kind: 'Ревизионные щиты', title: 'Щиты сантехнические', photo: ph('san1'),
+  pages.push(page(`${secHead('02')}${fam({ kind: 'Ревизионные щиты', title: 'Щиты сантехнические', stack: ['san1', 'san3'].map(k => ph(k, 900)),
     lead: 'Закрывают стояки и узлы учёта воды в квартирах и подъездах. Встраиваемые, с рамкой, одно- и двухдверные.',
     sp: [['Материал', `сталь ${STEEL}, 0,7–0,9 мм`], ['Двери', '1 или 2, петли пружинные или мебельные'], ['Замок', 'почтовый ЗП 16 мм'], ['Цвет', 'RAL 7035 / 9006 / 9016, по проекту'], ['Размер', 'любой — по нише заказчика']],
     rs: R.san })}`));
 
   // 10. Этажные
-  pages.push(page(`${secHead('03')}${fam({ kind: 'Для жилых домов', title: 'Щиты этажные', photo: ph('et1'),
+  pages.push(page(`${secHead('03')}${fam({ kind: 'Для жилых домов', title: 'Щиты этажные', stack: ['et1', 'et5', 'et6'].map(k => ph(k, 800)),
     lead: 'Отсек под счётчики с окошками и отсек слаботочки. Делаем по проекту дома: число квартир на этаже, двери, окошки, фальшпанели.',
     sp: [['Материал', `сталь ${STEEL}, 0,9 мм`], ['Окошки', '3–8 под счётчики, по заказу с логотипом'], ['Двери', '1–3, замки IP54 или ригельные'], ['Степень защиты', 'IP31'], ['Цвет', 'RAL 7035, 9006, по проекту']],
     rs: R.et })}`));
@@ -376,7 +382,7 @@ const FAMILIES = {
 
   // 11. ВРУ — отдельной полосой: свои ВРУ из техлистов NAS (изометрия вырезана, matkasym/kooz/vru-*) + GGD
   const vru = byId[PHOTO.vru], box = all.filter(p => /коробка обратной цепи/i.test(p.nm)), luk = all.filter(p => /люк/i.test(p.nm));
-  const vimg = id => `${CLOUD}/f_jpg,q_auto:good,w_700,c_limit/matkasym/kooz/${id}`;
+  const vimg = id => RENDER.has(id) ? rnd(id, 700) : `${CLOUD}/f_jpg,q_auto:good,w_700,c_limit/matkasym/kooz/${id}`;
   const VRU = [
     ['vru-1800x800', 'ВРУ 1800 × 800 × 450', 'СЗ0263', [['Материал', 'сталь х/к 0,9 мм'], ['Дверь', 'одна, замок IP54'], ['Установка', 'на ровное основание']]],
     ['vru-1800x800-rev', 'ВРУ реверсивный 1800 × 800 × 450', 'СЗ0269', [['Каркас', 'профиль 40 × 40'], ['Дверь', 'универсальная, с обеих сторон'], ['Масса', '45 кг']]],
@@ -442,6 +448,10 @@ const FAMILIES = {
 .fam-photo { height:100%; min-height:0; display:flex; align-items:center; justify-content:center; }
 .fam-photo img { max-width:100%; max-height:100%; object-fit:contain; }
 .fam-photo--s { flex:0 0 40mm; }
+.duo2 .fam-strip { flex:0 0 45mm; grid-template-columns:1fr; }
+.fam-stack { display:flex; flex-direction:column; gap:5mm; min-height:0; height:100%; }
+.fam-stack div { flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; }
+.fam-stack img { max-width:100%; max-height:100%; object-fit:contain; }
 .fam-strip { flex:0 0 62mm; display:grid; grid-template-columns:repeat(3,1fr); gap:6mm; border-top:1px solid var(--line); padding-top:5mm; }
 .fam-strip div { min-height:0; display:flex; align-items:center; justify-content:center; }
 .fam-strip img { max-width:100%; max-height:100%; object-fit:contain; }
@@ -449,10 +459,11 @@ const FAMILIES = {
 .fam-grid div { min-height:0; display:flex; align-items:center; justify-content:center; }
 .fam-grid img { max-width:100%; max-height:100%; object-fit:contain; }
 .fam .dl { margin-top:0; }
+.fam h2, .vru .kb-h, .mini .kb-h, .s-head h2 { text-transform:uppercase; letter-spacing:.02em; }
 .fam-right { display:flex; flex-direction:column; gap:6mm; align-self:start; }
 .fam-body { align-items:stretch; }
 .duo2 .fam-body { display:flex; flex-direction:column; }
-.duo2 .fam-photo { flex:0 0 92mm; min-height:0; max-height:none; }
+.duo2 .fam-photo { flex:0 0 var(--ph, 92mm); min-height:0; max-height:none; }
 .duo2 .fam-photo img { max-height:100%; }
 .mini { display:grid; grid-template-columns:30mm 1fr 1fr; gap:6mm; align-items:center; border-top:1px solid var(--line); padding-top:5mm; }
 .mini-photo img { width:100%; height:auto; }
@@ -460,7 +471,7 @@ const FAMILIES = {
 .kz-tbl td { padding:1.1mm 2mm 1.1mm 0; }
 .duo2 { flex:1 1 0; min-height:0; display:grid; grid-template-columns:1fr 1fr; gap:9mm; }
 .duo2 .fam-body { grid-template-columns:1fr; grid-template-rows:auto auto; }
-.duo2 .fam-photo img { max-height:92mm; }
+.duo2 .fam-photo img { max-height:var(--ph, 92mm); }
 .duo2 h2 { font-size:14pt; }
 .gost-tbl td { white-space:normal; padding:1.6mm 3mm 1.6mm 0; vertical-align:top; }
 .gost-tbl td.b { white-space:nowrap; }
