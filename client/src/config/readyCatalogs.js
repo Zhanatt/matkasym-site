@@ -7,6 +7,7 @@ export const READY_PDF = {
   'uzak-koldon':    { url: `${RAW}/uzak-koldon.pdf`,    filename: 'Каталог UZAK KOLDON.pdf' },
   'onoi-sakta':     { url: `${RAW}/onoy-sakta.pdf`,     filename: 'Каталог ONOY SAKTA.pdf' },
   'bilim-kelechek': { url: `${RAW}/bilim-kelechek.pdf`, filename: 'Каталог BILIM KELECHEK.pdf' },
+  'mazza-seyil':    { url: `${RAW}/mazza-seyil.pdf`,    filename: 'Каталог MAZZA SEYIL.pdf' },
 };
 
 export async function downloadReady({ url, filename }) {
