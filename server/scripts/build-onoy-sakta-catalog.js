@@ -27,8 +27,6 @@ const CLOUD = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
 const FLIP_SKUS = ['MKS-AH-G-M4-WHT', 'MKS-AH-R-S4-BLK', 'MKS-AH-S-A4-WHT', 'MKS-AH-S-C4-BLK', 'MKS-AH-R-X4-BLK'];
 const FLIP = new Set();
 const cut = (url, w) => url.replace('/upload/', `/upload/${FLIP.has(url) ? 'a_hflip/' : ''}b_white/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`);
-// Без фона (Cloudinary e_background_removal) — для группового кадра на последней полосе
-const nobg = (url, w) => url.replace('/upload/', `/upload/${FLIP.has(url) ? 'a_hflip/' : ''}e_background_removal/e_trim:10/f_png,w_${w},c_limit/`);
 const room = (url, w) => url.replace('/upload/', `/upload/f_jpg,q_auto:good,w_${w},c_limit/`);
 // Интерьеры, обработанные пользователем 31.10.2026 (люди убраны): matkasym/onoy-sakta/room-*
 const ownRoom = (id, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/matkasym/onoy-sakta/${id}`;
@@ -77,7 +75,9 @@ const money = n => n > 0 ? `${n.toLocaleString('ru-RU').replace(/ |,/g, ' ')} с
 const tag = n => `<span class="tag">${money(n)}</span>`;
 const spec = (p, re) => (p.specs || []).find(s => re.test(s.key || ''))?.value || '';
 // «80x35x95» / «150х50х200» → «80 × 35 × 95»
-const dimsOf = s => { const m = String(s || '').match(/(\d+)\s*[xх*×]\s*(\d+)\s*[xх*×]\s*(\d+)/i); return m ? `${m[1]} × ${m[2]} × ${m[3]}` : ''; };
+// Размеры в базе — «ширина × глубина × высота»; в каталоге пишем каждое отдельно, иначе непонятно, где что
+const dimsArr = s => { const m = String(s || '').match(/(\d+)\s*[xх*×]\s*(\d+)\s*[xх*×]\s*(\d+)/i); return m ? [m[1], m[2], m[3]] : ['', '', '']; };
+const dimRows = d => [['Ширина', `${d[0]} см`], ['Глубина', `${d[1]} см`], ['Высота', `${d[2]} см`]];
 const colorOf = p => (spec(p, /^цвет$/i) || (p.name.match(/\(([^)]+)\)/) || [])[1] || '').toLowerCase().replace('черный', 'чёрный');
 const SW = { 'белый': '#f4f4f2', 'чёрный': '#1d1d1f' };
 
@@ -89,7 +89,7 @@ function modelData(m, bySku) {
     v: m.v, photo: bySku[m.photo].images[0],
     desc: [shelves ? `${shelves} ${shelves === 3 ? 'полки' : shelves === 4 ? 'полки' : 'полок'}` : '',
       /есть/i.test(spec(p, /колёс/i)) ? 'на колёсах' : ''].filter(Boolean).join(' · '),
-    dims: dimsOf(p.dimensions), load: spec(p, /нагрузк/i), shelves,
+    dims: dimsArr(p.dimensions), load: spec(p, /нагрузк/i), shelves,
     colors: items.map(x => ({ c: colorOf(x), price: x.price })),
   };
 }
@@ -112,7 +112,7 @@ function modelCol(m) {
     <div class="m-name">${esc(m.v)}</div>
     <div class="m-desc">${esc(m.desc)}</div>
     <dl class="m-dl">
-      <dt>Ш × Г × В</dt><dd>${m.dims} см</dd>
+      ${dimRows(m.dims).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}
       <dt${m.load ? '' : ' class="ghost"'}>На полку</dt><dd${m.load ? '' : ' class="ghost"'}>${esc(m.load) || '—'}</dd>
     </dl>
     <div class="m-prices">${m.colors.map(c => `<div class="m-pr"><span><i style="background:${SW[c.c] || '#ccc'}"></i>${esc(c.c)}</span>${tag(c.price)}</div>`).join('')}</div>
@@ -206,12 +206,12 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .split { display:grid; grid-template-columns:52% 1fr; gap:9mm; align-items:center; flex:1 1 0; min-height:0; }
 .s-photo { height:100%; min-height:0; display:flex; align-items:center; justify-content:center; }
 .s-photo img { max-height:100%; max-width:100%; width:auto; object-fit:contain; }
-.s-extra { height:40mm; margin-top:5mm; overflow:hidden; }
+.s-extra { height:30mm; margin-top:4mm; overflow:hidden; }
 .s-extra img { width:100%; height:100%; object-fit:cover; object-position:55% 50%; }
 .banner { height:78mm; flex:0 0 auto; overflow:hidden; }
 .banner img { width:100%; height:100%; object-fit:cover; object-position:50% 55%; }
-.dl { display:grid; grid-template-columns:auto 1fr; margin-top:6mm; border-top:1px solid var(--metal); }
-.dl dt, .dl dd { padding:2.4mm 0; border-bottom:1px solid var(--line); }
+.dl { display:grid; grid-template-columns:auto 1fr; margin-top:4mm; border-top:1px solid var(--metal); }
+.dl dt, .dl dd { padding:1.7mm 0; border-bottom:1px solid var(--line); }
 .dl dt { color:var(--mute); font-size:7.4pt; text-transform:uppercase; letter-spacing:.1em; padding-right:8mm; }
 .dl dd { text-align:right; font-weight:600; }
 
@@ -283,14 +283,15 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .tbl td { padding:1mm 2mm 1.25mm 0; border-bottom:1px solid var(--line); white-space:nowrap; }
 .tbl .b { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; }
 .tbl .r { text-align:right; padding-right:0; }
+.tbl .c { text-align:center; }
 .tbl .g td { padding-top:2mm; color:var(--red); font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:7pt; letter-spacing:.12em; text-transform:uppercase; }
 .notes { color:var(--mute); font-size:7.6pt; display:flex; gap:8mm; }
 
 /* как заказать */
 /* групповой кадр: все стеллажи без фона, сзади высокие, спереди низкие */
-.group { flex:1 1 0; min-height:0; position:relative; }
-.g-row { position:absolute; left:0; right:0; display:flex; justify-content:center; align-items:flex-end; }
-.g-row img { width:auto; max-width:none; margin:0 -1.5mm; }
+.end-photo { flex:1 1 0; min-height:0; overflow:hidden; }
+.end-photo img { width:100%; height:100%; object-fit:cover; }
+.end-photo--fit img { object-fit:contain; }
 .order { display:grid; grid-template-columns:1fr 1fr; gap:10mm; border-top:1px solid var(--metal); padding-top:7mm; }
 .order h2 { margin-bottom:4mm; }
 .steps { counter-reset:s; display:grid; gap:3mm; }
@@ -338,12 +339,12 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   // 2. Вступление, содержание, подбор по размеру
   const minPrice = m => Math.min(...m.colors.map(c => c.price).filter(Boolean));
-  const tblRows = blocks.map(b => `<tr class="g"><td colspan="5">${esc(b.name)}</td></tr>` + b.items.map(m => `<tr>
-      <td class="b">${esc(m.v)}</td><td>${m.dims}</td><td>${m.shelves || ''}</td><td>${esc(m.load)}</td>
+  const tblRows = blocks.map(b => `<tr class="g"><td colspan="7">${esc(b.name)}</td></tr>` + b.items.map(m => `<tr>
+      <td class="b">${esc(m.v)}</td>${m.dims.map(x => `<td class="c">${x}</td>`).join('')}<td>${m.shelves || ''}</td><td>${esc(m.load)}</td>
       <td class="r">${m.colors.length > 1 ? 'от ' : ''}${money(minPrice(m))}</td></tr>`).join('')).join('')
-    + `<tr class="g"><td colspan="5">ADIK STORAGE</td></tr>
-      <tr><td class="b">LIGHT</td><td>${dimsOf(light.name)}</td><td></td><td></td><td class="r">${money(light.price)}</td></tr>
-      <tr><td class="b">MEDIUM</td><td>${dimsOf(medium.name)}</td><td></td><td></td><td class="r">${money(medium.price)}</td></tr>`;
+    + `<tr class="g"><td colspan="7">ADIK STORAGE</td></tr>
+      <tr><td class="b">LIGHT</td>${dimsArr(light.name).map(x => `<td class="c">${x}</td>`).join('')}<td></td><td></td><td class="r">${money(light.price)}</td></tr>
+      <tr><td class="b">MEDIUM</td>${dimsArr(medium.name).map(x => `<td class="c">${x}</td>`).join('')}<td></td><td></td><td class="r">${money(medium.price)}</td></tr>`;
   pages.push(page(`
     <div class="intro">
       <h2>ONOY SAKTA</h2>
@@ -353,7 +354,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       <span class="t">${s.title}<span class="m">${s.note}</span></span><span class="p">${String(TOC_PAGES[s.n]).padStart(2, '0')}</span></div>`).join('')}</div>
     <div>
       <h2 style="margin-bottom:4mm">Подбор по размеру</h2>
-      <table class="tbl"><thead><tr><th>Модель</th><th>Ш × Г × В, см</th><th>Полок</th><th>На полку</th><th class="r">Цена</th></tr></thead>
+      <table class="tbl"><thead><tr><th>Модель</th><th class="c">Ширина, см</th><th class="c">Глубина, см</th><th class="c">Высота, см</th><th>Полок</th><th>На полку</th><th class="r">Цена</th></tr></thead>
         <tbody>${tblRows}</tbody></table>
     </div>`));
 
@@ -403,10 +404,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   pages.push(page(`${secHead('04')}
     ${wide({ kind: 'Промышленный стеллаж', title: 'ADIK STORAGE LIGHT', photo: cut(light.images[0], 1400), extra: ownRoom('room-light', 1000),
       lead: 'Усиленная рама с раскосами для гаража, мастерской и склада. Чёрный порошковый окрас.',
-      rows: [['Размеры', `${dimsOf(light.name)} см`], ['Цвет', 'чёрный'], ['Цена', tag(light.price)]] })}
+      rows: [...dimRows(dimsArr(light.name)), ['Цена', tag(light.price)]] })}
     ${wide({ kind: 'Промышленный стеллаж', title: 'ADIK STORAGE MEDIUM', photo: cut(medium.images[0], 1400), extra: ownRoom('room-medium', 1000),
       lead: 'Синие стойки и серые полки шириной 2 метра. К основной секции можно пристроить дополнительную на общей стойке.',
-      rows: [['Размеры', `${dimsOf(medium.name)} см`], ['Основная секция', tag(medium.price)],
+      rows: [...dimRows(dimsArr(medium.name)), ['Основная секция', tag(medium.price)],
         ...(mediumSub ? [['Дополнительная секция', tag(mediumSub.price)]] : [])] })}`));
   // 7. Под заказ
   pages.push(page(`
@@ -460,27 +461,20 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
         <li>Согласовываем образец.</li>
         <li>Производим партию, доставляем и при необходимости монтируем.</li></ol>
     </div>`));
-  // Групповой кадр: [фото, высота в см]; ряды сзади → вперёд, у дальних рядов масштаб меньше
-  const ph = sku => bySku[sku].images[0];
-  const GROUP_ROWS = [
-    { bottom: 92, k: 0.31, items: [[ph('MKS-AH-S-A5-BLK'), 183], [light.images[0], 200], [medium.images[0], 200], [ph('MKS-AH-S-C4-BLK'), 200]] },
-    { bottom: 44, k: 0.355, items: [[ph('MKS-AH-R-X5-BLK'), 175], [ph('MKS-AH-S-A4-WHT'), 183], [ph('MKS-AH-G-M4-WHT'), 135], [ph('MKS-AH-R-X4-BLK'), 155]] },
-    { bottom: 0, k: 0.41, items: [[ph('MKS-AH-R-S4-BLK'), 120], [ph('MKS-AH-R-X3-WHT'), 80], [ph('MKS-AH-G-M3-BLK'), 95],
-      [ph('MKS-AH-S-A3-BLK'), 80], [ph('MKS-AH-R-S3-WHT'), 80], [ph('MKS-AH-S-B3-BLK'), 80]] },
-  ];
-  // Cloudinary делает удаление фона асинхронно — прогреваем, чтобы Chrome получил готовые PNG
-  const groupUrls = GROUP_ROWS.flatMap(r => r.items.map(([u]) => nobg(u, 420)));
-  for (const u of groupUrls) {
-    for (let i = 0; i < 20; i++) { const r = await fetch(u); if (r.ok && /png/.test(r.headers.get('content-type') || '')) break; await new Promise(s => setTimeout(s, 3000)); }
-  }
-  const GROUP = GROUP_ROWS.map((r, ri) => `<div class="g-row" style="bottom:${r.bottom}mm;z-index:${ri + 1}">${
-    r.items.map(([u, h]) => `<img src="${nobg(u, 420)}" style="height:${(h * r.k).toFixed(1)}mm" alt="">`).join('')}</div>`).join('');
+  // Последняя полоса: групповое фото всей линейки (пользователь делает по ПРОМПТ.txt из папки
+  // «групповое фото» → Cloudinary matkasym/onoy-sakta/group). Пока его нет — интерьер SLOTTED A5.
+  // Коллаж из вырезанных фото пользователь отверг: разные ракурсы, нужен единый кадр.
+  const groupUrl = `${CLOUD}/f_jpg,q_auto:good,w_1800,c_limit/matkasym/onoy-sakta/group`;
+  const hasGroup = (await fetch(groupUrl, { method: 'HEAD' })).ok;
+  const END = hasGroup
+    ? `<div class="s-head"><div><div class="s-kind">Вся линейка</div><h2>ONOY SAKTA</h2></div>
+      <p class="s-lead">${models} моделей — от этажерки 80 см до промышленного стеллажа на 2 метра. Подберём под квартиру, гараж, магазин или склад.</p></div>
+    <div class="end-photo end-photo--fit"><img src="${groupUrl}" alt=""></div>`
+    : `<div class="end-photo"><img src="${room(pic('MKS-AH-S-A5-WHT', 3), 1800)}" alt=""></div>`;
 
   // 9. Как заказать
   pages.push(page(`
-    <div class="s-head"><div><div class="s-kind">Вся линейка</div><h2>ONOY SAKTA</h2></div>
-      <p class="s-lead">${models} моделей — от этажерки 80 см до промышленного стеллажа на 2 метра. Подберём под квартиру, гараж, магазин или склад.</p></div>
-    <div class="group">${GROUP}</div>
+    ${END}
     <div class="order">
       <div><h2>Как заказать</h2>
         <ol class="steps">
