@@ -162,9 +162,10 @@ window.addEventListener('load', () => {
       ' L' + (x - s * Math.cos(ang + w)) + ' ' + (y - s * Math.sin(ang + w)) + ' Z" fill="' + C + '"/>';
     return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + C + '" stroke-width="0.9"/>' + head(x2, y2, a) + head(x1, y1, a + Math.PI);
   };
-  const label = (x, y, t, rot) => '<text x="' + x + '" y="' + y + '" fill="' + T + '" font-family="Roboto, Helvetica, Arial" font-size="' + (2.7 * MM) +
-    '" font-weight="500" text-anchor="middle" dominant-baseline="middle"' + (rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '') +
-    ' paint-order="stroke" stroke="#fff" stroke-width="' + (1.2 * MM) + '">' + t + '</text>';
+  // подложка — белый прямоугольник, а не обводка букв: обведённый текст Chrome пишет в PDF как Type 3
+  const label = (x, y, t, rot) => { const bw = (t.length * 1.45 + 1.6) * MM, bh = 3.6 * MM, tr = rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '';
+    return '<g' + tr + '><rect x="' + (x - bw / 2) + '" y="' + (y - bh / 2) + '" width="' + bw + '" height="' + bh + '" fill="#fff"/>' +
+      '<text x="' + x + '" y="' + y + '" fill="' + T + '" font-family="Roboto, Helvetica, Arial" font-size="' + (2.7 * MM) + '" font-weight="500" text-anchor="middle" dominant-baseline="middle">' + t + '</text></g>'; };
   document.querySelectorAll('.dim').forEach(box => {
     const img = box.querySelector('img'); if (!img || !img.naturalWidth) return;
     const { w, d, h } = box.dataset;
@@ -187,8 +188,15 @@ window.addEventListener('load', () => {
   });
 });`;
 
+// Шрифты — статичные файлы @fontsource, НЕ Google Fonts: тот отдаёт variable-шрифты, Chrome
+// вшивает их в PDF как Type 3, и просмотрщики на Android не показывают текст вообще (31.10.2026)
+const FONT_CSS = [['Roboto', 'roboto', [400, 500, 700]], ['Montserrat', 'montserrat', [500, 600, 700]]]
+  .flatMap(([fam, pkg, ws]) => ws.flatMap(w => [['cyrillic', 'U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116'], ['latin', 'U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212']]
+    .map(([sub, range]) => `@font-face { font-family:'${fam}'; font-style:normal; font-weight:${w}; font-display:block;
+  src:url('https://cdn.jsdelivr.net/npm/@fontsource/${pkg}@5.1.0/files/${pkg}-${sub}-${w}-normal.woff2') format('woff2'); unicode-range:${range}; }`))).join('\n');
+
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@500;600;700&display=block');
+${FONT_CSS}
 @page { size: A4; margin: 0; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root { --ink:#000; --text:#4d4d4d; --mute:#7d96a0; --metal:#7d96a0; --line:#dfe5e7; --red:#e10523; --pad:16mm; }
