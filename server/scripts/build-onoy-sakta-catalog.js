@@ -24,9 +24,11 @@ const SITE = 'https://matkasym-site.onrender.com';
 const CLOUD = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
 // b_white — прозрачные PNG на белом; e_trim — срезать белые поля, чтобы стеллаж был крупнее
 // FLIP — кадры, где стеллаж развёрнут в другую сторону: зеркалим, чтобы все смотрели одинаково
-const FLIP_SKUS = ['MKS-AH-G-M4-WHT', 'MKS-AH-R-S4-BLK', 'MKS-AH-S-A4-WHT', 'MKS-AH-S-C4-BLK'];
+const FLIP_SKUS = ['MKS-AH-G-M4-WHT', 'MKS-AH-R-S4-BLK', 'MKS-AH-S-A4-WHT', 'MKS-AH-S-C4-BLK', 'MKS-AH-R-X4-BLK'];
 const FLIP = new Set();
 const cut = (url, w) => url.replace('/upload/', `/upload/${FLIP.has(url) ? 'a_hflip/' : ''}b_white/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`);
+// Без фона (Cloudinary e_background_removal) — для группового кадра на последней полосе
+const nobg = (url, w) => url.replace('/upload/', `/upload/${FLIP.has(url) ? 'a_hflip/' : ''}e_background_removal/e_trim:10/f_png,w_${w},c_limit/`);
 const room = (url, w) => url.replace('/upload/', `/upload/f_jpg,q_auto:good,w_${w},c_limit/`);
 // Интерьеры, обработанные пользователем 31.10.2026 (люди убраны): matkasym/onoy-sakta/room-*
 const ownRoom = (id, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/matkasym/onoy-sakta/${id}`;
@@ -285,8 +287,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .notes { color:var(--mute); font-size:7.6pt; display:flex; gap:8mm; }
 
 /* как заказать */
-.end-photo { flex:1 1 0; min-height:0; overflow:hidden; }
-.end-photo img { width:100%; height:100%; object-fit:cover; }
+/* групповой кадр: все стеллажи без фона, сзади высокие, спереди низкие */
+.group { flex:1 1 0; min-height:0; position:relative; }
+.g-row { position:absolute; left:0; right:0; display:flex; justify-content:center; align-items:flex-end; }
+.g-row img { width:auto; max-width:none; margin:0 -1.5mm; }
 .order { display:grid; grid-template-columns:1fr 1fr; gap:10mm; border-top:1px solid var(--metal); padding-top:7mm; }
 .order h2 { margin-bottom:4mm; }
 .steps { counter-reset:s; display:grid; gap:3mm; }
@@ -311,7 +315,6 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // Интерьеры без людей и без надписей — кадры с карточек на сайте
   const pic = (sku, i) => { const u = bySku[sku]?.images?.[i]; if (!u) throw new Error(`нет фото ${sku} #${i}`); return u; };
   const COVER = [pic('MKS-AH-G-M3-BLK', 3), pic('MKS-AH-S-A5-WHT', 3), pic('MKS-AH-R-S3-WHT', 3), pic('MKS-AH-R-X5-BLK', 2)];
-  const ROOM_END = pic('MKS-AH-S-A5-WHT', 3);
 
   const light = bySku['MKS-OS-Х50'], medium = bySku['MKS-OS-Х60'];
   const pallet = all.find(p => p.sku === 'OS-PALLET'), canti = all.find(p => p.sku === 'OS-CANTILEVER');
@@ -457,9 +460,27 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
         <li>Согласовываем образец.</li>
         <li>Производим партию, доставляем и при необходимости монтируем.</li></ol>
     </div>`));
+  // Групповой кадр: [фото, высота в см]; ряды сзади → вперёд, у дальних рядов масштаб меньше
+  const ph = sku => bySku[sku].images[0];
+  const GROUP_ROWS = [
+    { bottom: 92, k: 0.31, items: [[ph('MKS-AH-S-A5-BLK'), 183], [light.images[0], 200], [medium.images[0], 200], [ph('MKS-AH-S-C4-BLK'), 200]] },
+    { bottom: 44, k: 0.355, items: [[ph('MKS-AH-R-X5-BLK'), 175], [ph('MKS-AH-S-A4-WHT'), 183], [ph('MKS-AH-G-M4-WHT'), 135], [ph('MKS-AH-R-X4-BLK'), 155]] },
+    { bottom: 0, k: 0.41, items: [[ph('MKS-AH-R-S4-BLK'), 120], [ph('MKS-AH-R-X3-WHT'), 80], [ph('MKS-AH-G-M3-BLK'), 95],
+      [ph('MKS-AH-S-A3-BLK'), 80], [ph('MKS-AH-R-S3-WHT'), 80], [ph('MKS-AH-S-B3-BLK'), 80]] },
+  ];
+  // Cloudinary делает удаление фона асинхронно — прогреваем, чтобы Chrome получил готовые PNG
+  const groupUrls = GROUP_ROWS.flatMap(r => r.items.map(([u]) => nobg(u, 420)));
+  for (const u of groupUrls) {
+    for (let i = 0; i < 20; i++) { const r = await fetch(u); if (r.ok && /png/.test(r.headers.get('content-type') || '')) break; await new Promise(s => setTimeout(s, 3000)); }
+  }
+  const GROUP = GROUP_ROWS.map((r, ri) => `<div class="g-row" style="bottom:${r.bottom}mm;z-index:${ri + 1}">${
+    r.items.map(([u, h]) => `<img src="${nobg(u, 420)}" style="height:${(h * r.k).toFixed(1)}mm" alt="">`).join('')}</div>`).join('');
+
   // 9. Как заказать
   pages.push(page(`
-    <div class="end-photo"><img src="${room(ROOM_END, 1800)}" alt=""></div>
+    <div class="s-head"><div><div class="s-kind">Вся линейка</div><h2>ONOY SAKTA</h2></div>
+      <p class="s-lead">${models} моделей — от этажерки 80 см до промышленного стеллажа на 2 метра. Подберём под квартиру, гараж, магазин или склад.</p></div>
+    <div class="group">${GROUP}</div>
     <div class="order">
       <div><h2>Как заказать</h2>
         <ol class="steps">
