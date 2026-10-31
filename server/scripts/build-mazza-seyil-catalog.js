@@ -43,7 +43,8 @@ const SECTIONS = [
   { n: '05', title: 'Велопарковки', note: 'От стойки на одно место до велостанции на 20' },
   { n: '06', title: 'Индивидуальные заказы', note: 'Малые архитектурные формы по вашему проекту' },
 ];
-const TOC_PAGES = { '01': 4, '02': 5, '03': 7, '04': 8, '05': 9, '06': 10 };
+const TOC_PAGES = { '01': 4, '02': 5, '03': 7, '04': 8, '05': 9, '06': 11 };
+const PAGE_KOOPSUZ = 10; // отдельная полоса KOOPSUZBIKE: велостанция, ВелоСТО, стойка
 const PAGE_PURPOSE = 3;
 
 // id товара → подпись в каталоге, короткое описание, размеры [ширина, глубина, высота] в см
@@ -62,15 +63,15 @@ const P = {
   esAluu:     { id: '6a05bddc7f2c7b50e4597c9d', v: 'ES ALUU',     desc: 'Изогнутый деревянный навес', dims: ['200', '140', '230'] },
   bakyt:      { id: '6a23c5a162432d59269b0287', v: 'Bakyt',       desc: '6–8 мест, обшивка из термодревесины', dims: ['160', '50', '220'] },
   koloko:     { id: '6a05c3217f2c7b50e45989ec', v: 'KÖLÖKÖ',      desc: 'Навес-тень для скамейки', dims: [] },
-  nurjolMini: { id: '6a1d3ddea7d1feff7774904a', v: 'NURJOL mini', desc: 'Ландшафтный светильник-столбик', dims: [] },
+  nurjolMini: { id: '6a1d3ddea7d1feff7774904a', v: 'NURJOL mini', desc: 'Ландшафтный светильник-столбик', dims: [], scaleH: 100 },
   nurjol:     { id: '6a1d3af4a7d1feff777485bb', v: 'Nurjol Standart', desc: 'Парковый фонарь', dims: ['', '', '300'] },
-  burkut:     { id: '6a1d55f1654da1cc132f5a32', v: 'Bürküt',      desc: 'Фонарь с двумя светильниками', dims: [] },
+  burkut:     { id: '6a1d55f1654da1cc132f5a32', v: 'Bürküt',      desc: 'Фонарь с двумя светильниками', dims: [], scaleH: 600 },
   skeitPark:  { id: '6ae5c8112600514b6a809ffa', v: 'Skeit Park',  desc: 'Силуэт скейтбордиста, металл 5 мм, антрацит', dims: ['', '', '800'] },
   velo5:      { id: '6aa12ee03c2e09e2836f3fd9', v: 'Velopark 5',  desc: 'Арочная, на 5 мест', dims: ['160', '39', '47,5'] },
   velo7:      { id: '6a7ef672a47d9fa5e2190020', v: 'Velopark 7',  desc: 'Арочная двусторонняя, на 8 мест', dims: [] },
   bp:         { id: '6a7ef663a47d9fa5e2190001', v: 'BP velopark', desc: 'Модульная, силуэт велосипеда лазером', dims: [] },
   stoika:     { id: '6a7efa52ff1030c8b93e9e22', v: 'Koopsuzbike Stoika', desc: 'Одиночная стойка, крепление на 4 анкера', dims: [] },
-  kbike:      { id: '6a7ef66da47d9fa5e219000b', v: 'Koopsuzbike', desc: 'Крытая велостанция на 20 мест, насос и ремонтная станция', dims: ['900', '240', '250'] },
+  kbike:      { id: '6a7ef66da47d9fa5e219000b', v: 'Koopsuzbike', desc: 'Крытая велостанция на 20 мест, насос и ремонтная станция', dims: ['900', '240', '250'], price: 118500, from: true },
 };
 const BLOCKS = {
   noBack:  { fixed: true, sec: '01', name: 'Без спинки', kind: 'Скамейки без спинки', lead: 'Длинные скамейки для набережных, скверов и зон ожидания: садятся с обеих сторон.', keys: ['jyrgalDem', 'jyrgalPark'] },
@@ -78,13 +79,14 @@ const BLOCKS = {
   back2:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Классические скамейки длиной от 120 до 180 см для дворов, школ и офисов.', keys: ['kichine', 'kalyn'] },
   back3:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Подлокотники с двух сторон — удобно вставать пожилым людям.', keys: ['demAluu', 'salttyk'] },
   roof:    { sec: '03', name: 'С навесом', kind: 'Скамейки с навесом', lead: 'Навес даёт тень летом и укрывает от дождя — для дворов, парков и остановок.', keys: ['esAluu', 'bakyt', 'koloko'] },
-  light:   { sec: '04', name: 'Освещение', kind: 'Уличные светильники', lead: 'Светильники в одном стиле со скамейками — от столбика у дорожки до 8-метрового фонаря для площадки.', keys: ['nurjolMini', 'nurjol', 'burkut', 'skeitPark'] },
-  bike1:   { sec: '05', name: 'Велопарковки', kind: 'Открытые', lead: 'Крепятся анкерами к бетону или асфальту, порошковая покраска в любой цвет RAL.', keys: ['velo5', 'velo7', 'stoika'] },
+  light:   { scaleTo: true, sec: '04', name: 'Освещение', kind: 'Уличные светильники', lead: 'Светильники в одном стиле со скамейками — от столбика у дорожки до 8-метрового фонаря для площадки.', keys: ['nurjolMini', 'nurjol', 'burkut', 'skeitPark'] },
+  bike1:   { fixed: true, sec: '05', name: 'Велопарковки', kind: 'Открытые', lead: 'Крепятся анкерами к бетону или асфальту, порошковая покраска в любой цвет RAL.', keys: ['velo5', 'velo7', 'bp'] },
 };
 
 // ── Данные ─────────────────────────────────────────────────────────────────
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => n > 0 ? `${n.toLocaleString('ru-RU').replace(/ |,/g, ' ')} сом` : 'индивидуальный';
+const priceText = m => `${m.from && m.price ? 'от ' : ''}${money(m.price)}`;
 const tag = n => `<span class="tag">${money(n)}</span>`;
 const dimRows = d => [['Ширина', d[0]], ['Глубина', d[1]], ['Высота', d[2]]].filter(([, v]) => v).map(([k, v]) => [k, `${v} см`]);
 
@@ -103,7 +105,7 @@ const head = b => `<div class="s-head"><div><div class="s-kind">${esc(b.kind)}</
 function modelCol(m) {
   const d = m.dims;
   return `<div class="mdl">
-    <div class="m-photo dim" data-w="${d[0] || ''}" data-d="${d[1] || ''}" data-h="${d[2] || ''}"><img src="${cut(m.photo, 900)}" alt=""></div>
+    <div class="m-photo dim" data-w="${d[0] || ''}" data-d="${d[1] || ''}" data-h="${d[2] || ''}"${m.hs ? ` data-g="${m.g}" data-hs="${m.hs}"` : ''}><img src="${cut(m.photo, 900)}" alt=""></div>
     <div class="m-name">${esc(m.v)}</div>
     <div class="m-desc">${esc(m.desc)}</div>
     <div class="m-prices"><div class="m-pr"><span>Цена</span>${tag(m.price)}</div></div>
@@ -151,13 +153,21 @@ window.addEventListener('load', () => {
   const label = (x, y, t, rot) => { const bw = (t.length * 1.45 + 1.6) * MM, bh = 3.6 * MM, tr = rot ? ' transform="rotate(-90 ' + x + ' ' + y + ')"' : '';
     return '<g' + tr + '><rect x="' + (x - bw / 2) + '" y="' + (y - bh / 2) + '" width="' + bw + '" height="' + bh + '" fill="#fff"/>' +
       '<text x="' + x + '" y="' + y + '" fill="' + T + '" font-family="Roboto, Helvetica, Arial" font-size="' + (2.7 * MM) + '" font-weight="500" text-anchor="middle" dominant-baseline="middle">' + t + '</text></g>'; };
+  const ppcm = {};
+  document.querySelectorAll('.dim[data-g]').forEach(box => {
+    const img = box.querySelector('img'); if (!img || !img.naturalWidth) return;
+    const fit = Math.min((box.clientWidth - 19 * MM) / img.naturalWidth, (box.clientHeight - 8 * MM) / img.naturalHeight) * img.naturalHeight;
+    const g = box.dataset.g; ppcm[g] = Math.min(ppcm[g] ?? Infinity, fit / +box.dataset.hs);
+  });
   document.querySelectorAll('.dim').forEach(box => {
     const img = box.querySelector('img'); if (!img || !img.naturalWidth) return;
     const { w, d, h } = box.dataset;
     box.style.position = 'relative'; box.style.padding = '0';
     const W = box.clientWidth, H = box.clientHeight;
     const L = 8 * MM, B = 7 * MM, R = 11 * MM, TOP = 1 * MM;
-    const k = Math.min((W - L - R) / img.naturalWidth, (H - B - TOP) / img.naturalHeight);
+    let k = Math.min((W - L - R) / img.naturalWidth, (H - B - TOP) / img.naturalHeight);
+    // ряд в общем масштабе: data-hs — реальная высота в см, px на см — по самому тесному фото ряда
+    if (box.dataset.g) k = ppcm[box.dataset.g] * +box.dataset.hs / img.naturalHeight;
     const iw = img.naturalWidth * k, ih = img.naturalHeight * k;
     const x0 = L + (W - L - R - iw) / 2, y0 = H - B - ih;
     Object.assign(img.style, { position: 'absolute', left: x0 + 'px', top: y0 + 'px', width: iw + 'px', height: ih + 'px', maxWidth: 'none', maxHeight: 'none' });
@@ -345,12 +355,19 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   for (const [k, p] of Object.entries(P)) {
     const d = byId[p.id]; if (!d) throw new Error('нет товара ' + p.v);
     if (!d.images?.length) throw new Error('нет фото ' + p.v);
-    M[k] = { ...p, key: k, photo: d.images[0], price: d.price || 0, doc: d };
+    M[k] = { ...p, key: k, photo: d.images[0], price: p.price ?? (d.price || 0), doc: d };
   }
   const B = {};
   for (const [k, b] of Object.entries(BLOCKS)) B[k] = { ...b, items: b.keys.map(x => M[x]) };
+  // Фонари — в одном масштабе по реальной высоте (scaleH — только для масштаба, если высоты в базе нет;
+  // не печатается): иначе столбик NURJOL mini выходил выше 8-метрового Skeit Park
+  for (const [k, b] of Object.entries(B)) if (b.scaleTo) b.items = b.items.map(m => ({ ...m, g: k, hs: +m.dims[2] || m.scaleH }));
   const pic = (k, i) => { const u = M[k].doc.images?.[i]; if (!u) throw new Error(`нет фото ${k} #${i}`); return u; };
   const models = Object.keys(M).length;
+  // ВелоСТО: интерьер с карточки Koopsuzbike #1, текстовая плашка убрана (e_gen_remove) → matkasym/mazza-seyil/velosto-room
+  const VELOSTO = `${CLOUD}/matkasym/mazza-seyil/velosto-room.png`;
+  // Панель с картой Кыргызстана: Koopsuzbike #2 без нижней плашки с текстом
+  const MAP_ROOM = pic('kbike', 2).replace('/upload/', '/upload/c_crop,g_north,h_0.76/f_jpg,q_auto:good,w_1800,c_limit/');
 
   const pages = [];
   // 1. Обложка: интерьеры без людей и надписей с карточек сайта
@@ -362,10 +379,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   // 2. Вступление, содержание, сводная таблица
   const sec = Object.fromEntries(Object.values(BLOCKS).flatMap(b => b.keys.map(k => [k, b.sec])));
-  sec.ailana = '02'; sec.bp = '05'; sec.kbike = '05';
+  sec.ailana = '02'; sec.kbike = '05'; sec.stoika = '05';
   const groups = SECTIONS.filter(s => s.n !== '06').map(s => [s, Object.keys(M).filter(k => sec[k] === s.n)]);
   const tbl = groups.map(([s, keys]) => `<tr class="g"><td colspan="5">${esc(s.title)}</td></tr>` + keys.map(k => { const m = M[k], d = m.dims;
-    return `<tr><td class="b">${esc(m.v)}</td><td class="c">${d[0] || '—'}</td><td class="c">${d[1] || '—'}</td><td class="c">${d[2] || '—'}</td><td class="r">${money(m.price)}</td></tr>`; }).join('')).join('');
+    return `<tr><td class="b">${esc(m.v)}</td><td class="c">${d[0] || '—'}</td><td class="c">${d[1] || '—'}</td><td class="c">${d[2] || '—'}</td><td class="r">${priceText(m)}</td></tr>`; }).join('')).join('');
   pages.push(page(`
     <div class="intro">
       <h2>MAZZA SEYIL</h2>
@@ -380,7 +397,8 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     </div>`));
 
   // 3. Подбор по месту установки — каждая модель ровно в одной карточке
-  const IDX = Object.fromEntries(Object.entries(M).map(([k, m]) => [k, { n: m.v, img: cut(m.photo, 240), price: money(m.price), page: TOC_PAGES[sec[k]] }]));
+  const IDX = Object.fromEntries(Object.entries(M).map(([k, m]) => [k, { n: m.v, img: cut(m.photo, 240), price: priceText(m), page: ['kbike', 'stoika'].includes(k) ? PAGE_KOOPSUZ : TOC_PAGES[sec[k]] }]));
+  IDX.velosto = { n: 'ВелоСТО', img: room(VELOSTO, 240), price: 'от 24 300 сом', page: PAGE_KOOPSUZ };
   IDX.custom = { n: 'По проекту', svg: BENCH_SVG, price: money(0), page: TOC_PAGES['06'] };
   const PLACES = [
     ['Парк и сквер', 'Длинные скамейки и круглая вокруг дерева', ['seyil', 'jyrgalPark', 'ailana']],
@@ -389,7 +407,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     ['Школа, вуз, офис', 'Компактные скамейки у входа и во дворе', ['kichine', 'demAluu', 'salttyk']],
     ['Аллеи и дорожки', 'Свет в одном стиле со скамейками', ['nurjolMini', 'nurjol', 'burkut']],
     ['Площадка и скейт-парк', 'Навес-тень и фонарь со спортивным силуэтом', ['koloko', 'skeitPark']],
-    ['Подъезд и детская площадка', 'Компактные арочные велопарковки', ['velo5', 'velo7']],
+    ['Подъезд и детская площадка', 'Компактные велопарковки и станция ремонта', ['velo5', 'velo7', 'velosto']],
     ['ТЦ, АЗС, бизнес-центр', 'Велопарковки с фирменным видом и велостанция', ['bp', 'stoika', 'kbike']],
     ['Большой объект', 'Своя форма, размер и цвет — по вашему проекту', ['custom']],
   ];
@@ -427,16 +445,35 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // 8. Освещение + ночная аллея
   pages.push(page(`${secHead('04')}${block(B.light)}
     <div class="room-band"><img src="${room(pic('nurjol', 1), 1800)}" alt=""></div>`));
-  // 9. Велопарковки
-  const kb = M.kbike, bp = M.bp;
+  // 9. Велопарковки: открытые + фото велостанции у бизнес-центра
+  const kb = M.kbike, st = M.stoika;
   pages.push(page(`${secHead('05')}${block(B.bike1)}
-    <div class="duo">
-      ${wide({ kind: 'Модульная велопарковка', title: 'BP velopark', photo: cut(bp.photo, 1000),
-        lead: 'Число модулей, размер и цвет — под заказ. Боковые панели с силуэтом велосипеда, вырезанным лазером.',
-        rows: [['Материал', 'профильная труба'], ['Цвет', 'RAL по заказу'], ['Цена', tag(bp.price)]] })}
-      ${wide({ kind: 'Крытая велостанция', title: 'Koopsuzbike', photo: cut(kb.photo, 1000), dims: kb.dims,
-        lead: '20 мест под прозрачной крышей, ремонтная станция и насос, панель с картой Кыргызстана.',
-        rows: [['Мест', '20'], ['Размер', '900 × 240 × 250 см'], ['Цена', tag(kb.price)]] })}
+    <div class="room-band" style="flex:1 1 0;height:auto;min-height:0"><img src="${MAP_ROOM}" alt=""></div>`));
+  // 10. KOOPSUZBIKE — по макету пользователя (31.10.2026): велостанция VELOSTOP, ВелоСТО,
+  // и стойка, которая продаётся отдельно. Цены VELOSTOP и ВелоСТО — с макета, «от».
+  const tagFrom = n => `<span class="from">от</span>${tag(n)}`;
+  pages.push(page(`
+    <div class="s-head"><div><div class="s-kind">Велопарковка</div><h2>KOOPSUZBIKE</h2></div>
+      <p class="s-lead">Для государственных, образовательных, медицинских и торговых учреждений, парков, жилых комплексов, бизнес-центров, АЗС, спортивных объектов и веломаршрутов.</p></div>
+    <div class="kb-top">
+      <div class="s-photo dim" data-w="900" data-d="240" data-h="250"><img src="${cut(kb.photo, 1600)}" alt=""></div>
+    </div>
+    <div class="kb-row">
+      <div><div class="s-kind">Велостанция</div><h3 class="kb-h">VELOSTOP</h3>
+        <dl class="dl"><dt>Длина</dt><dd>9 м</dd><dt>Ширина</dt><dd>2,4 м</dd><dt>Высота</dt><dd>2,5 м</dd>
+          <dt>Материал</dt><dd>металл</dd><dt>Подсветка</dt><dd>есть</dd><dt>Мест</dt><dd>20</dd>
+          <dt>Цена</dt><dd>${tagFrom(118500)}</dd></dl></div>
+      <div class="kb-photo"><img src="${room(VELOSTO, 900)}" alt=""></div>
+      <div><div class="s-kind">Станция обслуживания</div><h3 class="kb-h">ВелоСТО</h3>
+        <dl class="dl"><dt>Высота</dt><dd>150 см</dd><dt>Материал</dt><dd>металл</dd>
+          <dt>Инструменты</dt><dd>есть</dd><dt>Насос</dt><dd>есть</dd><dt>Цена</dt><dd>${tagFrom(24300)}</dd></dl></div>
+    </div>
+    <div class="kb-stand">
+      <div class="kb-stand-photo"><img src="${cut(st.photo, 700)}" alt=""></div>
+      <div><div class="s-kind">Продаётся отдельно</div><h3 class="kb-h">Стойка KOOPSUZBIKE</h3>
+        <p class="s-lead s-lead--l">Та же стойка, что стоит в велостанции: велосипед опирается на П-образную дугу. Ставится по одной или рядом.</p>
+        <dl class="dl"><dt>Стойка</dt><dd>труба Ø32 × 0,9 мм</dd><dt>Крепление</dt><dd>4 анкера в комплекте</dd>
+          <dt>Цвет</dt><dd>чёрный, RAL 9005</dd><dt>Цена</dt><dd>${tag(st.price)}</dd></dl></div>
     </div>`));
   // 10. Индивидуальные заказы
   pages.push(page(`${secHead('06')}
@@ -507,6 +544,18 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .room-band { height:72mm; flex:0 0 auto; overflow:hidden; }
 .room-band img { width:100%; height:100%; object-fit:cover; }
 .duo { display:grid; grid-template-columns:1fr 1fr; gap:8mm; flex:1 1 0; min-height:0; border-top:1px solid var(--line); padding-top:6mm; }
+.from { color:var(--mute); font-weight:400; margin-right:2mm; }
+.kb-top { flex:1 1 0; min-height:0; display:flex; }
+.kb-top .s-photo { width:100%; }
+.kb-row { display:grid; grid-template-columns:1fr 50mm 1fr; gap:7mm; align-items:start; border-top:1px solid var(--line); padding-top:5mm; }
+.kb-h { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:14pt; }
+.kb-row .dl { margin-top:2mm; }
+.kb-row .dl dt, .kb-stand .dl dt { font-size:6.8pt; }
+.kb-photo { height:62mm; overflow:hidden; }
+.kb-photo img { width:100%; height:100%; object-fit:cover; object-position:60% 40%; }
+.kb-stand { display:grid; grid-template-columns:38mm 1fr; gap:8mm; align-items:center; border-top:1px solid var(--line); padding-top:5mm; }
+.kb-stand-photo img { width:100%; height:auto; }
+.kb-stand .dl { margin-top:2mm; }
 .duo .split { grid-template-columns:1fr; grid-template-rows:1fr auto; gap:4mm; }
 .duo h2 { font-size:13pt; }
 .duo .s-lead--l { font-size:8pt; }
