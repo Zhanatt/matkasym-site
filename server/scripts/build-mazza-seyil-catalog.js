@@ -395,11 +395,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     </div>
     <div>${SECTIONS.map(s => `<div class="toc-row"><span class="n">${s.n}</span>
       <span class="t">${s.title}<span class="m">${s.note}</span></span><span class="p">${String(TOC_PAGES[s.n]).padStart(2, '0')}</span></div>`).join('')}</div>
-    <div>
-      <h2 style="margin-bottom:4mm">Все модели</h2>
-      <table class="tbl"><thead><tr><th>Модель</th><th class="c">Ширина, см</th><th class="c">Глубина, см</th><th class="c">Высота, см</th><th class="r">Цена</th></tr></thead>
-        <tbody>${tbl}</tbody></table>
-    </div>`));
+    <div class="intro-photo"><img src="${room(pic('seyil', 1), 1800)}" alt=""></div>`));
 
   // 3. Подбор по месту установки — каждая модель ровно в одной карточке
   const IDX = Object.fromEntries(Object.entries(M).map(([k, m]) => [k, { n: m.v, img: cut(m.photo, 240), price: priceText(m), page: k === 'kbike' ? PAGE_KOOPSUZ : k === 'nurjolMini' ? PAGE_NURJOL_MINI : TOC_PAGES[sec[k]] }]));
@@ -602,6 +598,8 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .lamp-img { display:flex; justify-content:center; align-items:flex-end; padding-bottom:3mm; }
 .lamp-img img { height:100%; width:auto; max-width:none; }
 .lamp-price { margin-top:2mm; }
+.intro-photo { flex:1 1 0; min-height:0; overflow:hidden; }
+.intro-photo img { width:100%; height:100%; object-fit:cover; }
 .rows { flex:1 1 0; min-height:0; display:grid; }
 .rows + .ail { flex:1.6 1 0; }
 .row { display:grid; grid-template-columns:58% 1fr; gap:9mm; align-items:center; min-height:0; border-top:1px solid var(--line); padding:4mm 0; }
