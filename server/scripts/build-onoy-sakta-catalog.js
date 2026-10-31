@@ -28,6 +28,8 @@ const FLIP_SKUS = ['MKS-AH-G-M4-WHT', 'MKS-AH-R-S4-BLK', 'MKS-AH-S-A4-WHT', 'MKS
 const FLIP = new Set();
 const cut = (url, w) => url.replace('/upload/', `/upload/${FLIP.has(url) ? 'a_hflip/' : ''}b_white/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`);
 const room = (url, w) => url.replace('/upload/', `/upload/f_jpg,q_auto:good,w_${w},c_limit/`);
+// Интерьеры, обработанные пользователем 31.10.2026 (люди убраны): matkasym/onoy-sakta/room-*
+const ownRoom = (id, w) => `${CLOUD}/f_jpg,q_auto:good,w_${w},c_limit/matkasym/onoy-sakta/${id}`;
 
 // ── Структура ──────────────────────────────────────────────────────────────
 const SECTIONS = [
@@ -117,9 +119,9 @@ function modelCol(m) {
 const block = b => `<article class="series">${head(b)}<div class="mdls" style="--n:${b.items.length}">${b.items.map(modelCol).join('')}</div></article>`;
 
 // Промышленный стеллаж: фото слева, таблица справа
-function wide({ kind, title, lead, photo, rows }) {
+function wide({ kind, title, lead, photo, rows, room: inRoom }) {
   return `<article class="series series--one"><div class="split">
-    <div class="s-photo"><img src="${photo}" alt=""></div>
+    <div class="s-photo${inRoom ? ' s-photo--room' : ''}"><img src="${photo}" alt=""></div>
     <div><div class="s-kind">${esc(kind)}</div><h2>${esc(title)}</h2><p class="s-lead s-lead--l">${esc(lead)}</p>
       <dl class="dl">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl></div>
   </div></article>`;
@@ -201,6 +203,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .split { display:grid; grid-template-columns:52% 1fr; gap:9mm; align-items:center; flex:1 1 0; min-height:0; }
 .s-photo { height:100%; min-height:0; display:flex; align-items:center; justify-content:center; }
 .s-photo img { max-height:100%; max-width:100%; width:auto; object-fit:contain; }
+.s-photo--room { overflow:hidden; }
+.s-photo--room img { width:100%; height:100%; max-height:none; object-fit:cover; object-position:55% 50%; }
+.banner { height:78mm; flex:0 0 auto; overflow:hidden; }
+.banner img { width:100%; height:100%; object-fit:cover; object-position:50% 55%; }
 .dl { display:grid; grid-template-columns:auto 1fr; margin-top:6mm; border-top:1px solid var(--metal); }
 .dl dt, .dl dd { padding:2.4mm 0; border-bottom:1px solid var(--line); }
 .dl dt { color:var(--mute); font-size:7.4pt; text-transform:uppercase; letter-spacing:.1em; padding-right:8mm; }
@@ -391,10 +397,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   pages.push(page(`${secHead('03')}${block(B.slottedA)}${block(B.slottedB)}`));
   // 6. Промышленные: LIGHT и MEDIUM
   pages.push(page(`${secHead('04')}
-    ${wide({ kind: 'Промышленный стеллаж', title: 'ADIK STORAGE LIGHT', photo: cut(light.images[0], 1400),
+    ${wide({ kind: 'Промышленный стеллаж', title: 'ADIK STORAGE LIGHT', photo: ownRoom('room-light', 1400), room: true,
       lead: 'Усиленная рама с раскосами для гаража, мастерской и склада. Чёрный порошковый окрас.',
       rows: [['Размеры', `${dimsOf(light.name)} см`], ['Цвет', 'чёрный'], ['Цена', tag(light.price)]] })}
-    ${wide({ kind: 'Промышленный стеллаж', title: 'ADIK STORAGE MEDIUM', photo: cut(medium.images[0], 1400),
+    ${wide({ kind: 'Промышленный стеллаж', title: 'ADIK STORAGE MEDIUM', photo: ownRoom('room-medium', 1400), room: true,
       lead: 'Синие стойки и серые полки шириной 2 метра. К основной секции можно пристроить дополнительную на общей стойке.',
       rows: [['Размеры', `${dimsOf(medium.name)} см`], ['Основная секция', tag(medium.price)],
         ...(mediumSub ? [['Дополнительная секция', tag(mediumSub.price)]] : [])] })}`));
@@ -402,6 +408,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   pages.push(page(`
     <div class="s-head"><div><div class="s-kind">Проект под ваш склад</div><h2>Складские системы</h2></div>
       <p class="s-lead">Паллетные и консольные стеллажи рассчитываем под помещение: высота, число ярусов, нагрузка, проходы для погрузчика.</p></div>
+    <div class="banner"><img src="${ownRoom('room-pallet', 1800)}" alt=""></div>
     <div class="proj">
       <article><div class="p-photo"><img src="${PALLET_PHOTO}" alt=""></div>
         <div class="s-kind">${esc(pallet.category)}</div><h2>Паллетные стеллажи</h2>
