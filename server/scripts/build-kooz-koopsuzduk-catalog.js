@@ -28,11 +28,11 @@ const money = n => n > 0 ? `${n.toLocaleString('ru-RU').replace(/ |,/g, ' ')} с
 const tag = n => `<span class="tag">${money(n)}</span>`;
 
 const SECTIONS = [
-  { n: '01', title: 'IP-щиты', note: 'Электрощиты IP31, IP54, IP30, IP44, уличные и газовые' },
+  { n: '01', title: 'IP-щиты', note: 'Электрощиты IP31, ЩМП IP54, газовые' },
   { n: '02', title: 'Щиты сантехнические', note: 'Одно- и двухдверные, встраиваемые' },
   { n: '03', title: 'Щиты этажные', note: 'С окошками под счётчики, 1–3 двери' },
   { n: '04', title: 'Щиты и шкафы пожарные', note: 'ШПК, щиты для инвентаря' },
-  { n: '05', title: 'ВРУ и комплектующие', note: 'Вводно-распределительные устройства, боксы, люки' },
+  { n: '05', title: 'ВРУ и комплектующие', note: 'ВРУ по проекту, модульные боксы, люки' },
   { n: '06', title: 'Под заказ по проекту', note: 'Изготовление по техлисту заказчика' },
 ];
 
@@ -197,6 +197,18 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 /* групповой кадр: все стеллажи без фона, сзади высокие, спереди низкие */
 .kz-ex { flex:1 1 0; min-height:0; grid-template-columns:repeat(4,1fr); }
 .kz-why { margin-top:0; }
+.vru-grid { flex:1 1 0; min-height:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6mm; }
+.vru .tag { font-size:7.6pt; padding:1.2mm 1.6mm; }
+.vru { display:flex; flex-direction:column; min-height:0; }
+.vru-photo { flex:1 1 0; min-height:0; display:flex; align-items:flex-end; justify-content:center; padding-bottom:3mm; border-bottom:1px solid var(--metal); margin-bottom:3mm; }
+.vru-photo img { max-width:100%; max-height:100%; object-fit:contain; }
+.vru .kb-h { font-size:10.5pt; min-height:2.5em; }
+.vru .dl dt, .vru .dl dd { font-size:7.2pt; padding:1.3mm 0; }
+.vru .dl dt { padding-right:2mm; }
+.mini--vru { grid-template-columns:30mm 1fr auto; }
+.mini--vru .mini-photo img { width:auto; height:48mm; max-width:100%; }
+.duo2 .fam-photo.fam-photo--b { flex:0 0 150mm; height:150mm; }
+.duo2 .fam-photo.fam-photo--b img { max-height:150mm; }
 .p-vru .duo2 .fam-photo { flex:0 0 110mm; }
 .p-vru .duo2 .fam-photo img { max-height:110mm; }
 .p-vru .fam-photo--s { flex:0 0 70mm; }
@@ -291,7 +303,7 @@ const FAMILIES = {
     <div class="cover-plate">KOOZ KOOPSUZDUK<small>Электрощиты и шкафы · по ГОСТ</small></div>`, 'cover'));
 
   // 2. Вступление, содержание, ГОСТ
-  const TOC = { '01': 4, '02': 7, '03': 8, '04': 9, '05': 10, '06': 11 };
+  const TOC = { '01': 4, '02': 6, '03': 7, '04': 8, '05': 9, '06': 11 };
   const G = [
     ['ГОСТ 16523-97', 'Прокат тонколистовой из углеродистой стали', 'Корпуса и двери — холоднокатаная сталь 0,5–1,2 мм'],
     ['ГОСТ 14254-2015', 'Степени защиты оболочек (код IP)', 'Исполнения IP31, IP54 — уплотнитель, замки IP54'],
@@ -323,7 +335,7 @@ const FAMILIES = {
       <div><div class="s-kind">Материалы</div><ul class="list"><li>Холоднокатаная сталь 0,5–1,2 мм (${STEEL})</li><li>Оцинкованная сталь 0,7 мм — для улицы</li><li>Нержавеющая сталь — IP44 с козырьком</li><li>Монтажная панель — оцинковка 1,5 мм</li></ul></div>
       <div><div class="s-kind">Опции под заказ</div><ul class="list"><li>Фальшпанель, DIN-рейки, монтажная панель</li><li>Окошки под счётчики, 3–8 шт.</li><li>Замки: почтовый ЗП, ригельный, IP54, кодовый</li><li>Логотип застройщика, нумерация квартир</li><li>Сальники, кабельные вводы, вентиляция</li></ul></div>
     </div>
-    <div class="fam-strip kz-ex">${['et1', 'f4', 'gas', 'ip44'].map(k => `<div><img src="${ph(k, 600)}" alt=""></div>`).join('')}</div>
+    <div class="fam-strip kz-ex">${['et1', 'f4', 'gas', 'san3'].map(k => `<div><img src="${ph(k, 600)}" alt=""></div>`).join('')}</div>
     <div class="kz-why">
       <div><b>Техлист на согласование</b><span>Чертёж и спецификация до запуска партии</span></div>
       <div><b>Порошковая покраска</b><span>Шагрень или мат, любой цвет RAL</span></div>
@@ -336,16 +348,11 @@ const FAMILIES = {
     lead: 'Для квартир, офисов, подъездов и торговых помещений. Собственное серийное производство.',
     sp: [['Степень защиты', 'IP31'], ['Материал', `сталь ${STEEL}, 0,5–0,9 мм`], ['Покрытие', 'порошковая краска, RAL 7035 / 9006 шагрень'], ['Замок', 'почтовый ЗП 16 мм; у ЩРн — IP54'], ['Внутри', 'монтажная панель, по заказу фальшпанель']],
     rs: R.ip31 })}`));
+  // Китайские щиты (К.IP30, К.IP44 нержавейка, «защита от дождя») убраны по просьбе пользователя 31.10.2026;
+  // из китайских оставлены только ВРУ GGD и модульные боксы IP40
   pages.push(page(`<div class="duo2">
-    ${fam({ kind: 'Щиты монтажные', title: 'ЩМП IP54', photo: ph('ip54', 900), lead: 'Пыле- и влагозащищённые — подвалы, паркинги, техпомещения.',
+    ${fam({ kind: 'Щиты монтажные', title: 'ЩМП IP54', photo: ph('ip54', 900), lead: 'Пыле- и влагозащищённые — подвалы, паркинги, техпомещения, улица под навесом.',
       sp: [['Степень защиты', 'IP54'], ['Материал', 'сталь х/к 0,9 мм, ГОСТ 16523-97'], ['Монтажная панель', 'оцинковка 1,5 мм'], ['Дверь', 'уплотнитель, замок IP54'], ['Цвет', 'RAL 7035']], rs: R.ip54, variant: false })}
-    ${fam({ kind: 'С монтажной панелью', title: 'Электрощиты IP30', photo: ph('ip30', 900), lead: 'Навесные щиты увеличенной глубины для щитовых и техпомещений.',
-      sp: [['Степень защиты', 'IP30'], ['Покрытие', 'порошковая краска'], ['Цвет', 'светло-серый'], ['Дверь', 'одна, с замком']], rs: R.ip30, variant: false })}
-  </div>`));
-  pages.push(page(`<div class="duo2">
-    ${fam({ kind: 'Нержавейка и сталь', title: 'Уличные IP44', photo: ph('ip44', 900), lead: 'Для улицы, стройплощадок и наружного освещения: козырёк, вентиляция.',
-      sp: [['Степень защиты', 'IP44'], ['Материал', 'нержавейка или сталь с покрытием'], ['Защита', 'козырёк, вентрешётки'], ['Замок', 'ручка с замком']],
-      rs: [...R.ip44.map(r => ({ ...r, v: 'нержавейка' })), ...R.rain.map(r => ({ ...r, v: r.v.replace('навесной, с козырьком', 'с козырьком') }))] })}
     ${fam({ kind: 'Газовое оборудование', title: 'Щиты газовые', photo: ph('gas', 900), lead: 'Для газовых счётчиков и кранов на фасадах домов. Размер — по проекту газоснабжения.',
       sp: [['Материал', 'сталь 0,5 мм'], ['Покрытие', 'порошковая краска'], ['Цвет', 'жёлтый RAL 1018'], ['Замок', 'почтовый ЗП 20 мм'], ['Исполнение', 'вертикальный, горизонтальный']], rs: R.gas })}
   </div>`));
@@ -367,18 +374,39 @@ const FAMILIES = {
     sp: [['Материал', `сталь ${STEEL}, 0,9 мм`], ['Цвет', 'красный RAL 3000 / 3002, шагрень'], ['Двери', '1–2, откидные или распашные'], ['Замок', 'ригельный 84×72 или под ключ'], ['Комплектация', 'полки, паз под рукав, окно — по заказу']],
     rs: R.fire })}`));
 
-  // 12. ВРУ, боксы, люки
+  // 11. ВРУ — отдельной полосой: свои ВРУ из техлистов NAS (изометрия вырезана, matkasym/kooz/vru-*) + GGD
   const vru = byId[PHOTO.vru], box = all.filter(p => /коробка обратной цепи/i.test(p.nm)), luk = all.filter(p => /люк/i.test(p.nm));
+  const vimg = id => `${CLOUD}/f_jpg,q_auto:good,w_700,c_limit/matkasym/kooz/${id}`;
+  const VRU = [
+    ['vru-1800x800', 'ВРУ 1800 × 800 × 450', 'СЗ0263', [['Материал', 'сталь х/к 0,9 мм'], ['Дверь', 'одна, замок IP54'], ['Установка', 'на ровное основание']]],
+    ['vru-1800x800-rev', 'ВРУ реверсивный 1800 × 800 × 450', 'СЗ0269', [['Каркас', 'профиль 40 × 40'], ['Дверь', 'универсальная, с обеих сторон'], ['Масса', '45 кг']]],
+    ['vru-1800x600', 'ВРУ 1800 × 600 × 450', 'СЗ0293', [['Материал', 'сталь х/к 1,2 мм'], ['Панели', 'съёмные боковые и задняя'], ['Масса', '43 кг']]],
+    ['vru-1500x1400', 'ВРУ наружный 1500 × 1400 × 400', 'СЗ0226', [['Материал', 'сталь х/к 0,9 мм'], ['Двери', 'две, замки IP54'], ['Масса', '≈ 40 кг']]],
+  ];
+  pages.push(page(`${secHead('05')}
+    ${head('Вводно-распределительные устройства', 'ВРУ', 'Напольные шкафы ВРУ для жилых домов и коммерческих зданий. Сталь по ГОСТ 16523-97, порошковая покраска RAL 7035, крепёж по ГОСТ 17475 / 5927. Размеры и компоновка — по проекту.')}
+    <div class="vru-grid">${VRU.map(([id, t, sz, sp]) => `<article class="vru">
+      <div class="vru-photo"><img src="${vimg(id)}" alt=""></div>
+      <div class="s-kind">${sz}</div><h3 class="kb-h">${t}</h3>
+      ${specs([...sp, ['Цена', tag(0)]])}</article>`).join('')}</div>
+    <article class="mini mini--vru"><div class="mini-photo"><img src="${ph('vru', 500)}" alt=""></div>
+      <div><div class="s-kind">Готовое решение</div><h3 class="kb-h">ВРУ GGD 2200 × 800 × 600</h3>
+        <p class="m-desc">Сборный напольный шкаф, 130 кг, сталь с покрытием.</p></div>
+      <div class="mini-price">${tag(vru?.price || 0)}</div></article>`));
+
+  // 12. Модульные боксы IP40 и люки
   const boxRow = p => [(p.nm.match(/(\d+)\s*(цеп|контур)/i) || [])[1] + ' модулей', /наружн/i.test(p.nm) ? 'накладной' : 'встраиваемый', p.price];
-  pages.push(page(`${secHead('05')}<div class="duo2">
-    ${fam({ kind: 'Вводно-распределительные', title: 'ВРУ', photo: ph('vru', 900), lead: 'Напольные ВРУ для жилых и коммерческих зданий, в т. ч. реверсивные с боковыми панелями.',
-      sp: [['GGD 220 × 80 × 60 см', tag(vru?.price || 0)], ['ВРУ 180 × 80 × 45 см', tag(0)], ['ВРУ 150 × 140 × 40 см (наружный)', tag(0)], ['Материал', 'сталь 1,2 мм, ГОСТ 16523-97']] })}
-    <article class="fam">${head('Модульные боксы', 'Распределительные IP40', 'Металлопластиковые боксы под автоматы.')}
-      <div class="fam-photo fam-photo--s"><img src="${ph('box2', 900)}" alt=""></div>
+  pages.push(page(`<div class="duo2">
+    <article class="fam">${head('Модульные боксы', 'Распределительные IP40', 'Металлопластиковые боксы под автоматы, 1–2 ряда.')}
+      <div class="fam-photo fam-photo--b"><img src="${ph('box2', 900)}" alt=""></div>
       <table class="tbl kz-tbl"><thead><tr><th>Модулей</th><th>Монтаж</th><th class="r">Цена</th></tr></thead><tbody>
-      ${box.map(boxRow).sort((a, b) => parseInt(a[0]) - parseInt(b[0]) || a[1].localeCompare(b[1])).map(r => `<tr><td class="b">${r[0]}</td><td>${r[1]}</td><td class="r">${money(r[2])}</td></tr>`).join('')}
-      ${luk.map(p => `<tr><td class="b">Люк ${sizeText(sizeOf(p.nm))}</td><td>потолочный, магнитный</td><td class="r">${money(p.price)}</td></tr>`).join('')}</tbody></table></article>
-  </div>`, 'p-vru'));
+      ${box.map(boxRow).sort((a, b) => parseInt(a[0]) - parseInt(b[0]) || a[1].localeCompare(b[1])).map(r => `<tr><td class="b">${r[0]}</td><td>${r[1]}</td><td class="r">${money(r[2])}</td></tr>`).join('')}</tbody></table></article>
+    <article class="fam">${head('Ревизионные', 'Люки потолочные', 'Магнитные люки для доступа к коммуникациям в потолке и стенах.')}
+      <div class="fam-photo fam-photo--b"><img src="${ph('luk', 900)}" alt=""></div>
+      ${specs([['Материал', 'сталь х/к 1 мм'], ['Фиксация', 'магнит, петли со стопором'], ['Цвет', 'серый RAL 7037']])}
+      <table class="tbl kz-tbl"><thead><tr><th>Размер, см</th><th class="r">Цена</th></tr></thead><tbody>
+      ${luk.map(p => `<tr><td class="b">${sizeText(sizeOf(p.nm))}</td><td class="r">${money(p.price)}</td></tr>`).join('')}</tbody></table></article>
+  </div>`));
 
   // 13. Под заказ по проекту — типы с NAS отдела разработки
   const NAS = [['Щиты ВРУ', '1500×1400×400, 1800×800×450, реверсивные'], ['Щит распределительный встраиваемый', 'до 1200×1500×150'],
@@ -448,6 +476,18 @@ const FAMILIES = {
 .sw2 span { color:var(--mute); font-size:7.6pt; }
 .kz-ex { flex:1 1 0; min-height:0; grid-template-columns:repeat(4,1fr); }
 .kz-why { margin-top:0; }
+.vru-grid { flex:1 1 0; min-height:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6mm; }
+.vru .tag { font-size:7.6pt; padding:1.2mm 1.6mm; }
+.vru { display:flex; flex-direction:column; min-height:0; }
+.vru-photo { flex:1 1 0; min-height:0; display:flex; align-items:flex-end; justify-content:center; padding-bottom:3mm; border-bottom:1px solid var(--metal); margin-bottom:3mm; }
+.vru-photo img { max-width:100%; max-height:100%; object-fit:contain; }
+.vru .kb-h { font-size:10.5pt; min-height:2.5em; }
+.vru .dl dt, .vru .dl dd { font-size:7.2pt; padding:1.3mm 0; }
+.vru .dl dt { padding-right:2mm; }
+.mini--vru { grid-template-columns:30mm 1fr auto; }
+.mini--vru .mini-photo img { width:auto; height:48mm; max-width:100%; }
+.duo2 .fam-photo.fam-photo--b { flex:0 0 150mm; height:150mm; }
+.duo2 .fam-photo.fam-photo--b img { max-height:150mm; }
 .p-vru .duo2 .fam-photo { flex:0 0 110mm; }
 .p-vru .duo2 .fam-photo img { max-height:110mm; }
 .p-vru .fam-photo--s { flex:0 0 70mm; }
