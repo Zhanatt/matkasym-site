@@ -527,7 +527,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
           <li>Приезжайте в шоурум посмотреть стеллажи вживую.</li>
         </ol></div>
       <dl class="contacts">
-        <div><dt>Телефон</dt><dd class="big">+996 501 111 726<br>+996 504 200 067</dd></div>
+        <div><dt>Телефон</dt><dd class="big">+996 703 939 070</dd></div>
         <div><dt>Instagram</dt><dd>@matkasym_shaar</dd></div>
         <div><dt>Почта</dt><dd>matkasymovllc@gmail.com</dd></div>
         <div><dt>Адрес</dt><dd>с. Маевка, ул. Тепличная, уч. 1/2</dd></div>
