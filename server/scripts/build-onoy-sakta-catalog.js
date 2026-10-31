@@ -34,7 +34,9 @@ const SECTIONS = [
   { n: '04', title: 'Промышленные стеллажи', note: 'Склады, гаражи, магазины и производства' },
   { n: '05', title: 'Индивидуальные заказы', note: 'Партии стеллажей по вашему техлисту' },
 ];
-const TOC_PAGES = { '01': 3, '02': 4, '03': 5, '04': 6, '05': 8 };
+// стр. 3 — подбор по назначению, стр. 8 — паллетные и консольные
+const TOC_PAGES = { '01': 4, '02': 5, '03': 6, '04': 7, '05': 9 };
+const PAGE_PURPOSE = 3, PAGE_WAREHOUSE = 8;
 
 // Модель = одна колонка: фото (photo — артикул, чьё images[0] печатаем) + цвета
 const M = (v, skus, photo = skus[0]) => ({ v, skus, photo });
@@ -203,6 +205,19 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
 /* интерьер + список */
 .uses { display:grid; grid-template-columns:1fr 1fr; gap:10mm; }
+/* подбор по назначению */
+.purp { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:6mm 7mm; flex:1 1 0; min-height:0; }
+.pp { border-top:1px solid var(--metal); padding-top:3mm; display:flex; flex-direction:column; min-height:0; }
+.pp h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:11pt; line-height:1.2; }
+.pp > p { color:var(--mute); font-size:7.6pt; margin:.8mm 0 2mm; min-height:2.6em; }
+.pp ul { list-style:none; display:grid; gap:1.6mm; }
+.pp li { display:grid; grid-template-columns:15mm 1fr auto; gap:3mm; align-items:center; padding-bottom:1.6mm; border-bottom:1px solid var(--line); }
+.pp-img { width:15mm; height:15mm; display:flex; align-items:center; justify-content:center; }
+.pp-img img, .pp-img svg { max-width:100%; max-height:100%; width:auto; height:auto; }
+.pp-img svg { width:15mm; height:15mm; }
+.pp-n b { display:block; font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:8.2pt; white-space:nowrap; }
+.pp-n i { display:block; font-style:normal; color:var(--red); font-size:7.6pt; font-weight:500; margin-top:.4mm; }
+.pp-p { color:var(--mute); font-size:8pt; }
 /* индивидуальные заказы */
 .cust-top { display:grid; grid-template-columns:1fr 82mm; gap:10mm; align-items:center; }
 .cust-h { font-size:24pt; font-weight:700; margin-bottom:5mm; }
@@ -291,6 +306,11 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // Дополнительная секция MEDIUM (sub frame) — карточка без артикула
   const mediumSub = all.find(p => /ADIK STORAGE MEDIUM.*sub frame/i.test(p.name));
 
+  const PALLET_PHOTO = cut(pallet.images[2], 1400), PALLET_PHOTO_S = cut(pallet.images[2], 240);
+  // Чистого консольного на белом пока нет — правая половина общего кадра (OS-CANTILEVER #3)
+  const cantiCut = w => canti.images[3].replace('/upload/', `/upload/c_crop,g_east,w_0.5/b_white/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/`);
+  const CANTI_PHOTO = cantiCut(1400), CANTI_PHOTO_S = cantiCut(240);
+
   const blocks = Object.values(B);
   const models = blocks.reduce((a, b) => a + b.items.length, 0) + 2;
 
@@ -312,8 +332,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   pages.push(page(`
     <div class="intro">
       <h2>ONOY SAKTA</h2>
-      <p>«Удобно хранить» — металлические стеллажи MATKASYM для квартиры, балкона, гаража и склада.
-        ${models} моделей: от узкой этажерки 50 см до промышленного стеллажа на 2 метра. Цены розничные.</p>
+      <p>«Удобно хранить» — металлические стеллажи MATKASYM: ${models} моделей для дома, гаража и склада. Цены розничные. Какой выбрать — на странице 03.</p>
     </div>
     <div>${SECTIONS.map(s => `<div class="toc-row"><span class="n">${s.n}</span>
       <span class="t">${s.title}<span class="m">${s.note}</span></span><span class="p">${String(TOC_PAGES[s.n]).padStart(2, '0')}</span></div>`).join('')}</div>
@@ -323,7 +342,36 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
         <tbody>${tblRows}</tbody></table>
     </div>`));
 
-  // 3. На колёсах + где пригодится (интерьер убран по просьбе пользователя)
+  // 3. Подбор по назначению: помещение → подходящие модели с фото, ценой и страницей
+  const IDX = {};
+  for (const b of blocks) for (const m of b.items) IDX[m.v] = { img: cut(m.photo, 240), price: `${m.colors.length > 1 ? 'от ' : ''}${money(minPrice(m))}`, page: TOC_PAGES[b.sec] };
+  IDX['STORAGE LIGHT'] = { img: cut(light.images[0], 240), price: money(light.price), page: TOC_PAGES['04'] };
+  IDX['STORAGE MEDIUM'] = { img: cut(medium.images[0], 240), price: `от ${money(Math.min(medium.price, mediumSub?.price || Infinity))}`, page: TOC_PAGES['04'] };
+  IDX['Паллетные'] = { img: PALLET_PHOTO_S, price: money(0), page: PAGE_WAREHOUSE };
+  IDX['Консольные'] = { img: CANTI_PHOTO_S, price: money(0), page: PAGE_WAREHOUSE };
+  IDX['По техлисту'] = { svg: RACK_SVG, price: money(0), page: TOC_PAGES['05'] };
+  const PURPOSES = [
+    ['Кухня', 'Овощи, посуда, бытовая химия', ['GUARDAIL M3', 'GUARDAIL M4', 'ROUND S3']],
+    ['Ванная и прачечная', 'Узкие — встают рядом со стиральной машиной', ['ROUND S3', 'ROUND S4', 'GUARDAIL M3']],
+    ['Гостиная и детская', 'Книги, игрушки, коробки', ['ROUND X3', 'SLOTTED B3', 'GUARDAIL M4']],
+    ['Балкон и кладовка', 'Заготовки, инструменты, сезонные вещи', ['ROUND X4', 'ROUND X5', 'SLOTTED A4']],
+    ['Документы и офис', 'Папки тяжёлые — берите полки до 60 кг', ['SLOTTED A4', 'SLOTTED A5', 'SLOTTED B3']],
+    ['Гараж и мастерская', 'Инструмент, колёса, ящики', ['HOME C4', 'SLOTTED A5', 'STORAGE LIGHT']],
+    ['Магазин и подсобка', 'Товар и запас рядом с торговым залом', ['SLOTTED A5', 'STORAGE LIGHT', 'STORAGE MEDIUM']],
+    ['Склад', 'Тяжёлые грузы, паллеты, длинномеры', ['STORAGE MEDIUM', 'Паллетные', 'Консольные']],
+    ['Большая партия', 'Нестандартные размеры, свой цвет и нагрузка', ['По техлисту']],
+  ];
+  pages.push(page(`
+    <div class="s-head"><div><div class="s-kind">Какой стеллаж выбрать</div><h2>Подбор по назначению</h2></div>
+      <p class="s-lead">Найдите своё помещение — рядом модели, которые подходят лучше всего, их цена и страница в каталоге.</p></div>
+    <div class="purp">${PURPOSES.map(([t, hint, list]) => `<article class="pp">
+      <h3>${esc(t)}</h3><p>${esc(hint)}</p>
+      <ul>${list.map(n => { const x = IDX[n]; if (!x) throw new Error('нет модели ' + n);
+        return `<li><span class="pp-img">${x.svg || `<img src="${x.img}" alt="">`}</span>
+          <span class="pp-n"><b>${esc(n)}</b><i>${x.price}</i></span><span class="pp-p">${String(x.page).padStart(2, '0')}</span></li>`; }).join('')}</ul>
+    </article>`).join('')}</div>`));
+
+  // 4. На колёсах + где пригодится (интерьер убран по просьбе пользователя)
   pages.push(page(`${secHead('01')}${block(B.guardail)}
     <div class="uses">
       <div><div class="s-kind">Где пригодится</div>
@@ -345,9 +393,6 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       rows: [['Размеры', `${dimsOf(medium.name)} см`], ['Основная секция', tag(medium.price)],
         ...(mediumSub ? [['Дополнительная секция', tag(mediumSub.price)]] : [])] })}`));
   // 7. Под заказ
-  const PALLET_PHOTO = cut(pallet.images[2], 1400);
-  // Чистого консольного на белом пока нет — правая половина общего кадра (OS-CANTILEVER #3)
-  const CANTI_PHOTO = canti.images[3].replace('/upload/', '/upload/c_crop,g_east,w_0.5/b_white/e_trim:10/f_jpg,q_auto:good,w_1400,c_limit/');
   pages.push(page(`
     <div class="s-head"><div><div class="s-kind">Проект под ваш склад</div><h2>Складские системы</h2></div>
       <p class="s-lead">Паллетные и консольные стеллажи рассчитываем под помещение: высота, число ярусов, нагрузка, проходы для погрузчика.</p></div>
