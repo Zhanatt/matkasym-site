@@ -316,6 +316,8 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .toc-row .t { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:12pt; }
 .toc-row .m { display:block; font-family:Roboto, Helvetica, Arial, sans-serif; font-weight:400; color:var(--mute); font-size:8pt; margin-top:.6mm; }
 .toc-row .p { color:var(--mute); font-size:11pt; }
+.intro-photo { flex:1 1 0; min-height:0; margin:0 calc(-1 * var(--pad)); display:flex; align-items:center; }
+.intro-photo img { width:100%; max-height:100%; object-fit:contain; mix-blend-mode:multiply; }
 .tbl { width:100%; border-collapse:collapse; font-size:8pt; }
 .tbl th { text-align:left; font-weight:500; font-size:6.8pt; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);
   padding:0 2mm 2mm 0; border-bottom:1px solid var(--metal); white-space:nowrap; }
@@ -396,11 +398,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     </div>
     <div>${SECTIONS.map(s => `<div class="toc-row"><span class="n">${s.n}</span>
       <span class="t">${s.title}<span class="m">${s.note}</span></span><span class="p">${String(TOC_PAGES[s.n]).padStart(2, '0')}</span></div>`).join('')}</div>
-    <div>
-      <h2 style="margin-bottom:4mm">Подбор по размеру</h2>
-      <table class="tbl"><thead><tr><th>Модель</th><th class="c">Ширина, см</th><th class="c">Глубина, см</th><th class="c">Высота, см</th><th>Полок</th><th>На полку</th><th class="r">Цена</th></tr></thead>
-        <tbody>${tblRows}</tbody></table>
-    </div>`));
+    <div class="intro-photo"><img src="${CLOUD}/f_jpg,q_auto:good,w_1800,c_limit/matkasym/onoy-sakta/group" alt=""></div>`));
 
   // 3. Подбор по назначению: помещение → подходящие модели с фото, ценой и страницей
   const IDX = {};
