@@ -322,6 +322,8 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
 /* как заказать */
 /* групповой кадр: все стеллажи без фона, сзади высокие, спереди низкие */
+.end-logo { flex:1 1 0; display:flex; align-items:center; justify-content:center; }
+.end-logo img { width:70mm; height:auto; }
 .end-photo { flex:1 1 0; min-height:0; overflow:hidden; }
 .end-photo img { width:100%; height:100%; object-fit:cover; }
 /* групповое фото: во всю ширину листа, светлый фон кадра растворяется в белом (multiply) */
@@ -546,14 +548,8 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
         <li>Согласовываем образец.</li>
         <li>Производим, доставляем и устанавливаем.</li></ol>
     </div>`));
-  // Групповое фото всей линейки: пользователь делает по ПРОМПТ.txt из «мазза сейил/групповое фото»
-  // → Cloudinary matkasym/mazza-seyil/group. Пока его нет — интерьер Seyil.
-  const groupUrl = `${CLOUD}/f_jpg,q_auto:good,w_1800,c_limit/matkasym/mazza-seyil/group`;
-  const END = (await fetch(groupUrl, { method: 'HEAD' })).ok
-    ? `<div class="s-head"><div><div class="s-kind">Вся линейка</div><h2>MAZZA SEYIL</h2></div>
-      <p class="s-lead">${models} моделей: скамейки, навесы, освещение и велопарковки в одном стиле.</p></div>
-    <div class="end-photo"><img src="${groupUrl}" alt=""></div>`
-    : `<div class="end-photo"><img src="${room(pic('seyil', 1), 1800)}" alt=""></div>`;
+  // Последняя полоса: логотип по центру и контакты снизу (групповое фото не нужно — сказал пользователь 31.10.2026)
+  const END = `<div class="end-logo"><img src="${SITE}/logos/logo-vertical.png" alt="MATKASYM"></div>`;
   // 13. Как заказать
   pages.push(page(`
     ${END}
