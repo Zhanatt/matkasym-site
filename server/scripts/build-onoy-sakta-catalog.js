@@ -354,7 +354,9 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   // Интерьеры без людей и без надписей — кадры с карточек на сайте
   const pic = (sku, i) => { const u = bySku[sku]?.images?.[i]; if (!u) throw new Error(`нет фото ${sku} #${i}`); return u; };
-  const COVER = [pic('MKS-AH-G-M3-BLK', 3), pic('MKS-AH-S-A5-WHT', 3), pic('MKS-AH-R-S3-WHT', 3), pic('MKS-AH-R-X5-BLK', 2)];
+  // Обложка (по просьбе пользователя 31.10.2026): слева сверху паллетные, справа сверху MEDIUM,
+  // снизу слева маленький на колёсах (GUARDAIL M3), справа без колёс — HOME C4 (надписи убраны e_gen_remove)
+  const COVER = [ownRoom('room-pallet', 1300), ownRoom('room-medium', 1300), room(pic('MKS-AH-G-M3-BLK', 3), 1300), ownRoom('room-c4', 1300)];
 
   const light = bySku['MKS-OS-Х50'], medium = bySku['MKS-OS-Х60'];
   const pallet = all.find(p => p.sku === 'OS-PALLET'), canti = all.find(p => p.sku === 'OS-CANTILEVER');
@@ -372,7 +374,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   const pages = [];
   // 1. Обложка
   pages.push(page(`
-    <div class="cover-grid">${COVER.map(u => `<div><img src="${room(u, 1300)}" alt=""></div>`).join('')}</div>
+    <div class="cover-grid">${COVER.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>
     <div class="cover-tab"><img src="${CLOUD}/f_png,w_600,c_limit/matkasym/uzak-koldon/logo-tab" alt="MATKASYM"></div>
     <div class="cover-plate">ONOY SAKTA<small>Металлические стеллажи</small></div>`, 'cover'));
 
