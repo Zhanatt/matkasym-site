@@ -327,7 +327,10 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 /* групповой кадр: все стеллажи без фона, сзади высокие, спереди низкие */
 .end-photo { flex:1 1 0; min-height:0; overflow:hidden; }
 .end-photo img { width:100%; height:100%; object-fit:cover; }
-.end-photo--fit img { object-fit:contain; }
+/* групповое фото: во всю ширину листа, светлый фон кадра растворяется в белом (multiply) */
+.end-photo--fit { flex:0 0 auto; margin:0 calc(-1 * var(--pad)); overflow:visible; }
+.end-photo--fit img { width:100%; height:auto; mix-blend-mode:multiply; }
+.end-photo--fit + .order { margin-top:auto; }
 .order { display:grid; grid-template-columns:1fr 1fr; gap:10mm; border-top:1px solid var(--metal); padding-top:7mm; }
 .order h2 { margin-bottom:4mm; }
 .steps { counter-reset:s; display:grid; gap:3mm; }
