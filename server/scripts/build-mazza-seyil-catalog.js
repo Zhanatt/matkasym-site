@@ -43,8 +43,8 @@ const SECTIONS = [
   { n: '05', title: 'Велопарковки', note: 'От стойки на одно место до велостанции на 20' },
   { n: '06', title: 'Индивидуальные заказы', note: 'Малые архитектурные формы по вашему проекту' },
 ];
-const TOC_PAGES = { '01': 4, '02': 5, '03': 7, '04': 8, '05': 10, '06': 12 };
-const PAGE_KOOPSUZ = 11, PAGE_NURJOL_MINI = 9; // отдельные полосы KOOPSUZBIKE и NURJOL mini
+const TOC_PAGES = { '01': 4, '02': 5, '03': 8, '04': 9, '05': 11, '06': 13 };
+const PAGE_KOOPSUZ = 12, PAGE_NURJOL_MINI = 10; // отдельные полосы KOOPSUZBIKE и NURJOL mini
 const PAGE_PURPOSE = 3;
 
 // id товара → подпись в каталоге, короткое описание, размеры [ширина, глубина, высота] в см
@@ -78,7 +78,7 @@ const P = {
 const BLOCKS = {
   noBack:  { fixed: true, sec: '01', name: 'Без спинки', kind: 'Скамейки без спинки', lead: 'Длинные скамейки для набережных, скверов и зон ожидания: садятся с обеих сторон.', keys: ['jyrgalDem', 'jyrgalPark'] },
   back1:   { fixed: true, sec: '02', name: 'Со спинкой', kind: 'Парковые скамейки', lead: 'Металлический каркас с порошковой покраской и деревянные ламели.', keys: ['seyil', 'jyluu', 'yngai'] },
-  back2:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Классические скамейки длиной от 120 до 180 см для дворов, школ и офисов.', keys: ['kichine', 'kalyn'] },
+  back2:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Классические скамейки длиной от 120 до 180 см для дворов, школ и офисов. У Kichine и Dem Aluu — подлокотники.', keys: ['kichine', 'kalyn', 'demAluu'] },
   back3:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Подлокотники с двух сторон — удобно вставать пожилым людям.', keys: ['demAluu', 'salttyk'] },
   roof:    { fixed: true, photoH: 100, sec: '03', name: 'С навесом', kind: 'Скамейки с навесом', lead: 'Навес даёт тень летом и укрывает от дождя — для дворов, парков и остановок.', keys: ['esAluu', 'bakyt', 'koloko'] },
   light:   { sec: '04', name: 'Освещение', kind: 'Уличные светильники', lead: 'Парковые фонари в одном стиле со скамейками — от 3 до 8 метров.', keys: ['nurjol', 'burkut', 'skeitPark'] },
@@ -437,10 +437,21 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       <div><div class="s-kind">Особенности</div>
         <ul class="list"><li>Садятся с обеих сторон</li><li>Металлический корпус с порошковой покраской</li><li>Деревянное сиденье</li></ul></div>
     </div>`));
-  // 5–6. Со спинкой
-  pages.push(page(`${secHead('02')}${block(B.back1)}${block(B.back2)}`));
+  // Строки: фото слева крупно, текст справа — без пустот (просил пользователь для навесов и скамеек со спинкой)
+  const dimText = d => d.filter(Boolean).length ? [['Ширина', d[0]], ['Глубина', d[1]], ['Высота', d[2]]].filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${v} см</dd>`).join('') : '';
+  const rowsHtml = (items, n = items.length) => `<div class="rows" style="grid-template-rows:repeat(${n}, minmax(0,1fr))">${items.map(m => `<article class="row">
+      <div class="row-photo dim" data-w="${m.dims[0] || ''}" data-d="${m.dims[1] || ''}" data-h="${m.dims[2] || ''}"><img src="${cut(m.photo, 1400)}" alt=""></div>
+      <div class="row-text"><h3 class="kb-h">${esc(m.v)}</h3><p class="m-desc">${esc(m.desc)}</p>
+        <dl class="dl">${dimText(m.dims)}<dt>Цена</dt><dd>${tag(m.price)}</dd></dl></div>
+    </article>`).join('')}</div>`;
+  const headOf = b => `<div class="s-head"><div><div class="s-kind">${esc(b.kind)}</div><h2>${esc(b.name)}</h2></div><p class="s-lead">${esc(b.lead)}</p></div>`;
+  // 5. Со спинкой: Seyil, JYLUU, Yngai
+  pages.push(page(`${secHead('02')}${headOf(B.back1)}${rowsHtml(B.back1.items)}`));
+  // 6. Серия Skameyka: Kichine, Kalyn, Dem Aluu
+  pages.push(page(`${headOf(B.back2)}${rowsHtml(B.back2.items)}`));
+  // 7. Salttyk + Ailana на всю ширину
   const ail = M.ailana;
-  pages.push(page(`${block(B.back3)}
+  pages.push(page(`${rowsHtml([M.salttyk], 1)}
     <article class="ail">
       <div class="ail-photo"><img src="${cut(ail.photo, 2000)}" alt=""></div>
       <div class="ail-text">
@@ -449,16 +460,8 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
         <dl class="dl"><dt>Диаметр</dt><dd>300 см</dd><dt>Высота</dt><dd>80 см</dd><dt>Цена</dt><dd>${tag(ail.price)}</dd></dl>
       </div>
     </article>`));
-  // 7. С навесом + интерьер
-  // Навесы — строками (фото слева, текст справа), без интерьера снизу: так фото крупнее (просил пользователь)
-  const dimText = d => d.filter(Boolean).length ? [['Ширина', d[0]], ['Глубина', d[1]], ['Высота', d[2]]].filter(([, v]) => v).map(([k, v]) => `<dt>${k}</dt><dd>${v} см</dd>`).join('') : '';
-  pages.push(page(`${secHead('03')}
-    <div class="s-head"><div><div class="s-kind">${esc(B.roof.kind)}</div><h2>${esc(B.roof.name)}</h2></div><p class="s-lead">${esc(B.roof.lead)}</p></div>
-    <div class="rows">${B.roof.items.map(m => `<article class="row">
-      <div class="row-photo dim" data-w="${m.dims[0] || ''}" data-d="${m.dims[1] || ''}" data-h="${m.dims[2] || ''}"><img src="${cut(m.photo, 1400)}" alt=""></div>
-      <div class="row-text"><h3 class="kb-h">${esc(m.v)}</h3><p class="m-desc">${esc(m.desc)}</p>
-        <dl class="dl">${dimText(m.dims)}<dt>Цена</dt><dd>${tag(m.price)}</dd></dl></div>
-    </article>`).join('')}</div>`));
+  // 8. С навесом — строками
+  pages.push(page(`${secHead('03')}${headOf(B.roof)}${rowsHtml(B.roof.items)}`));
   // 8. Освещение: три высоких фонаря, каждый во всю высоту колонки (просил пользователь 31.10.2026;
   // общий масштаб по высоте делал их мелкими). Высота — подписью-стрелкой.
   // Фото без фона и обрезаны по силуэту; ширина каждой колонки = ширине фонаря при общей высоте h,
@@ -599,7 +602,8 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .lamp-img { display:flex; justify-content:center; align-items:flex-end; padding-bottom:3mm; }
 .lamp-img img { height:100%; width:auto; max-width:none; }
 .lamp-price { margin-top:2mm; }
-.rows { flex:1 1 0; min-height:0; display:grid; grid-template-rows:repeat(3, minmax(0,1fr)); }
+.rows { flex:1 1 0; min-height:0; display:grid; }
+.rows + .ail { flex:1.6 1 0; }
 .row { display:grid; grid-template-columns:58% 1fr; gap:9mm; align-items:center; min-height:0; border-top:1px solid var(--line); padding:4mm 0; }
 .row-photo { height:100%; min-height:0; }
 .row-text .dl { margin-top:3mm; }
