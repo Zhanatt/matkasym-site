@@ -208,6 +208,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 /* подбор по назначению */
 .purp { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:6mm 7mm; flex:1 1 0; min-height:0; }
 .pp { border-top:1px solid var(--metal); padding-top:3mm; display:flex; flex-direction:column; min-height:0; }
+.pp--wide { grid-column:span 2; }
 .pp h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:11pt; line-height:1.2; }
 .pp > p { color:var(--mute); font-size:7.6pt; margin:.8mm 0 2mm; min-height:2.6em; }
 .pp ul { list-style:none; display:grid; gap:1.6mm; }
@@ -350,21 +351,22 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   IDX['Паллетные'] = { img: PALLET_PHOTO_S, price: money(0), page: PAGE_WAREHOUSE };
   IDX['Консольные'] = { img: CANTI_PHOTO_S, price: money(0), page: PAGE_WAREHOUSE };
   IDX['По техлисту'] = { svg: RACK_SVG, price: money(0), page: TOC_PAGES['05'] };
+  // Каждая модель — ровно в одной карточке (дубли убраны по просьбе пользователя 31.10.2026)
   const PURPOSES = [
     ['Кухня', 'Овощи, посуда, бытовая химия', ['GUARDAIL M3', 'GUARDAIL M4', 'ROUND S3']],
-    ['Ванная и прачечная', 'Узкие — встают рядом со стиральной машиной', ['ROUND S3', 'ROUND S4', 'GUARDAIL M3']],
-    ['Гостиная и детская', 'Книги, игрушки, коробки', ['ROUND X3', 'SLOTTED B3', 'GUARDAIL M4']],
-    ['Балкон и кладовка', 'Заготовки, инструменты, сезонные вещи', ['ROUND X4', 'ROUND X5', 'SLOTTED A4']],
-    ['Документы и офис', 'Папки тяжёлые — берите полки до 60 кг', ['SLOTTED A4', 'SLOTTED A5', 'SLOTTED B3']],
-    ['Гараж и мастерская', 'Инструмент, колёса, ящики', ['HOME C4', 'SLOTTED A5', 'STORAGE LIGHT']],
-    ['Магазин и подсобка', 'Товар и запас рядом с торговым залом', ['SLOTTED A5', 'STORAGE LIGHT', 'STORAGE MEDIUM']],
-    ['Склад', 'Тяжёлые грузы, паллеты, длинномеры', ['STORAGE MEDIUM', 'Паллетные', 'Консольные']],
-    ['Большая партия', 'Нестандартные размеры, свой цвет и нагрузка', ['По техлисту']],
+    ['Гостиная и детская', 'Книги, игрушки, коробки', ['ROUND X3', 'ROUND S4', 'SLOTTED B3']],
+    ['Балкон и кладовка', 'Заготовки, инструменты, сезонные вещи', ['ROUND X4', 'ROUND X5']],
+    ['Документы и офис', 'Папки тяжёлые — полки держат до 60 кг', ['SLOTTED A3', 'SLOTTED A4']],
+    ['Гараж и мастерская', 'Инструмент, колёса, ящики', ['HOME C4', 'STORAGE LIGHT']],
+    ['Магазин и подсобка', 'Товар и запас рядом с торговым залом', ['SLOTTED A5', 'STORAGE MEDIUM']],
+    ['Склад', 'Тяжёлые грузы, паллеты, длинномеры', ['Паллетные', 'Консольные']],
+    ['Большая партия', 'Нестандартные размеры, свой цвет и нагрузка — делаем партию по вашему техлисту.', ['По техлисту'], true],
   ];
+  { const seen = PURPOSES.flatMap(p => p[2]); const dup = seen.filter((n, i) => seen.indexOf(n) !== i); if (dup.length) throw new Error('дубли в подборе: ' + dup); }
   pages.push(page(`
     <div class="s-head"><div><div class="s-kind">Какой стеллаж выбрать</div><h2>Подбор по назначению</h2></div>
       <p class="s-lead">Найдите своё помещение — рядом модели, которые подходят лучше всего, их цена и страница в каталоге.</p></div>
-    <div class="purp">${PURPOSES.map(([t, hint, list]) => `<article class="pp">
+    <div class="purp">${PURPOSES.map(([t, hint, list, wide]) => `<article class="pp${wide ? ' pp--wide' : ''}">
       <h3>${esc(t)}</h3><p>${esc(hint)}</p>
       <ul>${list.map(n => { const x = IDX[n]; if (!x) throw new Error('нет модели ' + n);
         return `<li><span class="pp-img">${x.svg || `<img src="${x.img}" alt="">`}</span>
