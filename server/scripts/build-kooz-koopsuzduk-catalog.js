@@ -206,7 +206,8 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .vru .dl dt, .vru .dl dd { font-size:7.2pt; padding:1.3mm 0; }
 .vru .dl dt { padding-right:2mm; }
 .mini--vru { grid-template-columns:30mm 1fr auto; }
-.mini--vru .mini-photo img { width:auto; height:48mm; max-width:100%; }
+.mini--vru { grid-template-columns:45mm 1fr auto; }
+.mini--vru .mini-photo img { width:auto; height:95mm; max-width:100%; }
 .duo2 .fam-photo.fam-photo--b { flex:0 0 150mm; height:150mm; }
 .duo2 .fam-photo.fam-photo--b img { max-height:150mm; }
 .p-vru .duo2 .fam-photo { flex:0 0 110mm; }
@@ -496,7 +497,8 @@ const FAMILIES = {
 .vru .dl dt, .vru .dl dd { font-size:7.2pt; padding:1.3mm 0; }
 .vru .dl dt { padding-right:2mm; }
 .mini--vru { grid-template-columns:30mm 1fr auto; }
-.mini--vru .mini-photo img { width:auto; height:48mm; max-width:100%; }
+.mini--vru { grid-template-columns:45mm 1fr auto; }
+.mini--vru .mini-photo img { width:auto; height:95mm; max-width:100%; }
 .duo2 .fam-photo.fam-photo--b { flex:0 0 150mm; height:150mm; }
 .duo2 .fam-photo.fam-photo--b img { max-height:150mm; }
 .p-vru .duo2 .fam-photo { flex:0 0 110mm; }
