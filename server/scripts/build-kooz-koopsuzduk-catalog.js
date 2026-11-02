@@ -305,7 +305,7 @@ const FAMILIES = {
   // Блок «фото слева — характеристики и таблица справа»
   const fam = ({ kind, title, lead, photo, photos, stack, sp, rs, variant = true, note = '', ph: phH }) => `<article class="fam"${phH ? ` style="--ph:${phH}mm"` : ''}>
     ${head(kind, title, lead)}
-    <div class="fam-body">${stack ? `<div class="fam-stack">${stack.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>` : `<div class="fam-photo"><img src="${photos ? photos[0] : photo}" alt=""></div>`}
+    <div class="fam-body">${stack ? `<div class="fam-stack">${stack.map(x => x.u ? `<div class="has-cap"><img src="${x.u}" alt=""><span class="stack-cap">${esc(x.cap)}</span></div>` : `<div><img src="${x}" alt=""></div>`).join('')}</div>` : `<div class="fam-photo"><img src="${photos ? photos[0] : photo}" alt=""></div>`}
       <div class="fam-right">${specs(sp)}${note}${rs?.length ? table(rs, { variant }) : ''}</div></div>
     ${photos ? `<div class="fam-strip">${photos.slice(1).map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>` : ''}</article>`;
 
@@ -362,7 +362,7 @@ const FAMILIES = {
     </div>`));
 
   // 5–8. IP-щиты
-  pages.push(page(`${secHead('01')}${fam({ kind: 'Навесные электрощиты', title: 'Электрощиты IP31', photo: ph('ip31'),
+  pages.push(page(`${secHead('01')}${fam({ kind: 'Навесные электрощиты', title: 'Электрощиты IP31', stack: [ph('ip31', 900), { u: rnd('ip31-false', 900), cap: 'Исполнение с фальшпанелью' }],
     lead: 'Для квартир, офисов, подъездов и торговых помещений. Собственное серийное производство.',
     sp: [['Степень защиты', 'IP31'], ['Материал', `сталь ${STEEL}, 0,5–0,9 мм`], ['Покрытие', 'порошковая краска, RAL 7035 / 9006 шагрень'], ['Замок', 'почтовый ЗП 16 мм; у ЩРн — IP54'], ['Внутри', 'монтажная панель, по заказу фальшпанель']],
     rs: R.ip31 })}`));
@@ -474,6 +474,9 @@ const FAMILIES = {
 .fam-stack { display:flex; flex-direction:column; gap:5mm; min-height:0; height:100%; }
 .fam-stack div { flex:1 1 0; min-height:0; display:flex; align-items:center; justify-content:center; }
 .fam-stack img { max-width:100%; max-height:100%; object-fit:contain; }
+.fam-stack .has-cap { flex-direction:column; gap:1.5mm; }
+.fam-stack .has-cap img { min-height:0; flex:1 1 0; }
+.stack-cap { font-size:7.5pt; color:#555; }
 .fam-strip { flex:0 0 62mm; display:grid; grid-template-columns:repeat(3,1fr); gap:6mm; border-top:1px solid var(--line); padding-top:5mm; }
 .fam-strip div { min-height:0; display:flex; align-items:center; justify-content:center; }
 .fam-strip img { max-width:100%; max-height:100%; object-fit:contain; }
