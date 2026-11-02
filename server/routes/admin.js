@@ -43,6 +43,8 @@ const {
 const { applyStockUpload } = require('../lib/stockSync');
 const { setMatch, viewForSet, SET_VIEW_FIELDS } = require('../lib/setView');
 const { attachUrnVolume } = require('../lib/urnVolume');
+const { BRIEF_FIELDS, attachKitPrices } = require('../lib/productBrief');
+const { resolveFile } = require('../lib/catalogFiles');
 
 // Товар считается неразобранным, если у него нет сета ИЛИ категория — свалка
 // («Прочее», 'other', пусто). И то и другое прячет карточку от людей: без сета
@@ -345,43 +347,6 @@ function searchRe(s) {
   return new RegExp(String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 }
 
-// Список сета рисует карточку: фото, название, цену, остаток и пару характеристик.
-// Полный товар — описание, вся галерея, ТЗ, цены по базам — весит вчетверо больше
-// и нужен только в самой карточке, а её открывают по клику и грузят отдельно.
-const BRIEF_FIELDS = [
-  'name', 'fullName', 'sku', 'brand', 'set', 'setLevel', 'color', 'category', 'dimensions', 'unit',
-  'price', 'priceWholesale', 'priceDealer', 'priceCost', 'costCurrency', 'priceUndefined', 'currency',
-  'stock', 'stockByBase', 'inBase', 'inStock', 'stockStatus', 'bufferStock',
-  'isOnOrder', 'inTransit', 'inTransitQty', 'pendingReceive', 'pendingReceiveQty',
-  'productStatus', 'isKit', 'kitType', 'kitParts', 'isSupplied', 'supplier', 'maker', 'hideInPdf', 'pdfGroup', 'pdfVariant', 'pdfSeries', 'pdfNote', 'pdfRange', 'pdfOrder', 'pdfPage', 'pdfRangeExtra', 'isNew', 'hasVideo',
-  'images', 'specs', 'updatedAt', 'createdAt',
-].join(' ');
-
-// Комплект без своей цены — цену по уровню считаем суммой деталей, как
-// «Итого за комплект» в карточке товара. Иначе в каталоге сета у него прочерк
-// (ANTILOP, ALA-TOO парта+стул). Нет цены хоть у одной детали — уровень не трогаем.
-const KIT_PRICE_TIERS = ['price', 'priceWholesale', 'priceDealer'];
-async function attachKitPrices(products) {
-  const kits = products.filter(p => p.isKit && p.kitParts?.length
-    && KIT_PRICE_TIERS.some(t => !(p[t] > 0)));
-  if (!kits.length) return;
-  const ids = [...new Set(kits.flatMap(k => k.kitParts.map(part => String(part.product))))];
-  const parts = await Product.find({ _id: { $in: ids } }).select(KIT_PRICE_TIERS.join(' ')).lean();
-  const byId = new Map(parts.map(p => [String(p._id), p]));
-  kits.forEach(kit => {
-    KIT_PRICE_TIERS.forEach(tier => {
-      if (kit[tier] > 0) return;
-      let sum = 0;
-      for (const part of kit.kitParts) {
-        const price = byId.get(String(part.product))?.[tier];
-        if (!(price > 0)) return;
-        sum += price * (part.qty || 1);
-      }
-      kit[tier] = sum;
-    });
-  });
-}
-
 router.get('/products', async (req, res) => {
   try {
     const { page = 1, limit = 20, search = '', brand, set, category, inStock, productStatus, stockStatus, sort, pendingReceive, inTransit, includePending, country, brief, setView, unsorted } = req.query;
@@ -594,6 +559,17 @@ router.get('/products/facets', async (req, res) => {
       brand ? brandStockStats(brand, country) : null,
     ]);
     res.json({ sets: sets.filter(Boolean).sort(), categories: categories.filter(Boolean).sort(), productCount, stockStats });
+  } catch (e) {
+    res.status(500).json({ error: mongoErr(e) });
+  }
+});
+
+// POST /admin/catalog-file — готовый PDF-каталог: файл, если данные не менялись; иначе запрос на сборку
+router.post('/catalog-file', async (req, res) => {
+  try {
+    const out = await resolveFile(req.body?.key);
+    if (!out) return res.status(400).json({ error: 'Неизвестный каталог' });
+    res.json(out);
   } catch (e) {
     res.status(500).json({ error: mongoErr(e) });
   }

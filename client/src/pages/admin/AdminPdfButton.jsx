@@ -43,10 +43,11 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
 
     if (readyPdf && priceType === 'price') {
       setProgress(60);
-      await downloadReady(readyPdf);
-      setProgress(100);
-      setTimeout(() => { setLoading(false); setProgress(0); }, 600);
-      return;
+      if (await downloadReady(readyPdf)) {
+        setProgress(100);
+        setTimeout(() => { setLoading(false); setProgress(0); }, 600);
+        return;
+      }
     }
 
     const all = pick?.all;

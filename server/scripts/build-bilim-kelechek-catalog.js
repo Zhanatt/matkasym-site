@@ -179,7 +179,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:2
   const htmlFile = path.join(OUT, 'bilim-kelechek.html');
   fs.writeFileSync(htmlFile, html);
   const pdf = path.join(OUT, 'Каталог BILIM KELECHEK.pdf');
-  execFileSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
+  execFileSync(process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [...(process.env.CI ? ['--no-sandbox'] : []),
     '--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=90000',
     `--print-to-pdf=${pdf}`, `file://${htmlFile}`], { stdio: 'ignore', timeout: 240000 });
   console.log('PDF:', pdf, `(${pageNo} стр.)`);

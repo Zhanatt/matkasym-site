@@ -56,6 +56,7 @@ export const adminGetNomenclature = (set) => api.get('/admin/nomenclature', { pa
 export const adminDeleteImage = (url)       => api.delete('/admin/images', { data: { url } });
 export const adminGetCustomCategories  = ()          => api.get('/admin/custom-categories');
 export const adminGetPdfDetails = (ids) => api.post('/admin/products/pdf-details', { ids });
+export const adminCatalogFile = (key) => api.post('/admin/catalog-file', { key });
 export const adminCreateCustomCategory = (data)      => api.post('/admin/custom-categories', data);
 export const adminGetCategorySpecs    = (cat)       => api.get(`/admin/category-specs/${cat}`);
 export const adminSaveCategorySpec    = (cat, data) => api.post(`/admin/category-specs/${cat}`, data);

@@ -15,15 +15,18 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { PDFDocument, PDFName, PDFHexString, PDFNumber } = require('pdf-lib');
 const { FONT_CSS, LIGHT_META } = require('../lib/catalogFonts');
+const { compressPdf } = require('../lib/catalogLayout');
 
 const [SRC, OUT] = process.argv.slice(2).filter(a => !a.startsWith('--'));
 const LIGHT_DPI = 130;
-if (!SRC || !OUT) { console.error('Укажите папку каталогов и рабочую папку'); process.exit(1); }
-fs.mkdirSync(OUT, { recursive: true });
+if (require.main === module) {
+  if (!SRC || !OUT) { console.error('Укажите папку каталогов и рабочую папку'); process.exit(1); }
+  fs.mkdirSync(OUT, { recursive: true });
+}
 const CV = 'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_auto:good,w_1654';
 const TITLE = `${CV}/v1780894225/matkasym/covers/title-page-shaar.png`;
 const END = `${CV}/v1780894228/matkasym/covers/end-page-shaar.png`;
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME = process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const PHONES = ['+996 501 111 726', '+996 504 200 067', '+996 703 939 070'];
 
 // keepLast — последняя страница сета содержит товар, а не только контакты
@@ -41,13 +44,16 @@ const SETS = [
 // Геометрия содержания в мм: по ней же ставятся ссылки на карточках
 const G = { x: 16, y: 58, w: 85, h: 50, gx: 8, gy: 6 };
 const MM = 72 / 25.4;
-const chrome = (html, pdf) => execFileSync(CHROME, ['--headless=new', '--disable-gpu', '--no-pdf-header-footer',
+const chrome = (html, pdf) => execFileSync(CHROME, [...(process.env.CI ? ['--no-sandbox'] : []),'--headless=new', '--disable-gpu', '--no-pdf-header-footer',
   '--virtual-time-budget=60000', `--print-to-pdf=${pdf}`, `file://${html}`], { stdio: 'ignore', timeout: 180000 });
 const css = `${FONT_CSS}
 @page { size:A4; margin:0; } * { box-sizing:border-box; margin:0; padding:0; }
 html, body { color-scheme:only light; font-family:Roboto, Helvetica, Arial, sans-serif; color:#000; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 .page { width:210mm; height:297mm; position:relative; overflow:hidden; break-after:page; }
 .page:last-child { break-after:auto; }`;
+
+module.exports = { SETS };
+if (require.main !== module) return;
 
 (async () => {
   const docs = [];
@@ -161,14 +167,7 @@ html, body { background:transparent; }</style></head><body>${stamps.map(n => `<s
 
   // Лёгкая версия: сжимаются только картинки, текст и шрифты остаются
   const gsPdf = path.join(OUT, 'gs.pdf');
-  execFileSync('gs', ['-q', '-dNOPAUSE', '-dBATCH', '-dSAFER', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.6',
-    // Без перевода в RGB Ghostscript пишет пустой ICC-профиль: на iPhone (PDFKit) фото пропадают — «invalid image ColorSpace»
-    '-sColorConversionStrategy=RGB', '-dProcessColorModel=/DeviceRGB',
-    '-dEmbedAllFonts=true', '-dSubsetFonts=true', '-dPassThroughJPEGImages=false', '-dDetectDuplicateImages=true',
-    '-dDownsampleColorImages=true', '-dColorImageDownsampleType=/Bicubic', `-dColorImageResolution=${LIGHT_DPI}`, '-dColorImageDownsampleThreshold=1.0',
-    '-dDownsampleGrayImages=true', '-dGrayImageDownsampleType=/Bicubic', `-dGrayImageResolution=${LIGHT_DPI}`, '-dGrayImageDownsampleThreshold=1.0',
-    '-dAutoFilterColorImages=false', '-dColorImageFilter=/DCTEncode', '-dAutoFilterGrayImages=false', '-dGrayImageFilter=/DCTEncode',
-    `-sOutputFile=${gsPdf}`, '-c', '<</ColorImageDict <</QFactor 0.7 /HSamples [2 1 1 2] /VSamples [2 1 1 2]>> /GrayImageDict <</QFactor 0.7 /HSamples [2 1 1 2] /VSamples [2 1 1 2]>>>> setdistillerparams', '-f', basePdf], { stdio: 'inherit', timeout: 500000 });
+  compressPdf(basePdf, gsPdf, LIGHT_DPI);
   const light = path.join(OUT, 'Каталог MATKASYM SHAAR (лёгкий).pdf');
   fs.writeFileSync(light, await withNav(fs.readFileSync(gsPdf)));
 

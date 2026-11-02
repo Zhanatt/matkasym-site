@@ -514,7 +514,7 @@ const FAMILIES = {
   const htmlFile = path.join(OUT, 'kooz-koopsuzduk.html');
   fs.writeFileSync(htmlFile, html);
   const pdf = path.join(OUT, 'Каталог KOOZ KOOPSUZDUK.pdf');
-  execFileSync('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', ['--headless=new', '--disable-gpu', '--no-pdf-header-footer',
+  execFileSync(process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [...(process.env.CI ? ['--no-sandbox'] : []),'--headless=new', '--disable-gpu', '--no-pdf-header-footer',
     '--virtual-time-budget=90000', `--print-to-pdf=${pdf}`, `file://${htmlFile}`], { stdio: 'ignore', timeout: 240000 });
   console.log('PDF:', pdf, `(${pageNo} стр.)`);
   for (const [k, r] of Object.entries(R)) console.log(k, r.length);

@@ -8,7 +8,7 @@ const { FONT_CSS, LIGHT_META } = require('./catalogFonts');
 const SITE = 'https://matkasym-site.onrender.com';
 const CLOUD = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
 const LOGO = `${CLOUD}/matkasym/catalog-assets/logo-main.jpg`;
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME = process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => n > 0 ? `${n.toLocaleString('ru-RU').replace(/\s|,/g, ' ')} сом` : 'индивидуальный';
@@ -244,9 +244,19 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 const wrapHtml = (title, pages, extraCss = '') => `<!doctype html><html lang="ru"><head><meta charset="utf-8">${LIGHT_META}<title>${esc(title)}</title>
 <style>${CSS}${extraCss}</style></head><body>${pages.join('\n')}<script>${DIM_JS}</script></body></html>`;
 
-const renderPdf = (htmlFile, pdf) => execFileSync(CHROME, [
+const renderPdf = (htmlFile, pdf) => execFileSync(CHROME, [...(process.env.CI ? ['--no-sandbox'] : []),
   '--headless=new', '--disable-gpu', '--no-pdf-header-footer', '--virtual-time-budget=120000',
   `--print-to-pdf=${pdf}`, `file://${htmlFile}`], { stdio: 'ignore', timeout: 300000 });
 
-module.exports = { SITE, CLOUD, esc, money, tag, fromTag, studio, nobg, room, warm, makePage, secHead, head,
+// Сжатие фото для телефона. Без перевода в RGB Ghostscript пишет пустой ICC-профиль: на iPhone (PDFKit)
+// фото пропадают («invalid image ColorSpace»). Ссылки и закладки ставить ПОСЛЕ сжатия.
+const compressPdf = (input, output, dpi = 130) => execFileSync('gs', ['-q', '-dNOPAUSE', '-dBATCH', '-dSAFER', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.6',
+  '-sColorConversionStrategy=RGB', '-dProcessColorModel=/DeviceRGB',
+  '-dEmbedAllFonts=true', '-dSubsetFonts=true', '-dPassThroughJPEGImages=false', '-dDetectDuplicateImages=true',
+  '-dDownsampleColorImages=true', '-dColorImageDownsampleType=/Bicubic', `-dColorImageResolution=${dpi}`, '-dColorImageDownsampleThreshold=1.0',
+  '-dDownsampleGrayImages=true', '-dGrayImageDownsampleType=/Bicubic', `-dGrayImageResolution=${dpi}`, '-dGrayImageDownsampleThreshold=1.0',
+  '-dAutoFilterColorImages=false', '-dColorImageFilter=/DCTEncode', '-dAutoFilterGrayImages=false', '-dGrayImageFilter=/DCTEncode',
+  `-sOutputFile=${output}`, '-c', '<</ColorImageDict <</QFactor 0.7 /HSamples [2 1 1 2] /VSamples [2 1 1 2]>> /GrayImageDict <</QFactor 0.7 /HSamples [2 1 1 2] /VSamples [2 1 1 2]>>>> setdistillerparams', '-f', input], { stdio: 'inherit', timeout: 900000 });
+
+module.exports = { compressPdf, SITE, CLOUD, esc, money, tag, fromTag, studio, nobg, room, warm, makePage, secHead, head,
   modelCell, cols, grid2, series, orderPage, coverPage, wrapHtml, renderPdf };

@@ -2,34 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { adminGetProducts, adminGetSetLayouts } from '../../api/index';
 import { printCatalog, fitsCatalog } from './catalogPrint';
 import { printKyzmatCatalog } from './kyzmatPrint';
-import { categoryRank } from '../../config/setCategoryOrder';
-import { READY_BRAND_PDF, readyPdfFor, downloadReady } from '../../config/readyCatalogs';
-
-// Порядок в каталоге целиком: сет → категория → карточка, как они стоят на
-// экране. Сеты идут в порядке линеек бренда, категории и карточки внутри сета —
-// по расстановке из SetLayout (её правят кнопкой «Порядок» в панели сета).
-// Чего в расстановке нет — по алфавиту категории и как отдала база внутри.
-//
-// Раньше внутри сета товары шли подряд как пришли с сервера, то есть по остатку:
-// горшки, мангал, коврик — вперемешку. По такому PDF каталог не листают.
-function orderInSet(products, setSlug, layout) {
-  const saved = layout?.categories || [];
-  const cats = new Map();
-  products.forEach(p => {
-    const cat = p.category || 'Прочее';
-    if (!cats.has(cat)) cats.set(cat, []);
-    cats.get(cat).push(p);
-  });
-  return [...cats.entries()]
-    .sort((a, b) => categoryRank(setSlug, a[0], saved) - categoryRank(setSlug, b[0], saved)
-                 || a[0].localeCompare(b[0], 'ru'))
-    .flatMap(([cat, items]) => {
-      const names = layout?.products?.[cat] || [];
-      const rank = new Map(names.map((n, i) => [n, i]));
-      return [...items].sort((x, y) => (rank.has(x.name) ? rank.get(x.name) : 999)
-                                     - (rank.has(y.name) ? rank.get(y.name) : 999));
-    });
-}
+import { brandPdfGroups } from './brandPdfGroups';
+import { readyPdfFor, brandReadyPdf, downloadReady } from '../../config/readyCatalogs';
 
 // priceMode — когда кнопку ставят в панель каталога, цену там уже выбирают
 // своим переключателем; свой прятаем, чтобы их не было два.
@@ -41,6 +15,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
   const [ownType,   setPriceType] = useState('price');
   const priceType = priceMode ? (PRICE_MODE_TO_TYPE[priceMode] || 'price') : ownType;
   const timerRef = useRef(null);
+  const [updating, setUpdating] = useState(false); // каталог изменился, ждём новый файл
 
   // Каталог под встречу: не весь бренд, а отмеченные сеты — например, для
   // строительной компании щиты, фасад, урны и скамейки. null — отмечены все.
@@ -70,18 +45,22 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
 
   const handleClick = async () => {
     if (loading) return;
-    // Готовый файл только с розничными ценами: один отмеченный сет — его каталог,
-    // отмечены все незамороженные — общий каталог бренда. Иначе собираем генератором.
+    // Готовый сохранённый файл: один отмеченный сет с розничными ценами или весь бренд с любым типом цены.
+    // Сервер сам проверяет, менялись ли данные. Файла ещё нет — собираем в браузере, как раньше.
+    // Цены в файлах в сомах, для Казахстана всегда собираем.
     const onlyPicked = picked && picked.size === 1 ? [...picked][0] : null;
-    const ready = priceType !== 'price' ? null
-      : onlyPicked ? readyPdfFor(onlyPicked, brandKey)
-      : !picked ? READY_BRAND_PDF[brandKey] : null;
+    const ready = currency !== 'сом' ? null
+      : onlyPicked ? (priceType === 'price' ? readyPdfFor(onlyPicked, brandKey) : null)
+      : !picked ? brandReadyPdf(brandKey, priceType) : null;
     if (ready) {
       setLoading(true); setProgress(60);
-      await downloadReady(ready);
-      setProgress(100);
-      setTimeout(() => { setLoading(false); setProgress(0); }, 600);
-      return;
+      const done = await downloadReady(ready, () => setUpdating(true));
+      setUpdating(false);
+      if (done) {
+        setProgress(100);
+        setTimeout(() => { setLoading(false); setProgress(0); }, 600);
+        return;
+      }
     }
     setLoading(true);
     setProgress(5);
@@ -125,38 +104,8 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
         return;
       }
 
-      // Свой порядок для печати (pdfOrder у сетов), если задан; иначе — как на экране
-      const hasPdfOrder = sets.some(s => Number.isFinite(s.pdfOrder));
-      const setOrder = (hasPdfOrder
-        ? sets.map((s, i) => ({ s, i })).sort((a, b) =>
-            (Number.isFinite(a.s.pdfOrder) ? a.s.pdfOrder : 1e6 + a.i) - (Number.isFinite(b.s.pdfOrder) ? b.s.pdfOrder : 1e6 + b.i)).map(x => x.s)
-        : sets).map(s => s.key);
-      const setLabels = {};
-      sets.forEach(s => { setLabels[s.key] = s.label || s.key; });
-
-      const grouped = {};
-      availableProducts.forEach(p => {
-        const setKey = p.set || '_other';
-        if (!grouped[setKey]) grouped[setKey] = [];
-        grouped[setKey].push(p);
-      });
-
-      const pdfGroups = [];
-
-      const pushSet = (setKey) => {
-        if (!grouped[setKey]?.length) return;
-        pdfGroups.push({
-          setKey,
-          groupName: setLabels[setKey] || setKey,
-          products: orderInSet(grouped[setKey], setKey, layouts[setKey]),
-        });
-      };
-
-      setOrder.forEach(pushSet);
-      // Сеты, которых нет в линейках бренда (и товары вовсе без сета) — в конец:
-      // прятать их нельзя, а место в чужом ряду им выдумывать незачем.
       // При выборе сетов вручную хвоста нет — в каталог идёт ровно отмеченное.
-      if (!picked) Object.keys(grouped).filter(k => !setOrder.includes(k)).sort().forEach(pushSet);
+      const pdfGroups = brandPdfGroups(availableProducts, sets, layouts, { withRest: !picked });
 
       if (pdfGroups.length === 0) {
         alert('Нет товаров для выгрузки');
@@ -244,7 +193,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       <button
         onClick={handleClick}
         disabled={loading}
-        title={READY_BRAND_PDF[brandKey] && !picked && priceType === 'price' ? 'Скачает готовый каталог' : 'Откроет каталог и диалог печати — там «Сохранить как PDF»'}
+        title="Скачает готовый каталог; если отмечено несколько сетов — откроет диалог печати"
         style={{
           position: 'relative', overflow: 'hidden',
           padding: '5px 14px', borderRadius: 6, border: 'none',
@@ -263,7 +212,7 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
           }} />
         )}
         <span style={{ position: 'relative', zIndex: 1 }}>
-          {loading ? `⏳ ${Math.round(progress)}%` : '📄 PDF'}
+          {updating ? '⏳ обновляем каталог' : loading ? `⏳ ${Math.round(progress)}%` : '📄 PDF'}
         </span>
       </button>
     </div>
