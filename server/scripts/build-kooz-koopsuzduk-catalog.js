@@ -387,7 +387,7 @@ const FAMILIES = {
     rs: R.et })}`));
 
   // 11. Пожарные
-  pages.push(page(`${secHead('04')}${fam({ kind: 'По ГОСТ Р 51844-2009', title: 'Шкафы и щиты пожарные', photos: ['f3', 'f5', 'f6'].map(k => ph(k, 700)),
+  pages.push(page(`${secHead('04')}${fam({ kind: 'По ГОСТ Р 51844-2009', title: 'Шкафы и щиты пожарные', stack: ['f3', 'f5'].map(k => ph(k, 800)),
     lead: 'Шкафы для пожарных кранов (ШПК) и щиты для огнетушителей и инвентаря — навесные и встраиваемые.',
     sp: [['Материал', `сталь ${STEEL}, 0,9 мм`], ['Цвет', 'красный RAL 3000 / 3002, шагрень'], ['Двери', '1–2, откидные или распашные'], ['Замок', 'ригельный 84×72 или под ключ'], ['Комплектация', 'полки, паз под рукав, окно — по заказу']],
     rs: R.fire })}`));
@@ -448,7 +448,7 @@ const FAMILIES = {
       <div class="ask cust-ask"><span>Стоимость партии</span>${tag(0)}</div></div></div>
     <table class="tbl gost-tbl"><thead><tr><th>Что делаем</th><th>Размеры и исполнение, мм</th></tr></thead>
       <tbody>${NAS.map(n => `<tr><td class="b">${n[0]}</td><td>${n[1]}</td></tr>`).join('')}</tbody></table>
-    <div class="fam-strip kz-ex">${['et3', 'vru2', 'san3', 'f6'].map(k => `<div><img src="${ph(k, 600)}" alt=""></div>`).join('')}</div>
+    <div class="fam-strip kz-ex">${['et3', 'vru2', 'san3', 'f3'].map(k => `<div><img src="${ph(k, 600)}" alt=""></div>`).join('')}</div>
     <div class="order cust-steps"><div><h2>Как работаем</h2></div>
       <ol class="steps"><li>Присылаете проект, спецификацию или размеры и количество.</li><li>Готовим техлист с чертежом на согласование.</li>
         <li>Подписываем техлист, делаем образец.</li><li>Производим партию и доставляем на объект.</li></ol></div>`));
