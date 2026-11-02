@@ -19,7 +19,7 @@ import {
 } from '../../api';
 import AdminPdfButton from './AdminPdfButton';
 
-import { READY_PDF } from '../../config/readyCatalogs';
+import { readyPdfFor } from '../../config/readyCatalogs';
 import BrandPdfButton from './BrandPdfButton';
 import { SET_CATEGORY_ORDER } from '../../config/setCategoryOrder';
 import BrandAboutButton from './BrandAboutButton';
@@ -2110,7 +2110,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                      вперемешку — горшки, мангал, коврик подряд. */
                   ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
                       currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
-                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} readyPdf={READY_PDF[setSlug]} />
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} readyPdf={readyPdfFor(setSlug, brandKey)} />
             )}
           </div>
 
@@ -2134,7 +2134,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                      вперемешку — горшки, мангал, коврик подряд. */
                   ? <BrandPdfButton brandKey={brandKey} sets={brandSets} brandLabel={titleOverride}
                       currency={CURRENCY[country] || CURRENCY.KG} priceMode={priceMode} />
-                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} readyPdf={READY_PDF[setSlug]} />}
+                  : <AdminPdfButton products={shownProducts} groups={accordionGroups} label={titleOverride || toTitle(setSlug)} priceMode={priceMode} currency={CURRENCY[country] || CURRENCY.KG} choices={setSlug === SERVICES_SET ? servicesPdfChoices : null} services={setSlug === SERVICES_SET} pending={loadingMore} readyPdf={readyPdfFor(setSlug, brandKey)} />}
             </div>
           )}
 

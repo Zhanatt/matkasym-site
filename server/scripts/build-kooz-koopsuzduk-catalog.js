@@ -168,7 +168,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .cover-grid div { overflow:hidden; }
 .cover-grid img { width:100%; height:100%; object-fit:cover; }
 .cover-tab { position:absolute; top:0; left:50%; transform:translateX(-50%); }
-.cover-tab img { width:36mm; height:auto; }
+.cover-tab img { width:36mm; height:auto; display:block; clip-path:polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%); }
 .cover-plate { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:var(--metal); color:#fff;
   font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:30pt; letter-spacing:.04em; line-height:1;
   padding:5mm 10mm; border-radius:3mm; white-space:nowrap; text-align:center; }
@@ -221,7 +221,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .end-photo img { width:100%; height:100%; object-fit:cover; }
 /* групповое фото: во всю ширину листа, светлый фон кадра растворяется в белом (multiply) */
 .end-photo--fit { flex:0 0 auto; margin:0 calc(-1 * var(--pad)); overflow:visible; }
-.end-photo--fit img { width:100%; height:auto; mix-blend-mode:multiply; }
+.end-photo--fit img { width:100%; height:auto; }
 .end-photo--fit + .order { margin-top:auto; }
 .order { display:grid; grid-template-columns:1fr 1fr; gap:10mm; border-top:1px solid var(--metal); padding-top:7mm; }
 .order h2 { margin-bottom:4mm; }
@@ -285,7 +285,7 @@ const FAMILIES = {
   const gost = t => `<div class="gost"><b>ГОСТ</b><span>${t}</span></div>`;
 
   let pageNo = 0;
-  const LOGO = `${SITE}/logos/logo-main.png`;
+  const LOGO = `${CLOUD}/matkasym/catalog-assets/logo-main.jpg`;
   const page = (body, cls = '') => { pageNo++; return `<section class="page ${cls}">${body}
     <footer class="foot"><span class="foot-l"><img src="${LOGO}" alt="MATKASYM"><i>KOOZ KOOPSUZDUK</i></span><span>${String(pageNo).padStart(2, '0')}</span></footer></section>`; };
   const secHead = n => { const s = SECTIONS.find(x => x.n === n);
@@ -306,7 +306,7 @@ const FAMILIES = {
 
   // 1. Обложка: 2×2 изделия на белом
   pages.push(page(`<div class="cover-grid cover-grid--white">${['et1', 'ip54', 'san1', 'f3'].map(k => `<div><img src="${ph(k, 1100)}" alt=""></div>`).join('')}</div>
-    <div class="cover-tab"><img src="${CLOUD}/f_png,w_600,c_limit/matkasym/uzak-koldon/logo-tab" alt="MATKASYM"></div>
+    <div class="cover-tab"><img src="${CLOUD}/f_jpg,q_90,w_600,c_limit/matkasym/catalog-assets/logo-tab" alt="MATKASYM"></div>
     <div class="cover-plate">KOOZ KOOPSUZDUK<small>Электрощиты и шкафы · по ГОСТ</small></div>`, 'cover'));
 
   // 2. Вступление, содержание, ГОСТ
@@ -433,7 +433,7 @@ const FAMILIES = {
         <li>Подписываем техлист, делаем образец.</li><li>Производим партию и доставляем на объект.</li></ol></div>`));
 
   // 14. Логотип и контакты
-  pages.push(page(`<div class="end-logo"><img src="${SITE}/logos/logo-vertical.png" alt="MATKASYM"></div>
+  pages.push(page(`<div class="end-logo"><img src="${CLOUD}/matkasym/catalog-assets/logo-vertical.jpg" alt="MATKASYM"></div>
     <div class="order"><div><h2>Как заказать</h2><ol class="steps"><li>Выберите щиты по каталогу или пришлите проект.</li>
       <li>Позвоните или напишите — подготовим техлист и расчёт.</li><li>Приезжайте на производство посмотреть образцы.</li></ol></div>
       <dl class="contacts"><div><dt>Телефон</dt><dd class="big">+996 501 111 726<br>+996 504 200 067</dd></div>

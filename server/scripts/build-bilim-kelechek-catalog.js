@@ -24,7 +24,7 @@ const SITE = 'https://matkasym-site.onrender.com';
 const CLOUD = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
 const asset = (id, w, trim = true) => `${CLOUD}/${trim ? 'e_trim:10/' : ''}f_jpg,q_auto:good,w_${w},c_limit/matkasym/bilim-kelechek/${id}`;
 const fromUrl = (url, w) => url.replace('/upload/', `/upload/f_jpg,q_auto:good,w_${w},c_limit/`);
-const LOGO = `${SITE}/logos/logo-main.png`;
+const LOGO = `${CLOUD}/matkasym/catalog-assets/logo-main.jpg`;
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => n > 0 ? `${n.toLocaleString('ru-RU').replace(/ |,/g, ' ')} сом` : 'по запросу';
@@ -97,7 +97,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:2
 .cover-photo { position:absolute; inset:0; }
 .cover-photo img { width:100%; height:100%; object-fit:cover; object-position:50% 50%; }
 .cover-tab { position:absolute; top:0; left:50%; transform:translateX(-50%); }
-.cover-tab img { width:36mm; height:auto; }
+.cover-tab img { width:36mm; height:auto; display:block; clip-path:polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%); }
 .cover-plate { position:absolute; left:50%; bottom:30mm; transform:translateX(-50%); background:var(--metal); color:#fff;
   font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:30pt; letter-spacing:.04em; line-height:1;
   padding:5mm 10mm; border-radius:3mm; white-space:nowrap; text-align:center; }
@@ -129,7 +129,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:2
   // 1. Обложка
   pages.push(page(`
     <div class="cover-photo"><img src="${asset('cover-class', 2000, false)}" alt=""></div>
-    <div class="cover-tab"><img src="${CLOUD}/f_png,w_600,c_limit/matkasym/uzak-koldon/logo-tab" alt="MATKASYM"></div>
+    <div class="cover-tab"><img src="${CLOUD}/f_jpg,q_90,w_600,c_limit/matkasym/catalog-assets/logo-tab" alt="MATKASYM"></div>
     <div class="cover-plate">BILIM KELECHEK<small>Мебель для школ и учебных классов</small></div>`, 'cover'));
 
   // 2. Треугольные парты

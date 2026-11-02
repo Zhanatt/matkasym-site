@@ -6,6 +6,9 @@
 //   node scripts/build-shaar-catalog.js <папка каталогов> <рабочая папка>
 //
 // Сначала пересобрать изменившиеся сеты, этот скрипт берёт уже готовые файлы.
+// Результат: полная версия (для печати) и лёгкая (фото сжаты Ghostscript, для телефона и кнопки «PDF»).
+// --upload заливает лёгкую в Cloudinary raw matkasym/catalogs/shaar.pdf.
+// Ссылки и закладки ставятся ПОСЛЕ сжатия, чтобы Ghostscript их не потерял.
 
 const fs = require('fs');
 const path = require('path');
@@ -13,13 +16,15 @@ const { execFileSync } = require('child_process');
 const { PDFDocument, PDFName, PDFHexString, PDFNumber } = require('pdf-lib');
 const { FONT_CSS, LIGHT_META } = require('../lib/catalogFonts');
 
-const [SRC, OUT] = process.argv.slice(2);
+const [SRC, OUT] = process.argv.slice(2).filter(a => !a.startsWith('--'));
+const LIGHT_DPI = 130;
 if (!SRC || !OUT) { console.error('Укажите папку каталогов и рабочую папку'); process.exit(1); }
 fs.mkdirSync(OUT, { recursive: true });
 const CV = 'https://res.cloudinary.com/dnbg21ef8/image/upload/f_jpg,q_auto:good,w_1654';
 const TITLE = `${CV}/v1780894225/matkasym/covers/title-page-shaar.png`;
 const END = `${CV}/v1780894228/matkasym/covers/end-page-shaar.png`;
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const PHONES = ['+996 501 111 726', '+996 504 200 067', '+996 703 939 070'];
 
 // keepLast — последняя страница сета содержит товар, а не только контакты
 const SETS = [
@@ -74,6 +79,8 @@ html, body { color-scheme:only light; font-family:Roboto, Helvetica, Arial, sans
 .c b { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:11pt; line-height:1.2; margin-top:1.5mm; }
 .c p { color:#4d4d4d; font-size:8.4pt; line-height:1.35; margin-top:1.5mm; }
 .c .l { margin-top:auto; color:#7d96a0; font-size:9pt; }
+.ph-cover { position:absolute; left:91mm; top:278.5mm; width:50mm; height:16.5mm; background:#bf0723; }
+.ph { position:absolute; left:95.1mm; top:279.6mm; color:#fff; font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:9.6pt; line-height:4.8mm; white-space:nowrap; }
 .foot { position:absolute; left:16mm; right:16mm; bottom:10mm; color:#7d96a0; font-size:7.4pt; }
 </style></head><body>
 <section class="page full"><img src="${TITLE}" alt=""></section>
@@ -82,7 +89,8 @@ html, body { color-scheme:only light; font-family:Roboto, Helvetica, Arial, sans
   ${docs.map(card).join('')}
   <div class="foot">Сквозной номер листа стоит внизу по центру. Справа внизу — страница внутри раздела.</div>
 </section>
-<section class="page full"><img src="${END}" alt=""></section></body></html>`;
+<section class="page full"><img src="${END}" alt="">
+  <div class="ph-cover"></div><div class="ph">${PHONES.join('<br>')}</div></section></body></html>`;
   const frontFile = path.join(OUT, 'front.html'), frontPdf = path.join(OUT, 'front.pdf');
   fs.writeFileSync(frontFile, frontHtml);
   chrome(frontFile, frontPdf);
@@ -118,30 +126,59 @@ html, body { background:transparent; }</style></head><body>${stamps.map(n => `<s
   out.addPage(end);
   if (out.getPageCount() !== total) throw new Error(`листов ${out.getPageCount()}, ожидалось ${total}`);
 
-  // Ссылки с карточек содержания и закладки для телефона
-  const ctx = out.context, H = toc.getHeight();
-  const dest = n => ctx.obj([out.getPage(n - 1).ref, PDFName.of('Fit')]);
-  const annots = docs.map((d, i) => {
-    const x = (G.x + (i % 2) * (G.w + G.gx)) * MM, y = H - (G.y + Math.floor(i / 2) * (G.h + G.gy) + G.h) * MM;
-    return ctx.register(ctx.obj({ Type: 'Annot', Subtype: 'Link', Rect: [x, y, x + G.w * MM, y + G.h * MM], Border: [0, 0, 0], Dest: dest(d.first) }));
-  });
-  toc.node.set(PDFName.of('Annots'), ctx.obj(annots));
-  const rootRef = ctx.nextRef();
-  const refs = docs.map(() => ctx.nextRef());
-  docs.forEach((d, i) => {
-    const o = ctx.obj({ Parent: rootRef, Dest: dest(d.first) });
-    o.set(PDFName.of('Title'), PDFHexString.fromText(d.name));
-    if (i) o.set(PDFName.of('Prev'), refs[i - 1]);
-    if (i < refs.length - 1) o.set(PDFName.of('Next'), refs[i + 1]);
-    ctx.assign(refs[i], o);
-  });
-  const root = ctx.obj({ Type: 'Outlines', First: refs[0], Last: refs[refs.length - 1] });
-  root.set(PDFName.of('Count'), PDFNumber.of(refs.length));
-  ctx.assign(rootRef, root);
-  out.catalog.set(PDFName.of('Outlines'), rootRef);
+  const basePdf = path.join(OUT, 'base.pdf');
+  fs.writeFileSync(basePdf, await out.save());
 
-  const pdf = path.join(OUT, 'Каталог MATKASYM SHAAR.pdf');
-  fs.writeFileSync(pdf, await out.save());
-  console.log('PDF:', pdf, `(${total} листов, ${(fs.statSync(pdf).size / 1048576).toFixed(1)} МБ)`);
+  // Ссылки с карточек содержания и закладки
+  const withNav = async bytes => {
+    const pdf = await PDFDocument.load(bytes);
+    const ctx = pdf.context, tocPage = pdf.getPage(1), H = tocPage.getHeight();
+    const dest = n => ctx.obj([pdf.getPage(n - 1).ref, PDFName.of('Fit')]);
+    const annots = docs.map((d, i) => {
+      const x = (G.x + (i % 2) * (G.w + G.gx)) * MM, y = H - (G.y + Math.floor(i / 2) * (G.h + G.gy) + G.h) * MM;
+      return ctx.register(ctx.obj({ Type: 'Annot', Subtype: 'Link', Rect: [x, y, x + G.w * MM, y + G.h * MM], Border: [0, 0, 0], Dest: dest(d.first) }));
+    });
+    tocPage.node.set(PDFName.of('Annots'), ctx.obj(annots));
+    const rootRef = ctx.nextRef();
+    const refs = docs.map(() => ctx.nextRef());
+    docs.forEach((d, i) => {
+      const o = ctx.obj({ Parent: rootRef, Dest: dest(d.first) });
+      o.set(PDFName.of('Title'), PDFHexString.fromText(d.name));
+      if (i) o.set(PDFName.of('Prev'), refs[i - 1]);
+      if (i < refs.length - 1) o.set(PDFName.of('Next'), refs[i + 1]);
+      ctx.assign(refs[i], o);
+    });
+    const root = ctx.obj({ Type: 'Outlines', First: refs[0], Last: refs[refs.length - 1] });
+    root.set(PDFName.of('Count'), PDFNumber.of(refs.length));
+    ctx.assign(rootRef, root);
+    pdf.catalog.set(PDFName.of('Outlines'), rootRef);
+    pdf.setTitle('Каталог MATKASYM SHAAR');
+    return pdf.save();
+  };
+
+  const full = path.join(OUT, 'Каталог MATKASYM SHAAR.pdf');
+  fs.writeFileSync(full, await withNav(fs.readFileSync(basePdf)));
+
+  // Лёгкая версия: сжимаются только картинки, текст и шрифты остаются
+  const gsPdf = path.join(OUT, 'gs.pdf');
+  execFileSync('gs', ['-q', '-dNOPAUSE', '-dBATCH', '-dSAFER', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.6',
+    // Без перевода в RGB Ghostscript пишет пустой ICC-профиль: на iPhone (PDFKit) фото пропадают — «invalid image ColorSpace»
+    '-sColorConversionStrategy=RGB', '-dProcessColorModel=/DeviceRGB',
+    '-dEmbedAllFonts=true', '-dSubsetFonts=true', '-dPassThroughJPEGImages=false', '-dDetectDuplicateImages=true',
+    '-dDownsampleColorImages=true', '-dColorImageDownsampleType=/Bicubic', `-dColorImageResolution=${LIGHT_DPI}`, '-dColorImageDownsampleThreshold=1.0',
+    '-dDownsampleGrayImages=true', '-dGrayImageDownsampleType=/Bicubic', `-dGrayImageResolution=${LIGHT_DPI}`, '-dGrayImageDownsampleThreshold=1.0',
+    '-dAutoFilterColorImages=false', '-dColorImageFilter=/DCTEncode', '-dAutoFilterGrayImages=false', '-dGrayImageFilter=/DCTEncode',
+    `-sOutputFile=${gsPdf}`, '-c', '<</ColorImageDict <</QFactor 0.7 /HSamples [2 1 1 2] /VSamples [2 1 1 2]>> /GrayImageDict <</QFactor 0.7 /HSamples [2 1 1 2] /VSamples [2 1 1 2]>>>> setdistillerparams', '-f', basePdf], { stdio: 'inherit', timeout: 500000 });
+  const light = path.join(OUT, 'Каталог MATKASYM SHAAR (лёгкий).pdf');
+  fs.writeFileSync(light, await withNav(fs.readFileSync(gsPdf)));
+
+  const mb = f => (fs.statSync(f).size / 1048576).toFixed(1);
+  console.log(`${total} листов. Полная: ${mb(full)} МБ, лёгкая: ${mb(light)} МБ`);
   docs.forEach(d => console.log(`  ${d.name}: лист ${d.first}, страниц ${d.take}`));
+  if (process.argv.includes('--upload')) {
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+    const cloudinary = require('../lib/cloudinary');
+    const up = await cloudinary.uploader.upload(light, { resource_type: 'raw', public_id: 'matkasym/catalogs/shaar.pdf', overwrite: true, invalidate: true });
+    console.log('Залит на сайт:', up.secure_url);
+  }
 })().catch(e => { console.error(e); process.exit(1); });

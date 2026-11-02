@@ -120,7 +120,7 @@ function count(p, cells) {
 const variant = p => p.pdfVariant || p.name;
 
 // ── Вёрстка ────────────────────────────────────────────────────────────────
-const LOGO = `${SITE}/logos/logo-main.png`;
+const LOGO = `${CLOUD}/matkasym/catalog-assets/logo-main.jpg`;
 let pageNo = 0;
 const page = (body, cls = '') => {
   pageNo++;
@@ -279,7 +279,7 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .cover-grid div { overflow:hidden; }
 .cover-grid img { width:100%; height:100%; object-fit:cover; }
 .cover-tab { position:absolute; top:0; left:50%; transform:translateX(-50%); }
-.cover-tab img { width:36mm; height:auto; display:block; }
+.cover-tab img { width:36mm; height:auto; display:block; clip-path:polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%); }
 .cover-plate { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:var(--metal); color:#fff;
   font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:30pt; letter-spacing:.04em; line-height:1;
   padding:5mm 10mm; border-radius:3mm; white-space:nowrap; }
@@ -370,7 +370,7 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // 1. Обложка: коллаж, красный ярлык с логотипом сверху, серая плашка с названием по центру
   pages.push(page(`
     <div class="cover-grid">${COVER.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>
-    <div class="cover-tab"><img src="${CLOUD}/f_png,w_600,c_limit/matkasym/uzak-koldon/logo-tab" alt="MATKASYM"></div>
+    <div class="cover-tab"><img src="${CLOUD}/f_jpg,q_90,w_600,c_limit/matkasym/catalog-assets/logo-tab" alt="MATKASYM"></div>
     <div class="cover-plate">UZAK KOLDON</div>`, 'cover'));
 
   // 2. Содержание и обозначения
@@ -434,7 +434,7 @@ h3 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   pages.push(page(`${seriesSplit(S.tr)}${seriesBlock(S.tsh)}`));
   // 10. Как заказать
   pages.push(page(`
-    <div class="end-logo"><img src="${SITE}/logos/logo-vertical.png" alt="MATKASYM"></div>
+    <div class="end-logo"><img src="${CLOUD}/matkasym/catalog-assets/logo-vertical.jpg" alt="MATKASYM"></div>
     <div class="order">
       <div>
         <h2>Как заказать</h2>

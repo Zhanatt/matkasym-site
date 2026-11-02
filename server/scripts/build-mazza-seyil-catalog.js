@@ -94,7 +94,7 @@ const tag = n => `<span class="tag">${money(n)}</span>`;
 const dimRows = d => [['Ширина', d[0]], ['Глубина', d[1]], ['Высота', d[2]]].filter(([, v]) => v).map(([k, v]) => [k, `${v} см`]);
 
 // ── Вёрстка ────────────────────────────────────────────────────────────────
-const LOGO = `${SITE}/logos/logo-main.png`;
+const LOGO = `${CLOUD}/matkasym/catalog-assets/logo-main.jpg`;
 let pageNo = 0;
 const page = (body, cls = '') => {
   pageNo++;
@@ -297,7 +297,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .cover-grid div { overflow:hidden; }
 .cover-grid img { width:100%; height:100%; object-fit:cover; }
 .cover-tab { position:absolute; top:0; left:50%; transform:translateX(-50%); }
-.cover-tab img { width:36mm; height:auto; }
+.cover-tab img { width:36mm; height:auto; display:block; clip-path:polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%); }
 .cover-plate { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:var(--metal); color:#fff;
   font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:30pt; letter-spacing:.04em; line-height:1;
   padding:5mm 10mm; border-radius:3mm; white-space:nowrap; text-align:center; }
@@ -330,7 +330,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .end-photo img { width:100%; height:100%; object-fit:cover; }
 /* групповое фото: во всю ширину листа, светлый фон кадра растворяется в белом (multiply) */
 .end-photo--fit { flex:0 0 auto; margin:0 calc(-1 * var(--pad)); overflow:visible; }
-.end-photo--fit img { width:100%; height:auto; mix-blend-mode:multiply; }
+.end-photo--fit img { width:100%; height:auto; }
 .end-photo--fit + .order { margin-top:auto; }
 .order { display:grid; grid-template-columns:1fr 1fr; gap:10mm; border-top:1px solid var(--metal); padding-top:7mm; }
 .order h2 { margin-bottom:4mm; }
@@ -379,7 +379,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   const COVER = [pic('esAluu', 2), pic('jyluu', 1), pic('nurjol', 1), pic('bakyt', 1)].map(u => room(u, 1300));
   pages.push(page(`
     <div class="cover-grid">${COVER.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>
-    <div class="cover-tab"><img src="${CLOUD}/f_png,w_600,c_limit/matkasym/uzak-koldon/logo-tab" alt="MATKASYM"></div>
+    <div class="cover-tab"><img src="${CLOUD}/f_jpg,q_90,w_600,c_limit/matkasym/catalog-assets/logo-tab" alt="MATKASYM"></div>
     <div class="cover-plate">MAZZA SEYIL<small>Скамейки · освещение · велопарковки</small></div>`, 'cover'));
 
   // 2. Вступление, содержание, сводная таблица
@@ -463,11 +463,11 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // Фото без фона и обрезаны по силуэту; ширина каждой колонки = ширине фонаря при общей высоте h,
   // h — максимальная, при которой три фонаря помещаются в ширину полосы (178 мм минус промежутки)
   const sharp = require('sharp');
-  const lampUrl = m => m.photo.replace('/upload/', '/upload/e_background_removal/e_trim:20/f_png,h_1600,c_limit/');
+  const lampUrl = m => m.photo.replace('/upload/', '/upload/e_background_removal/b_white/e_trim:20/f_jpg,q_auto:good,h_1600,c_limit/');
   const lamps = [];
   for (const m of B.light.items) {
     let buf;
-    for (let i = 0; i < 25; i++) { const r = await fetch(lampUrl(m)); if (r.ok && /png/.test(r.headers.get('content-type') || '')) { buf = Buffer.from(await r.arrayBuffer()); break; } await new Promise(z => setTimeout(z, 3000)); }
+    for (let i = 0; i < 25; i++) { const r = await fetch(lampUrl(m)); if (r.ok && /image/.test(r.headers.get('content-type') || '')) { buf = Buffer.from(await r.arrayBuffer()); break; } await new Promise(z => setTimeout(z, 3000)); }
     if (!buf) throw new Error('не удалось убрать фон у ' + m.v);
     const { width, height } = await sharp(buf).metadata();
     lamps.push({ m, r: width / height });
@@ -550,7 +550,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
         <li>Производим, доставляем и устанавливаем.</li></ol>
     </div>`));
   // Последняя полоса: логотип по центру и контакты снизу (групповое фото не нужно — сказал пользователь 31.10.2026)
-  const END = `<div class="end-logo"><img src="${SITE}/logos/logo-vertical.png" alt="MATKASYM"></div>`;
+  const END = `<div class="end-logo"><img src="${CLOUD}/matkasym/catalog-assets/logo-vertical.jpg" alt="MATKASYM"></div>`;
   // 13. Как заказать
   pages.push(page(`
     ${END}

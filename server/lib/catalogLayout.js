@@ -7,7 +7,7 @@ const { FONT_CSS, LIGHT_META } = require('./catalogFonts');
 
 const SITE = 'https://matkasym-site.onrender.com';
 const CLOUD = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
-const LOGO = `${SITE}/logos/logo-main.png`;
+const LOGO = `${CLOUD}/matkasym/catalog-assets/logo-main.jpg`;
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -63,7 +63,7 @@ const grid2 = items => `<div class="g2">${items.map(modelCell).join('')}</div>`;
 const series = (kind, name, lead, items, grow = 1) => `<article class="series" style="flex-grow:${grow}">${head(kind, name, lead)}${cols(items)}</article>`;
 
 const orderPage = (page, steps) => page(`
-    <div class="end-logo"><img src="${SITE}/logos/logo-vertical.png" alt="MATKASYM"></div>
+    <div class="end-logo"><img src="${CLOUD}/matkasym/catalog-assets/logo-vertical.jpg" alt="MATKASYM"></div>
     <div class="order">
       <div><h2>Как заказать</h2>
         <ol class="steps">${steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol></div>
@@ -77,7 +77,7 @@ const orderPage = (page, steps) => page(`
 
 const coverPage = (page, photos, title, sub) => page(`
     <div class="cover-grid">${photos.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>
-    <div class="cover-tab"><img src="${CLOUD}/f_png,w_600,c_limit/matkasym/uzak-koldon/logo-tab" alt="MATKASYM"></div>
+    <div class="cover-tab"><img src="${CLOUD}/f_jpg,q_90,w_600,c_limit/matkasym/catalog-assets/logo-tab" alt="MATKASYM"></div>
     <div class="cover-plate">${esc(title)}<small>${esc(sub)}</small></div>`, 'cover');
 
 // Размерные линии со стрелками (как в ONOY SAKTA): высота слева, ширина снизу, глубина наклонно справа.
@@ -213,7 +213,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .cover-grid div { overflow:hidden; }
 .cover-grid img { width:100%; height:100%; object-fit:cover; }
 .cover-tab { position:absolute; top:0; left:50%; transform:translateX(-50%); }
-.cover-tab img { width:36mm; height:auto; }
+.cover-tab img { width:36mm; height:auto; display:block; clip-path:polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%); }
 .cover-plate { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:var(--metal); color:#fff;
   font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:30pt; letter-spacing:.04em; line-height:1;
   padding:5mm 10mm; border-radius:3mm; white-space:nowrap; text-align:center; }

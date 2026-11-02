@@ -95,7 +95,7 @@ function modelData(m, bySku) {
 }
 
 // ── Вёрстка ────────────────────────────────────────────────────────────────
-const LOGO = `${SITE}/logos/logo-main.png`;
+const LOGO = `${CLOUD}/matkasym/catalog-assets/logo-main.jpg`;
 let pageNo = 0;
 const page = (body, cls = '') => {
   pageNo++;
@@ -301,7 +301,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .cover-grid div { overflow:hidden; }
 .cover-grid img { width:100%; height:100%; object-fit:cover; }
 .cover-tab { position:absolute; top:0; left:50%; transform:translateX(-50%); }
-.cover-tab img { width:36mm; height:auto; }
+.cover-tab img { width:36mm; height:auto; display:block; clip-path:polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%); }
 .cover-plate { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:var(--metal); color:#fff;
   font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:30pt; letter-spacing:.04em; line-height:1;
   padding:5mm 10mm; border-radius:3mm; white-space:nowrap; text-align:center; }
@@ -317,7 +317,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .toc-row .m { display:block; font-family:Roboto, Helvetica, Arial, sans-serif; font-weight:400; color:var(--mute); font-size:8pt; margin-top:.6mm; }
 .toc-row .p { color:var(--mute); font-size:11pt; }
 .intro-photo { flex:1 1 0; min-height:0; margin:0 calc(-1 * var(--pad)); display:flex; align-items:center; }
-.intro-photo img { width:100%; max-height:100%; object-fit:contain; mix-blend-mode:multiply; }
+.intro-photo img { width:100%; max-height:100%; object-fit:contain; }
 .tbl { width:100%; border-collapse:collapse; font-size:8pt; }
 .tbl th { text-align:left; font-weight:500; font-size:6.8pt; letter-spacing:.1em; text-transform:uppercase; color:var(--mute);
   padding:0 2mm 2mm 0; border-bottom:1px solid var(--metal); white-space:nowrap; }
@@ -334,7 +334,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 .end-photo img { width:100%; height:100%; object-fit:cover; }
 /* групповое фото: во всю ширину листа, светлый фон кадра растворяется в белом (multiply) */
 .end-photo--fit { flex:0 0 auto; margin:0 calc(-1 * var(--pad)); overflow:visible; }
-.end-photo--fit img { width:100%; height:auto; mix-blend-mode:multiply; }
+.end-photo--fit img { width:100%; height:auto; }
 .end-photo--fit + .order { margin-top:auto; }
 .order { display:grid; grid-template-columns:1fr 1fr; gap:10mm; border-top:1px solid var(--metal); padding-top:7mm; }
 .order h2 { margin-bottom:4mm; }
@@ -380,7 +380,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // 1. Обложка
   pages.push(page(`
     <div class="cover-grid">${COVER.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>
-    <div class="cover-tab"><img src="${CLOUD}/f_png,w_600,c_limit/matkasym/uzak-koldon/logo-tab" alt="MATKASYM"></div>
+    <div class="cover-tab"><img src="${CLOUD}/f_jpg,q_90,w_600,c_limit/matkasym/catalog-assets/logo-tab" alt="MATKASYM"></div>
     <div class="cover-plate">ONOY SAKTA<small>Металлические стеллажи</small></div>`, 'cover'));
 
   // 2. Вступление, содержание, подбор по размеру
@@ -398,7 +398,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
     </div>
     <div>${SECTIONS.map(s => `<div class="toc-row"><span class="n">${s.n}</span>
       <span class="t">${s.title}<span class="m">${s.note}</span></span><span class="p">${String(TOC_PAGES[s.n]).padStart(2, '0')}</span></div>`).join('')}</div>
-    <div class="intro-photo"><img src="${CLOUD}/f_jpg,q_auto:good,w_1800,c_limit/matkasym/onoy-sakta/group" alt=""></div>`));
+    <div class="intro-photo"><img src="${CLOUD}/f_jpg,q_auto:good,w_1800,c_limit/matkasym/onoy-sakta/group-flat" alt=""></div>`));
 
   // 3. Подбор по назначению: помещение → подходящие модели с фото, ценой и страницей
   const IDX = {};
@@ -506,7 +506,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   // Последняя полоса: групповое фото всей линейки (пользователь делает по ПРОМПТ.txt из папки
   // «групповое фото» → Cloudinary matkasym/onoy-sakta/group). Пока его нет — интерьер SLOTTED A5.
   // Коллаж из вырезанных фото пользователь отверг: разные ракурсы, нужен единый кадр.
-  const groupUrl = `${CLOUD}/f_jpg,q_auto:good,w_1800,c_limit/matkasym/onoy-sakta/group`;
+  const groupUrl = `${CLOUD}/f_jpg,q_auto:good,w_1800,c_limit/matkasym/onoy-sakta/group-flat`;
   const hasGroup = (await fetch(groupUrl, { method: 'HEAD' })).ok;
   const END = hasGroup
     ? `<div class="s-head"><div><div class="s-kind">Вся линейка</div><h2>ONOY SAKTA</h2></div>
