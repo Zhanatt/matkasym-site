@@ -98,9 +98,10 @@ async function build(key) {
   for (const key of keys) {
     try { await build(key); } catch (e) {
       failed++;
-      console.error(`✗ ${key}:`, e.message);
+      const msg = e.message || e.error?.message || JSON.stringify(e);
+      console.error(`✗ ${key}:`, msg);
       const fp = await fingerprint(key).catch(() => null);
-      await col().updateOne({ _id: key }, { $set: { requested: false, buildError: String(e.message).slice(0, 500), errorFingerprint: fp } }, { upsert: true });
+      await col().updateOne({ _id: key }, { $set: { requested: false, buildError: String(msg).slice(0, 500), errorFingerprint: fp } }, { upsert: true });
     }
   }
   console.log(`Готово: ${keys.length - failed} из ${keys.length}`);

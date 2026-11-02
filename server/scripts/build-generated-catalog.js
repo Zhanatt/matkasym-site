@@ -5,6 +5,7 @@
 //
 // Подключение к базе — у вызывающего (catalog-build.js) или здесь, если запуск отдельный.
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const mongoose = require('mongoose');
@@ -33,6 +34,35 @@ async function bundle(work) {
   await require(esbuildPath()).build({ entryPoints: [entry], bundle: true, platform: 'node', format: 'cjs', outfile: out, logLevel: 'warning',
     plugins: [{ name: 'api-stub', setup(b) { b.onResolve({ filter: /api\/index$/ }, () => ({ path: stub })); } }] });
   return out;
+}
+
+// Chrome не успевает догрузить сотни картинок: хвост каталога выходил пустым, без ошибки. Поэтому фото качаем
+// заранее (с повторами, общий кэш на все варианты: у опта и розницы одни и те же кадры), печатаем из файлов.
+async function localizeImages(html, work) {
+  const urls = [...new Set([...html.matchAll(/https:\/\/res\.cloudinary\.com\/[^"'\s)]+/g)].map(m => m[0]))];
+  const cache = path.join(path.dirname(path.resolve(work)), 'img-cache');
+  fs.mkdirSync(cache, { recursive: true });
+  const fileOf = u => path.join(cache, crypto.createHash('sha1').update(u).digest('hex'));
+  const failed = [];
+  const one = async u => {
+    const f = fileOf(u);
+    if (fs.existsSync(f)) return;
+    for (let i = 0; i < 5; i++) {
+      try {
+        const r = await fetch(u);
+        if (r.ok) { fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); return; }
+        if (r.status === 404) break;
+      } catch { /* повтор */ }
+      await new Promise(z => setTimeout(z, 2000 * (i + 1)));
+    }
+    failed.push(u);
+  };
+  let next = 0;
+  await Promise.all(Array.from({ length: 10 }, async () => { while (next < urls.length) await one(urls[next++]); }));
+  console.log(`  фото: ${urls.length}, не скачано: ${failed.length}`);
+  if (failed.length > urls.length * 0.02) throw new Error(`не скачано ${failed.length} фото из ${urls.length}, например ${failed[0]}`);
+  const bad = new Set(failed);
+  return html.replace(/https:\/\/res\.cloudinary\.com\/[^"'\s)]+/g, u => (bad.has(u) ? u : `file://${fileOf(u)}`));
 }
 
 async function generate(brand, priceType, work) {
@@ -76,11 +106,13 @@ async function generate(brand, priceType, work) {
   // Логотип без прозрачности: /SMask ломает картинки на iPhone
   html = html.split('/logos/logo-main.png').join('https://res.cloudinary.com/dnbg21ef8/image/upload/matkasym/catalog-assets/logo-main.jpg');
 
+  html = await localizeImages(html, work);
+
   const htmlFile = path.join(work, 'catalog.html');
   fs.writeFileSync(htmlFile, html);
   const raw = path.join(work, 'raw.pdf');
   execFileSync(CHROME, [...(process.env.CI ? ['--no-sandbox'] : []), '--headless=new', '--disable-gpu', '--no-pdf-header-footer',
-    '--virtual-time-budget=400000', `--print-to-pdf=${raw}`, `file://${htmlFile}`], { stdio: 'ignore', timeout: 1200000 });
+    '--allow-file-access-from-files', '--virtual-time-budget=120000', `--print-to-pdf=${raw}`, `file://${htmlFile}`], { stdio: 'ignore', timeout: 1200000 });
   const pdf = path.join(work, 'catalog.pdf');
   compressPdf(raw, pdf);
   return { pdf, groups: groups.map(g => [g.groupName, g.products.length]), size: fs.statSync(raw).size };
