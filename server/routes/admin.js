@@ -1094,6 +1094,8 @@ router.put('/brands/:key/sets-reorder', editor, async (req, res) => {
     brand.sets.forEach(s => { if (!orderedKeys.includes(s.key)) reordered.push(s); });
     brand.sets = reordered;
     await brand.save();
+    // Порядок сетов SHAAR — это порядок общего каталога: сразу просим пересборку, не дожидаясь кнопки «PDF»
+    if (brand.key === 'matkasym-shaar') resolveFile('brand:matkasym-shaar:price').catch(e => console.error('Пересборка каталога SHAAR:', e.message));
     res.json(brand);
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });

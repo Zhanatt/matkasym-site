@@ -62,11 +62,17 @@ async function fingerprintBrand(brand, priceType) {
     rows.map(p => [String(p._id), pick(p, fields), !!(p.inStock || p.stock > 0 || p.isOnOrder)])]);
 }
 
+// Порядок сетов в общем каталоге SHAAR — как в списке «Линейки сетов» на сайте; замороженные не печатаются
+async function shaarSetOrder() {
+  const brand = await db().collection('brands').findOne({ key: SHAAR }, { projection: { sets: 1 } });
+  return (brand?.sets || []).filter(s => !s.frozen).sort((x, y) => (x.order ?? 999) - (y.order ?? 999)).map(s => s.key);
+}
+
 async function fingerprint(key) {
   const k = parseKey(key);
   if (!k) throw new Error('Неизвестный каталог: ' + key);
   if (k.kind === 'set') return fingerprintSet(k.meta);
-  if (k.merged) return sha([LAYOUT_REV, await Promise.all(Object.values(SETS).map(fingerprintSet))]);
+  if (k.merged) return sha([LAYOUT_REV, await shaarSetOrder(), await Promise.all(Object.values(SETS).map(fingerprintSet))]);
   return fingerprintBrand(k.brand, k.priceType);
 }
 
@@ -105,4 +111,4 @@ async function resolveFile(key) {
   return { status: 'building', ...last, instant };
 }
 
-module.exports = { parseKey, allKeys, fingerprint, getFile, resolveFile, col, SETS, BRANDS, PRICE_TYPES };
+module.exports = { parseKey, allKeys, fingerprint, getFile, resolveFile, shaarSetOrder, col, SETS, BRANDS, PRICE_TYPES };

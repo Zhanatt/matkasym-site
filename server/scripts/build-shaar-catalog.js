@@ -16,6 +16,9 @@ const { execFileSync } = require('child_process');
 const { PDFDocument, PDFName, PDFHexString, PDFNumber } = require('pdf-lib');
 const { FONT_CSS, LIGHT_META } = require('../lib/catalogFonts');
 const { compressPdf } = require('../lib/catalogLayout');
+const mongoose = require('mongoose');
+const MONGO_URI = require('../lib/atlas');
+const { shaarSetOrder } = require('../lib/catalogFiles');
 
 const [SRC, OUT] = process.argv.slice(2).filter(a => !a.startsWith('--'));
 const LIGHT_DPI = 130;
@@ -31,14 +34,14 @@ const PHONES = ['+996 501 111 726', '+996 504 200 067', '+996 703 939 070'];
 
 // keepLast — последняя страница сета содержит товар, а не только контакты
 const SETS = [
-  { name: 'UZAK KOLDON', sub: 'Шкафы и тумбы', file: 'узак колдон/Каталог UZAK KOLDON 2026.pdf' },
-  { name: 'MAZZA SEYIL', sub: 'Скамейки, освещение, велопарковки', file: 'мазза сейил/Каталог MAZZA SEYIL.pdf' },
-  { name: 'ONOY SAKTA', sub: 'Стеллажи', file: 'оной сакта/Каталог ONOY SAKTA.pdf', keepLast: true },
-  { name: '0-TASTANDY', sub: 'Урны, контейнеры, баки', file: '0 таштанды/Каталог 0-TASTANDY.pdf' },
-  { name: 'BILIM KELECHEK', sub: 'Мебель для школ и учебных классов', file: 'билим келечек/Каталог BILIM KELECHEK 2026.pdf', keepLast: true },
-  { name: 'BEKEM FASAD', sub: 'Корзины, кронштейны, решётки', file: 'бекем фасад/Каталог BEKEM FASAD.pdf' },
-  { name: 'KOOZ KOOPSUZDUK', sub: 'Электрощиты и шкафы', file: 'кооз коопсуздук/Каталог KOOZ KOOPSUZDUK.pdf' },
-  { name: 'BEKEM TOSMO', sub: 'Ограждения и перегородки', file: 'бекем тосмо/Каталог BEKEM TOSMO.pdf' },
+  { key: 'uzak-koldon', name: 'UZAK KOLDON', sub: 'Шкафы и тумбы', file: 'узак колдон/Каталог UZAK KOLDON 2026.pdf' },
+  { key: 'mazza-seyil', name: 'MAZZA SEYIL', sub: 'Скамейки, освещение, велопарковки', file: 'мазза сейил/Каталог MAZZA SEYIL.pdf' },
+  { key: 'onoi-sakta', name: 'ONOY SAKTA', sub: 'Стеллажи', file: 'оной сакта/Каталог ONOY SAKTA.pdf', keepLast: true },
+  { key: '0-tashtandy', name: '0-TASTANDY', sub: 'Урны, контейнеры, баки', file: '0 таштанды/Каталог 0-TASTANDY.pdf' },
+  { key: 'bilim-kelechek', name: 'BILIM KELECHEK', sub: 'Мебель для школ и учебных классов', file: 'билим келечек/Каталог BILIM KELECHEK 2026.pdf', keepLast: true },
+  { key: 'bekem-fasad', name: 'BEKEM FASAD', sub: 'Корзины, кронштейны, решётки', file: 'бекем фасад/Каталог BEKEM FASAD.pdf' },
+  { key: 'kooz-koopsuzduk', name: 'KOOZ KOOPSUZDUK', sub: 'Электрощиты и шкафы', file: 'кооз коопсуздук/Каталог KOOZ KOOPSUZDUK.pdf' },
+  { key: 'bekem-tosmo', name: 'BEKEM TOSMO', sub: 'Ограждения и перегородки', file: 'бекем тосмо/Каталог BEKEM TOSMO.pdf' },
 ];
 
 // Геометрия содержания в мм: по ней же ставятся ссылки на карточках
@@ -56,9 +59,16 @@ module.exports = { SETS };
 if (require.main !== module) return;
 
 (async () => {
+  // Порядок — из списка сетов на сайте: переставили там, каталог собирается в новом порядке
+  await mongoose.connect(MONGO_URI);
+  const order = await shaarSetOrder();
+  await mongoose.disconnect();
+  const ordered = order.map(k => SETS.find(s => s.key === k)).filter(Boolean);
+  if (!ordered.length) throw new Error('Пустой список сетов SHAAR');
+
   const docs = [];
   let sheet = 3; // 1 — обложка, 2 — содержание
-  for (const s of SETS) {
+  for (const s of ordered) {
     const bytes = fs.readFileSync(path.join(SRC, s.file));
     const doc = await PDFDocument.load(bytes);
     const take = doc.getPageCount() - (s.keepLast ? 0 : 1);
