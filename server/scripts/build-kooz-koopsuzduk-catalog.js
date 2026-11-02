@@ -163,6 +163,15 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
 /* обложка */
 .cover { padding:0; gap:0; }
+.obj-list { display:flex; flex-direction:column; gap:6mm; height:212mm; }
+.obj { display:flex; flex-direction:column; min-height:0; }
+.obj--a { flex:0 0 96mm; } .obj--b { flex:1 1 0; }
+.obj-head { display:flex; align-items:baseline; gap:6mm; border-top:0.3mm solid #000; padding-top:2mm; margin-bottom:2mm; }
+.obj-head h3 { font-size:11pt; font-weight:800; white-space:nowrap; margin:0; }
+.obj-head p { font-size:8pt; color:#555; margin:0; }
+.obj-imgs { flex:1 1 0; min-height:0; display:grid; grid-template-columns:1fr 1fr; gap:4mm; }
+.obj-imgs > div { min-height:0; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.obj-imgs img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
 .cover .foot { display:none; }
 .cover-grid { position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
 .cover-grid div { overflow:hidden; }
@@ -312,7 +321,7 @@ const FAMILIES = {
     <div class="cover-plate">KOOZ KOOPSUZDUK<small>Электрощиты и шкафы · по ГОСТ</small></div>`, 'cover'));
 
   // 2. Вступление, содержание, ГОСТ
-  const TOC = { '01': 4, '02': 6, '03': 7, '04': 8, '05': 9, '06': 11 };
+  const TOC = { '01': 4, '02': 6, '03': 7, '04': 8, '05': 10, '06': 12 };
   const G = [
     ['ГОСТ 16523-97', 'Прокат тонколистовой из углеродистой стали', 'Корпуса и двери — холоднокатаная сталь 0,5–1,2 мм'],
     ['ГОСТ 14254-2015', 'Степени защиты оболочек (код IP)', 'Исполнения IP31, IP54 — уплотнитель, замки IP54'],
@@ -382,6 +391,16 @@ const FAMILIES = {
     lead: 'Шкафы для пожарных кранов (ШПК) и щиты для огнетушителей и инвентаря — навесные и встраиваемые.',
     sp: [['Материал', `сталь ${STEEL}, 0,9 мм`], ['Цвет', 'красный RAL 3000 / 3002, шагрень'], ['Двери', '1–2, откидные или распашные'], ['Замок', 'ригельный 84×72 или под ключ'], ['Комплектация', 'полки, паз под рукав, окно — по заказу']],
     rs: R.fire })}`));
+
+  // Пожарные щиты на объектах заказчиков; файлы — «кооз коопсуздук/объекты» → matkasym/kooz/obj-*
+  const objImg = (id, w = 900) => `${CLOUD}/${id.startsWith('old-') ? 'e_trim:10/' : ''}f_jpg,q_auto:good,w_${w},c_limit/matkasym/kooz/obj-${id}`;
+  const objBlock = (name, text, ids, cls) => `<article class="obj ${cls}"><div class="obj-head"><h3>${esc(name)}</h3><p>${esc(text)}</p></div>
+    <div class="obj-imgs">${ids.map(id => `<div><img src="${objImg(id)}" alt=""></div>`).join('')}</div></article>`;
+  pages.push(page(`${secHead('04')}${head('Реализованные проекты', 'Пожарные щиты на объектах', 'Пожарные щиты MATKASYM, изготовленные и поставленные на объекты в Бишкеке.')}
+    <div class="obj-list">
+    ${objBlock('OLD BISHKEK', 'Все пожарные щиты на объекте изготовлены MATKASYM. На фото двухсекционный щит.', ['old-bishkek-1', 'old-bishkek-2'], 'obj--a')}
+    ${objBlock('BISHKEK ARENA', 'Встроенный двухсекционный щит с окошками и логотипом на дверях.', ['arena-closed', 'arena-open'], 'obj--b')}
+    </div>`));
 
   // 11. ВРУ — отдельной полосой: свои ВРУ из техлистов NAS (изометрия вырезана, matkasym/kooz/vru-*) + GGD
   const vru = byId[PHOTO.vru], box = all.filter(p => /коробка обратной цепи/i.test(p.nm)), luk = all.filter(p => /люк/i.test(p.nm));
