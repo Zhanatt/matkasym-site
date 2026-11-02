@@ -257,9 +257,11 @@ const FAMILIES = {
   const byId = Object.fromEntries(all.map(p => [String(p._id), p]));
   // Рендеры вместо чертежей: пользователь делает по «рендеры щитов/ПРОМПТ.txt» → matkasym/kooz/render-<ключ>.
   // Есть рендер — ставим его, нет — пока чертёж с сайта.
-  const RENDER = new Set();
-  for (const k of [...Object.keys(PHOTO), 'vru-1800x800', 'vru-1800x800-rev', 'vru-1800x600', 'vru-1500x1400'])
-    if ((await fetch(`${CLOUD}/matkasym/kooz/render-${k}`, { method: 'HEAD' })).ok) RENDER.add(k);
+  // Список берём из API, а не HEAD-запросом: CDN кэширует 404, и только что залитый рендер выглядел бы отсутствующим.
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+  const RENDER_PREFIX = 'matkasym/kooz/render-';
+  const { resources } = await require('../lib/cloudinary').api.resources({ type: 'upload', prefix: RENDER_PREFIX, max_results: 100 });
+  const RENDER = new Set(resources.map(r => r.public_id.slice(RENDER_PREFIX.length)));
   const rnd = (k, w) => `${CLOUD}/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/matkasym/kooz/render-${k}`;
   const ph = (k, w = 1200) => { if (RENDER.has(k)) return rnd(k, w); const p = byId[PHOTO[k]]; if (!p?.images?.[0]) throw new Error('нет фото ' + k); return cut(p.images[0], w); };
 
