@@ -480,6 +480,9 @@ const FAMILIES = {
 .fam-strip { flex:0 0 62mm; display:grid; grid-template-columns:repeat(3,1fr); gap:6mm; border-top:1px solid var(--line); padding-top:5mm; }
 .fam-strip div { min-height:0; display:flex; align-items:center; justify-content:center; }
 .fam-strip img { max-width:100%; max-height:100%; object-fit:contain; }
+/* Строка грида не ограничена по высоте: без явного предела широкая колонка растит фото поверх таблицы */
+.fam-strip[style] > div { height:57mm; }
+.fam-strip[style] img { max-height:57mm; }
 .fam-grid { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:5mm; min-height:0; }
 .fam-grid div { min-height:0; display:flex; align-items:center; justify-content:center; }
 .fam-grid img { max-width:100%; max-height:100%; object-fit:contain; }
