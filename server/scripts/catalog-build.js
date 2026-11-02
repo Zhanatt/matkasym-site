@@ -19,7 +19,17 @@ const WORK = fs.mkdtempSync(path.join(os.tmpdir(), 'catalogs-'));
 const force = process.argv.includes('--force');
 
 async function publish(key, k, file, fp) {
-  const up = await cloudinary.uploader.upload(file, { resource_type: 'raw', public_id: `matkasym/catalogs/${k.name}.pdf`, overwrite: true, invalidate: true });
+  // Связь на больших файлах рвётся (EPIPE): без повтора в реестре остался бы прошлый файл
+  let up;
+  for (let i = 0; !up; i++) {
+    try {
+      up = await cloudinary.uploader.upload(file, { resource_type: 'raw', public_id: `matkasym/catalogs/${k.name}.pdf`, overwrite: true, invalidate: true, timeout: 300000 });
+    } catch (e) {
+      if (i >= 3) throw e;
+      console.error('  заливка не удалась, повтор:', e.message || e.error?.message);
+      await new Promise(z => setTimeout(z, 5000 * (i + 1)));
+    }
+  }
   await col().updateOne({ _id: key }, { $set: { url: up.secure_url, fingerprint: fp, filename: k.filename, bytes: up.bytes, builtAt: new Date(), requested: false },
     $unset: { buildError: '', errorFingerprint: '' } }, { upsert: true });
   console.log(`  ✓ ${key}: ${(up.bytes / 1048576).toFixed(1)} МБ`);
