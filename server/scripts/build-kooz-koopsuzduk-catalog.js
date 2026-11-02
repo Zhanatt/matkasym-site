@@ -307,7 +307,7 @@ const FAMILIES = {
     ${head(kind, title, lead)}
     <div class="fam-body">${stack ? `<div class="fam-stack">${stack.map(x => x.u ? `<div class="has-cap"><img src="${x.u}" alt=""><span class="stack-cap">${esc(x.cap)}</span></div>` : `<div><img src="${x}" alt=""></div>`).join('')}</div>` : `<div class="fam-photo"><img src="${photos ? photos[0] : photo}" alt=""></div>`}
       <div class="fam-right">${specs(sp)}${note}${rs?.length ? table(rs, { variant }) : ''}</div></div>
-    ${photos ? `<div class="fam-strip">${photos.slice(1).map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>` : ''}</article>`;
+    ${photos ? `<div class="fam-strip" style="grid-template-columns:repeat(${photos.length - 1},1fr)">${photos.slice(1).map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>` : ''}</article>`;
 
   const COLORS = [['#d7d7d7', 'RAL 7035', 'светло-серый — стандарт'], ['#f1f0ea', 'RAL 9016', 'белый'], ['#a5a5a5', 'RAL 9006', 'серебристый'],
     ['#383e42', 'RAL 7016', 'антрацит'], ['#0e0e10', 'RAL 9005', 'чёрный матовый'], ['#4a3526', 'RAL 8019', 'коричневый'],
@@ -353,7 +353,7 @@ const FAMILIES = {
       <div><div class="s-kind">Материалы</div><ul class="list"><li>Холоднокатаная сталь 0,5–1,2 мм (${STEEL})</li><li>Оцинкованная сталь 0,7 мм — для улицы</li><li>Нержавеющая сталь — IP44 с козырьком</li><li>Монтажная панель — оцинковка 1,5 мм</li></ul></div>
       <div><div class="s-kind">Опции под заказ</div><ul class="list"><li>Фальшпанель, DIN-рейки, монтажная панель</li><li>Окошки под счётчики, 3–8 шт.</li><li>Замки: почтовый ЗП, ригельный, IP54, кодовый</li><li>Логотип застройщика, нумерация квартир</li><li>Сальники, кабельные вводы, вентиляция</li></ul></div>
     </div>
-    <div class="fam-strip kz-ex">${['et1', 'f4', 'gas', 'san3'].map(k => `<div><img src="${ph(k, 600)}" alt=""></div>`).join('')}</div>
+    <div class="fam-strip kz-ex">${['et1', 'f5', 'gas', 'san3'].map(k => `<div><img src="${ph(k, 600)}" alt=""></div>`).join('')}</div>
     <div class="kz-why">
       <div><b>Техлист на согласование</b><span>Чертёж и спецификация до запуска партии</span></div>
       <div><b>Порошковая покраска</b><span>Шагрень или мат, любой цвет RAL</span></div>
@@ -387,7 +387,7 @@ const FAMILIES = {
     rs: R.et })}`));
 
   // 11. Пожарные
-  pages.push(page(`${secHead('04')}${fam({ kind: 'По ГОСТ Р 51844-2009', title: 'Шкафы и щиты пожарные', photos: ['f3', 'f4', 'f5', 'f6'].map(k => ph(k, 700)),
+  pages.push(page(`${secHead('04')}${fam({ kind: 'По ГОСТ Р 51844-2009', title: 'Шкафы и щиты пожарные', photos: ['f3', 'f5', 'f6'].map(k => ph(k, 700)),
     lead: 'Шкафы для пожарных кранов (ШПК) и щиты для огнетушителей и инвентаря — навесные и встраиваемые.',
     sp: [['Материал', `сталь ${STEEL}, 0,9 мм`], ['Цвет', 'красный RAL 3000 / 3002, шагрень'], ['Двери', '1–2, откидные или распашные'], ['Замок', 'ригельный 84×72 или под ключ'], ['Комплектация', 'полки, паз под рукав, окно — по заказу']],
     rs: R.fire })}`));
