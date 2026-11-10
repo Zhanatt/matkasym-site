@@ -81,6 +81,18 @@ async function tg(method, body) {
   return r;
 }
 
+// Конструктор из бота — конструктор и на сайте: аккаунт с тем же Telegram получает
+// роль «Конструктор». Владельца и редактора не трогаем — им чертежи и так доступны
+// или роль шире и понижать её молча нельзя.
+const KEEP_ROLES = ['owner', 'editor'];
+async function promoteSiteUser(chatId) {
+  const u = await User.findOne({ telegramChatId: String(chatId) });
+  if (!u || KEEP_ROLES.includes(u.role) || u.role === 'konstruktor') return null;
+  u.role = 'konstruktor';
+  await u.save();
+  return u;
+}
+
 const ownerChats = () =>
   User.find({ role: 'owner', telegramChatId: { $nin: [null, ''] } }, 'telegramChatId name').lean();
 
@@ -241,6 +253,7 @@ async function decideRegistration(cb, action, chatId) {
     });
   }
   if (ok) {
+    await promoteSiteUser(chatId).catch(e => console.error('[drawingBot] promote', e.message));
     // Меню «/» — только в чате этого конструктора
     await ensureCommands(chatId);
     await sendMenu(chatId, `✅ Регистрация подтверждена!\n\n${HELP_TEXT}`);
@@ -356,4 +369,4 @@ async function handleDrawingDocument(message) {
   return true;
 }
 
-module.exports = { setDefaultCommands, handleDrawingText, handleDrawingCallback, handleDrawingDocument, isPdf, REGISTER_LINK };
+module.exports = { promoteSiteUser, setDefaultCommands, handleDrawingText, handleDrawingCallback, handleDrawingDocument, isPdf, REGISTER_LINK };

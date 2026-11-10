@@ -139,6 +139,11 @@ app.post('/api/telegram-webhook', async (req, res) => {
         const User = require('./models/User');
         const user = await User.findByIdAndUpdate(userId, { telegramChatId: String(chatId) }, { new: true });
         if (user) {
+          // Принятый в боте конструктор привязал аккаунт сайта — делаем его конструктором и там
+          const Konstruktor = require('./models/Konstruktor');
+          if (await Konstruktor.exists({ chatId: String(chatId), status: 'approved' })) {
+            await require('./lib/drawingBot').promoteSiteUser(chatId).catch(e => console.error('[drawingBot] promote', e.message));
+          }
           const { sendTelegramMessage } = require('./lib/telegram');
           await sendTelegramMessage(chatId, `✅ Telegram привязан к аккаунту <b>${user.name}</b>!\n\nТеперь ты будешь получать уведомления о новостях сюда.`);
         }

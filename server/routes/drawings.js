@@ -87,6 +87,26 @@ router.get('/authors', async (req, res) => {
       map.set(key, a);
     }
     const list = [...map.values()];
+    // Конструкторы без чертежей тоже в списке: роль на сайте или принятые в боте
+    const Konstruktor = require('../models/Konstruktor');
+    const [kUsers, kBot] = await Promise.all([
+      User.find({ role: 'konstruktor' }, { name: 1, telegramChatId: 1 }).lean(),
+      Konstruktor.find({ status: 'approved' }, { chatId: 1, name: 1 }).lean(),
+    ]);
+    const has = k => myKeys.has(k) || map.has(k);
+    for (const u of kUsers) {
+      const key = u.telegramChatId ? String(u.telegramChatId) : `u:${u._id}`;
+      const alt = `u:${u._id}`;
+      if (String(u._id) === String(req.user._id) || has(key) || has(alt)) continue;
+      list.push({ key, name: u.name || '', count: 0, lastAt: null });
+      map.set(key, true);
+    }
+    for (const k of kBot) {
+      if (has(k.chatId)) continue;
+      if (await User.exists({ role: 'owner', telegramChatId: k.chatId })) continue;
+      list.push({ key: k.chatId, name: k.name || '', count: 0, lastAt: null });
+      map.set(k.chatId, true);
+    }
     // Имя берём из аккаунта сайта, если он найден, — оно аккуратнее телеграмного
     const chatIds = list.filter(a => !a.key.startsWith('u:')).map(a => a.key);
     const userIds = list.filter(a => a.key.startsWith('u:')).map(a => a.key.slice(2));

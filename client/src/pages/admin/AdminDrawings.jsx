@@ -477,7 +477,7 @@ export default function AdminDrawings() {
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 800, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
-                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{a.count} {plural(a.count)} · {fmtDate(a.lastAt).split(',')[0]}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{a.count ? `${a.count} ${plural(a.count)} · ${fmtDate(a.lastAt).split(',')[0]}` : 'пока нет чертежей'}</div>
                 </div>
                 <span style={{ color: C.muted, fontSize: 18 }}>›</span>
               </button>
