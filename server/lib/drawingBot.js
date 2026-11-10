@@ -51,6 +51,22 @@ const COMMANDS = [
   { command: 'help',    description: 'Подсказка по боту' },
 ];
 
+// Меню «/» для всех чатов (в том числе покупателей): только вход в регистрацию.
+const DEFAULT_COMMANDS = [
+  { command: 'start',       description: 'Начать' },
+  { command: 'konstruktor', description: 'Регистрация конструктора (чертежи)' },
+];
+
+// Меню чертежей ставим в конкретный чат — дёшево, повторный вызов ничего не ломает
+const ensureCommands = chatId =>
+  tg('setMyCommands', { commands: COMMANDS, scope: { type: 'chat', chat_id: Number(chatId) } });
+
+async function setDefaultCommands() {
+  await tg('setMyCommands', { commands: DEFAULT_COMMANDS, scope: { type: 'default' } });
+  // Владельцам — сразу меню чертежей: им регистрация не нужна
+  for (const o of await ownerChats()) await ensureCommands(o.telegramChatId);
+}
+
 const REGISTER_RE = /^\/(konstruktor|register)(@\w+)?$|^\/start konstruktor$/i;
 const UPLOAD_RE   = new RegExp(`^(/upload(@\\w+)?|${BTN_UPLOAD})$`, 'i');
 const LIST_RE     = new RegExp(`^(/my(@\\w+)?|/drawings|${BTN_LIST})$`, 'i');
@@ -146,9 +162,7 @@ async function handleDrawingText(message) {
     return true;
   }
 
-  // Владелец пишет /start ради магазина и привязки — свою клавиатуру ему не навязываем
-  if (isStart && !(await Konstruktor.exists({ chatId, status: 'approved' }))) return false;
-
+  await ensureCommands(chatId);
   if (LIST_RE.test(text)) { await sendList(chatId, 0); return true; }
   if (UPLOAD_RE.test(text)) {
     await sendMenu(chatId, '📤 Пришлите чертёж файлом <b>PDF</b>: 📎 скрепка → <b>Файл</b> → выберите PDF.\n\nВ подписи можно написать, что это за чертёж.');
@@ -228,7 +242,7 @@ async function decideRegistration(cb, action, chatId) {
   }
   if (ok) {
     // Меню «/» — только в чате этого конструктора
-    await tg('setMyCommands', { commands: COMMANDS, scope: { type: 'chat', chat_id: Number(chatId) } });
+    await ensureCommands(chatId);
     await sendMenu(chatId, `✅ Регистрация подтверждена!\n\n${HELP_TEXT}`);
   } else {
     await sendTelegramMessage(chatId, '❌ Заявка на регистрацию отклонена.');
@@ -373,4 +387,4 @@ async function handleDrawingDocument(message) {
   return true;
 }
 
-module.exports = { handleDrawingText, handleDrawingCallback, handleDrawingDocument, isPdf, REGISTER_LINK };
+module.exports = { setDefaultCommands, handleDrawingText, handleDrawingCallback, handleDrawingDocument, isPdf, REGISTER_LINK };

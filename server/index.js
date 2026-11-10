@@ -244,6 +244,9 @@ mongoose
     require('./lib/telegram').ensureWebhookUpdates()
       .then(r => { if (!r.ok) console.log('[telegram] подписка на реакции не настроена:', r.reason); })
       .catch(e => console.error('[telegram] ensureWebhookUpdates:', e.message));
+    // Меню команд бота: общее (вход в регистрацию конструктора) и меню чертежей владельцам
+    require('./lib/drawingBot').setDefaultCommands()
+      .catch(e => console.error('[drawingBot] setDefaultCommands:', e.message));
 
     // Внутренний тик автопубликаций каждую минуту (пока сервис не спит).
     // Дублируется внешним cron-пингом /api/cron/tick для надёжности на Render free.
