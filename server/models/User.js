@@ -15,7 +15,9 @@ const userSchema = new mongoose.Schema({
   // purchaser — Закупщик: обрабатывает заявки на заказ товара, ставит цену закупки и дату поставки
   // designer  — Дизайнер: публикует и редактирует товары, видит все вкладки; сеты за ним закреплены
   //             отдельными карточками на странице «Фронтмены и дизайнеры» (Frontman с kind='designer')
-  role:       { type: String, enum: ['user','owner','editor','viewer','navigator','warehouse','purchaser','designer','banned'], default: 'user' },
+  // konstruktor — Конструктор: видит в Продакт матрице ТОЛЬКО «Чертежи» (свои + чужие через
+  //             список конструкторов). Чертежи, кроме конструкторов, видит только владелец.
+  role:       { type: String, enum: ['user','owner','editor','viewer','navigator','warehouse','purchaser','designer','konstruktor','banned'], default: 'user' },
   isPending:  { type: Boolean, default: false },
   resetPasswordToken:   { type: String },
   resetPasswordExpires: { type: Date },

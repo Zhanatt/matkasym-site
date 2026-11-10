@@ -60,6 +60,16 @@ exports.viewer = (req, res, next) => {
 const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer'];
 exports.ADMIN_ROLES = ADMIN_ROLES;
 
+// Конструктор входит в Продакт матрицу, но НЕ в ADMIN_ROLES: тот список открывает
+// почти все /api/admin/*, а конструктору положены только чертежи.
+// На клиенте ему открыт вход (constants/roles.js → ENTER_ROLES) и одна вкладка.
+const DRAWING_ROLES = ['owner', 'konstruktor'];
+exports.DRAWING_ROLES = DRAWING_ROLES;
+exports.drawings = (req, res, next) => {
+  if (!DRAWING_ROLES.includes(req.user?.role)) return res.status(403).json({ message: 'Чертежи доступны только конструкторам' });
+  next();
+};
+
 exports.warehouse = (req, res, next) => {
   if (!ADMIN_ROLES.includes(req.user?.role)) return res.status(403).json({ message: 'Доступ запрещён' });
   next();

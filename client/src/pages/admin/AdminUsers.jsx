@@ -49,6 +49,7 @@ const AVATAR_COLORS = {
   warehouse: '#b45309',
   purchaser: '#15803d',
   designer:  '#be185d',
+  konstruktor: '#4338ca',
   banned:    '#c0392b',
   user:      '#888',
   pending:   '#c47a00',
@@ -62,6 +63,7 @@ const ROLE_LABELS = {
   warehouse: '📦 Склад',
   purchaser: '🛒 Закупщик',
   designer:  '🎨 Дизайнер',
+  konstruktor: '📐 Конструктор',
   banned:    '🚫 Заблокирован',
   user:      '👤 Пользователь',
 };
@@ -371,6 +373,7 @@ export default function AdminUsers() {
               <option value="warehouse">📦 Склад</option>
               <option value="purchaser">🛒 Закупщик</option>
               <option value="designer">🎨 Дизайнер</option>
+              <option value="konstruktor">📐 Конструктор</option>
               <option value="banned">🚫 Запретить</option>
             </select>
           ) : (

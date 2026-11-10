@@ -1,6 +1,7 @@
 // Чертежи PDF — вкладка «Чертежи» в админке. Те же записи, что пишет бот
 // (lib/drawingBot.js): загруженное в Telegram видно на сайте и наоборот.
 //
+// Доступ — только владелец и роль «Конструктор» (middleware drawings).
 // По умолчанию каждый видит только свои чертежи. Чужие — через раздел
 // «Конструкторы»: список авторов → чертежи выбранного. Менять, заменять файл
 // и удалять — автор (по аккаунту или по привязанному Telegram) и владелец.
@@ -8,12 +9,12 @@ const router  = require('express').Router();
 const multer  = require('multer');
 const Drawing = require('../models/Drawing');
 const User    = require('../models/User');
-const { protect, warehouse } = require('../middleware/auth');
+const { protect, drawings } = require('../middleware/auth');
 const { createDrawing, replaceDrawingFile, deleteDrawing, MAX_BYTES } = require('../lib/drawings');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES } });
 
-router.use(protect, warehouse);
+router.use(protect, drawings);   // только владелец и роль «Конструктор»
 
 const mineFilter = user => {
   const or = [{ user: user._id }];

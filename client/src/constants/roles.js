@@ -13,7 +13,18 @@
  */
 export const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer'];
 
-export const canEnterAdmin = role => ADMIN_ROLES.includes(role);
+/**
+ * Конструктор входит в Продакт матрицу, но видит только «Чертежи». На сервере
+ * его нет в ADMIN_ROLES намеренно (там этот список открывает почти весь API) —
+ * чертежи проверяет отдельный middleware `drawings`.
+ */
+export const KONSTRUKTOR = 'konstruktor';
+export const ENTER_ROLES = [...ADMIN_ROLES, KONSTRUKTOR];
+
+export const canEnterAdmin = role => ENTER_ROLES.includes(role);
+
+/** Чертежи видят только конструкторы и владелец (server: DRAWING_ROLES). */
+export const DRAWING_ROLES = ['owner', KONSTRUKTOR];
 
 /**
  * Роли, которым можно править каталог: заводить и удалять товары, менять
