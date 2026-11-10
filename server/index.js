@@ -97,6 +97,13 @@ app.post('/api/telegram-webhook', async (req, res) => {
       return res.sendStatus(200);
     }
 
+    // Кнопки «Принять / Отклонить» под заявкой конструктора
+    if (update.callback_query) {
+      const { handleDrawingCallback } = require('./lib/drawingBot');
+      await handleDrawingCallback(update.callback_query).catch(e => console.error('[drawingBot]', e.message));
+      return res.sendStatus(200);
+    }
+
     if (!message) return res.sendStatus(200);
 
     const chatId = message.chat?.id;
@@ -104,11 +111,24 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     // Выгрузка остатков из 1С файлом. Отвечаем Telegram'у сразу: загрузка идёт
     // дольше таймаута вебхука, и он прислал бы тот же файл повторно.
+    // PDF в личке — чертёж от конструктора (lib/drawingBot.js), остальное — остатки.
     if (message.document) {
       res.sendStatus(200);
+      const { handleDrawingDocument, isPdf } = require('./lib/drawingBot');
+      if (message.chat?.type === 'private' && isPdf(message.document)) {
+        handleDrawingDocument(message).catch(e => console.error('[drawingBot]', e.message));
+        return;
+      }
       const { handleStockDocument } = require('./lib/stockBot');
       handleStockDocument(message).catch(e => console.error('[stockBot]', e.message));
       return;
+    }
+
+    // Регистрация конструктора: /konstruktor и ответ с именем
+    if (text && message.chat?.type === 'private') {
+      const { handleDrawingText } = require('./lib/drawingBot');
+      const handled = await handleDrawingText(message).catch(e => { console.error('[drawingBot]', e.message); return false; });
+      if (handled) return res.sendStatus(200);
     }
 
     // /start userId — привязка аккаунта
