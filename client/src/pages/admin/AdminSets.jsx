@@ -648,6 +648,13 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     if (!liveSubs || catalogSlug) return;
     adminGetSetCategories(brandKey).then(r => setSetCats(r.data)).catch(() => {});
   }, [brandKey, catalogSlug, liveSubs]);
+  // Число своих товаров MATKASYM в каждом сете — для значка CROSS. Нужно всем
+  // направлениям, а не только KYZMAT, поэтому грузится отдельно.
+  const [ownCounts, setOwnCounts] = useState(null);
+  useEffect(() => {
+    if (catalogSlug) return;
+    adminGetSetCategories(brandKey).then(r => setOwnCounts(r.data)).catch(() => {});
+  }, [brandKey, catalogSlug]);
   const subsFor = slug => {
     if (!liveSubs) return subItems[slug] || null;
     if (!setCats) return null;
@@ -1100,7 +1107,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
               ))}
 
               {/* В сете нет ни одного своего товара MATKASYM — только привозные */}
-              {!isEditingThis && setCats?.own && setCats.own[slug] === 0 && (setCats.sets?.[slug] || []).length > 0 && (
+              {!isEditingThis && ownCounts?.own && ownCounts.own[slug] === 0 && (ownCounts.sets?.[slug] || []).length > 0 && (
                 <span title="В сете нет товаров MATKASYM — только кросс-товары"
                   style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: .3, flexShrink: 0,
                     padding: '1px 6px', borderRadius: 5, whiteSpace: 'nowrap',
