@@ -489,6 +489,16 @@ router.get('/set-layouts', async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+// Свой товар MATKASYM — то же правило, что makerOf в AdminSets.jsx: не тестовая
+// продажа, без поставщика и не помечен чужим производителем. Сет, где таких нет
+// ни одного, в списке помечается «CROSS».
+const OWN_PRODUCT = { $and: [
+  { $ne: ['$productStatus', 'test_sale'] },
+  { $eq: [{ $trim: { input: { $ifNull: ['$supplier.company', ''] } } }, ''] },
+  { $ne: [{ $ifNull: ['$isSupplied', false] }, true] },
+  { $in: [{ $ifNull: ['$maker', ''] }, ['', 'matkasym']] },
+] };
+
 // Категории каждого сета бренда — для списка под названием сета на странице
 // направления. Берём из самих товаров (переименовали категорию — список
 // поменялся), порядок — сохранённый через «Порядок»; клиент досортирует
@@ -501,15 +511,16 @@ router.get('/set-categories', async (req, res) => {
     const slugs = (b?.sets || []).map(x => x.key).filter(Boolean);
     const layouts = await SetLayout.find({ brand, set: { $in: slugs } }).lean();
     const order = Object.fromEntries(layouts.map(l => [l.set, l.categories || []]));
-    const sets = {};
+    const sets = {}, own = {};
     await Promise.all(slugs.map(async slug => {
       const rows = await Product.aggregate([
         { $match: { $and: [setMatch(slug), { productStatus: { $ne: 'kit_part' } }, { category: { $ne: 'kit-part' } }] } },
-        { $group: { _id: { $ifNull: ['$category', ''] }, count: { $sum: 1 } } },
+        { $group: { _id: { $ifNull: ['$category', ''] }, count: { $sum: 1 }, own: { $sum: { $cond: [OWN_PRODUCT, 1, 0] } } } },
       ]);
       sets[slug] = rows.map(r => ({ category: r._id || 'Прочее', count: r.count }));
+      own[slug] = rows.reduce((n, r) => n + r.own, 0);
     }));
-    res.json({ sets, order });
+    res.json({ sets, order, own });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 

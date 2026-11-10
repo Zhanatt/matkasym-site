@@ -1099,6 +1099,16 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                 </span>
               ))}
 
+              {/* В сете нет ни одного своего товара MATKASYM — только привозные */}
+              {!isEditingThis && setCats?.own && setCats.own[slug] === 0 && (setCats.sets?.[slug] || []).length > 0 && (
+                <span title="В сете нет товаров MATKASYM — только кросс-товары"
+                  style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: .3, flexShrink: 0,
+                    padding: '1px 6px', borderRadius: 5, whiteSpace: 'nowrap',
+                    color: '#b45309', background: '#fef3c7', border: '1px solid #fde68a' }}>
+                  CROSS
+                </span>
+              )}
+
               {!isEditingThis && customSet?.frozen && (
                 <span title="Заморожен: в общий PDF-каталог не печатается"
                   style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: .3, flexShrink: 0,
