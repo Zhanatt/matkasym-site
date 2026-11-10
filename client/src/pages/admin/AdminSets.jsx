@@ -7,7 +7,7 @@ import { useFrontmen } from '../../context/FrontmenContext';
 import AdminProductModal from './AdminProductModal';
 import {
   adminGetFacets, adminGetProducts,
-  adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets,
+  adminGetBrands, adminAddBrandSet, adminUpdateBrandSet, adminDeleteBrandSet, adminReorderBrandSets, adminSetBrandSetMaker,
   adminGetSetLayout,
   adminGetSetCategories,
   adminSaveSetLayout,
@@ -851,6 +851,15 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
   }
 
   // Заморозка: сет не печатается в общем PDF-каталоге направления
+  async function handleToggleMaker(slug, on) {
+    try {
+      const res = await adminSetBrandSetMaker(brandKey, slug, on ? 'matkasym' : '');
+      setCustomSets(res.data.sets || []);
+    } catch (e) {
+      alert(e?.response?.data?.error || 'Не удалось изменить отметку');
+    }
+  }
+
   async function handleToggleFrozen(slug, frozen) {
     try {
       const res = await adminSetBrandSetFrozen(brandKey, slug, frozen);
@@ -1106,8 +1115,17 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                 </span>
               ))}
 
+              {/* Сет своего производства — отмечен руками */}
+              {!isEditingThis && customSet?.maker === 'matkasym' && (
+                <span title="Сет MATKASYM — собственное производство"
+                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center',
+                    padding: '3px 6px', borderRadius: 5, background: '#fff', border: '1px solid #f3c4cb' }}>
+                  <img src="/logos/logo-main.png" alt="MATKASYM" style={{ height: 9, display: 'block' }} />
+                </span>
+              )}
+
               {/* В сете нет ни одного своего товара MATKASYM — только привозные */}
-              {!isEditingThis && ownCounts?.own && ownCounts.own[slug] === 0 && (ownCounts.sets?.[slug] || []).length > 0 && (
+              {!isEditingThis && customSet?.maker !== 'matkasym' && ownCounts?.own && ownCounts.own[slug] === 0 && (ownCounts.sets?.[slug] || []).length > 0 && (
                 <span title="В сете нет товаров MATKASYM — только кросс-товары"
                   style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: .3, flexShrink: 0,
                     padding: '1px 6px', borderRadius: 5, whiteSpace: 'nowrap',
@@ -1123,6 +1141,16 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
                     color: '#0369a1', background: '#e0f2fe', border: '1px solid #bae6fd' }}>
                   ❄ ЗАМОРОЗКА
                 </span>
+              )}
+
+              {editing && !isEditingThis && customSet && (
+                <button onClick={() => handleToggleMaker(slug, customSet.maker !== 'matkasym')}
+                  title={customSet.maker === 'matkasym' ? 'Снять отметку «сет MATKASYM»' : 'Отметить как сет MATKASYM (своё производство)'}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, cursor: 'pointer',
+                    border: '1px solid ' + (customSet.maker === 'matkasym' ? '#f3c4cb' : '#e0e0e0'),
+                    background: customSet.maker === 'matkasym' ? '#fdecee' : '#fff', color: customSet.maker === 'matkasym' ? '#b8001b' : '#555' }}>
+                  {customSet.maker === 'matkasym' ? '✓ MATKASYM' : '+ MATKASYM'}
+                </button>
               )}
 
               {editing && !isEditingThis && customSet && (

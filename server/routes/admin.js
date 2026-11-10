@@ -1055,6 +1055,20 @@ router.patch('/brands/:key/sets/:slug/frozen', editor, async (req, res) => {
   } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
 });
 
+// Отметка «сет MATKASYM» — значок с логотипом в списке сетов
+router.patch('/brands/:key/sets/:slug/maker', editor, async (req, res) => {
+  try {
+    const maker = req.body?.maker === 'matkasym' ? 'matkasym' : '';
+    const brand = await Brand.findOneAndUpdate(
+      { key: req.params.key, 'sets.key': req.params.slug },
+      { $set: { 'sets.$.maker': maker } },
+      { new: true }
+    );
+    if (!brand) return res.status(404).json({ error: 'Сет не найден' });
+    res.json(brand);
+  } catch (e) { res.status(400).json({ error: mongoErr(e) }); }
+});
+
 router.put('/brands/:key/sets/:slug', editor, async (req, res) => {
   try {
     const { label, labelRu } = req.body;
