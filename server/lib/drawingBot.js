@@ -18,7 +18,7 @@
 const Konstruktor = require('../models/Konstruktor');
 const Drawing     = require('../models/Drawing');
 const User        = require('../models/User');
-const cloudinary  = require('./cloudinary');
+const { createDrawing, deleteDrawing } = require('./drawings');
 const { sendTelegramMessage, downloadTelegramFile } = require('./telegram');
 
 const TOKEN  = process.env.TELEGRAM_BOT_TOKEN;
@@ -189,7 +189,7 @@ async function listView(chatId, page) {
   const kb = [];
   items.forEach((d, i) => {
     const n = page * PAGE + i + 1;
-    lines.push(`<b>${n}.</b> ${esc(d.fileName)}` + (d.caption ? `\n    <i>${esc(d.caption.slice(0, 80))}</i>` : '') + `\n    ${fmtDate(d.createdAt)}`);
+    lines.push(`<b>${n}.</b> ${esc(d.title || d.fileName)}` + (d.caption ? `\n    <i>${esc(d.caption.slice(0, 80))}</i>` : '') + `\n    ${fmtDate(d.createdAt)}`);
     kb.push([
       { text: `📄 ${n}. Открыть`, url: d.url },
       { text: `🗑 Удалить`, callback_data: `drw:del:${d._id}:${page}` },
@@ -256,7 +256,7 @@ async function askDelete(cb, id, page) {
   await tg('answerCallbackQuery', { callback_query_id: cb.id });
   return tg('editMessageText', {
     chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML',
-    text: `🗑 Удалить чертёж <b>${esc(d.fileName)}</b>?\n\nСсылка перестанет открываться, вернуть файл будет нельзя.`,
+    text: `🗑 Удалить чертёж <b>${esc(d.title || d.fileName)}</b>?\n\nСсылка перестанет открываться, вернуть файл будет нельзя.`,
     reply_markup: { inline_keyboard: [[
       { text: '🗑 Да, удалить', callback_data: `drw:rm:${id}:${page}` },
       { text: '↩️ Отмена',     callback_data: page === 'x' ? `drw:keep:${id}` : `drw:pg:${page}` },
@@ -271,9 +271,7 @@ async function doDelete(cb, id, page) {
   if (!d) {
     await tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Чертёж уже удалён' });
   } else {
-    const r = await cloudinary.uploader.destroy(d.publicId, { resource_type: 'raw', invalidate: true });
-    if (r.result !== 'ok' && r.result !== 'not found') throw new Error(`Cloudinary: ${r.result}`);
-    await d.deleteOne();
+    await deleteDrawing(d);   // вместе с архивными версиями
     await tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Удалён' });
   }
   if (page === 'x') {
@@ -288,7 +286,7 @@ async function doDelete(cb, id, page) {
 // Сообщение «Чертёж загружен» с кнопками — после «Отмена» возвращаем его как было
 function uploadedView(d) {
   return {
-    text: `✅ Чертёж загружен\n\n📄 ${esc(d.fileName)}` + (d.caption ? `\n<i>${esc(d.caption)}</i>` : '') +
+    text: `✅ Чертёж загружен\n\n📄 ${esc(d.title || d.fileName)}` + (d.caption ? `\n<i>${esc(d.caption)}</i>` : '') +
           `\n🔗 <a href="${d.url}">${d.url}</a>`,
     kb: [[
       { text: '📄 Открыть', url: d.url },
@@ -327,33 +325,6 @@ async function handleDrawingCallback(cb) {
 
 // ── Загрузка PDF ─────────────────────────────────────────────────────────────
 
-// Кириллицу переводим в латиницу: иначе ссылка превращается в %D0%A1%D1%82…
-const TR = { а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',
-  ң:'n',о:'o',ө:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ү:'u',ф:'f',х:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',
-  ы:'y',ь:'',э:'e',ю:'yu',я:'ya' };
-const translit = t => String(t).replace(/[а-яёңөү]/gi, ch => {
-  const r = TR[ch.toLowerCase()] ?? '';
-  return ch === ch.toLowerCase() ? r : r.charAt(0).toUpperCase() + r.slice(1);
-});
-
-// Имя файла в Cloudinary: исходное + метка времени, чтобы чертёж с тем же именем
-// не затёр предыдущую версию.
-function publicIdFor(fileName) {
-  const base = translit(String(fileName || 'drawing').replace(/\.pdf$/i, ''))
-    .replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'drawing';
-  const stamp = new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 19).replace(/[-:T]/g, '');
-  return `${base}_${stamp}.pdf`;   // у raw расширение — часть public_id, без него ссылка без .pdf
-}
-
-function uploadPdf(buffer, fileName) {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      { folder: FOLDER, resource_type: 'raw', public_id: publicIdFor(fileName), overwrite: false },
-      (err, res) => (err ? reject(err) : resolve(res)),
-    ).end(buffer);
-  });
-}
-
 /** PDF в личке. true — документ наш (дальше его не трогать). */
 async function handleDrawingDocument(message) {
   const doc = message.document;
@@ -373,10 +344,8 @@ async function handleDrawingDocument(message) {
   try {
     await sendTelegramMessage(chatId, `📥 Загружаю «${esc(doc.file_name)}»…`);
     const buffer = await downloadTelegramFile(doc.file_id);
-    const res = await uploadPdf(buffer, doc.file_name);
-    const d = await Drawing.create({
-      chatId, author, fileName: doc.file_name || '',
-      caption: message.caption || '', size: buffer.length, url: res.secure_url, publicId: res.public_id,
+    const d = await createDrawing(buffer, doc.file_name, {
+      chatId, author, lastAuthor: author, source: 'bot', caption: message.caption || '',
     });
     const v = uploadedView(d);
     await sendTelegramMessage(chatId, v.text, { reply_markup: { inline_keyboard: v.kb }, disablePreview: true });

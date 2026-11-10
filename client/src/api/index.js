@@ -284,3 +284,10 @@ export const adminUpdateShopRequest = (id, data)   => api.patch(`/admin/shop-req
 export default api;
 export const adminSetProductMaker = (ids, maker) => api.patch('/admin/products/maker', { ids, maker });
 export const adminSetBrandSetFrozen = (key, slug, frozen) => api.patch(`/admin/brands/${key}/sets/${slug}/frozen`, { frozen });
+
+// Чертежи PDF (вкладка «Чертежи»; те же записи, что загружает бот)
+export const getDrawings       = (params)    => api.get('/admin/drawings', { params });
+export const uploadDrawing     = (form, onUploadProgress) => api.post('/admin/drawings', form, { onUploadProgress });
+export const updateDrawing     = (id, data)  => api.patch(`/admin/drawings/${id}`, data);
+export const replaceDrawing    = (id, form, onUploadProgress) => api.post(`/admin/drawings/${id}/replace`, form, { onUploadProgress });
+export const deleteDrawingApi  = (id)        => api.delete(`/admin/drawings/${id}`);

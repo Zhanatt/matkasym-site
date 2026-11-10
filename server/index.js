@@ -21,6 +21,7 @@ app.use(cookieParser());
 
 // Routes
 app.use('/api/brands',   require('./routes/brands'));
+app.use('/api/admin/drawings', require('./routes/drawings')); // чертежи PDF (сайт + бот)
 app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/orders',   require('./routes/orders'));
