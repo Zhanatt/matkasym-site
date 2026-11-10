@@ -1,11 +1,13 @@
 // Чертежи PDF — вкладка «Чертежи» в админке. Те же записи, что пишет бот
 // (lib/drawingBot.js): загруженное в Telegram видно на сайте и наоборот.
 //
-// Смотреть и копировать ссылки могут все, кто заходит в админку. Менять, заменять
-// файл и удалять — автор (по аккаунту или по привязанному Telegram) и владелец.
+// По умолчанию каждый видит только свои чертежи. Чужие — через раздел
+// «Конструкторы»: список авторов → чертежи выбранного. Менять, заменять файл
+// и удалять — автор (по аккаунту или по привязанному Telegram) и владелец.
 const router  = require('express').Router();
 const multer  = require('multer');
 const Drawing = require('../models/Drawing');
+const User    = require('../models/User');
 const { protect, warehouse } = require('../middleware/auth');
 const { createDrawing, replaceDrawingFile, deleteDrawing, MAX_BYTES } = require('../lib/drawings');
 
@@ -38,20 +40,64 @@ const fileNameOf = f => Buffer.from(f.originalname || 'drawing.pdf', 'latin1').t
 
 const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Конструктор = Telegram-чат (бот и сайт у сотрудника с привязанным Telegram пишут
+// один chatId), а для загрузок с сайта без Telegram — аккаунт: ключ «u:<userId>».
+const authorKeyOf = d => d.chatId || (d.user ? `u:${d.user}` : '');
+
+const authorFilter = key => {
+  if (key.startsWith('u:')) return { user: key.slice(2), chatId: '' };
+  return { chatId: key };
+};
+
 router.get('/', async (req, res) => {
   try {
-    const { scope = 'mine', q = '' } = req.query;
-    const filter = scope === 'mine' ? mineFilter(req.user) : {};
+    const { scope = 'mine', author = '', q = '' } = req.query;
+    let filter;
+    if (scope === 'author') {
+      if (!author || (author.startsWith('u:') && !/^u:[a-f0-9]{24}$/i.test(author))) {
+        return res.status(400).json({ message: 'Не выбран конструктор' });
+      }
+      filter = authorFilter(String(author));
+    } else filter = mineFilter(req.user);
     if (q.trim()) {
       const re = new RegExp(escRe(q.trim()), 'i');
-      filter.$and = [{ $or: [{ title: re }, { code: re }, { caption: re }, { fileName: re }, { author: re }] }];
+      filter = { $and: [filter, { $or: [{ title: re }, { code: re }, { caption: re }, { fileName: re }] }] };
     }
-    const [items, mine, all] = await Promise.all([
+    const [items, mine] = await Promise.all([
       Drawing.find(filter).sort({ updatedAt: -1 }).limit(500).lean(),
       Drawing.countDocuments(mineFilter(req.user)),
-      Drawing.countDocuments(),
     ]);
-    res.json({ items: items.map(d => view(d, req.user)), counts: { mine, all } });
+    res.json({ items: items.map(d => view(d, req.user)), counts: { mine } });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// Список конструкторов, у кого есть чертежи (кроме себя — свои в «Моих»).
+router.get('/authors', async (req, res) => {
+  try {
+    const rows = await Drawing.find({}, { chatId: 1, user: 1, author: 1, updatedAt: 1 }).sort({ updatedAt: -1 }).lean();
+    const myKeys = new Set([String(req.user.telegramChatId || ''), `u:${req.user._id}`].filter(k => k && k !== 'u:'));
+    const map = new Map();
+    for (const d of rows) {
+      const key = authorKeyOf(d);
+      if (!key) continue;
+      if (myKeys.has(key) || (d.user && String(d.user) === String(req.user._id))) continue;
+      const a = map.get(key) || { key, name: d.author || '', count: 0, lastAt: d.updatedAt };
+      a.count += 1;
+      map.set(key, a);
+    }
+    const list = [...map.values()];
+    // Имя берём из аккаунта сайта, если он найден, — оно аккуратнее телеграмного
+    const chatIds = list.filter(a => !a.key.startsWith('u:')).map(a => a.key);
+    const userIds = list.filter(a => a.key.startsWith('u:')).map(a => a.key.slice(2));
+    const users = await User.find({ $or: [{ telegramChatId: { $in: chatIds } }, { _id: { $in: userIds } }] }, { name: 1, telegramChatId: 1 }).lean();
+    for (const a of list) {
+      const u = a.key.startsWith('u:')
+        ? users.find(x => String(x._id) === a.key.slice(2))
+        : users.find(x => x.telegramChatId && String(x.telegramChatId) === a.key);
+      if (u?.name) a.name = u.name;
+      if (!a.name) a.name = 'Без имени';
+    }
+    res.json({ items: list });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 

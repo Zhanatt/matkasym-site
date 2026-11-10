@@ -3,10 +3,13 @@
 // Те же записи, что загружает Telegram-бот (server/lib/drawingBot.js). Главное —
 // ссылка: она не меняется при замене файла, поэтому её можно один раз отдать
 // в цех или вставить в тех.лист. Прежние файлы остаются в «Версиях».
+//
+// Каждый сразу видит только свои чертежи. Чужие — во вкладке «Конструкторы»:
+// список людей → чертежи выбранного.
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  getDrawings, uploadDrawing, updateDrawing, replaceDrawing, deleteDrawingApi,
+  getDrawings, getDrawingAuthors, uploadDrawing, updateDrawing, replaceDrawing, deleteDrawingApi,
 } from '../../api/index';
 
 const BOT_LINK = 'https://t.me/productmatrixmatkasym_bot?start=konstruktor';
@@ -21,6 +24,7 @@ const C = {
 const fmtDate = d => d ? new Date(d).toLocaleString('ru', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 const fmtSize = n => !n ? '' : n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} КБ` : `${(n / 1024 / 1024).toFixed(1)} МБ`;
 const nameOf  = d => d.title || (d.fileName || '').replace(/\.pdf$/i, '') || 'Чертёж';
+const plural  = n => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? 'чертёж' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'чертежа' : 'чертежей'; };
 const errMsg  = e => e?.response?.data?.message || e?.message || 'Ошибка';
 
 function checkPdf(file) {
@@ -357,15 +361,16 @@ function DrawingRow({ d, showAuthor, onAction, toast }) {
 // ── Страница ─────────────────────────────────────────────────────────────────
 
 export default function AdminDrawings() {
-  const [scope, setScope] = useState('mine');
+  const [scope, setScope] = useState('mine');   // mine | authors
+  const [author, setAuthor] = useState(null);   // { key, name } — выбранный конструктор
+  const [authors, setAuthors] = useState([]);
   const [q, setQ] = useState('');
   const [items, setItems] = useState([]);
-  const [counts, setCounts] = useState({ mine: 0, all: 0 });
+  const [counts, setCounts] = useState({ mine: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);   // { type, drawing }
   const [toastMsg, setToastMsg] = useState('');
-  const firstLoad = useRef(true);
 
   const toast = useCallback(msg => {
     setToastMsg(msg);
@@ -375,14 +380,23 @@ export default function AdminDrawings() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const r = await getDrawings({ scope, q });
-      setItems(r.data.items); setCounts(r.data.counts);
-      // Своих нет, а общие есть — сразу показываем общие, чтобы страница не была пустой
-      if (firstLoad.current && scope === 'mine' && !r.data.counts.mine && r.data.counts.all && !q) setScope('all');
-      firstLoad.current = false;
+      const [r, a] = await Promise.all([
+        scope === 'authors' && !author ? null
+          : getDrawings(scope === 'authors' ? { scope: 'author', author: author.key, q } : { scope: 'mine', q }),
+        getDrawingAuthors(),
+      ]);
+      if (r) { setItems(r.data.items); setCounts(r.data.counts); } else setItems([]);
+      setAuthors(a.data.items);
     } catch (e) { setError(errMsg(e)); }
     finally { setLoading(false); }
-  }, [scope, q]);
+  }, [scope, author, q]);
+
+  const showAuthors = scope === 'authors' && !author;
+  const shownAuthors = showAuthors && q.trim()
+    ? authors.filter(a => a.name.toLowerCase().includes(q.trim().toLowerCase()))
+    : authors;
+  const openAuthor = a => { setAuthor(a); setQ(''); };
+  const backToAuthors = () => { setAuthor(null); setQ(''); };
 
   useEffect(() => { const t = setTimeout(load, q ? 250 : 0); return () => clearTimeout(t); }, [load, q]);
 
@@ -390,7 +404,7 @@ export default function AdminDrawings() {
   const afterChange = msg => { close(); if (msg) toast(msg); load(); };
 
   const tab = (key, label, n) => (
-    <button key={key} onClick={() => setScope(key)} style={{
+    <button key={key} onClick={() => { setScope(key); setAuthor(null); setQ(''); }} style={{
       padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
       fontSize: 13.5, fontWeight: 700, background: scope === key ? '#fff' : 'transparent',
       color: scope === key ? C.text : C.muted, boxShadow: scope === key ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
@@ -414,9 +428,9 @@ export default function AdminDrawings() {
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
         <div style={{ display: 'inline-flex', background: '#f0f0ee', borderRadius: 10, padding: 3, gap: 3 }}>
           {tab('mine', 'Мои чертежи', counts.mine)}
-          {tab('all', 'Все', counts.all)}
+          {tab('authors', 'Конструкторы', authors.length)}
         </div>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔍 Поиск: название, ДУ, автор…"
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder={showAuthors ? '🔍 Поиск конструктора…' : '🔍 Поиск: название, ДУ…'}
           style={{ flex: '1 1 220px', maxWidth: 360, fontSize: 14, fontFamily: 'inherit', border: `1px solid ${C.line}`,
             borderRadius: 10, padding: '9px 12px', outline: 'none', background: '#fff' }} />
       </div>
@@ -433,21 +447,58 @@ export default function AdminDrawings() {
 
       {error && <div style={{ color: C.redDark, marginBottom: 12 }}>⚠️ {error}</div>}
 
-      {loading && !items.length ? (
+      {scope === 'authors' && author && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <Button kind="ghost" onClick={backToAuthors}>← Все конструкторы</Button>
+          <div style={{ fontSize: 17, fontWeight: 800 }}>{author.name}</div>
+          <div style={{ fontSize: 13, color: C.muted }}>{author.count} {plural(author.count)}</div>
+        </div>
+      )}
+
+      {showAuthors ? (
+        loading && !authors.length ? (
+          <div style={{ color: C.muted, padding: 30, textAlign: 'center' }}>Загрузка…</div>
+        ) : !shownAuthors.length ? (
+          <div style={{ background: '#fff', border: `1px dashed ${C.line}`, borderRadius: 14, padding: '40px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: 34 }}>👷</div>
+            <div style={{ fontWeight: 800, fontSize: 16, marginTop: 6 }}>
+              {q ? 'Никого не нашлось' : 'У других конструкторов пока нет чертежей'}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+            {shownAuthors.map(a => (
+              <button key={a.key} onClick={() => openAuthor(a)} style={{ textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                background: C.surface, border: `1px solid ${C.line}`, borderRadius: 14, padding: '14px 16px',
+                display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ width: 42, height: 42, borderRadius: '50%', background: C.slateWash, color: '#3d5560', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16 }}>
+                  {(a.name || '?').trim()[0]?.toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{a.count} {plural(a.count)} · {fmtDate(a.lastAt).split(',')[0]}</div>
+                </div>
+                <span style={{ color: C.muted, fontSize: 18 }}>›</span>
+              </button>
+            ))}
+          </div>
+        )
+      ) : loading && !items.length ? (
         <div style={{ color: C.muted, padding: 30, textAlign: 'center' }}>Загрузка…</div>
       ) : !items.length ? (
         <div style={{ background: '#fff', border: `1px dashed ${C.line}`, borderRadius: 14, padding: '40px 20px', textAlign: 'center' }}>
           <div style={{ fontSize: 34 }}>📐</div>
           <div style={{ fontWeight: 800, fontSize: 16, marginTop: 6 }}>
-            {q ? 'Ничего не нашлось' : scope === 'mine' ? 'У вас пока нет чертежей' : 'Чертежей пока нет'}
+            {q ? 'Ничего не нашлось' : scope === 'mine' ? 'У вас пока нет чертежей' : 'Чертежей нет'}
           </div>
-          {!q && <div style={{ color: C.muted, fontSize: 13, margin: '6px 0 14px' }}>Загрузите PDF — получите постоянную ссылку на него.</div>}
-          {!q && <Button kind="primary" onClick={() => setModal({ type: 'upload' })}>📤 Загрузить чертёж</Button>}
+          {!q && scope === 'mine' && <div style={{ color: C.muted, fontSize: 13, margin: '6px 0 14px' }}>Загрузите PDF — получите постоянную ссылку на него.</div>}
+          {!q && scope === 'mine' && <Button kind="primary" onClick={() => setModal({ type: 'upload' })}>📤 Загрузить чертёж</Button>}
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 10, opacity: loading ? .6 : 1, transition: 'opacity .15s' }}>
           {items.map(d => (
-            <DrawingRow key={d._id} d={d} showAuthor={scope === 'all' || !d.mine} toast={toast}
+            <DrawingRow key={d._id} d={d} showAuthor={!d.mine} toast={toast}
               onAction={(type, drawing) => setModal({ type, drawing })} />
           ))}
         </div>

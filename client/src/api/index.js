@@ -287,6 +287,7 @@ export const adminSetBrandSetFrozen = (key, slug, frozen) => api.patch(`/admin/b
 
 // Чертежи PDF (вкладка «Чертежи»; те же записи, что загружает бот)
 export const getDrawings       = (params)    => api.get('/admin/drawings', { params });
+export const getDrawingAuthors = ()          => api.get('/admin/drawings/authors');
 export const uploadDrawing     = (form, onUploadProgress) => api.post('/admin/drawings', form, { onUploadProgress });
 export const updateDrawing     = (id, data)  => api.patch(`/admin/drawings/${id}`, data);
 export const replaceDrawing    = (id, form, onUploadProgress) => api.post(`/admin/drawings/${id}/replace`, form, { onUploadProgress });
