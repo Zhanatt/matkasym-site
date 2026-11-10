@@ -1,11 +1,16 @@
 /**
  * Чертежи от конструкторов через Telegram-бота.
  *
- * 1. Конструктор пишет боту /konstruktor и своё имя.
+ * 1. Конструктор открывает ссылку t.me/<бот>?start=konstruktor (или пишет
+ *    /konstruktor) и называет себя.
  * 2. Владельцам (owner с привязанным Telegram) приходит заявка с кнопками
  *    «Принять» / «Отклонить».
- * 3. Принятый конструктор присылает PDF — файл уходит в Cloudinary в папку
- *    matkasym/drawings, в ответ приходит ссылка на документ.
+ * 3. Принятому конструктору бот ставит постоянную клавиатуру («Загрузить чертёж»,
+ *    «Мои чертежи», «Помощь») и меню команд «/» — только в его чате: бот общий
+ *    с магазином, покупателям эти команды не нужны.
+ * 4. PDF уходит в Cloudinary (папка matkasym/drawings), в ответ — ссылка и
+ *    кнопки «Открыть» / «Удалить». В «Моих чертежах» — список своих файлов
+ *    с удалением. Удалить можно только свой чертёж.
  *
  * PDF кладём как raw, а не image: картинкой Cloudinary не отдаёт PDF по ссылке
  * без отдельной настройки аккаунта, а raw открывается в браузере как есть.
@@ -19,12 +24,37 @@ const { sendTelegramMessage, downloadTelegramFile } = require('./telegram');
 const TOKEN  = process.env.TELEGRAM_BOT_TOKEN;
 const FOLDER = 'matkasym/drawings';
 const MAX_BYTES = 20 * 1024 * 1024;   // больше бот скачать не может (лимит Bot API)
+const PAGE = 5;                       // чертежей на страницу в «Моих чертежах»
+
+const BOT_USERNAME = (process.env.TELEGRAM_BOT_USERNAME || 'productmatrixmatkasym_bot').replace('@', '');
+const REGISTER_LINK = `https://t.me/${BOT_USERNAME}?start=konstruktor`;
 
 const esc = t => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
 const isPdf = doc => doc && (doc.mime_type === 'application/pdf' || /\.pdf$/i.test(doc.file_name || ''));
 
-const REGISTER_RE = /^\/(konstruktor|konstrukt|register|чертеж|чертёж)\b/i;
+// Надписи на клавиатуре — нажатие присылает их обычным текстом
+const BTN_UPLOAD = '📤 Загрузить чертёж';
+const BTN_LIST   = '📂 Мои чертежи';
+const BTN_HELP   = '❓ Помощь';
+
+const KEYBOARD = {
+  keyboard: [[{ text: BTN_UPLOAD }, { text: BTN_LIST }], [{ text: BTN_HELP }]],
+  resize_keyboard: true,
+  is_persistent: true,
+  input_field_placeholder: 'Пришлите PDF или выберите действие',
+};
+
+// Меню «/» в чате конструктора
+const COMMANDS = [
+  { command: 'upload',  description: 'Как загрузить чертёж' },
+  { command: 'my',      description: 'Мои чертежи — открыть или удалить' },
+  { command: 'help',    description: 'Подсказка по боту' },
+];
+
+const REGISTER_RE = /^\/(konstruktor|register)(@\w+)?$|^\/start konstruktor$/i;
+const UPLOAD_RE   = new RegExp(`^(/upload(@\\w+)?|${BTN_UPLOAD})$`, 'i');
+const LIST_RE     = new RegExp(`^(/my(@\\w+)?|/drawings|${BTN_LIST})$`, 'i');
+const HELP_RE     = new RegExp(`^(/help(@\\w+)?|${BTN_HELP})$`, 'i');
 
 async function tg(method, body) {
   if (!TOKEN) return null;
@@ -35,50 +65,51 @@ async function tg(method, body) {
   return r;
 }
 
-const ownerChats = async () =>
-  (await User.find({ role: 'owner', telegramChatId: { $nin: [null, ''] } }, 'telegramChatId name').lean());
+const ownerChats = () =>
+  User.find({ role: 'owner', telegramChatId: { $nin: [null, ''] } }, 'telegramChatId name').lean();
 
-// Владелец тоже может присылать чертежи — регистрироваться ему не нужно
-async function isOwnerChat(chatId) {
-  return !!(await User.exists({ role: 'owner', telegramChatId: String(chatId) }));
+// Кто может загружать: принятый конструктор или владелец (ему регистрация не нужна).
+// Возвращает имя автора или null.
+async function uploaderName(chatId) {
+  const k = await Konstruktor.findOne({ chatId, status: 'approved' }, 'name').lean();
+  if (k) return k.name || 'Конструктор';
+  const owner = await User.findOne({ role: 'owner', telegramChatId: chatId }, 'name').lean();
+  return owner ? (owner.name || 'Владелец') : null;
 }
+
+const HELP_TEXT =
+  '📐 <b>Чертежи</b>\n\n' +
+  `<b>${BTN_UPLOAD}</b> — пришлите PDF файлом, в ответ придёт ссылка.\n` +
+  `<b>${BTN_LIST}</b> — список ваших чертежей: открыть или удалить.\n\n` +
+  'Как отправить файл: 📎 скрепка → <b>Файл</b> → выберите PDF.\n' +
+  'В подписи к файлу можно написать, что это за чертёж — подпись будет видна в списке.\n\n' +
+  'Ограничение Telegram — до 20 МБ на файл.';
+
+const sendMenu = (chatId, text = HELP_TEXT) =>
+  sendTelegramMessage(chatId, text, { reply_markup: KEYBOARD, disablePreview: true });
 
 // ── Регистрация ──────────────────────────────────────────────────────────────
 
-/** Текстовое сообщение в личке. true — сообщение наше, дальше не обрабатывать. */
-async function handleDrawingText(message) {
-  if (message.chat?.type !== 'private') return false;
-  const chatId = String(message.chat.id);
-  const text   = String(message.text || '').trim();
+async function startRegistration(message, chatId) {
+  const k = await Konstruktor.findOne({ chatId });
+  if (k?.status === 'approved') return sendMenu(chatId, `✅ ${esc(k.name)}, вы уже зарегистрированы.\n\n${HELP_TEXT}`);
+  if (k?.status === 'pending')  return sendTelegramMessage(chatId, '⏳ Заявка уже отправлена, ждём подтверждения.');
+  await Konstruktor.updateOne(
+    { chatId },
+    { $set: { status: 'awaiting_name', username: message.from?.username || '' } },
+    { upsert: true },
+  );
+  return sendTelegramMessage(chatId,
+    '📐 <b>Регистрация конструктора</b>\n\nНапишите одним сообщением ваше <b>имя и фамилию</b>.',
+    { reply_markup: { force_reply: true, input_field_placeholder: 'Имя Фамилия' } });
+}
 
-  if (REGISTER_RE.test(text)) {
-    const k = await Konstruktor.findOne({ chatId });
-    if (k?.status === 'approved') {
-      await sendTelegramMessage(chatId, `✅ ${esc(k.name)}, вы уже зарегистрированы.\n\nПрисылайте чертёж файлом <b>PDF</b> — в ответ придёт ссылка.`);
-      return true;
-    }
-    if (k?.status === 'pending') {
-      await sendTelegramMessage(chatId, '⏳ Заявка уже отправлена, ждём подтверждения.');
-      return true;
-    }
-    await Konstruktor.updateOne(
-      { chatId },
-      { $set: { status: 'awaiting_name', username: message.from?.username || '' } },
-      { upsert: true },
-    );
-    await sendTelegramMessage(chatId, '📐 Регистрация конструктора.\n\nНапишите одним сообщением ваше <b>имя и фамилию</b>.');
-    return true;
-  }
-
-  // Ответ на «напишите имя»
-  if (!text || text.startsWith('/')) return false;
-  const k = await Konstruktor.findOne({ chatId, status: 'awaiting_name' });
-  if (!k) return false;
-
+async function finishRegistration(k, text, chatId) {
   k.name = text.slice(0, 100);
   k.status = 'pending';
   await k.save();
-  await sendTelegramMessage(chatId, `Спасибо, ${esc(k.name)}! Заявка отправлена, сообщу, когда её подтвердят.`);
+  await sendTelegramMessage(chatId, `Спасибо, ${esc(k.name)}! Заявка отправлена — сообщу, когда её подтвердят.`,
+    { reply_markup: { remove_keyboard: true } });
 
   const who = `<b>${esc(k.name)}</b>` + (k.username ? ` (@${esc(k.username)})` : '');
   for (const o of await ownerChats()) {
@@ -89,27 +120,98 @@ async function handleDrawingText(message) {
       ]] },
     });
   }
+}
+
+/** Текстовое сообщение в личке. true — сообщение наше, дальше не обрабатывать. */
+async function handleDrawingText(message) {
+  if (message.chat?.type !== 'private') return false;
+  const chatId = String(message.chat.id);
+  const text   = String(message.text || '').trim();
+
+  if (REGISTER_RE.test(text)) { await startRegistration(message, chatId); return true; }
+
+  // Ответ на «напишите имя»
+  const waiting = await Konstruktor.findOne({ chatId, status: 'awaiting_name' });
+  if (waiting && text && !text.startsWith('/')) { await finishRegistration(waiting, text, chatId); return true; }
+
+  const isStart = /^\/start$/i.test(text);
+  const isOurs  = isStart || UPLOAD_RE.test(text) || LIST_RE.test(text) || HELP_RE.test(text);
+  if (!isOurs) return false;
+
+  const author = await uploaderName(chatId);
+  if (!author) {
+    if (isStart) return false;   // покупатель — пусть /start обработает магазин
+    await sendTelegramMessage(chatId,
+      `📐 Эта функция для конструкторов. Чтобы подать заявку, нажмите /konstruktor.`);
+    return true;
+  }
+
+  // Владелец пишет /start ради магазина и привязки — свою клавиатуру ему не навязываем
+  if (isStart && !(await Konstruktor.exists({ chatId, status: 'approved' }))) return false;
+
+  if (LIST_RE.test(text)) { await sendList(chatId, 0); return true; }
+  if (UPLOAD_RE.test(text)) {
+    await sendMenu(chatId, '📤 Пришлите чертёж файлом <b>PDF</b>: 📎 скрепка → <b>Файл</b> → выберите PDF.\n\nВ подписи можно написать, что это за чертёж.');
+    return true;
+  }
+  await sendMenu(chatId, isStart ? `👋 ${esc(author)}, здравствуйте!\n\n${HELP_TEXT}` : HELP_TEXT);
   return true;
 }
 
-/** Кнопка «Принять / Отклонить». true — колбэк наш. */
-async function handleDrawingCallback(cb) {
-  const m = /^drw:(ok|no):(-?\d+)$/.exec(cb?.data || '');
-  if (!m) return false;
-  const [, action, chatId] = m;
-  const from = String(cb.from?.id || '');
+// ── Список своих чертежей ────────────────────────────────────────────────────
 
-  const owner = await User.findOne({ role: 'owner', telegramChatId: from }, 'name').lean();
-  if (!owner) {
-    await tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Решает только владелец', show_alert: true });
-    return true;
+const fmtDate = d => new Date(new Date(d).getTime() + 6 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')
+  .replace(/^(\d{4})-(\d\d)-(\d\d)/, '$3.$2.$1');
+
+async function listView(chatId, page) {
+  const total = await Drawing.countDocuments({ chatId });
+  if (!total) return { text: `📂 У вас пока нет чертежей.\n\nПришлите PDF файлом — он появится здесь.`, kb: [] };
+
+  const pages = Math.ceil(total / PAGE);
+  page = Math.min(Math.max(0, page), pages - 1);
+  const items = await Drawing.find({ chatId }).sort({ createdAt: -1 }).skip(page * PAGE).limit(PAGE).lean();
+
+  const lines = [`📂 <b>Мои чертежи</b> — ${total}` + (pages > 1 ? ` (стр. ${page + 1} из ${pages})` : ''), ''];
+  const kb = [];
+  items.forEach((d, i) => {
+    const n = page * PAGE + i + 1;
+    lines.push(`<b>${n}.</b> ${esc(d.fileName)}` + (d.caption ? `\n    <i>${esc(d.caption.slice(0, 80))}</i>` : '') + `\n    ${fmtDate(d.createdAt)}`);
+    kb.push([
+      { text: `📄 ${n}. Открыть`, url: d.url },
+      { text: `🗑 Удалить`, callback_data: `drw:del:${d._id}:${page}` },
+    ]);
+  });
+  if (pages > 1) {
+    const nav = [];
+    if (page > 0)         nav.push({ text: '◀️ Назад',  callback_data: `drw:pg:${page - 1}` });
+    if (page < pages - 1) nav.push({ text: 'Дальше ▶️', callback_data: `drw:pg:${page + 1}` });
+    kb.push(nav);
   }
+  return { text: lines.join('\n'), kb };
+}
+
+async function sendList(chatId, page) {
+  const v = await listView(chatId, page);
+  return sendTelegramMessage(chatId, v.text, { reply_markup: { inline_keyboard: v.kb }, disablePreview: true });
+}
+
+async function editList(cb, page) {
+  const v = await listView(String(cb.from.id), page);
+  return tg('editMessageText', {
+    chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML',
+    text: v.text, reply_markup: { inline_keyboard: v.kb }, disable_web_page_preview: true,
+  });
+}
+
+// ── Кнопки ───────────────────────────────────────────────────────────────────
+
+async function decideRegistration(cb, action, chatId) {
+  const from  = String(cb.from?.id || '');
+  const owner = await User.findOne({ role: 'owner', telegramChatId: from }, 'name').lean();
+  if (!owner) return tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Решает только владелец', show_alert: true });
 
   const k = await Konstruktor.findOne({ chatId });
-  if (!k) {
-    await tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Заявка не найдена' });
-    return true;
-  }
+  if (!k) return tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Заявка не найдена' });
 
   const ok = action === 'ok';
   k.status = ok ? 'approved' : 'rejected';
@@ -124,16 +226,93 @@ async function handleDrawingCallback(cb) {
       text: `📐 Конструктор <b>${esc(k.name)}</b> — ${ok ? '✅ принят' : '❌ отклонён'} (${esc(k.decidedBy)})`,
     });
   }
-  await sendTelegramMessage(chatId, ok
-    ? '✅ Регистрация подтверждена!\n\nПрисылайте чертёж файлом <b>PDF</b> — в ответ придёт ссылка на документ. В подписи к файлу можно написать, что это за чертёж.'
-    : '❌ Заявка на регистрацию отклонена.');
+  if (ok) {
+    // Меню «/» — только в чате этого конструктора
+    await tg('setMyCommands', { commands: COMMANDS, scope: { type: 'chat', chat_id: Number(chatId) } });
+    await sendMenu(chatId, `✅ Регистрация подтверждена!\n\n${HELP_TEXT}`);
+  } else {
+    await sendTelegramMessage(chatId, '❌ Заявка на регистрацию отклонена.');
+  }
+}
+
+async function askDelete(cb, id, page) {
+  const chatId = String(cb.from.id);
+  const d = await Drawing.findOne({ _id: id, chatId }).lean();
+  if (!d) return tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Чертёж уже удалён' });
+  await tg('answerCallbackQuery', { callback_query_id: cb.id });
+  return tg('editMessageText', {
+    chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML',
+    text: `🗑 Удалить чертёж <b>${esc(d.fileName)}</b>?\n\nСсылка перестанет открываться, вернуть файл будет нельзя.`,
+    reply_markup: { inline_keyboard: [[
+      { text: '🗑 Да, удалить', callback_data: `drw:rm:${id}:${page}` },
+      { text: '↩️ Отмена',     callback_data: page === 'x' ? `drw:keep:${id}` : `drw:pg:${page}` },
+    ]] },
+  });
+}
+
+async function doDelete(cb, id, page) {
+  const chatId = String(cb.from.id);
+  // Только свой: chatId в условии, чужой чертёж не найдётся
+  const d = await Drawing.findOne({ _id: id, chatId });
+  if (!d) {
+    await tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Чертёж уже удалён' });
+  } else {
+    const r = await cloudinary.uploader.destroy(d.publicId, { resource_type: 'raw', invalidate: true });
+    if (r.result !== 'ok' && r.result !== 'not found') throw new Error(`Cloudinary: ${r.result}`);
+    await d.deleteOne();
+    await tg('answerCallbackQuery', { callback_query_id: cb.id, text: 'Удалён' });
+  }
+  if (page === 'x') {
+    return tg('editMessageText', {
+      chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML',
+      text: `🗑 Чертёж <b>${esc(d?.fileName || '')}</b> удалён.`,
+    });
+  }
+  return editList(cb, Number(page));
+}
+
+// Сообщение «Чертёж загружен» с кнопками — после «Отмена» возвращаем его как было
+function uploadedView(d) {
+  return {
+    text: `✅ Чертёж загружен\n\n📄 ${esc(d.fileName)}` + (d.caption ? `\n<i>${esc(d.caption)}</i>` : '') +
+          `\n🔗 <a href="${d.url}">${d.url}</a>`,
+    kb: [[
+      { text: '📄 Открыть', url: d.url },
+      { text: '🗑 Удалить', callback_data: `drw:del:${d._id}:x` },
+    ]],
+  };
+}
+
+/** Нажатие inline-кнопки. true — колбэк наш. */
+async function handleDrawingCallback(cb) {
+  const data = cb?.data || '';
+  if (!data.startsWith('drw:')) return false;
+  const [, action, a, b] = data.split(':');
+  try {
+    if (action === 'ok' || action === 'no') await decideRegistration(cb, action, a);
+    else if (action === 'pg') { await tg('answerCallbackQuery', { callback_query_id: cb.id }); await editList(cb, Number(a)); }
+    else if (action === 'del') await askDelete(cb, a, b);
+    else if (action === 'rm')  await doDelete(cb, a, b);
+    else if (action === 'keep') {
+      const d = await Drawing.findOne({ _id: a, chatId: String(cb.from.id) }).lean();
+      await tg('answerCallbackQuery', { callback_query_id: cb.id });
+      if (d) {
+        const v = uploadedView(d);
+        await tg('editMessageText', {
+          chat_id: cb.message.chat.id, message_id: cb.message.message_id, parse_mode: 'HTML',
+          text: v.text, reply_markup: { inline_keyboard: v.kb }, disable_web_page_preview: true,
+        });
+      }
+    }
+  } catch (e) {
+    console.error('[drawingBot] callback', e);
+    await tg('answerCallbackQuery', { callback_query_id: cb.id, text: `Ошибка: ${e.message}`.slice(0, 190), show_alert: true });
+  }
   return true;
 }
 
 // ── Загрузка PDF ─────────────────────────────────────────────────────────────
 
-// Имя файла в Cloudinary: исходное (латиница/кириллица/цифры) + метка времени,
-// чтобы чертёж с тем же именем не затёр предыдущую версию.
 // Кириллицу переводим в латиницу: иначе ссылка превращается в %D0%A1%D1%82…
 const TR = { а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',
   ң:'n',о:'o',ө:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ү:'u',ф:'f',х:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',
@@ -143,6 +322,8 @@ const translit = t => String(t).replace(/[а-яёңөү]/gi, ch => {
   return ch === ch.toLowerCase() ? r : r.charAt(0).toUpperCase() + r.slice(1);
 });
 
+// Имя файла в Cloudinary: исходное + метка времени, чтобы чертёж с тем же именем
+// не затёр предыдущую версию.
 function publicIdFor(fileName) {
   const base = translit(String(fileName || 'drawing').replace(/\.pdf$/i, ''))
     .replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'drawing';
@@ -165,10 +346,9 @@ async function handleDrawingDocument(message) {
   if (message.chat?.type !== 'private' || !isPdf(doc)) return false;
   const chatId = String(message.chat.id);
 
-  const k = await Konstruktor.findOne({ chatId, status: 'approved' }).lean();
-  const owner = !k && await isOwnerChat(chatId);
-  if (!k && !owner) {
-    await sendTelegramMessage(chatId, '📐 Загружать чертежи могут только зарегистрированные конструкторы.\n\nНапишите /konstruktor, чтобы подать заявку.');
+  const author = await uploaderName(chatId);
+  if (!author) {
+    await sendTelegramMessage(chatId, '📐 Загружать чертежи могут только зарегистрированные конструкторы.\n\nНажмите /konstruktor, чтобы подать заявку.');
     return true;
   }
   if (doc.file_size && doc.file_size > MAX_BYTES) {
@@ -180,13 +360,12 @@ async function handleDrawingDocument(message) {
     await sendTelegramMessage(chatId, `📥 Загружаю «${esc(doc.file_name)}»…`);
     const buffer = await downloadTelegramFile(doc.file_id);
     const res = await uploadPdf(buffer, doc.file_name);
-    await Drawing.create({
-      chatId, author: k?.name || 'Владелец', fileName: doc.file_name || '',
+    const d = await Drawing.create({
+      chatId, author, fileName: doc.file_name || '',
       caption: message.caption || '', size: buffer.length, url: res.secure_url, publicId: res.public_id,
     });
-    await sendTelegramMessage(chatId,
-      `✅ Чертёж загружен\n\n📄 ${esc(doc.file_name)}\n🔗 <a href="${res.secure_url}">${res.secure_url}</a>`,
-      { disablePreview: true });
+    const v = uploadedView(d);
+    await sendTelegramMessage(chatId, v.text, { reply_markup: { inline_keyboard: v.kb }, disablePreview: true });
   } catch (e) {
     console.error('[drawingBot]', e);
     await sendTelegramMessage(chatId, `❌ Не получилось загрузить: ${esc(e.message)}`);
@@ -194,4 +373,4 @@ async function handleDrawingDocument(message) {
   return true;
 }
 
-module.exports = { handleDrawingText, handleDrawingCallback, handleDrawingDocument, isPdf };
+module.exports = { handleDrawingText, handleDrawingCallback, handleDrawingDocument, isPdf, REGISTER_LINK };
