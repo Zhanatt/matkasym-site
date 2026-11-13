@@ -11,17 +11,21 @@
  * заводить нельзя (у AdminLayout была своя — из-за неё «Закупщик»
  * логинился, но тут же выкидывался обратно на форму входа).
  */
-export const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer'];
+export const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer', 'konstruktor'];
+
+export const canEnterAdmin = role => ADMIN_ROLES.includes(role);
 
 /**
- * Конструктор входит в Продакт матрицу, но видит только «Чертежи». На сервере
- * его нет в ADMIN_ROLES намеренно (там этот список открывает почти весь API) —
- * чертежи проверяет отдельный middleware `drawings`.
+ * Конструктор видит в Продакт матрице только «Каталог» (на чтение) и «Чертежи».
+ * Остальные страницы AdminLayout ему не открывает.
  */
 export const KONSTRUKTOR = 'konstruktor';
-export const ENTER_ROLES = [...ADMIN_ROLES, KONSTRUKTOR];
-
-export const canEnterAdmin = role => ENTER_ROLES.includes(role);
+export const KONSTRUKTOR_PATHS = [
+  '/admin/drawings', '/admin/sets', '/admin/all-catalog', '/admin/no-set', '/admin/nomenclature',
+];
+export const konstruktorCanOpen = path =>
+  KONSTRUKTOR_PATHS.some(p => path === p || path.startsWith(p + '/')) ||
+  /^\/admin\/products\/[^/]+\/?$/.test(path) && !path.startsWith('/admin/products/new');
 
 /** Чертежи видят только конструкторы и владелец (server: DRAWING_ROLES). */
 export const DRAWING_ROLES = ['owner', KONSTRUKTOR];

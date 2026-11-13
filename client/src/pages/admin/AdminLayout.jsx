@@ -3,12 +3,12 @@ import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-route
 import { useAuth } from '../../context/AuthContext';
 import { FrontmenProvider } from '../../context/FrontmenContext';
 import { adminStats, adminGetNewsUnread, adminGetTelegramLink, adminUnlinkTelegram, adminGetReceiveAlertsCount, adminGetPendingReceiveCount, adminGetTechRequestCount } from '../../api';
-import { canEnterAdmin, KONSTRUKTOR, DRAWING_ROLES } from '../../constants/roles';
+import { canEnterAdmin, KONSTRUKTOR, DRAWING_ROLES, konstruktorCanOpen } from '../../constants/roles';
 import './Admin.css';
 
 const NAV_ALL = [
   { to: '/admin',          label: 'Дашборд',             icon: '◻', end: true, roles: ['owner','editor','viewer','navigator','warehouse','designer'] },
-  { to: '/admin/sets',     label: 'Каталог',             icon: '🗂', roles: ['owner','editor','viewer','navigator','designer'] },
+  { to: '/admin/sets',     label: 'Каталог',             icon: '🗂', roles: ['owner','editor','viewer','navigator','designer','konstruktor'] },
   { to: '/admin/pending-receive', label: 'Склад', icon: '📦', roles: ['owner','editor','warehouse','viewer','navigator','purchaser','designer'], badge: 'pending_receive' },
   { to: '/admin/video-schedule', label: 'Съёмки', icon: '🎬', roles: ['owner','editor','viewer','navigator','designer'] },
   { to: '/admin/publish',  label: 'Автопубликация',      icon: '🚀', roles: ['owner','editor','designer'] },
@@ -109,8 +109,8 @@ export default function AdminLayout() {
     return <Navigate to="/admin/login" replace />;
   }
 
-  // Конструктору открыта только вкладка «Чертежи» — с любой другой страницы туда
-  if (user.role === KONSTRUKTOR && !location.pathname.startsWith('/admin/drawings')) {
+  // Конструктору открыты только «Каталог» (просмотр) и «Чертежи» — с остального туда
+  if (user.role === KONSTRUKTOR && !konstruktorCanOpen(location.pathname)) {
     return <Navigate to="/admin/drawings" replace />;
   }
 
@@ -140,7 +140,7 @@ export default function AdminLayout() {
 
         <nav className="admin-nav">
           {NAV_ALL.filter(n => {
-            if (user.role === KONSTRUKTOR) return n.roles.includes(user.role); // у конструктора только чертежи
+            if (user.role === KONSTRUKTOR) return n.roles.includes(user.role); // у конструктора только каталог и чертежи
             if (n.to === '/admin/pending-receive') return true; // общедоступно для всех, кто в админке
             if (n.to === '/admin/buffer-stock') return true;     // обзор буфера виден всем в админке
             if (n.to === '/admin/users' && user.canViewUsers) return true;

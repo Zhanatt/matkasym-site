@@ -309,7 +309,7 @@ router.get('/stats', async (req, res) => {
   try {
     const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
     // banned — бывшие сотрудники админки, их тоже считаем в общем списке пользователей
-    const adminRoles = [...ADMIN_ROLES, 'konstruktor', 'banned'];
+    const adminRoles = [...ADMIN_ROLES, 'banned'];
 
     const [products, outOfStock, brands, users, usersOnline, pending, discontinued, illiquid, frontmen, noSet, noCat, unsorted] = await Promise.all([
       Product.countDocuments(),

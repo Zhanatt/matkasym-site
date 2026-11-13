@@ -57,12 +57,12 @@ exports.viewer = (req, res, next) => {
 // Список ДОЛЖЕН совпадать с client/src/constants/roles.js → ADMIN_ROLES:
 // иначе роль заходит на сервер, но форма входа её не пускает (так было со «Складом»,
 // потом с «Закупщиком»). Добавляешь роль — правь оба места.
-const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer'];
+const ADMIN_ROLES = ['owner', 'editor', 'viewer', 'navigator', 'warehouse', 'purchaser', 'designer', 'konstruktor'];
 exports.ADMIN_ROLES = ADMIN_ROLES;
 
-// Конструктор входит в Продакт матрицу, но НЕ в ADMIN_ROLES: тот список открывает
-// почти все /api/admin/*, а конструктору положены только чертежи.
-// На клиенте ему открыт вход (constants/roles.js → ENTER_ROLES) и одна вкладка.
+// Чертежи — только владелец и конструкторы. Остальные роли админки их не видят.
+// Конструктор при этом в ADMIN_ROLES: ему нужен каталог на чтение (править товары
+// не даёт middleware editor), а в меню у него только «Каталог» и «Чертежи».
 const DRAWING_ROLES = ['owner', 'konstruktor'];
 exports.DRAWING_ROLES = DRAWING_ROLES;
 exports.drawings = (req, res, next) => {
