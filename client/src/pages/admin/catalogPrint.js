@@ -1130,9 +1130,11 @@ function mergeHomeVariants(products) {
   return out.flatMap(p => {
     if (!p?.__homeKey) return [p];
     const items = byKey.get(p.__homeKey);
-    if (new Set(items.map(i => i.name)).size < 2) {
+    // Варианты отличаются названием или (при одинаковом названии) полем цвета
+    const variantId = i => `${i.name}|${String(i.color || '').trim().toLowerCase()}`;
+    if (new Set(items.map(variantId)).size < 2) {
       // Даже без слияния подставляем обложку с сайта, чтобы фото совпадало
-      const sc = items.find(i => i.__siteCover)?.__siteCover;
+      const sc = items.find(i => i.__ownCover)?.__ownCover || items.find(i => i.__siteCover)?.__siteCover;
       if (sc) return items.map(i => i.images?.[0] === sc ? i : { ...i, images: [sc, ...(i.images || []).filter(u => u !== sc)] });
       return items;
     }

@@ -78,10 +78,25 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
             .flatMap(([, variants]) => {
               // обложка карточки на экране — чтобы PDF напечатал то же фото
               const siteCover = coverOf(variants)?.images?.[0] || null;
+              // Дубль — то же название И тот же цвет. Цвета одной модели часто
+              // названы одинаково (ENIGMA чёрный и белый — оба «Гардеробная вешалка
+              // ENIGMA»): по одному названию в PDF уходил только первый цвет.
               const byName = new Map();
-              variants.forEach(v => { if (!byName.has(v.name)) byName.set(v.name, []); byName.get(v.name).push(v); });
+              variants.forEach(v => {
+                const k = `${v.name}|${String(v.color || '').trim().toLowerCase()}`;
+                if (!byName.has(k)) byName.set(k, []);
+                byName.get(k).push(v);
+              });
+              // Обложка своего цвета — для карточки, где в наличии один цвет:
+              // общая обложка сайта бывает другого цвета (ENIGMA: подпись «белый»,
+              // а на фото чёрная). Карточка с несколькими цветами берёт общую.
+              const colorOf = v => String(v?.color || '').trim().toLowerCase();
               return [...byName.values()].map(same => same.find(fits))
-                .map(p => (p && siteCover ? { ...p, __siteCover: siteCover } : p));
+                .map(p => {
+                  if (!p) return p;
+                  const own = colorOf(p) ? coverOf(variants.filter(v => colorOf(v) === colorOf(p)))?.images?.[0] : null;
+                  return { ...p, ...(siteCover ? { __siteCover: siteCover } : {}), ...(own ? { __ownCover: own } : {}) };
+                });
             })
             .filter(Boolean);
           return { groupName, products: groupProducts };
