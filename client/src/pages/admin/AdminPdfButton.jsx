@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { printCatalog, fitsCatalog } from './catalogPrint';
+import { printCatalog, fitsCatalog, withModelColors } from './catalogPrint';
 import { coverOf } from '../../utils/variantKey';
 import { printServicesCatalog } from './servicesPrint';
 import { downloadReady } from '../../config/readyCatalogs';
@@ -99,7 +99,9 @@ export default function AdminPdfButton({ products, groups, label = 'Катало
                 });
             })
             .filter(Boolean);
-          return { groupName, products: groupProducts };
+          // Цвета модели без остатка — тоже на карточку (кружки и строка «цвет»)
+          const allVariants = items.flatMap(([, variants]) => variants);
+          return { groupName, products: withModelColors(groupProducts, allVariants) };
         })
         .filter(g => g.products.length > 0);
 

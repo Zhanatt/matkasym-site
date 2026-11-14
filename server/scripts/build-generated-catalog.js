@@ -24,7 +24,7 @@ const esbuildPath = () => { try { return require.resolve('esbuild'); } catch { r
 async function bundle(work) {
   const entry = path.join(work, 'entry.js');
   fs.writeFileSync(entry, `
-    export { printCatalog, fitsCatalog } from ${JSON.stringify(path.join(CLIENT, 'pages/admin/catalogPrint.js'))};
+    export { printCatalog, fitsCatalog, withModelColors } from ${JSON.stringify(path.join(CLIENT, 'pages/admin/catalogPrint.js'))};
     export { printKyzmatCatalog } from ${JSON.stringify(path.join(CLIENT, 'pages/admin/kyzmatPrint.js'))};
     export { brandPdfGroups } from ${JSON.stringify(path.join(CLIENT, 'pages/admin/brandPdfGroups.js'))};`);
   const stub = path.join(work, 'api-stub.js');
@@ -96,7 +96,7 @@ async function generate(brand, priceType, work) {
   const isKyzmat = brand === 'matkasym-kyzmat';
   const plain = JSON.parse(JSON.stringify(products));
   const frozen = new Set(sets.filter(s => s.frozen).map(s => s.key));
-  const available = plain.filter(isKyzmat ? (p => p.productStatus !== 'kit_part') : G.fitsCatalog).filter(p => !frozen.has(p.set));
+  const available = G.withModelColors(plain.filter(isKyzmat ? (p => p.productStatus !== 'kit_part') : G.fitsCatalog).filter(p => !frozen.has(p.set)), plain);
   if (!available.length) throw new Error('нечего печатать: ' + brand);
   const groups = G.brandPdfGroups(available, sets.map(s => ({ key: s.key, label: s.label, frozen: s.frozen, pdfOrder: s.pdfOrder })), layouts);
   if (isKyzmat) await G.printKyzmatCatalog(groups, priceType);

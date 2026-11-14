@@ -233,7 +233,8 @@ function cardHtml(product, priceType, currency) {
   // Варианты, которые отличаются только цветом, — строкой «цвет» в конце, как у
   // одиночной карточки; остальные (размеры) — строкой «варианты» первой.
   const sharedRow = sharedPrice !== null
-    ? { k: product.__byColor ? 'цвет' : 'варианты', v: variants.map(v => v.label).join(', ') } : null;
+    ? { k: product.__byColor ? 'цвет' : 'варианты',
+        v: (product.__colorRow || variants.map(v => v.label)).join(', ') } : null;
   if (sharedRow) variants = [];
   const rows = variants.map(v => {
     const price = priceType !== 'none' && !v.priceUndefined ? Number(v[priceType]) || 0 : 0;
@@ -1118,6 +1119,39 @@ const variantColor = p => {
   return /^#[0-9a-f]{6}$/i.test(c) ? '' : c;
 };
 
+// Все цвета модели HOME — и те, которых нет на складе. В PDF идут только товары с
+// остатком, но кружки и строка «цвет» должны показывать всю палитру модели
+// (FENIX: в наличии белый, чёрный — 0, а в каталоге оба). all — все товары до
+// отбора по остатку; модель — сет + категория + название без цвета и размера.
+const colorNorm = c => colorRu(c).toLowerCase().replace(/ё/g, 'е');
+export function withModelColors(available, all) {
+  const modelKey = p => `${p.set || ''}|${p.category || ''}|${variantKey(p.name)}`;
+  const byModel = new Map();
+  (all || []).forEach(p => {
+    if (!p || p.brand !== 'matkasym-home' || p.isKit || p.pdfGroup || p.productStatus === 'kit_part') return;
+    const c = variantColor(p);
+    if (!c) return;
+    const k = modelKey(p);
+    if (!byModel.has(k)) byModel.set(k, new Map());
+    const m = byModel.get(k);
+    if (!m.has(colorNorm(c))) m.set(colorNorm(c), colorRu(c).toLowerCase());
+  });
+  return (available || []).map(p => {
+    if (!p || p.brand !== 'matkasym-home') return p;
+    const m = byModel.get(modelKey(p));
+    return m && m.size > 1 ? { ...p, __modelColors: [...m.values()] } : p;
+  });
+}
+
+// Цвета карточки: сначала те, что в наличии, затем остальные цвета модели
+const cardColors = items => {
+  const seen = new Map();
+  const add = c => { if (c && !seen.has(colorNorm(c))) seen.set(colorNorm(c), colorRu(c).toLowerCase()); };
+  items.forEach(i => add(variantColor(i)));
+  items.forEach(i => (i.__modelColors || []).forEach(add));
+  return [...seen.values()];
+};
+
 // Варианты одной модели HOME (цвет, размер в названии) — одной карточкой, как
 // на экране сета: название без цвета и размера, фото первого с фото, снизу
 // строки вариантов. Цена одинаковая — одна на карточке, разная — у каждой строки.
@@ -1139,8 +1173,12 @@ function mergeHomeVariants(products) {
     if (new Set(items.map(variantId)).size < 2) {
       // Даже без слияния подставляем обложку с сайта, чтобы фото совпадало
       const sc = items.find(i => i.__ownCover)?.__ownCover || items.find(i => i.__siteCover)?.__siteCover;
-      if (sc) return items.map(i => i.images?.[0] === sc ? i : { ...i, images: [sc, ...(i.images || []).filter(u => u !== sc)] });
-      return items;
+      const withCover = sc ? items.map(i => i.images?.[0] === sc ? i : { ...i, images: [sc, ...(i.images || []).filter(u => u !== sc)] }) : items;
+      // В наличии один цвет, а у модели их больше — печатаем все цвета модели
+      const colors = cardColors(items);
+      if (colors.length < 2) return withCover;
+      return withCover.map(i => ({ ...i, color: colors.join(', '),
+        specs: (i.specs || []).filter(s => !/^цвет$/i.test(s.key || '')) }));
     }
     // Фото — то же, что на обложке карточки на сайте: экран сета передаёт его
     // в __siteCover (там видны и варианты без остатка), иначе — тем же правилом
@@ -1153,7 +1191,8 @@ function mergeHomeVariants(products) {
     const sameDims = new Set(items.map(i => String(i.dimensions || '').trim())).size === 1;
     const merged = { ...cover, name: title, fullName: title, dimensions: sameDims ? cover.dimensions : '', __byColor: byColor,
       images: siteImg ? [siteImg, ...(cover.images || []).filter(u => u !== siteImg)] : cover.images,
-      color: [...new Set(items.map(i => i.color).filter(Boolean))].join(', '),
+      color: cardColors(items).join(', '),
+      __colorRow: byColor ? cardColors(items) : null,
       specs: (cover.specs || []).filter(s => !/^цвет$/i.test(s.key || '')) };
     merged.__variants = items.map(i => ({ label: variantLabel(i, items), price: i.price,
       priceWholesale: i.priceWholesale, priceDealer: i.priceDealer, priceUndefined: i.priceUndefined }));

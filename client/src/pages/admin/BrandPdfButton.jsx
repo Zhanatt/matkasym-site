@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { adminGetProducts, adminGetSetLayouts } from '../../api/index';
-import { printCatalog, fitsCatalog } from './catalogPrint';
+import { printCatalog, fitsCatalog, withModelColors } from './catalogPrint';
 import { printKyzmatCatalog } from './kyzmatPrint';
 import { brandPdfGroups } from './brandPdfGroups';
 import { readyPdfFor, brandReadyPdf, downloadReady } from '../../config/readyCatalogs';
@@ -85,8 +85,9 @@ export default function BrandPdfButton({ brandKey, sets = [], brandLabel = 'Ка
       // KYZMAT — своя вёрстка (kyzmatPrint.js): разделы сами отбирают товары,
       // палитре красок нужны и позиции без остатка
       const isKyzmat = brandKey === 'matkasym-kyzmat';
-      const availableProducts = allProducts.filter(isKyzmat ? (p => p.productStatus !== 'kit_part') : fitsCatalog)
-        .filter(p => isPicked(p.set));
+      const availableProducts = withModelColors(
+        allProducts.filter(isKyzmat ? (p => p.productStatus !== 'kit_part') : fitsCatalog).filter(p => isPicked(p.set)),
+        allProducts);
 
       if (picked && picked.size === 0) {
         alert('Не выбран ни один сет');
