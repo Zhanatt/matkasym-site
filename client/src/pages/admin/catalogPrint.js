@@ -230,19 +230,23 @@ function cardHtml(product, priceType, currency) {
   const priceOf = v => (priceType !== 'none' && !v.priceUndefined ? Number(v[priceType]) || 0 : 0);
   const sharedPrice = product.__homeVariants && variants.every(v => priceOf(v) === priceOf(variants[0]))
     ? priceOf(variants[0]) : null;
-  const sharedRow = sharedPrice !== null ? { k: 'варианты', v: variants.map(v => v.label).join(', ') } : null;
+  // Варианты, которые отличаются только цветом, — строкой «цвет» в конце, как у
+  // одиночной карточки; остальные (размеры) — строкой «варианты» первой.
+  const sharedRow = sharedPrice !== null
+    ? { k: product.__byColor ? 'цвет' : 'варианты', v: variants.map(v => v.label).join(', ') } : null;
   if (sharedRow) variants = [];
   const rows = variants.map(v => {
     const price = priceType !== 'none' && !v.priceUndefined ? Number(v[priceType]) || 0 : 0;
     return { k: v.label, v: price > 0 ? `${price.toLocaleString('ru')} ${currency}` : '' };
   });
-  if (sharedRow) rows.push(sharedRow);
+  if (sharedRow && !product.__byColor) rows.push(sharedRow);
   if (product.dimensions) rows.push({ k: 'габариты (ДхШхВ)', v: product.dimensions });
   cleanSpecs(product.specs).forEach(s => {
     if (s?.value && !rows.some(r => r.k === s.key)) {
       rows.push({ k: s.key, v: s.unit ? `${s.value} ${s.unit}` : s.value });
     }
   });
+  if (sharedRow && product.__byColor) rows.push(sharedRow);
   // Код цвета краски («#F7F9EF») строкой не выводим — сам цвет залит в кадр
   if (product.color && !product.__homeVariants && !/^#[0-9a-f]{6}$/i.test(String(product.color).trim()) && !rows.some(r => /цвет/i.test(r.k))) {
     rows.push({ k: 'цвет', v: colorRu(product.color) });
@@ -1143,7 +1147,11 @@ function mergeHomeVariants(products) {
     const cover = items.find(hasPhoto) || items[0];
     const siteImg = items.find(i => i.__siteCover)?.__siteCover || coverOf(items)?.images?.[0];
     const title = variantTitle(cover.name);
-    const merged = { ...cover, name: title, fullName: title, dimensions: '',
+    // Одинаковое название — варианты отличаются только цветом: габариты у них
+    // общие, печатаем их; у вариантов-размеров габариты разные — не печатаем
+    const byColor = new Set(items.map(i => i.name)).size === 1;
+    const sameDims = new Set(items.map(i => String(i.dimensions || '').trim())).size === 1;
+    const merged = { ...cover, name: title, fullName: title, dimensions: sameDims ? cover.dimensions : '', __byColor: byColor,
       images: siteImg ? [siteImg, ...(cover.images || []).filter(u => u !== siteImg)] : cover.images,
       color: [...new Set(items.map(i => i.color).filter(Boolean))].join(', '),
       specs: (cover.specs || []).filter(s => !/^цвет$/i.test(s.key || '')) };
