@@ -77,7 +77,12 @@ function Modal({ title, onClose, children, width = 640 }) {
 const inputStyle = { width: '100%', boxSizing: 'border-box', border: `1px solid ${C.line}`, borderRadius: 10, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit' };
 
 // «Мой Claude»: личный токен подписки. Правки, которые человек запускает, делает его Claude.
-const INSTALL_CMD = 'curl -fsSL https://claude.ai/install.sh | bash';
+// Установка Claude Code: Mac/Linux — Терминал, Windows — PowerShell (code.claude.com/docs/en/setup)
+const INSTALL = {
+  mac: { cmd: 'curl -fsSL https://claude.ai/install.sh | bash', open: <>На Mac откройте <b>Терминал</b> (⌘ + Пробел → «Терминал» → Enter).</>, term: 'Терминале' },
+  win: { cmd: 'irm https://claude.ai/install.ps1 | iex', open: <>На Windows откройте <b>PowerShell</b>: клавиша ⊞ Win → наберите «PowerShell» → Enter.</>, term: 'PowerShell' },
+};
+const detectOs = () => /Win/i.test(navigator.userAgent) ? 'win' : 'mac';
 const TOKEN_CMD = 'claude setup-token';
 
 function CopyLine({ text }) {
@@ -95,6 +100,8 @@ function MyClaude({ me, onClose, onChanged }) {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [os, setOs] = useState(detectOs);
+  const I = INSTALL[os];
   const save = async () => {
     setBusy(true); setErr('');
     try { await saveMyClaude(token.replace(/\s+/g, '')); setToken(''); onChanged(); onClose(); }
@@ -117,11 +124,17 @@ function MyClaude({ me, onClose, onChanged }) {
         Правки, которые вы отправляете, делает <b>ваш</b> Claude — по вашей подписке. Подключить нужно один раз (токен действует год).
         Токен хранится на сайте зашифрованным, его никто не видит.
       </div>
-      <div style={step}><b>1.</b> На своём Mac откройте <b>Терминал</b> (⌘ + Пробел → «Терминал»). Если Claude Code ещё не установлен — вставьте и нажмите Enter:
-        <CopyLine text={INSTALL_CMD} /></div>
-      <div style={step}><b>2.</b> Затем вставьте эту команду и нажмите Enter — откроется браузер, войдите в свой аккаунт Claude и нажмите «Authorize»:
+      <div style={{ display: 'flex', gap: 4, marginBottom: 14, background: C.slateWash, borderRadius: 10, padding: 3, width: 'fit-content' }}>
+        {[['mac', ' Mac'], ['win', '⊞ Windows']].map(([k, l]) => (
+          <button key={k} onClick={() => setOs(k)} style={{ border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: os === k ? '#fff' : 'transparent', boxShadow: os === k ? '0 1px 3px rgba(0,0,0,.12)' : 'none', color: C.text }}>{l}</button>
+        ))}
+      </div>
+      <div style={step}><b>1.</b> {I.open} Если Claude Code ещё не установлен — вставьте эту команду и нажмите Enter:
+        <CopyLine text={I.cmd} />
+        {os === 'win' && <span style={{ fontSize: 12, color: C.muted }}>После установки закройте окно PowerShell и откройте новое — иначе команда claude может не найтись.</span>}</div>
+      <div style={step}><b>2.</b> Вставьте эту команду и нажмите Enter — откроется браузер, войдите в свой аккаунт Claude и нажмите «Authorize»:
         <CopyLine text={TOKEN_CMD} /></div>
-      <div style={step}><b>3.</b> В Терминале появится длинный токен, он начинается с <code>sk-ant-oat01-</code>. Скопируйте его целиком и вставьте сюда:</div>
+      <div style={step}><b>3.</b> В {I.term} появится длинный токен, он начинается с <code>sk-ant-oat01-</code>. Выделите его целиком{os === 'win' ? ' (в PowerShell выделенное копируется правым кликом или Ctrl+C)' : ''} и вставьте сюда:</div>
       <textarea style={{ ...inputStyle, fontFamily: 'ui-monospace, Menlo, monospace', minHeight: 70, resize: 'vertical', wordBreak: 'break-all' }} placeholder="sk-ant-oat01-…" value={token} onChange={e => setToken(e.target.value)} autoComplete="off" spellCheck={false} />
       {err && <div style={{ color: C.redDark, fontSize: 13, marginTop: 10 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
