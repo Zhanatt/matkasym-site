@@ -429,7 +429,10 @@ function suppliesPages(n, setLabel, info, products, priceType) {
       'Гофрокартон для упаковки и защиты', KYZMAT_GOODS_INFO.carton));
   }
   const rollHtml = '';
-  const rest = products.filter(p => !paints.includes(p) && !rolls.includes(p) && !cartons.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
+  // Краска без кода RAL (например, пластиковая краска) в палитру не попадает —
+  // печатаем её в «Ещё в наличии», чтобы новая позиция не пропадала из каталога
+  const otherPaints = paints.filter(p => !paintOf(p) && p.productStatus !== 'undefined');
+  const rest = products.filter(p => (!paints.includes(p) || otherPaints.includes(p)) && !rolls.includes(p) && !cartons.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
     && fitsCatalog(p));
   if (sheets.length || rest.length) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} мм`))].sort();
