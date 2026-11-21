@@ -108,6 +108,16 @@ export function homeSize(product) {
     if (parts && parts.length >= 2) return { text: toCm(parts, src), cm: true };
   }
   if (dims && dims.length <= 24) return { text: dims, cm: false };
+  // Стремянки: габаритов нет, но в характеристиках есть «Высота» и «Глубина (разнос опор)»
+  if (/стремянк/i.test(`${product.name || ''} ${product.category || ''}`)) {
+    const num = re => {
+      const v = (product.specs || []).find(s => re.test(s?.key || ''))?.value;
+      const m = String(v ?? '').match(/\d+(?:[.,]\d+)?/);
+      return m ? +m[0].replace(',', '.') : null;
+    };
+    const h = num(/высот/i), d = num(/глубин/i);
+    if (h && d) return { text: [d, h].map(fmtNum).join('×'), cm: true };
+  }
   const nameParts = sizeParts(product.name || '');
   if (nameParts && nameParts.length >= 2) return { text: toCm(nameParts, product.name), cm: true };
   return '';
