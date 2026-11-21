@@ -79,11 +79,10 @@ const inputStyle = { width: '100%', boxSizing: 'border-box', border: `1px solid 
 // «Мой Claude»: личный токен подписки. Правки, которые человек запускает, делает его Claude.
 // Установка Claude Code: Mac/Linux — Терминал, Windows — PowerShell (code.claude.com/docs/en/setup)
 const INSTALL = {
-  mac: { cmd: 'curl -fsSL https://claude.ai/install.sh | bash', open: <>На Mac откройте <b>Терминал</b> (⌘ + Пробел → «Терминал» → Enter).</>, term: 'Терминале' },
-  win: { cmd: 'irm https://claude.ai/install.ps1 | iex', open: <>На Windows откройте <b>PowerShell</b>: клавиша ⊞ Win → наберите «PowerShell» → Enter.</>, term: 'PowerShell' },
+  mac: { cmd: 'curl -fsSL https://claude.ai/install.sh | bash', token: 'claude setup-token', open: <>На Mac откройте <b>Терминал</b> (⌘ + Пробел → «Терминал» → Enter).</>, term: 'Терминале' },
+  win: { cmd: 'irm https://claude.ai/install.ps1 | iex', token: '& "$env:USERPROFILE\\.local\\bin\\claude.exe" setup-token', open: <>На Windows откройте <b>PowerShell</b>: клавиша ⊞ Win → наберите «PowerShell» → Enter.</>, term: 'PowerShell' },
 };
 const detectOs = () => /Win/i.test(navigator.userAgent) ? 'win' : 'mac';
-const TOKEN_CMD = 'claude setup-token';
 
 function CopyLine({ text }) {
   const [ok, setOk] = useState(false);
@@ -131,9 +130,9 @@ function MyClaude({ me, onClose, onChanged }) {
       </div>
       <div style={step}><b>1.</b> {I.open} Если Claude Code ещё не установлен — вставьте эту команду и нажмите Enter:
         <CopyLine text={I.cmd} />
-        {os === 'win' && <span style={{ fontSize: 12, color: C.muted }}>После установки закройте окно PowerShell и откройте новое — иначе команда claude может не найтись.</span>}</div>
+        {os === 'win' && <span style={{ fontSize: 12, color: C.muted }}>Дождитесь «Claude Code successfully installed!». Предупреждение про PATH можно не читать — следующая команда запускает Claude по полному пути.</span>}</div>
       <div style={step}><b>2.</b> Вставьте эту команду и нажмите Enter — откроется браузер, войдите в свой аккаунт Claude и нажмите «Authorize»:
-        <CopyLine text={TOKEN_CMD} /></div>
+        <CopyLine text={I.token} /></div>
       <div style={step}><b>3.</b> В {I.term} появится длинный токен, он начинается с <code>sk-ant-oat01-</code>. Выделите его целиком{os === 'win' ? ' (в PowerShell выделенное копируется правым кликом или Ctrl+C)' : ''} и вставьте сюда:</div>
       <textarea style={{ ...inputStyle, fontFamily: 'ui-monospace, Menlo, monospace', minHeight: 70, resize: 'vertical', wordBreak: 'break-all' }} placeholder="sk-ant-oat01-…" value={token} onChange={e => setToken(e.target.value)} autoComplete="off" spellCheck={false} />
       {err && <div style={{ color: C.redDark, fontSize: 13, marginTop: 10 }}>{err}</div>}
