@@ -293,3 +293,12 @@ export const uploadDrawing     = (form, onUploadProgress) => api.post('/admin/dr
 export const updateDrawing     = (id, data)  => api.patch(`/admin/drawings/${id}`, data);
 export const replaceDrawing    = (id, form, onUploadProgress) => api.post(`/admin/drawings/${id}/replace`, form, { onUploadProgress });
 export const deleteDrawingApi  = (id)        => api.delete(`/admin/drawings/${id}`);
+
+// «Правки сайта» — дизайнеры просят правку, Claude делает, владелец принимает
+export const getSiteChanges     = ()           => api.get('/admin/site-changes');
+export const getSiteChange      = (id)         => api.get(`/admin/site-changes/${id}`);
+export const createSiteChange   = (form)       => api.post('/admin/site-changes', form);
+export const commentSiteChange  = (id, form)   => api.post(`/admin/site-changes/${id}/messages`, form);
+export const retrySiteChange    = (id)         => api.post(`/admin/site-changes/${id}/retry`);
+export const approveSiteChange  = (id)         => api.post(`/admin/site-changes/${id}/approve`);
+export const rejectSiteChange   = (id, reason) => api.post(`/admin/site-changes/${id}/reject`, { reason });

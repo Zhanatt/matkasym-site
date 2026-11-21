@@ -1,0 +1,179 @@
+# «Правки сайта»: дизайнер пишет задачу в админке → сайт шлёт repository_dispatch →
+# Claude правит client/ в ветке design/<id> → проверка папок + сборка → PR (Render
+# собирает предпросмотр) → владелец жмёт «Принять» на сайте → site-change-merge.
+# Сайт: server/routes/siteChanges.js, помощник: .github/site-change/bot.mjs.
+#
+# Секреты репозитория: ANTHROPIC_API_KEY, SITE_CHANGE_SECRET (тот же, что на Render).
+name: Правки сайта (дизайнеры)
+on:
+  repository_dispatch:
+    types: [site-change, site-change-merge, site-change-close]
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: site-change-${{ github.event.client_payload.id }}
+  cancel-in-progress: false
+env:
+  SITE_URL: https://matkasym-site.onrender.com
+  SITE_CHANGE_SECRET: ${{ secrets.SITE_CHANGE_SECRET }}
+  ID: ${{ github.event.client_payload.id }}
+  BRANCH: design/${{ github.event.client_payload.id }}
+  GH_TOKEN: ${{ github.token }}
+  MODEL: claude-sonnet-5-5
+  CLAUDE_TOOLS: Read,Edit,MultiEdit,Write,Glob,Grep
+
+jobs:
+  change:
+    if: github.event.action == 'site-change'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Сообщить сайту — в работе
+        run: node .github/site-change/bot.mjs report '{"status":"working"}'
+
+      - name: Ветка правки
+        run: |
+          git config user.name "matkasym-design-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            # Подтянуть свежий main. Конфликт — начинаем с чистого main: в задаче вся история уточнений
+            git merge --no-edit origin/main || { git merge --abort; git reset --hard origin/main; echo "конфликт с main — правка делается заново"; }
+          else
+            git checkout -b "$BRANCH" origin/main
+          fi
+
+      - id: task
+        name: Задача с сайта
+        run: node .github/site-change/bot.mjs task
+
+      - name: Зависимости
+        working-directory: client
+        run: npm ci --include=dev
+
+      - name: Установить Claude Code
+        run: npm i -g @anthropic-ai/claude-code
+
+      - name: Claude правит
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "$(cat /tmp/task.md)" --model "$MODEL" --max-turns 60 \
+            --permission-mode acceptEdits --allowedTools "$CLAUDE_TOOLS" \
+            --disallowedTools "Bash,WebFetch,WebSearch" \
+            --output-format json > /tmp/claude1.json || true
+
+      - id: guard1
+        name: Только разрешённые файлы
+        run: node .github/site-change/bot.mjs guard
+
+      - id: build1
+        name: Сборка
+        working-directory: client
+        run: |
+          if npm run build > /tmp/build.log 2>&1; then echo "ok=true" >> "$GITHUB_OUTPUT"
+          else tail -60 /tmp/build.log; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Claude чинит сборку
+        if: steps.build1.outputs.ok == 'false'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          {
+            echo "После твоих правок упала сборка сайта (npm run build в папке client/). Исправь ошибку, не меняя смысл правки и соблюдая те же правила. Конец вывода сборки:"
+            tail -80 /tmp/build.log
+            echo; echo "Исходная задача:"; cat /tmp/task.md
+          } > /tmp/fix.md
+          claude -p "$(cat /tmp/fix.md)" --model "$MODEL" --max-turns 30 \
+            --permission-mode acceptEdits --allowedTools "$CLAUDE_TOOLS" \
+            --disallowedTools "Bash,WebFetch,WebSearch" \
+            --output-format json > /tmp/claude2.json || true
+
+      - id: guard2
+        if: steps.build1.outputs.ok == 'false'
+        run: node .github/site-change/bot.mjs guard
+
+      - id: build2
+        if: steps.build1.outputs.ok == 'false'
+        working-directory: client
+        run: |
+          if npm run build > /tmp/build.log 2>&1; then echo "ok=true" >> "$GITHUB_OUTPUT"
+          else tail -60 /tmp/build.log; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+
+      - id: claude
+        name: Итог Claude
+        run: node .github/site-change/bot.mjs summary /tmp/claude1.json /tmp/claude2.json
+
+      - id: pr
+        name: Коммит и PR
+        if: (steps.build1.outputs.ok == 'true' || steps.build2.outputs.ok == 'true') && (steps.guard2.outputs.changed || steps.guard1.outputs.changed) != '0'
+        env:
+          TITLE: ${{ steps.task.outputs.title }}
+          NUM: ${{ steps.task.outputs.number }}
+          SUMMARY: ${{ steps.claude.outputs.text }}
+        run: |
+          git diff --cached --quiet || git commit -q -m "🎨 Дизайн №$NUM: $TITLE" -m "$SUMMARY" -m "Сделано через раздел «Правки сайта»."
+          git push -q --force origin "$BRANCH"
+          if ! gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
+            gh pr create --base main --head "$BRANCH" --title "🎨 Дизайн №$NUM: $TITLE" \
+              --body "$(printf '%s\n\n---\nПравка из раздела «Правки сайта» на сайте. Принимать/отклонять — там, не здесь.' "$SUMMARY")"
+          fi
+          echo "number=$(gh pr view "$BRANCH" --json number -q .number)" >> "$GITHUB_OUTPUT"
+          echo "url=$(gh pr view "$BRANCH" --json url -q .url)" >> "$GITHUB_OUTPUT"
+
+      - name: Отчёт на сайт
+        env:
+          PR: ${{ steps.pr.outputs.number }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+          SUMMARY: ${{ steps.claude.outputs.text }}
+          COST: ${{ steps.claude.outputs.cost }}
+          REVERTED: ${{ steps.guard2.outputs.reverted || steps.guard1.outputs.reverted || '[]' }}
+          BUILD_OK: ${{ steps.build1.outputs.ok == 'true' || steps.build2.outputs.ok == 'true' }}
+        run: |
+          if [ -n "$PR" ]; then
+            BODY=$(jq -n --argjson pr "$PR" --arg url "$PR_URL" --arg s "$SUMMARY" --argjson cost "${COST:-0}" --argjson rev "$REVERTED" \
+              '{status:"ready", prNumber:$pr, prUrl:$url, summary:$s, costUsd:$cost, reverted:$rev}')
+          else
+            if [ "$BUILD_OK" != "true" ]; then ERR="После правки сайт не собирается — Claude не смог исправить. Попробуйте описать задачу иначе."
+            else ERR="Claude не внёс изменений. Возможно, задача неясна — посмотрите его ответ и уточните."; fi
+            BODY=$(jq -n --arg e "$ERR" --arg s "$SUMMARY" --argjson cost "${COST:-0}" '{status:"failed", error:$e, summary:$s, costUsd:$cost}')
+          fi
+          node .github/site-change/bot.mjs report "$BODY"
+
+      - name: Сбой — сообщить сайту
+        if: failure()
+        run: node .github/site-change/bot.mjs report '{"status":"failed","error":"Сбой при выполнении — можно нажать «Повторить»"}'
+
+  merge:
+    if: github.event.action == 'site-change-merge'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Слить в main
+        run: |
+          if gh pr merge "$BRANCH" --squash --delete-branch; then
+            node .github/site-change/bot.mjs report '{"status":"merged"}'
+          else
+            node .github/site-change/bot.mjs report '{"status":"merge_failed","error":"Правка конфликтует со свежими изменениями сайта. Напишите любое уточнение (например «обнови») — Claude переделает её на свежей версии."}'
+          fi
+
+  close:
+    if: github.event.action == 'site-change-close'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Закрыть PR и удалить ветку
+        run: |
+          gh pr close "$BRANCH" --delete-branch 2>/dev/null || git push origin --delete "$BRANCH" 2>/dev/null || true

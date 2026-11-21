@@ -14,6 +14,8 @@ const NAV_ALL = [
   { to: '/admin/publish',  label: 'Автопубликация',      icon: '🚀', roles: ['owner','editor','designer'] },
   { to: '/admin/shop-requests', label: 'Заявки', icon: '🛍', roles: ['owner','editor','viewer','navigator','designer'], badge: 'tech_requests' },
   { to: '/admin/drawings', label: 'Чертежи',            icon: '📐', roles: DRAWING_ROLES },
+  // Дизайнеры просят правку сайта словами, Claude делает, владелец принимает
+  { to: '/admin/site-changes', label: 'Правки сайта',   icon: '🎨', roles: ['owner','designer'] },
   // Аудит и его результаты — один пункт меню: это две вкладки одной работы,
   // а не два разных раздела. Кто какую вкладку видит, решает сама страница.
   { to: '/admin/review',   label: 'Аудит товаров',       icon: '✅', roles: ['owner','editor','viewer','navigator','designer'] },

@@ -13,6 +13,7 @@ import AdminAgentSales    from './pages/admin/AdminAgentSales';
 import AdminProductView   from './pages/admin/AdminProductView';
 import AdminSets          from './pages/admin/AdminSets';
 import AdminDrawings      from './pages/admin/AdminDrawings';
+import AdminSiteChanges   from './pages/admin/AdminSiteChanges';
 import AdminFrontmen      from './pages/admin/AdminFrontmen';
 import AdminSuppliers     from './pages/admin/AdminSuppliers';
 import AdminOutOfStock    from './pages/admin/AdminOutOfStock';
@@ -82,6 +83,7 @@ export default function AdminRoutes() {
         <Route path="users" element={<AdminUsers />} />
         <Route path="history" element={<AdminHistory />} />
         <Route path="drawings" element={<AdminDrawings />} />
+        <Route path="site-changes" element={<AdminSiteChanges />} />
         <Route element={<AdminSalesLayout />}>
           <Route path="sales-chart"          element={<AdminSalesChart />} />
           <Route path="sales-chart/:setSlug" element={<AdminSetSalesChart />} />

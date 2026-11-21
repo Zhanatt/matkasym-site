@@ -22,6 +22,10 @@ app.use(cookieParser());
 // Routes
 app.use('/api/brands',   require('./routes/brands'));
 app.use('/api/admin/drawings', require('./routes/drawings')); // чертежи PDF (сайт + бот)
+// «Правки сайта» дизайнеров через Claude (GitHub Actions) — ДО /api/admin
+const siteChanges = require('./routes/siteChanges');
+app.use('/api/admin/site-changes', siteChanges.admin);
+app.use('/api/site-changes', siteChanges.hook);       // отчёты воркфлоу, по секрету
 app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/orders',   require('./routes/orders'));
@@ -245,6 +249,13 @@ mongoose
       }
     }
 
+    // Предпросмотр «Правок сайта» (Render PR preview) работает на БОЕВОЙ базе и с теми же
+    // ключами: фоновые задачи в нём запускать нельзя — автопубликации ушли бы дважды,
+    // бот перенастроился бы. Render ставит IS_PULL_REQUEST=true сам.
+    const IS_PREVIEW = process.env.IS_PULL_REQUEST === 'true';
+    if (IS_PREVIEW) console.log('👀 Предпросмотр PR: фоновые задачи и Telegram-настройки пропущены');
+
+    if (!IS_PREVIEW) {
     // Реакции Telegram приходят только тем, кто на них подписан: вебхук заведён
     // снаружи, и в его allowed_updates этих типов нет — дописываем при старте.
     require('./lib/telegram').ensureWebhookUpdates()
@@ -264,6 +275,7 @@ mongoose
       // …и раз в сутки — отклик на посты (лайки, просмотры, охват)
       tickStats().catch(e => console.error('[stats] interval tick failed:', e.message));
     }, 60 * 1000);
+    }
 
     app.listen(process.env.PORT, () =>
       console.log(`🚀 Сервер запущен на http://localhost:${process.env.PORT}`)
