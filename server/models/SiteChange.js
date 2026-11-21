@@ -42,7 +42,9 @@ const siteChangeSchema = new mongoose.Schema({
   status:     { type: String, enum: STATUSES, default: 'queued', index: true },
   messages:   [messageSchema],
   runs:       [runSchema],
-  costUsd:    { type: Number, default: 0 },
+  costUsd:    { type: Number, default: 0 },   // условная стоимость по расчёту Claude Code (платит подписка)
+  runBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },  // чей Claude делает текущий запуск
+  runByName:  String,
   prNumber:   Number,
   prUrl:      String,
   previewUrl: String,

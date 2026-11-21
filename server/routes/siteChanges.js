@@ -33,17 +33,19 @@ const uploadAll = files => Promise.all((files || []).map(uploadImage));
 
 function setStatus(doc, status) { doc.status = status; doc.statusAt = new Date(); }
 
-async function ensureBudget() {
-  const { spent, limit } = await sc.monthSpend();
-  if (spent >= limit) {
-    const e = new Error(`Лимит расходов на этот месяц исчерпан ($${spent} из $${limit}). Обратитесь к владельцу.`);
-    e.status = 402; throw e;
+// Правку делает Claude того, кто её запускает — без личного токена запускать нечем
+async function ensureToken(user) {
+  const t = await sc.tokenInfo(user._id);
+  if (!t.connected) {
+    const e = new Error('Сначала подключите свой Claude — кнопка «Мой Claude» вверху раздела');
+    e.status = 412; throw e;
   }
 }
 
-// Отправить задачу (или доработку) в GitHub
-async function startRun(doc) {
-  await ensureBudget();
+// Отправить задачу (или доработку) в GitHub. user — чей Claude будет работать
+async function startRun(doc, user) {
+  await ensureToken(user);
+  doc.runBy = user._id; doc.runByName = user.name;
   setStatus(doc, 'queued');
   doc.error = undefined;
   await doc.save();
@@ -71,8 +73,19 @@ admin.use(protect, canAccess);
 admin.get('/', async (req, res) => {
   try {
     const list = await SiteChange.find({}, { messages: { $slice: 1 } }).sort({ createdAt: -1 }).limit(200).lean();
-    res.json({ items: list.map(view), budget: await sc.monthSpend(), isOwner: isOwner(req.user) });
+    res.json({ items: list.map(view), me: await sc.tokenInfo(req.user._id), isOwner: isOwner(req.user) });
   } catch (e) { fail(res, e); }
+});
+
+// Мой Claude: личный токен подписки (claude setup-token). Сам токен наружу не отдаётся никогда.
+admin.get('/me/claude', async (req, res) => {
+  try { res.json(await sc.tokenInfo(req.user._id)); } catch (e) { fail(res, e); }
+});
+admin.put('/me/claude', async (req, res) => {
+  try { await sc.saveToken(req.user._id, req.body?.token); res.json(await sc.tokenInfo(req.user._id)); } catch (e) { fail(res, e); }
+});
+admin.delete('/me/claude', async (req, res) => {
+  try { await sc.removeToken(req.user._id); res.json({ connected: false }); } catch (e) { fail(res, e); }
 });
 
 admin.get('/:id', async (req, res) => {
@@ -88,14 +101,14 @@ admin.post('/', upload.array('images', 5), async (req, res) => {
     const title = String(req.body.title || '').trim().slice(0, 140);
     const text = String(req.body.text || '').trim().slice(0, 5000);
     if (!title || !text) return res.status(400).json({ message: 'Заполните, что нужно сделать, и подробности' });
-    await ensureBudget();
+    await ensureToken(req.user);
     const images = await uploadAll(req.files);
     const doc = await SiteChange.create({
       number: await Counter.next('siteChange'),
       author: req.user._id, authorName: req.user.name, title,
       messages: [{ kind: 'request', author: req.user._id, authorName: req.user.name, text, images }],
     });
-    await startRun(doc);
+    await startRun(doc, req.user);
     res.status(201).json(view(doc));
   } catch (e) { fail(res, e); }
 });
@@ -112,7 +125,7 @@ admin.post('/:id/messages', upload.array('images', 5), async (req, res) => {
     if (!text) return res.status(400).json({ message: 'Напишите, что поправить' });
     const images = await uploadAll(req.files);
     doc.messages.push({ kind: 'comment', author: req.user._id, authorName: req.user.name, text, images });
-    await startRun(doc);
+    await startRun(doc, req.user);
     res.json(view(doc));
   } catch (e) { fail(res, e); }
 });
@@ -129,7 +142,7 @@ admin.post('/:id/retry', async (req, res) => {
       return res.json(view(doc));
     }
     if (doc.status !== 'failed' && !stuck) return res.status(409).json({ message: 'Повторять нечего' });
-    await startRun(doc);
+    await startRun(doc, req.user);
     res.json(view(doc));
   } catch (e) { fail(res, e); }
 });
@@ -179,7 +192,9 @@ hook.get('/:id/task', async (req, res) => {
   try {
     const d = await SiteChange.findById(req.params.id).lean();
     if (!d) return res.status(404).json({ message: 'not found' });
-    res.json({ number: d.number, title: d.title, status: d.status, ...sc.buildPrompt(d) });
+    const claudeToken = await sc.readToken(d.runBy || d.author);
+    if (!claudeToken) return res.status(412).json({ message: 'У того, кто запустил правку, не подключён Claude' });
+    res.json({ number: d.number, title: d.title, status: d.status, claudeToken, ...sc.buildPrompt(d) });
   } catch (e) { fail(res, e); }
 });
 
@@ -192,6 +207,11 @@ hook.post('/:id/callback', async (req, res) => {
     if (b.runUrl) doc.runUrl = b.runUrl;
     // Отклонённую/отменённую правку запоздалый отчёт не воскрешает
     const closed = ['rejected', 'cancelled'].includes(doc.status);
+
+    // Лимит подписки / недействительный токен — отметить у владельца токена
+    const tokenUser = doc.runBy || doc.author;
+    if (b.tokenError) sc.setTokenError(tokenUser, String(b.tokenError).slice(0, 300)).catch(() => {});
+    else if (b.status === 'ready') sc.setTokenError(tokenUser, null).catch(() => {});
 
     if (b.status === 'working') {
       if (!closed) setStatus(doc, 'working');

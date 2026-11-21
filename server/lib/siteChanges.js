@@ -8,16 +8,19 @@
 // Переменные окружения (Render):
 //   GITHUB_DISPATCH_TOKEN    — тот же токен, что запускает сборку каталогов
 //   SITE_CHANGE_SECRET       — общий секрет с воркфлоу
-//   SITE_CHANGE_MONTHLY_USD  — потолок расходов на Claude в месяц, по умолчанию 20
+//
+// Claude у каждого свой: правку делает подписка того, кто её запустил (задача или
+// уточнение). Личный токен (claude setup-token) человек вставляет в разделе, хранится
+// зашифрованным в ClaudeToken, воркфлоу получает его вместе с задачей.
 //   SITE_CHANGE_PREVIEW_URL  — шаблон адреса предпросмотра Render, {n} = номер PR
 const crypto = require('crypto');
 const User = require('../models/User');
 const SiteChange = require('../models/SiteChange');
+const ClaudeToken = require('../models/ClaudeToken');
 const { sendTelegramMessage } = require('./telegram');
 
 const REPO = 'Zhanatt/matkasym-site';
 const SITE_URL = process.env.SITE_URL || 'https://matkasym-site.onrender.com';
-const MONTHLY_USD = Number(process.env.SITE_CHANGE_MONTHLY_USD || 20);
 const PREVIEW_TPL = process.env.SITE_CHANGE_PREVIEW_URL || 'https://matkasym-site-pr-{n}.onrender.com';
 
 // Роли, которым открыт раздел. Принимает/отклоняет только owner.
@@ -34,15 +37,47 @@ function checkSecret(given) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-async function monthSpend() {
-  const from = new Date(); from.setDate(1); from.setHours(0, 0, 0, 0);
-  const [r] = await SiteChange.aggregate([
-    { $unwind: '$runs' },
-    { $match: { 'runs.at': { $gte: from } } },
-    { $group: { _id: null, sum: { $sum: '$runs.costUsd' } } },
-  ]);
-  return { spent: Math.round((r?.sum || 0) * 100) / 100, limit: MONTHLY_USD };
+// ── Личные токены Claude ────────────────────────────────────────────────────
+
+const TOKEN_RE = /^sk-ant-oat01-[A-Za-z0-9_-]{20,}$/;
+const TOKEN_TTL_DAYS = 365;   // setup-token живёт год
+const tokenKey = () => {
+  if (!process.env.SITE_CHANGE_SECRET) throw new Error('На сервере не задан SITE_CHANGE_SECRET');
+  return crypto.createHash('sha256').update('claude-token:' + process.env.SITE_CHANGE_SECRET).digest();
+};
+
+async function saveToken(userId, raw) {
+  const token = String(raw || '').trim();
+  if (!TOKEN_RE.test(token)) {
+    const e = new Error('Это не похоже на токен Claude: он начинается с sk-ant-oat01- (команда claude setup-token)');
+    e.status = 400; throw e;
+  }
+  const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', tokenKey(), iv);
+  const enc = Buffer.concat([c.update(token, 'utf8'), c.final()]);
+  await ClaudeToken.findOneAndUpdate({ user: userId }, {
+    enc: enc.toString('base64'), iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'),
+    last4: token.slice(-4), addedAt: new Date(), $unset: { lastError: '' },
+  }, { upsert: true });
 }
+
+async function readToken(userId) {
+  const t = await ClaudeToken.findOne({ user: userId }).lean();
+  if (!t) return null;
+  const d = crypto.createDecipheriv('aes-256-gcm', tokenKey(), Buffer.from(t.iv, 'base64'));
+  d.setAuthTag(Buffer.from(t.tag, 'base64'));
+  return Buffer.concat([d.update(Buffer.from(t.enc, 'base64')), d.final()]).toString('utf8');
+}
+
+async function tokenInfo(userId) {
+  const t = await ClaudeToken.findOne({ user: userId }, 'last4 addedAt lastError').lean();
+  if (!t) return { connected: false };
+  const expiresAt = new Date(new Date(t.addedAt).getTime() + TOKEN_TTL_DAYS * 864e5);
+  return { connected: true, last4: t.last4, addedAt: t.addedAt, expiresAt, lastError: t.lastError || null };
+}
+
+const removeToken = userId => ClaudeToken.deleteOne({ user: userId });
+const setTokenError = (userId, lastError) => ClaudeToken.updateOne({ user: userId }, lastError ? { lastError } : { $unset: { lastError: '' } });
 
 // action: 'site-change' (сделать/доделать правку), 'site-change-merge', 'site-change-close'
 async function dispatch(action, change) {
@@ -133,4 +168,4 @@ async function notify(change, event, extra = {}) {
   }
 }
 
-module.exports = { SITE_CHANGE_ROLES, checkSecret, monthSpend, dispatch, buildPrompt, notify, previewUrl, MONTHLY_USD };
+module.exports = { SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, removeToken, setTokenError };

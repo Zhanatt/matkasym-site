@@ -44,7 +44,19 @@ const DANGER = /\b(delete(One|Many)|update(One|Many)|insert(One|Many)?|findOneAn
 const cmd = process.argv[2];
 
 if (cmd === 'task') {
-  const t = await call('/task');
+  let t;
+  try { t = await call('/task'); }
+  catch (e) {
+    // 412 — у запустившего не подключён Claude: сказать сайту по-человечески
+    const msg = /^412/.test(e.message) ? 'Не подключён Claude у того, кто запустил правку — «Мой Claude» в разделе' : `Не удалось получить задачу: ${e.message}`;
+    await call('/callback', { method: 'POST', body: JSON.stringify({ status: 'failed', error: msg, runUrl: RUN_URL }) }).catch(() => {});
+    fs.writeFileSync('/tmp/reported', 'done');
+    throw e;
+  }
+  // Личный токен подписки того, кто запустил правку: скрыть из логов и отдать Claude Code
+  console.log(`::add-mask::${t.claudeToken}`);
+  fs.appendFileSync(process.env.GITHUB_ENV, `CLAUDE_CODE_OAUTH_TOKEN=${t.claudeToken}\n`);
+  delete t.claudeToken;
   fs.mkdirSync('.site-change-refs', { recursive: true });
   for (const img of t.images || []) {
     const r = await fetch(img.url);
@@ -57,6 +69,8 @@ if (cmd === 'task') {
 } else if (cmd === 'report') {
   const body = JSON.parse(process.argv[3] || '{}');
   body.runUrl = RUN_URL;
+  // Итоговый отчёт уже ушёл — шаг «Сбой» не должен перебить его общей ошибкой
+  if (body.status !== 'working') fs.writeFileSync('/tmp/reported', 'done');
   console.log(await call('/callback', { method: 'POST', body: JSON.stringify(body) }));
 } else if (cmd === 'guard') {
   fs.rmSync('.site-change-refs', { recursive: true, force: true });
@@ -89,6 +103,11 @@ if (cmd === 'task') {
     } catch (e) { if (i === 0) text = `Не удалось прочитать ответ Claude: ${e.message}`; }
   });
   cost = Math.round(cost * 10000) / 10000;
+  // Ошибки подписки — отдельно: их видит человек, чей это Claude
+  let tokenError = '';
+  if (/usage limit|rate.?limit|limit reached|out of (extra )?usage|5-hour limit|weekly limit/i.test(text)) tokenError = 'Кончился лимит подписки Claude — попробуйте через несколько часов';
+  else if (/invalid.*(api key|token)|oauth|authenticat|401|unauthori[sz]ed|expired/i.test(text)) tokenError = 'Токен Claude недействителен или истёк — подключите заново в «Мой Claude»';
+  out('token_error', tokenError);
   out('text', text.slice(0, 3500));
   out('cost', String(cost));
   console.log(`$${cost}\n${text}`);

@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   getSiteChanges, getSiteChange, createSiteChange, commentSiteChange,
-  retrySiteChange, approveSiteChange, rejectSiteChange,
+  retrySiteChange, approveSiteChange, rejectSiteChange, saveMyClaude, removeMyClaude,
 } from '../../api/index';
 
 const C = {
@@ -94,6 +94,65 @@ function ImagePicker({ files, setFiles }) {
         </div>
       )}
     </div>
+  );
+}
+
+// «Мой Claude»: личный токен подписки. Правки, которые человек запускает, делает его Claude.
+const INSTALL_CMD = 'curl -fsSL https://claude.ai/install.sh | bash';
+const TOKEN_CMD = 'claude setup-token';
+
+function CopyLine({ text }) {
+  const [ok, setOk] = useState(false);
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#1c1c1c', color: '#fff', borderRadius: 8, padding: '8px 10px', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, margin: '6px 0' }}>
+      <span style={{ flex: 1, overflowX: 'auto', whiteSpace: 'nowrap' }}>{text}</span>
+      <button onClick={() => navigator.clipboard?.writeText(text).then(() => { setOk(true); setTimeout(() => setOk(false), 1500); })}
+        style={{ border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>{ok ? '✓' : 'Копировать'}</button>
+    </div>
+  );
+}
+
+function MyClaude({ me, onClose, onChanged }) {
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const save = async () => {
+    setBusy(true); setErr('');
+    try { await saveMyClaude(token.trim()); setToken(''); onChanged(); onClose(); }
+    catch (e) { setErr(errMsg(e)); }
+    setBusy(false);
+  };
+  const remove = async () => {
+    if (!window.confirm('Отключить ваш Claude? Запускать правки будет нельзя, пока не подключите снова.')) return;
+    await removeMyClaude().catch(() => {}); onChanged(); onClose();
+  };
+  const step = { fontSize: 14, lineHeight: 1.55, marginBottom: 12 };
+  return (
+    <Modal title="Мой Claude" onClose={onClose}>
+      {me?.connected && (
+        <div style={{ background: me.lastError ? C.redWash : C.greenWash, color: me.lastError ? C.redDark : C.green, borderRadius: 12, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
+          {me.lastError ? `⚠️ ${me.lastError}` : '✅ Подключён'} · токен …{me.last4} · действует до {new Date(me.expiresAt).toLocaleDateString('ru')}
+        </div>
+      )}
+      <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>
+        Правки, которые вы отправляете, делает <b>ваш</b> Claude — по вашей подписке. Подключить нужно один раз (токен действует год).
+        Токен хранится на сайте зашифрованным, его никто не видит.
+      </div>
+      <div style={step}><b>1.</b> На своём Mac откройте <b>Терминал</b> (⌘ + Пробел → «Терминал»). Если Claude Code ещё не установлен — вставьте и нажмите Enter:
+        <CopyLine text={INSTALL_CMD} /></div>
+      <div style={step}><b>2.</b> Затем вставьте эту команду и нажмите Enter — откроется браузер, войдите в свой аккаунт Claude и нажмите «Authorize»:
+        <CopyLine text={TOKEN_CMD} /></div>
+      <div style={step}><b>3.</b> В Терминале появится длинный токен, он начинается с <code>sk-ant-oat01-</code>. Скопируйте его целиком и вставьте сюда:</div>
+      <input style={{ ...inputStyle, fontFamily: 'ui-monospace, Menlo, monospace' }} placeholder="sk-ant-oat01-…" value={token} onChange={e => setToken(e.target.value)} autoComplete="off" />
+      {err && <div style={{ color: C.redDark, fontSize: 13, marginTop: 10 }}>{err}</div>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+        <div>{me?.connected && <Button kind="danger" onClick={remove}>Отключить</Button>}</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button onClick={onClose}>Закрыть</Button>
+          <Button kind="primary" disabled={busy || !token.trim()} onClick={save}>{busy ? 'Сохраняю…' : me?.connected ? 'Заменить токен' : 'Подключить'}</Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -190,7 +249,7 @@ function Detail({ id, isOwner, onClose, onChanged }) {
     <Modal title={`№${d.number} · ${d.title}`} onClose={onClose} width={720}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
         <Badge status={d.status} />
-        <span style={{ fontSize: 12, color: C.muted }}>{d.authorName} · {fmtDate(d.createdAt)}{isOwner && d.costUsd ? ` · $${d.costUsd.toFixed(2)}` : ''}</span>
+        <span style={{ fontSize: 12, color: C.muted }}>{d.authorName} · {fmtDate(d.createdAt)}{d.runByName ? ` · делает Claude: ${d.runByName}` : ''}</span>
         {d.runUrl && isOwner && <a href={d.runUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.muted }}>журнал запуска</a>}
         {d.prUrl && isOwner && <a href={d.prUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.muted }}>изменения в коде</a>}
       </div>
@@ -253,6 +312,7 @@ export default function AdminSiteChanges() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [creating, setCreating] = useState(false);
+  const [claudeOpen, setClaudeOpen] = useState(false);
   const [filter, setFilter] = useState('open');
   const openId = params.get('id');
 
@@ -273,12 +333,14 @@ export default function AdminSiteChanges() {
     <div className="admin-page" style={{ maxWidth: 960 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <h1 style={{ margin: 0, fontSize: 24 }}>🎨 Правки сайта</h1>
-        <Button kind="primary" onClick={() => setCreating(true)}>+ Новая правка</Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button onClick={() => setClaudeOpen(true)}>{data?.me?.connected ? (data.me.lastError ? '⚠️ Мой Claude' : '✅ Мой Claude') : '🔌 Подключить мой Claude'}</Button>
+          <Button kind="primary" disabled={data && !data.me?.connected} title={data && !data.me?.connected ? 'Сначала подключите свой Claude' : ''} onClick={() => setCreating(true)}>+ Новая правка</Button>
+        </div>
       </div>
       <div style={{ color: C.muted, fontSize: 14, marginBottom: 18, lineHeight: 1.5 }}>
         Опишите словами, что изменить во внешнем виде сайта или в PDF-каталогах. Claude сделает правку, вы проверите её на предпросмотре,
         владелец примет — и она появится на сайте.
-        {data?.isOwner && data.budget && <> Расход за месяц: <b>${data.budget.spent}</b> из ${data.budget.limit}.</>}
         {data?.isOwner && waiting > 0 && <> Ждут вашего решения: <b>{waiting}</b>.</>}
       </div>
 
@@ -288,6 +350,16 @@ export default function AdminSiteChanges() {
         ))}
       </div>
 
+      {data && !data.me?.connected && (
+        <div onClick={() => setClaudeOpen(true)} style={{ background: C.amberWash, color: C.amber, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 14, cursor: 'pointer' }}>
+          🔌 Чтобы отправлять правки, один раз подключите свой Claude — <u>как это сделать</u>
+        </div>
+      )}
+      {data?.me?.lastError && (
+        <div onClick={() => setClaudeOpen(true)} style={{ background: C.redWash, color: C.redDark, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 14, cursor: 'pointer' }}>
+          ⚠️ {data.me.lastError}
+        </div>
+      )}
       {err && <div style={{ color: C.redDark }}>{err}</div>}
       {!data && !err && <div style={{ color: C.muted }}>Загрузка…</div>}
       {data && !items.length && <div style={{ color: C.muted, padding: '30px 0' }}>Пока пусто.</div>}
@@ -307,6 +379,7 @@ export default function AdminSiteChanges() {
         ))}
       </div>
 
+      {claudeOpen && <MyClaude me={data?.me} onClose={() => setClaudeOpen(false)} onChanged={load} />}
       {creating && <NewChange onClose={() => setCreating(false)} onCreated={d => { setCreating(false); load(); setOpen(d._id); }} />}
       {openId && <Detail id={openId} isOwner={!!data?.isOwner} onClose={() => setOpen(null)} onChanged={load} />}
     </div>
