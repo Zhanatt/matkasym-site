@@ -1,0 +1,54 @@
+# Сборка готовых PDF-каталогов. Запускает сайт (repository_dispatch), когда кнопка «PDF» обнаружила
+# изменения; расписание подбирает запросы, если запуск не дошёл. Без запросов job заканчивается за минуту.
+name: Build catalogs
+on:
+  repository_dispatch:
+    types: [build-catalog]
+  workflow_dispatch:
+    inputs:
+      key:
+        description: 'Ключ каталога (например set:mazza-seyil) или --all'
+        required: false
+      force:
+        description: 'Пересобрать, даже если данные не менялись'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 */3 * * *'   # раз в 3 часа: в приватном репо 2000 мин/мес, а основной запуск — по кнопке
+concurrency:
+  group: catalogs
+  cancel-in-progress: false
+env:
+  ATLAS_URI: ${{ secrets.ATLAS_URI }}
+  CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+  CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+  CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci --omit=dev
+      - id: check
+        env:
+          INPUT_KEY: ${{ github.event.inputs.key }}
+        run: node scripts/catalog-build.js --check $INPUT_KEY
+      - if: steps.check.outputs.work == 'true'
+        run: |
+          npm i --no-save esbuild
+          sudo apt-get update -qq && sudo apt-get install -y -qq ghostscript poppler-utils
+          echo "CHROME_BIN=$(which google-chrome)" >> "$GITHUB_ENV"
+      - if: steps.check.outputs.work == 'true'
+        env:
+          INPUT_KEY: ${{ github.event.inputs.key }}
+          FORCE: ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+        run: node scripts/catalog-build.js --pending $INPUT_KEY $FORCE

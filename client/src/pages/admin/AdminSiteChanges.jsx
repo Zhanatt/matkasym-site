@@ -114,7 +114,7 @@ function NewChange({ onClose, onCreated }) {
   return (
     <Modal title="Новая правка сайта" onClose={onClose}>
       <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>
-        Опишите словами, что поменять во внешнем виде сайта: какая страница, что именно и как должно стать.
+        Опишите словами, что поменять во внешнем виде сайта или в PDF-каталоге: какая страница или какой каталог, что именно и как должно стать.
         Claude сделает правку за 5–15 минут, вы проверите её на предпросмотре, а на сайт она попадёт после одобрения владельца.
       </div>
       <input style={inputStyle} placeholder="Коротко: что сделать (например, «Крупнее фото в карточке товара»)" value={title} onChange={e => setTitle(e.target.value)} maxLength={140} />
@@ -201,6 +201,16 @@ function Detail({ id, isOwner, onClose, onChanged }) {
           <div style={{ fontSize: 12, color: C.muted }}>Собирается 3–7 минут после того, как правка готова. Данные там <b>настоящие</b>: ничего не меняйте в товарах на предпросмотре — только смотрите.</div>
         </div>
       )}
+      {d.status === 'ready' && !!d.pdfs?.length && (
+        <div style={{ background: C.slateWash, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 14, lineHeight: 1.6 }}>
+          {d.pdfs.map((p, i) => (
+            <div key={i}>📄 {p.url
+              ? <a href={p.url} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>{p.title} — пробный PDF</a>
+              : <span>{p.title}: не собрался <span style={{ color: C.muted, fontSize: 12 }}>({p.error})</span></span>}</div>
+          ))}
+          <div style={{ fontSize: 12, color: C.muted }}>Собран по новой вёрстке. После «Принять» боевые каталоги пересоберутся сами при следующем скачивании.</div>
+        </div>
+      )}
       {d.status === 'failed' && d.error && (
         <div style={{ background: C.redWash, color: C.redDark, borderRadius: 12, padding: '10px 14px', marginBottom: 14, fontSize: 14 }}>{d.error}</div>
       )}
@@ -266,7 +276,7 @@ export default function AdminSiteChanges() {
         <Button kind="primary" onClick={() => setCreating(true)}>+ Новая правка</Button>
       </div>
       <div style={{ color: C.muted, fontSize: 14, marginBottom: 18, lineHeight: 1.5 }}>
-        Опишите словами, что изменить во внешнем виде сайта. Claude сделает правку, вы проверите её на предпросмотре,
+        Опишите словами, что изменить во внешнем виде сайта или в PDF-каталогах. Claude сделает правку, вы проверите её на предпросмотре,
         владелец примет — и она появится на сайте.
         {data?.isOwner && data.budget && <> Расход за месяц: <b>${data.budget.spent}</b> из ${data.budget.limit}.</>}
         {data?.isOwner && waiting > 0 && <> Ждут вашего решения: <b>{waiting}</b>.</>}

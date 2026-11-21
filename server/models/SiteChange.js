@@ -47,6 +47,7 @@ const siteChangeSchema = new mongoose.Schema({
   prUrl:      String,
   previewUrl: String,
   runUrl:     String,             // текущий/последний запуск в GitHub Actions
+  pdfs:       [{ _id: false, title: String, url: String, error: String }],  // пробные PDF-каталоги из ветки
   reverted:   [String],           // файлы, которые трогать нельзя — правка в них отменена
   error:      String,
   statusAt:   { type: Date, default: Date.now },  // когда статус менялся — для «зависших»

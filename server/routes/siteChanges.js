@@ -204,6 +204,7 @@ hook.post('/:id/callback', async (req, res) => {
         if (b.status === 'ready') {
           if (b.prNumber) { doc.prNumber = b.prNumber; doc.prUrl = b.prUrl; doc.previewUrl = sc.previewUrl(b.prNumber); }
           doc.reverted = Array.isArray(b.reverted) ? b.reverted.slice(0, 50) : [];
+          doc.pdfs = Array.isArray(b.pdfs) ? b.pdfs.slice(0, 5).map(p => ({ title: String(p.title || 'Каталог'), url: p.url ? String(p.url) : undefined, error: p.error ? String(p.error) : undefined })) : [];
           setStatus(doc, 'ready');
         } else {
           doc.error = String(b.error || 'Неизвестная ошибка').slice(0, 1000);

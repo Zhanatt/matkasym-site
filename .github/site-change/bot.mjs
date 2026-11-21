@@ -31,9 +31,15 @@ async function call(path, init = {}, tries = 4) {
 const sh = cmd => execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 const out = (k, v) => fs.appendFileSync(process.env.GITHUB_OUTPUT, `${k}<<__EOF__\n${v}\n__EOF__\n`);
 
-// Разрешено менять только внешний вид
+// Разрешено менять только внешний вид: сайт и вёрстку PDF-каталогов
 const ALLOWED = /^client\/(src|public)\//;
 const FORBIDDEN = /^client\/src\/(api\/|context\/|constants\/roles\.js$)/;
+// Вёрстка каталогов сетов живёт на сервере. Только правка существующих файлов, новых не заводим
+const CATALOG = /^server\/(scripts\/build-[a-z0-9-]+-catalog\.js|lib\/catalog(Layout|Fonts)\.js)$/;
+// Эти скрипты запускаются с доступом к боевой базе (пробный PDF, сборка каталогов) —
+// добавленная строка с записью в базу, удалением, запуском программ или чтением секретов
+// откатывает весь файл
+const DANGER = /\b(delete(One|Many)|update(One|Many)|insert(One|Many)?|findOneAnd\w+|findByIdAnd\w+|replaceOne|bulkWrite|drop\w*|\.save\(|\.create\(|destroy|child_process|exec(File)?(Sync)?\(|spawn|process\.env|unlink|rmSync|rmdir)\b/;
 
 const cmd = process.argv[2];
 
@@ -57,7 +63,10 @@ if (cmd === 'task') {
   sh('git add -A');
   const base = sh('git merge-base HEAD origin/main');
   const files = sh(`git diff --cached --name-only ${base}`).split('\n').filter(Boolean);
-  const bad = files.filter(f => !ALLOWED.test(f) || FORBIDDEN.test(f));
+  const existed = f => { try { sh(`git cat-file -e ${base}:"${f}"`); return true; } catch { return false; } };
+  const risky = f => sh(`git diff --cached -U0 ${base} -- "${f}"`).split('\n')
+    .filter(l => l.startsWith('+') && !l.startsWith('+++')).some(l => DANGER.test(l));
+  const bad = files.filter(f => CATALOG.test(f) ? !existed(f) || risky(f) : !ALLOWED.test(f) || FORBIDDEN.test(f));
   for (const f of bad) {
     // Вернуть файл к состоянию main; новый — удалить
     try { sh(`git cat-file -e ${base}:"${f}"`); sh(`git checkout ${base} -- "${f}"`); }

@@ -27,7 +27,7 @@ jobs:
   change:
     if: github.event.action == 'site-change'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
@@ -131,8 +131,35 @@ jobs:
           echo "number=$(gh pr view "$BRANCH" --json number -q .number)" >> "$GITHUB_OUTPUT"
           echo "url=$(gh pr view "$BRANCH" --json url -q .url)" >> "$GITHUB_OUTPUT"
 
+      # Правка задела вёрстку PDF-каталога — собрать пробный файл кодом из ветки
+      - id: pdfcheck
+        if: steps.pr.outputs.number
+        run: |
+          JOBS=$(node server/scripts/catalog-preview.js --detect origin/main)
+          echo "jobs=$JOBS"; echo "jobs=$JOBS" >> "$GITHUB_OUTPUT"
+      - name: Подготовка к сборке PDF
+        if: steps.pdfcheck.outputs.jobs && steps.pdfcheck.outputs.jobs != '[]'
+        working-directory: server
+        run: |
+          npm ci --omit=dev
+          npm i --no-save esbuild
+          sudo apt-get update -qq && sudo apt-get install -y -qq ghostscript poppler-utils
+          echo "CHROME_BIN=$(which google-chrome)" >> "$GITHUB_ENV"
+      - id: pdf
+        name: Пробный PDF
+        if: steps.pdfcheck.outputs.jobs && steps.pdfcheck.outputs.jobs != '[]'
+        env:
+          ATLAS_URI: ${{ secrets.ATLAS_URI }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        run: |
+          PDFS=$(node server/scripts/catalog-preview.js --build "$ID" origin/main || echo '[]')
+          echo "$PDFS"; echo "pdfs=$PDFS" >> "$GITHUB_OUTPUT"
+
       - name: Отчёт на сайт
         env:
+          PDFS: ${{ steps.pdf.outputs.pdfs || '[]' }}
           PR: ${{ steps.pr.outputs.number }}
           PR_URL: ${{ steps.pr.outputs.url }}
           SUMMARY: ${{ steps.claude.outputs.text }}
@@ -141,8 +168,8 @@ jobs:
           BUILD_OK: ${{ steps.build1.outputs.ok == 'true' || steps.build2.outputs.ok == 'true' }}
         run: |
           if [ -n "$PR" ]; then
-            BODY=$(jq -n --argjson pr "$PR" --arg url "$PR_URL" --arg s "$SUMMARY" --argjson cost "${COST:-0}" --argjson rev "$REVERTED" \
-              '{status:"ready", prNumber:$pr, prUrl:$url, summary:$s, costUsd:$cost, reverted:$rev}')
+            BODY=$(jq -n --argjson pr "$PR" --arg url "$PR_URL" --arg s "$SUMMARY" --argjson cost "${COST:-0}" --argjson rev "$REVERTED" --argjson pdfs "$PDFS" \
+              '{status:"ready", prNumber:$pr, prUrl:$url, summary:$s, costUsd:$cost, reverted:$rev, pdfs:$pdfs}')
           else
             if [ "$BUILD_OK" != "true" ]; then ERR="После правки сайт не собирается — Claude не смог исправить. Попробуйте описать задачу иначе."
             else ERR="Claude не внёс изменений. Возможно, задача неясна — посмотрите его ответ и уточните."; fi

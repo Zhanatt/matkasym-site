@@ -39,6 +39,17 @@ const allKeys = () => [...Object.keys(SETS).map(s => `set:${s}`),
   ...Object.keys(BRANDS).flatMap(b => Object.keys(PRICE_TYPES).map(p => `brand:${b}:${p}`))];
 
 const sha = v => crypto.createHash('sha1').update(typeof v === 'string' ? v : JSON.stringify(v)).digest('hex');
+
+// Отпечаток кода вёрстки: изменили шаблон каталога (в том числе дизайнер через «Правки сайта») —
+// после деплоя файл считается устаревшим и пересоберётся сам, LAYOUT_REV вручную менять не надо.
+const fs = require('fs');
+const path = require('path');
+const ROOT = path.join(__dirname, '..', '..');
+const SET_CODE = s => [`server/scripts/build-${s}-catalog.js`, 'server/lib/catalogLayout.js', 'server/lib/catalogFonts.js'];
+const BRAND_CODE = ['server/scripts/build-generated-catalog.js', 'server/lib/catalogLayout.js',
+  'client/src/pages/admin/catalogPrint.js', 'client/src/pages/admin/kyzmatPrint.js', 'client/src/pages/admin/brandPdfGroups.js'];
+const codeCache = {};
+const codeRev = files => (codeCache[files.join()] ??= sha(files.map(f => { try { return fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { return ''; } })));
 const CONTENT = ['name', 'fullName', 'sku', 'set', 'category', 'color', 'dimensions', 'unit', 'productStatus', 'isKit', 'kitType', 'kitParts',
   'images', 'specs', 'hideInPdf', 'pdfGroup', 'pdfVariant', 'pdfSeries', 'pdfPage', 'pdfRange', 'pdfRangeExtra', 'pdfOrder', 'pdfNote', 'maker'];
 const pick = (p, fields) => fields.map(f => p[f] ?? null);
@@ -47,7 +58,7 @@ const db = () => mongoose.connection.db;
 async function fingerprintSet(meta) {
   const fields = [...CONTENT, 'price', 'priceWholesale', 'description'];
   const rows = await db().collection('products').find({ set: { $in: meta.deps } }).project(Object.fromEntries(fields.map(f => [f, 1]))).sort({ _id: 1 }).toArray();
-  return sha([LAYOUT_REV, meta.name, rows.map(p => [String(p._id), pick(p, fields)])]);
+  return sha([LAYOUT_REV, codeRev(SET_CODE(meta.script)), meta.name, rows.map(p => [String(p._id), pick(p, fields)])]);
 }
 
 async function fingerprintBrand(brand, priceType) {
@@ -58,7 +69,7 @@ async function fingerprintBrand(brand, priceType) {
   const brandDoc = await db().collection('brands').findOne({ key: brand }, { projection: { sets: 1 } });
   const sets = (brandDoc?.sets || []).map(s => [s.key, s.label, !!s.frozen, s.pdfOrder ?? null]);
   const layouts = await db().collection('setlayouts').find({ brand }).project({ set: 1, categories: 1, productOrder: 1 }).sort({ set: 1 }).toArray();
-  return sha([LAYOUT_REV, brand, priceType, sets, layouts.map(l => [l.set, l.categories, l.productOrder]),
+  return sha([LAYOUT_REV, codeRev(BRAND_CODE), brand, priceType, sets, layouts.map(l => [l.set, l.categories, l.productOrder]),
     rows.map(p => [String(p._id), pick(p, fields), !!(p.inStock || p.stock > 0 || p.isOnOrder)])]);
 }
 
@@ -72,7 +83,7 @@ async function fingerprint(key) {
   const k = parseKey(key);
   if (!k) throw new Error('Неизвестный каталог: ' + key);
   if (k.kind === 'set') return fingerprintSet(k.meta);
-  if (k.merged) return sha([LAYOUT_REV, await shaarSetOrder(), await Promise.all(Object.values(SETS).map(fingerprintSet))]);
+  if (k.merged) return sha([LAYOUT_REV, codeRev(['server/scripts/build-shaar-catalog.js']), await shaarSetOrder(), await Promise.all(Object.values(SETS).map(fingerprintSet))]);
   return fingerprintBrand(k.brand, k.priceType);
 }
 
@@ -81,7 +92,7 @@ const getFile = key => col().findOne({ _id: key });
 
 async function dispatchBuild(key) {
   const token = process.env.GITHUB_DISPATCH_TOKEN;
-  if (!token) return false;
+  if (!token || process.env.IS_PULL_REQUEST === 'true') return false;
   const r = await fetch('https://api.github.com/repos/Zhanatt/matkasym-site/dispatches', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
@@ -104,6 +115,8 @@ async function resolveFile(key) {
   if (doc?.buildError && doc.errorFingerprint === fp) return { status: 'stale', ...last, instant: false };
   const already = doc?.requestedFingerprint === fp && doc.requestedAt && Date.now() - new Date(doc.requestedAt).getTime() < BUILD_TIMEOUT;
   let instant = !!process.env.GITHUB_DISPATCH_TOKEN;
+  // Предпросмотр PR: реестр боевой, ничего в нём не помечаем — отдаём последний файл
+  if (process.env.IS_PULL_REQUEST === 'true') return { status: 'stale', ...last, instant: false };
   if (!already) {
     await col().updateOne({ _id: key }, { $set: { requested: true, requestedFingerprint: fp, requestedAt: new Date() }, $unset: { buildError: '', errorFingerprint: '' } }, { upsert: true });
     instant = await dispatchBuild(key).catch(e => { console.error(e.message); return false; });

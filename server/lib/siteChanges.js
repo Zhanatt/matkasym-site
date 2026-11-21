@@ -71,6 +71,7 @@ function buildPrompt(change) {
     '',
     'ПРАВИЛА:',
     '- Меняй только файлы в client/src/ и client/public/. Сервер (server/), базу, цены, права доступа, роли, авторизацию и API не трогай.',
+    '- Исключение — вёрстка PDF-каталогов. Каталоги брендов: client/src/pages/admin/catalogPrint.js, kyzmatPrint.js, brandPdfGroups.js. Каталоги сетов SHAAR: server/scripts/build-<сет>-catalog.js (сеты: uzak-koldon, mazza-seyil, onoy-sakta, 0-tastandy, bilim-kelechek, bekem-fasad, kooz-koopsuzduk, bekem-tosmo), общая вёрстка — server/lib/catalogLayout.js и catalogFonts.js. В этих серверных файлах меняй только HTML/CSS и оформление: никаких новых запросов и записи в базу, process.env, запуска программ, удаления файлов — иначе правка в файле будет отменена. Новые файлы на сервере не создавай.',
     '- Нельзя менять client/src/api/, client/src/context/, client/src/constants/roles.js, package.json, конфиги сборки — такие правки будут автоматически отменены.',
     '- Не добавляй npm-пакеты. Не удаляй функциональность, о которой не просили.',
     '- Делай ровно то, что просят, в стиле существующего кода. Если просьба неясна — выбери самое разумное толкование и напиши об этом в итоге.',
@@ -119,9 +120,10 @@ async function notify(change, event, extra = {}) {
   if (event === 'ready') {
     const preview = ['👀 Предпросмотр', change.previewUrl];
     const summary = extra.summary ? `\n\n${esc(extra.summary).slice(0, 1500)}` : '';
+    const pdfs = (change.pdfs || []).map(p => p.url ? `\n📄 <a href="${p.url}">${esc(p.title)} — пробный PDF</a>` : `\n📄 ${esc(p.title)}: не собрался (${esc(p.error)})`).join('');
     const reverted = change.reverted?.length ? `\n\n⚠️ Отменены правки в запрещённых файлах: ${esc(change.reverted.join(', '))}` : '';
-    await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${reverted}\n\nПредпросмотр соберётся за 3–7 минут. Принять или отклонить — в разделе «Правки сайта».`, [preview, open]);
-    await tellAuthor(change, `${head}\nГотово, проверь на предпросмотре (соберётся за 3–7 минут). Если нужно поправить — напиши уточнение в разделе «Правки сайта».${summary}`, [preview, open]);
+    await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${pdfs}${reverted}\n\nПредпросмотр соберётся за 3–7 минут. Принять или отклонить — в разделе «Правки сайта».`, [preview, open]);
+    await tellAuthor(change, `${head}\nГотово, проверь на предпросмотре (соберётся за 3–7 минут). Если нужно поправить — напиши уточнение в разделе «Правки сайта».${summary}${pdfs}`, [preview, open]);
   } else if (event === 'failed') {
     await tellAuthor(change, `${head}\n❌ Не получилось: ${esc(change.error || 'ошибка')}\nМожно уточнить задачу или повторить.`, [open]);
   } else if (event === 'merged') {
