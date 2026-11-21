@@ -19,7 +19,7 @@ const C = {
 const STATUS = {
   queued:    { label: 'В очереди',          color: C.muted,  bg: C.slateWash },
   working:   { label: 'Claude делает…',     color: C.amber,  bg: C.amberWash },
-  ready:     { label: 'Ждёт решения',       color: '#1d4ed8', bg: '#e8efff' },
+  ready:     { label: 'На утверждении',     color: '#1d4ed8', bg: '#e8efff' },
   failed:    { label: 'Не получилось',      color: C.redDark, bg: C.redWash },
   merging:   { label: 'Выкладывается…',     color: C.amber,  bg: C.amberWash },
   merged:    { label: 'На сайте',           color: C.green,  bg: C.greenWash },
@@ -230,7 +230,21 @@ function Attachments({ urls }) {
   );
 }
 
+// Чат ещё чего-то ждёт: Claude работает, предпросмотр собирается или сайт пересобирается
+const waiting = d => ACTIVE.includes(d.status) || (d.status === 'ready' && !d.previewReadyAt) || (d.status === 'merged' && !d.deployedAt);
+
+const linkify = text => String(text).split(/(https?:\/\/\S+)/g).map((part, i) =>
+  /^https?:\/\//.test(part) ? <a key={i} href={part} target="_blank" rel="noreferrer" style={{ fontWeight: 600 }}>открыть</a> : part);
+
 function Bubble({ m }) {
+  if (m.kind === 'status') {
+    return (
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '6px 0 6px 6px', fontSize: 13, color: '#4b5563', lineHeight: 1.5 }}>
+        <span style={{ color: C.muted, fontSize: 11, whiteSpace: 'nowrap', paddingTop: 2 }}>{fmtDate(m.at).split(', ')[1] || fmtDate(m.at)}</span>
+        <span>{linkify(m.text)}</span>
+      </div>
+    );
+  }
   if (m.kind === 'decision') {
     return <div style={{ textAlign: 'center', fontSize: 13, color: C.muted, margin: '14px 0' }}>{m.text} · {m.authorName} · {fmtDate(m.at)}</div>;
   }
@@ -276,9 +290,16 @@ function StatusCard({ d, isOwner, busy, act }) {
     </>);
   }
   if (d.status === 'ready') {
+    const who = d.approver || 'владелец сайта';
     return box('#e8efff', <>
-      {d.previewUrl && <div>👀 <a href={d.previewUrl} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>Открыть предпросмотр</a>
-        <span style={{ fontSize: 12, color: C.muted }}> — собирается 3–7 минут; данные там настоящие, только смотрите</span></div>}
+      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
+        ⏳ {isOwner ? 'Ждёт вашего утверждения' : `На утверждении — должен утвердить ${who}`}
+      </div>
+      {!isOwner && <div style={{ fontSize: 13, color: C.muted, marginBottom: 8 }}>Пока {who} не утвердит, на сайте ничего не изменится.</div>}
+      {d.previewUrl && (d.previewReadyAt
+        ? <div>👀 <a href={d.previewUrl} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>Открыть предпросмотр</a>
+            <span style={{ fontSize: 12, color: C.muted }}> — данные там настоящие, только смотрите</span></div>
+        : <div style={{ color: C.muted }}><span className="sc-dots">●●●</span> Предпросмотр собирается (3–7 минут)… <a href={d.previewUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.muted }}>попробовать открыть</a></div>)}
       {(d.pdfs || []).map((p, i) => <div key={i}>📄 {p.url ? <a href={p.url} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>{p.title} — пробный PDF</a> : <>{p.title}: не собрался <span style={{ fontSize: 12, color: C.muted }}>({p.error})</span></>}</div>)}
       {!!d.reverted?.length && <div style={{ fontSize: 12, color: C.amber, marginTop: 6 }}>Отменены изменения в файлах, которые трогать нельзя: {d.reverted.join(', ')}</div>}
       <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>Что-то не так — напишите ниже, Claude доработает эту же правку.</div>
@@ -298,8 +319,9 @@ function StatusCard({ d, isOwner, busy, act }) {
       </div>
     </>);
   }
-  if (d.status === 'merging') return box(C.amberWash, <>⏳ Правка выкладывается на сайт…{d.stuck && <div style={{ marginTop: 8 }}><Button disabled={busy} onClick={() => act(() => retrySiteChange(d._id))}>Повторить</Button></div>}</>);
-  if (d.status === 'merged') return box(C.greenWash, <span style={{ color: C.green }}>✅ Правка на сайте (появляется через 5–10 минут после принятия). Для новой задачи начните новый чат.</span>);
+  if (d.status === 'merging') return box(C.amberWash, <><span className="sc-dots" style={{ color: C.amber, fontWeight: 700 }}>●●●</span> Утверждено, выкладываю правку…{d.stuck && <div style={{ marginTop: 8 }}><Button disabled={busy} onClick={() => act(() => retrySiteChange(d._id))}>Повторить</Button></div>}</>);
+  if (d.status === 'merged' && !d.deployedAt) return box(C.amberWash, <><span className="sc-dots" style={{ color: C.amber, fontWeight: 700 }}>●●●</span> Утверждено. Сайт пересобирается — обычно 5–10 минут. Напишу здесь, когда можно смотреть.</>);
+  if (d.status === 'merged') return box(C.greenWash, <span style={{ color: C.green }}>🎉 Изменения на сайте — обновите страницу (⌘R), чтобы увидеть. Для новой задачи начните новый чат.</span>);
   return box(C.slateWash, <span style={{ color: C.muted }}>{d.status === 'rejected' ? '🚫 Отклонено' : '↩️ Отменено'}. Для новой задачи начните новый чат.</span>);
 }
 
@@ -315,11 +337,11 @@ function ChatView({ id, isOwner, me, onChanged, onCreated, onOpenClaude }) {
   }, [id]);
   useEffect(() => { setD(null); load(); }, [load]);
   useEffect(() => {
-    if (!d || !ACTIVE.includes(d.status)) return;
+    if (!d || !waiting(d)) return;
     const t = setInterval(load, 12_000);
     return () => clearInterval(t);
   }, [d?.status, load]);
-  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [d?.messages?.length, d?.status]);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [d?.messages?.length, d?.status, d?.previewReadyAt, d?.deployedAt]);
 
   const act = async fn => {
     setBusy(true); setErr('');
@@ -395,7 +417,7 @@ export default function AdminSiteChanges() {
   const load = useCallback(() => getSiteChanges().then(r => setData(r.data)).catch(e => setErr(errMsg(e))), []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    if (!data?.items?.some(x => ACTIVE.includes(x.status))) return;
+    if (!data?.items?.some(waiting)) return;
     const t = setInterval(load, 20_000);
     return () => clearInterval(t);
   }, [data, load]);
@@ -438,7 +460,7 @@ export default function AdminSiteChanges() {
                   <div style={{ fontSize: 14, fontWeight: x._id === openId ? 600 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.title}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.muted, marginTop: 2 }}>
                     <span style={{ width: 7, height: 7, borderRadius: 4, background: (STATUS[x.status] || STATUS.queued).color, flexShrink: 0 }} />
-                    <span>{(STATUS[x.status] || STATUS.queued).label}{x.stuck ? ' · завис' : ''}</span>
+                    <span>{x.status === 'ready' ? 'На утверждении' : x.status === 'merged' && !x.deployedAt ? 'Выкладывается…' : (STATUS[x.status] || STATUS.queued).label}{x.stuck ? ' · завис' : ''}</span>
                     <span style={{ marginLeft: 'auto' }}>{x.authorName?.split(' ')[0]} · {fmtDate(x.createdAt)}</span>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 // Помощник воркфлоу «Правки сайта» (.github/workflows/site-change.yml).
 //   node bot.mjs task             — забрать задачу с сайта: /tmp/task.md + картинки в .site-change-refs/
+//   node bot.mjs stage <текст>    — строка «что сейчас делаю» в чат правки
 //   node bot.mjs report <json>    — отправить отчёт на сайт (status, prNumber, summary, …)
 //   node bot.mjs guard            — откатить правки вне разрешённых папок, вывести их список
 //   node bot.mjs summary <files…> — из JSON-вывода claude достать итог и стоимость в $GITHUB_OUTPUT
@@ -66,6 +67,10 @@ if (cmd === 'task') {
   out('title', t.title);
   out('number', String(t.number));
   console.log(t.prompt);
+} else if (cmd === 'stage') {
+  // Строка хода работы в чат правки. Не критично: сайт не ответил — работа идёт дальше
+  await call('/callback', { method: 'POST', body: JSON.stringify({ status: 'working', stage: process.argv.slice(3).join(' '), runUrl: RUN_URL }) }, 2)
+    .catch(e => console.log('стадия не отправлена:', e.message));
 } else if (cmd === 'report') {
   const body = JSON.parse(process.argv[3] || '{}');
   body.runUrl = RUN_URL;

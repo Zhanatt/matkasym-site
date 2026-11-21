@@ -159,14 +159,93 @@ async function notify(change, event, extra = {}) {
     const pdfs = (change.pdfs || []).map(p => p.url ? `\n📄 <a href="${p.url}">${esc(p.title)} — пробный PDF</a>` : `\n📄 ${esc(p.title)}: не собрался (${esc(p.error)})`).join('');
     const reverted = change.reverted?.length ? `\n\n⚠️ Отменены правки в запрещённых файлах: ${esc(change.reverted.join(', '))}` : '';
     await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${pdfs}${reverted}\n\nПредпросмотр соберётся за 3–7 минут. Принять или отклонить — в разделе «Правки сайта».`, [preview, open]);
-    await tellAuthor(change, `${head}\nГотово, проверь на предпросмотре (соберётся за 3–7 минут). Если нужно поправить — напиши уточнение в разделе «Правки сайта».${summary}${pdfs}`, [preview, open]);
+    await tellAuthor(change, `${head}\nClaude закончил. Правка ждёт утверждения: ${esc(await approverName())} — без этого на сайте ничего не изменится. Предпросмотр соберётся за 3–7 минут, если нужно поправить — напишите в чат.${summary}${pdfs}`, [preview, open]);
   } else if (event === 'failed') {
     await tellAuthor(change, `${head}\n❌ Не получилось: ${esc(change.error || 'ошибка')}\nМожно уточнить задачу или повторить.`, [open]);
+  } else if (event === 'preview') {
+    const preview = ['👀 Предпросмотр', change.previewUrl];
+    const who = await approverName();
+    await tellOwners(`${head}\n✅ Предпросмотр готов. Ждёт вашего утверждения.`, [preview, open]);
+    await tellAuthor(change, `${head}\n✅ Предпросмотр готов — можно смотреть. Правка ждёт утверждения: ${esc(who)}.`, [preview, open]);
   } else if (event === 'merged') {
-    await tellAuthor(change, `${head}\n✅ Принята. На сайте появится через 5–10 минут.`, [open]);
+    await tellAuthor(change, `${head}\n✅ Утверждена. Сайт пересобирается — сообщу, когда можно будет смотреть (обычно 5–10 минут).`, [open]);
+  } else if (event === 'deployed') {
+    const site = ['Открыть сайт', SITE_URL];
+    await tellAuthor(change, `${head}\n🎉 Изменения уже на сайте — обновите страницу, чтобы увидеть.`, [site, open]);
+    await tellOwners(`${head}\n🎉 Выложена на сайт.`, [site, open]);
   } else if (event === 'rejected') {
     await tellAuthor(change, `${head}\n🚫 Отклонена.${extra.reason ? `\nПричина: ${esc(extra.reason)}` : ''}`, [open]);
   }
 }
 
-module.exports = { SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, removeToken, setTokenError };
+// ── Ход работы: предпросмотр и выкладка ─────────────────────────────────────
+
+let approverCache = { at: 0, name: '' };
+// Кто утверждает правки — владелец(цы) сайта, по имени для чата
+async function approverName() {
+  if (Date.now() - approverCache.at < 10 * 60 * 1000 && approverCache.name) return approverCache.name;
+  const owners = await User.find({ role: 'owner' }, 'name').lean();
+  const names = owners.map(o => (o.name || '').split(' ')[0]).filter(Boolean);
+  approverCache = { at: Date.now(), name: names.length ? names.join(' или ') : 'владелец сайта' };
+  return approverCache.name;
+}
+
+const status = (doc, text) => doc.messages.push({ kind: 'status', authorName: 'Система', text });
+
+// Предпросмотр Render собирается несколько минут после PR. Проверяем лениво — когда
+// чат открыт (GET /:id), не чаще раза в 30 секунд на правку.
+const previewChecked = new Map();
+async function checkPreview(doc) {
+  if (doc.status !== 'ready' || doc.previewReadyAt || !doc.previewUrl) return false;
+  const last = previewChecked.get(String(doc._id)) || 0;
+  if (Date.now() - last < 30_000) return false;
+  previewChecked.set(String(doc._id), Date.now());
+  try {
+    const r = await fetch(`${doc.previewUrl}/api/version`, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return false;
+  } catch { return false; }
+  doc.previewReadyAt = new Date();
+  status(doc, `✅ Предпросмотр готов — можно смотреть: ${doc.previewUrl}`);
+  await doc.save();
+  notify(doc, 'preview').catch(() => {});
+  return true;
+}
+
+// Есть ли коммит слияния в том, что сейчас крутится на боевом сайте.
+// RENDER_GIT_COMMIT — коммит текущего деплоя (Render ставит сам).
+async function isDeployed(doc) {
+  const live = process.env.RENDER_GIT_COMMIT;
+  if (process.env.IS_PULL_REQUEST === 'true') return false;
+  if (!live || !doc.mergeSha) {
+    // Без коммитов — запасной признак: сервер стартовал заметно позже слияния
+    return !!doc.mergedAt && SERVER_START - new Date(doc.mergedAt).getTime() > 60_000;
+  }
+  if (live === doc.mergeSha) return true;
+  const token = process.env.GITHUB_DISPATCH_TOKEN;
+  if (!token) return false;
+  const r = await fetch(`https://api.github.com/repos/${REPO}/compare/${doc.mergeSha}...${live}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(10000),
+  });
+  if (!r.ok) return false;
+  const j = await r.json();
+  return j.status === 'ahead' || j.status === 'identical';
+}
+const SERVER_START = Date.now();
+
+async function checkDeployed(doc) {
+  if (doc.status !== 'merged' || doc.deployedAt) return false;
+  if (!(await isDeployed(doc).catch(() => false))) return false;
+  doc.deployedAt = new Date();
+  status(doc, '🎉 Готово! Изменения уже на сайте — обновите страницу (⌘R или потяните вниз на телефоне), чтобы увидеть.');
+  await doc.save();
+  notify(doc, 'deployed').catch(() => {});
+  return true;
+}
+
+// При старте сервера: новый деплой мог принести слитые правки
+async function checkAllDeployed() {
+  const list = await SiteChange.find({ status: 'merged', deployedAt: null });
+  for (const d of list) await checkDeployed(d).catch(e => console.error('[siteChanges] deployed check:', e.message));
+}
+
+module.exports = { approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, removeToken, setTokenError };

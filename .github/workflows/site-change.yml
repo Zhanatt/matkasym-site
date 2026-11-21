@@ -67,6 +67,7 @@ jobs:
 
       - name: Claude правит
         run: |
+          node .github/site-change/bot.mjs stage "🔍 Claude изучает задачу и код сайта, вносит правку"
           claude -p "$(cat /tmp/task.md)" --model "$MODEL" --max-turns 60 \
             --permission-mode acceptEdits --allowedTools "$CLAUDE_TOOLS" \
             --disallowedTools "Bash,WebFetch,WebSearch" \
@@ -80,12 +81,14 @@ jobs:
         name: Сборка
         working-directory: client
         run: |
+          (cd .. && node .github/site-change/bot.mjs stage "🛠 Claude закончил правку. Проверяю, что сайт собирается без ошибок")
           if npm run build > /tmp/build.log 2>&1; then echo "ok=true" >> "$GITHUB_OUTPUT"
           else tail -60 /tmp/build.log; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
 
       - name: Claude чинит сборку
         if: steps.build1.outputs.ok == 'false'
         run: |
+          node .github/site-change/bot.mjs stage "🔧 Сборка не прошла — Claude исправляет ошибку"
           {
             echo "После твоих правок упала сборка сайта (npm run build в папке client/). Исправь ошибку, не меняя смысл правки и соблюдая те же правила. Конец вывода сборки:"
             tail -80 /tmp/build.log
@@ -119,6 +122,7 @@ jobs:
           NUM: ${{ steps.task.outputs.number }}
           SUMMARY: ${{ steps.claude.outputs.text }}
         run: |
+          node .github/site-change/bot.mjs stage "📤 Сборка прошла. Отправляю правку на предпросмотр"
           git diff --cached --quiet || git commit -q -m "🎨 Дизайн №$NUM: $TITLE" -m "$SUMMARY" -m "Сделано через раздел «Правки сайта»."
           git push -q --force origin "$BRANCH"
           if ! gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
@@ -151,6 +155,7 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: |
+          node .github/site-change/bot.mjs stage "📄 Правка задела PDF-каталог — собираю пробный файл (5–15 минут)"
           PDFS=$(node server/scripts/catalog-preview.js --build "$ID" origin/main || echo '[]')
           echo "$PDFS"; echo "pdfs=$PDFS" >> "$GITHUB_OUTPUT"
 
@@ -191,7 +196,9 @@ jobs:
       - name: Слить в main
         run: |
           if gh pr merge "$BRANCH" --squash --delete-branch; then
-            node .github/site-change/bot.mjs report '{"status":"merged"}'
+            # Коммит слияния — по нему сайт поймёт, что новая версия уже выложена
+            SHA=$(gh pr view "$BRANCH" --json mergeCommit -q .mergeCommit.oid 2>/dev/null || true)
+            node .github/site-change/bot.mjs report "$(jq -n --arg sha "$SHA" '{status:"merged", mergeSha:$sha}')"
           else
             node .github/site-change/bot.mjs report '{"status":"merge_failed","error":"Правка конфликтует со свежими изменениями сайта. Напишите любое уточнение (например «обнови») — Claude переделает её на свежей версии."}'
           fi

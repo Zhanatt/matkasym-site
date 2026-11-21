@@ -49,6 +49,8 @@ async function startRun(doc, user) {
   await ensureToken(user);
   doc.runBy = user._id; doc.runByName = user.name;
   setStatus(doc, 'queued');
+  doc.previewReadyAt = undefined;
+  sc.status(doc, doc.runs?.length ? '📨 Уточнение передано Claude — он доработает правку' : '📨 Задача передана Claude');
   doc.error = undefined;
   await doc.save();
   try {
@@ -59,8 +61,9 @@ async function startRun(doc, user) {
   }
 }
 
-const view = d => {
+const view = (d, approver) => {
   const o = d.toObject ? d.toObject() : d;
+  o.approver = approver;
   o.stuck = ['queued', 'working', 'merging'].includes(o.status) && Date.now() - new Date(o.statusAt).getTime() > STUCK_MS;
   return o;
 };
@@ -75,7 +78,7 @@ admin.use(protect, canAccess);
 admin.get('/', async (req, res) => {
   try {
     const list = await SiteChange.find({}, { messages: { $slice: 1 } }).sort({ createdAt: -1 }).limit(200).lean();
-    res.json({ items: list.map(view), me: await sc.tokenInfo(req.user._id), isOwner: isOwner(req.user) });
+    res.json({ items: list.map(d => view(d)), me: await sc.tokenInfo(req.user._id), isOwner: isOwner(req.user) });
   } catch (e) { fail(res, e); }
 });
 
@@ -92,9 +95,12 @@ admin.delete('/me/claude', async (req, res) => {
 
 admin.get('/:id', async (req, res) => {
   try {
-    const d = await SiteChange.findById(req.params.id).lean();
+    const d = await SiteChange.findById(req.params.id);
     if (!d) return res.status(404).json({ message: 'Правка не найдена' });
-    res.json(view(d));
+    // Чат открыт — заодно проверить, поднялся ли предпросмотр и доехала ли правка до сайта
+    await sc.checkPreview(d).catch(() => {});
+    await sc.checkDeployed(d).catch(() => {});
+    res.json(view(d, await sc.approverName()));
   } catch (e) { fail(res, e); }
 });
 
@@ -159,7 +165,8 @@ admin.post('/:id/approve', ownerOnly, async (req, res) => {
     await sc.dispatch('site-change-merge', doc);
     setStatus(doc, 'merging');
     doc.decidedBy = req.user._id; doc.decidedAt = new Date();
-    doc.messages.push({ kind: 'decision', author: req.user._id, authorName: req.user.name, text: '✅ Принято' });
+    doc.messages.push({ kind: 'decision', author: req.user._id, authorName: req.user.name, text: '✅ Утверждено' });
+    sc.status(doc, `🚀 ${req.user.name} утвердил(а). Выкладываю правку на сайт…`);
     await doc.save();
     res.json(view(doc));
   } catch (e) { fail(res, e); }
@@ -218,7 +225,10 @@ hook.post('/:id/callback', async (req, res) => {
     else if (b.status === 'ready') sc.setTokenError(tokenUser, null).catch(() => {});
 
     if (b.status === 'working') {
-      if (!closed) setStatus(doc, 'working');
+      if (!closed) {
+        setStatus(doc, 'working');
+        if (b.stage) sc.status(doc, String(b.stage).slice(0, 300));
+      }
     } else if (b.status === 'ready' || b.status === 'failed') {
       const cost = Number(b.costUsd) || 0;
       doc.runs.push({ ok: b.status === 'ready', costUsd: cost, summary: b.summary, runUrl: b.runUrl });
@@ -230,17 +240,24 @@ hook.post('/:id/callback', async (req, res) => {
           doc.reverted = Array.isArray(b.reverted) ? b.reverted.slice(0, 50) : [];
           doc.pdfs = Array.isArray(b.pdfs) ? b.pdfs.slice(0, 5).map(p => ({ title: String(p.title || 'Каталог'), url: p.url ? String(p.url) : undefined, error: p.error ? String(p.error) : undefined })) : [];
           setStatus(doc, 'ready');
+          const who = await sc.approverName();
+          sc.status(doc, `⏳ Правка на утверждении. Её должен утвердить ${who} — пока ${who.includes(' или ') ? 'никто из них не утвердит' : 'не утвердит'}, на сайте ничего не изменится. Предпросмотр собирается (3–7 минут), напишу, когда будет готов.`);
         } else {
           doc.error = String(b.error || 'Неизвестная ошибка').slice(0, 1000);
           setStatus(doc, 'failed');
+          sc.status(doc, `❌ Не получилось: ${doc.error}`);
         }
       }
     } else if (b.status === 'merged') {
       setStatus(doc, 'merged');
+      doc.mergedAt = new Date();
+      if (b.mergeSha) doc.mergeSha = String(b.mergeSha).slice(0, 64);
+      sc.status(doc, '📦 Правка добавлена в основной код. Сайт пересобирается — обычно 5–10 минут, напишу, когда можно будет смотреть.');
     } else if (b.status === 'merge_failed') {
       // Вернуть на решение: обычно конфликт с main — дизайнер уточняет, Claude переделывает
       doc.error = String(b.error || 'Не удалось слить правку').slice(0, 1000);
       setStatus(doc, 'failed');
+      sc.status(doc, `❌ ${doc.error}`);
     }
     await doc.save();
 

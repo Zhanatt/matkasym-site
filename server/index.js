@@ -256,6 +256,9 @@ mongoose
     if (IS_PREVIEW) console.log('👀 Предпросмотр PR: фоновые задачи и Telegram-настройки пропущены');
 
     if (!IS_PREVIEW) {
+    // «Правки сайта»: этот деплой мог принести утверждённые правки — сказать авторам, что можно смотреть
+    setTimeout(() => require('./lib/siteChanges').checkAllDeployed().catch(e => console.error('[siteChanges]', e.message)), 15_000);
+
     // Реакции Telegram приходят только тем, кто на них подписан: вебхук заведён
     // снаружи, и в его allowed_updates этих типов нет — дописываем при старте.
     require('./lib/telegram').ensureWebhookUpdates()

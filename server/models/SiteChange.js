@@ -18,7 +18,8 @@ const STATUSES = ['queued', 'working', 'ready', 'failed', 'merging', 'merged', '
 const ACTIVE = ['queued', 'working', 'merging'];
 
 const messageSchema = new mongoose.Schema({
-  kind:       { type: String, enum: ['request', 'comment', 'bot', 'decision'], default: 'comment' },
+  // status — строка хода работы от системы («Claude правит код», «Предпросмотр готов»…)
+  kind:       { type: String, enum: ['request', 'comment', 'bot', 'decision', 'status'], default: 'comment' },
   author:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   authorName: String,
   text:       String,
@@ -49,6 +50,10 @@ const siteChangeSchema = new mongoose.Schema({
   prUrl:      String,
   previewUrl: String,
   runUrl:     String,             // текущий/последний запуск в GitHub Actions
+  previewReadyAt: Date,         // предпросмотр Render ответил
+  mergeSha:   String,           // коммит слияния в main
+  mergedAt:   Date,
+  deployedAt: Date,             // боевой сайт перезапущен с этим коммитом — можно смотреть
   pdfs:       [{ _id: false, title: String, url: String, error: String }],  // пробные PDF-каталоги из ветки
   reverted:   [String],           // файлы, которые трогать нельзя — правка в них отменена
   error:      String,
