@@ -386,12 +386,13 @@ export default function AdminUsers() {
             </div>
           )}
 
-          {!isSelf && isOwner && !u.isPending && (
+          {/* Пароль владелец задаёт любому, в том числе себе: узнать старый нельзя (bcrypt), только заменить */}
+          {isOwner && !u.isPending && (
             <button
               className="btn btn-sm"
               style={{ background: '#eef2ff', color: '#4338ca', border: 'none', fontSize: 13, padding: '8px 14px' }}
               onClick={() => openPwdModal(u)}
-              title="Задать пользователю новый пароль"
+              title={isSelf ? 'Задать себе новый пароль' : 'Задать пользователю новый пароль'}
             >
               🔑 Пароль
             </button>
