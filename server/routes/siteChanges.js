@@ -13,7 +13,7 @@ const cloudinary = require('../lib/cloudinary');
 const { protect } = require('../middleware/auth');
 const sc = require('../lib/siteChanges');
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 5 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024, files: 10 } });
 const STUCK_MS = 40 * 60 * 1000;   // queued/working дольше — считаем зависшим, можно перезапустить
 
 const isOwner = u => u?.role === 'owner';
@@ -22,10 +22,12 @@ const canAccess = (req, res, next) =>
 const ownerOnly = (req, res, next) =>
   isOwner(req.user) ? next() : res.status(403).json({ message: 'Принимает и отклоняет правки только владелец' });
 
+// Вложения чата: картинки и PDF (Claude читает и то и другое)
 function uploadImage(file) {
-  if (!/^image\//.test(file.mimetype)) return Promise.reject(new Error('Можно прикладывать только картинки'));
+  const pdf = file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname || '');
+  if (!/^image\//.test(file.mimetype) && !pdf) return Promise.reject(new Error('Можно прикладывать картинки и PDF'));
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream({ folder: 'matkasym/site-changes', resource_type: 'image' },
+    cloudinary.uploader.upload_stream({ folder: 'matkasym/site-changes', resource_type: pdf ? 'raw' : 'image', ...(pdf ? { public_id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf` } : {}) },
       (err, r) => (err ? reject(err) : resolve(r.secure_url))).end(file.buffer);
   });
 }
@@ -96,11 +98,13 @@ admin.get('/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-admin.post('/', upload.array('images', 5), async (req, res) => {
+admin.post('/', upload.array('images', 10), async (req, res) => {
   try {
-    const title = String(req.body.title || '').trim().slice(0, 140);
+    // Чат: отдельного заголовка нет — название берём из первого сообщения
     const text = String(req.body.text || '').trim().slice(0, 5000);
-    if (!title || !text) return res.status(400).json({ message: 'Заполните, что нужно сделать, и подробности' });
+    if (!text) return res.status(400).json({ message: 'Напишите, что нужно сделать' });
+    const firstLine = text.split('\n').find(l => l.trim()) || text;
+    const title = String(req.body.title || '').trim().slice(0, 140) || (firstLine.length > 70 ? firstLine.slice(0, 67).trimEnd() + '…' : firstLine);
     await ensureToken(req.user);
     const images = await uploadAll(req.files);
     const doc = await SiteChange.create({
@@ -114,7 +118,7 @@ admin.post('/', upload.array('images', 5), async (req, res) => {
 });
 
 // Уточнение: пишут автор или владелец. Если правка не в работе — Claude дорабатывает.
-admin.post('/:id/messages', upload.array('images', 5), async (req, res) => {
+admin.post('/:id/messages', upload.array('images', 10), async (req, res) => {
   try {
     const doc = await SiteChange.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Правка не найдена' });

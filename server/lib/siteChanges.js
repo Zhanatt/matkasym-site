@@ -99,7 +99,7 @@ function buildPrompt(change) {
   const imgs = [];
   const withImages = m => {
     const refs = (m.images || []).map(url => { imgs.push(url); return `.site-change-refs/${imgs.length}${extOf(url)}`; });
-    return refs.length ? `\n(Приложены картинки: ${refs.join(', ')} — открой их инструментом Read.)` : '';
+    return refs.length ? `\n(Приложены файлы: ${refs.join(', ')} — открой их инструментом Read.)` : '';
   };
   const lines = [
     'Ты вносишь правку во внешний вид сайта MATKASYM («Продакт матрица», React 18 + Vite, папка client/).',
@@ -126,7 +126,7 @@ function buildPrompt(change) {
 }
 
 function extOf(url) {
-  const m = String(url).split('?')[0].match(/\.(png|jpe?g|webp|gif)$/i);
+  const m = String(url).split('?')[0].match(/\.(png|jpe?g|webp|gif|pdf)$/i);
   return m ? `.${m[1].toLowerCase()}` : '.jpg';
 }
 

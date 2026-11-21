@@ -1,8 +1,8 @@
-// «Правки сайта»: дизайнер описывает словами, что поменять во внешнем виде сайта,
+// «Правки сайта» — чат с Claude внутри сайта: дизайнер описывает словами, что поменять во внешнем виде сайта,
 // Claude делает правку в отдельной ветке (GitHub Actions), собирается
 // предпросмотр, владелец принимает — и только тогда правка уходит на сайт.
 // Сервер: server/routes/siteChanges.js, воркфлоу: .github/workflows/site-change.yml.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -76,27 +76,6 @@ function Modal({ title, onClose, children, width = 640 }) {
 
 const inputStyle = { width: '100%', boxSizing: 'border-box', border: `1px solid ${C.line}`, borderRadius: 10, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit' };
 
-function ImagePicker({ files, setFiles }) {
-  return (
-    <div style={{ marginTop: 8 }}>
-      <label style={{ fontSize: 13, color: C.muted, cursor: 'pointer' }}>
-        📎 Приложить скриншоты или пример (до 5)
-        <input type="file" accept="image/*" multiple hidden onChange={e => setFiles([...files, ...e.target.files].slice(0, 5))} />
-      </label>
-      {!!files.length && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-          {files.map((f, i) => (
-            <div key={i} style={{ position: 'relative' }}>
-              <img src={URL.createObjectURL(f)} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: `1px solid ${C.line}` }} />
-              <button onClick={() => setFiles(files.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, border: 'none', background: '#1c1c1c', color: '#fff', cursor: 'pointer', fontSize: 12 }}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // «Мой Claude»: личный токен подписки. Правки, которые человек запускает, делает его Claude.
 const INSTALL_CMD = 'curl -fsSL https://claude.ai/install.sh | bash';
 const TOKEN_CMD = 'claude setup-token';
@@ -156,154 +135,250 @@ function MyClaude({ me, onClose, onChanged }) {
   );
 }
 
-function NewChange({ onClose, onCreated }) {
-  const [title, setTitle] = useState('');
-  const [text, setText] = useState('');
+// ── Чат ──────────────────────────────────────────────────────────────────────
+// Раздел устроен как чат с Claude: слева список правок (каждая — свой чат),
+// справа переписка, внизу одно поле. Файлы — перетащить в поле, вставить ⌘V
+// или скрепкой. Первое сообщение создаёт правку, следующие — уточнения к ней.
+
+const isPdf = u => /\.pdf(\?|$)/i.test(u);
+const MAX_FILES = 10, MAX_MB = 15;
+
+function useFiles() {
   const [files, setFiles] = useState([]);
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const submit = async () => {
-    setBusy(true); setErr('');
-    const f = new FormData();
-    f.append('title', title); f.append('text', text);
-    files.forEach(x => f.append('images', x));
-    try { const r = await createSiteChange(f); onCreated(r.data); }
-    catch (e) { setErr(errMsg(e)); setBusy(false); }
+  const add = list => {
+    const ok = [...list].filter(f => /^image\//.test(f.type) || f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    if (ok.length < list.length) setErr('Можно прикладывать картинки и PDF');
+    const big = ok.find(f => f.size > MAX_MB * 1024 * 1024);
+    if (big) { setErr(`«${big.name}» больше ${MAX_MB} МБ`); return; }
+    setFiles(prev => [...prev, ...ok.map(f => ({ f, url: /^image\//.test(f.type) ? URL.createObjectURL(f) : null }))].slice(0, MAX_FILES));
   };
-  return (
-    <Modal title="Новая правка сайта" onClose={onClose}>
-      <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>
-        Опишите словами, что поменять во внешнем виде сайта или в PDF-каталоге: какая страница или какой каталог, что именно и как должно стать.
-        Claude сделает правку за 5–15 минут, вы проверите её на предпросмотре, а на сайт она попадёт после одобрения владельца.
-      </div>
-      <input style={inputStyle} placeholder="Коротко: что сделать (например, «Крупнее фото в карточке товара»)" value={title} onChange={e => setTitle(e.target.value)} maxLength={140} />
-      <textarea style={{ ...inputStyle, marginTop: 10, minHeight: 140, resize: 'vertical' }}
-        placeholder={'Подробно: где это (страница, раздел), что сейчас не так, как должно быть.\nЦвета, размеры, тексты — чем точнее, тем лучше.'}
-        value={text} onChange={e => setText(e.target.value)} maxLength={5000} />
-      <ImagePicker files={files} setFiles={setFiles} />
-      {err && <div style={{ color: C.redDark, fontSize: 13, marginTop: 10 }}>{err}</div>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-        <Button onClick={onClose}>Отмена</Button>
-        <Button kind="primary" disabled={busy || !title.trim() || !text.trim()} onClick={submit}>{busy ? 'Отправляю…' : 'Отправить Claude'}</Button>
-      </div>
-    </Modal>
-  );
+  return { files, add, remove: i => setFiles(p => p.filter((_, j) => j !== i)), clear: () => setFiles([]), err, setErr };
 }
 
-function Message({ m }) {
-  const bot = m.kind === 'bot';
-  const decision = m.kind === 'decision';
+function Composer({ disabled, placeholder, onSend, hint }) {
+  const [text, setText] = useState('');
+  const [drag, setDrag] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fl = useFiles();
+  const inputRef = useRef(null);
+  const taRef = useRef(null);
+
+  useEffect(() => {   // поле растёт вместе с текстом, как в Claude
+    const t = taRef.current; if (!t) return;
+    t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 240) + 'px';
+  }, [text]);
+
+  const send = async () => {
+    if (!text.trim() || busy || disabled) return;
+    setBusy(true); fl.setErr('');
+    try { await onSend(text.trim(), fl.files.map(x => x.f)); setText(''); fl.clear(); }
+    catch (e) { fl.setErr(errMsg(e)); }
+    setBusy(false);
+  };
+
   return (
-    <div style={{ background: bot ? C.slateWash : decision ? '#fafafa' : '#fff', border: `1px solid ${C.line}`, borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
-      <div style={{ fontSize: 12, color: C.muted, marginBottom: 4 }}>
-        <b style={{ color: C.text }}>{bot ? '🤖 Claude' : m.authorName}</b> · {fmtDate(m.at)}
-      </div>
-      <div style={{ fontSize: 14, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{m.text}</div>
-      {!!m.images?.length && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-          {m.images.map(u => <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} /></a>)}
+    <div
+      onDragOver={e => { e.preventDefault(); if (!disabled) setDrag(true); }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDrag(false); }}
+      onDrop={e => { e.preventDefault(); setDrag(false); if (!disabled) fl.add(e.dataTransfer.files); }}
+      style={{
+        border: `1.5px ${drag ? 'dashed' : 'solid'} ${drag ? C.red : C.line}`, borderRadius: 18, background: drag ? C.redWash : '#fff',
+        padding: '10px 12px', boxShadow: '0 2px 12px rgba(0,0,0,.05)', opacity: disabled ? .6 : 1, position: 'relative',
+      }}>
+      {drag && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.red, fontWeight: 600, pointerEvents: 'none' }}>Отпустите, чтобы прикрепить</div>}
+      {!!fl.files.length && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+          {fl.files.map((x, i) => (
+            <div key={i} style={{ position: 'relative' }}>
+              {x.url
+                ? <img src={x.url} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, border: `1px solid ${C.line}` }} />
+                : <div style={{ width: 64, height: 64, borderRadius: 10, border: `1px solid ${C.line}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: C.muted, padding: 4, boxSizing: 'border-box', textAlign: 'center', overflow: 'hidden' }}>📄<span style={{ wordBreak: 'break-all', lineHeight: 1.1 }}>{x.f.name.slice(0, 18)}</span></div>}
+              <button onClick={() => fl.remove(i)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, border: 'none', background: '#1c1c1c', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1 }}>×</button>
+            </div>
+          ))}
         </div>
       )}
+      <textarea ref={taRef} rows={1} value={text} disabled={disabled}
+        onChange={e => setText(e.target.value)}
+        onPaste={e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); fl.add(fs); } }}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
+        placeholder={placeholder}
+        style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', fontSize: 15, lineHeight: 1.5, fontFamily: 'inherit', background: 'transparent', boxSizing: 'border-box', maxHeight: 240 }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
+        <button onClick={() => inputRef.current?.click()} disabled={disabled} title="Прикрепить картинку или PDF"
+          style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16 }}>📎</button>
+        <input ref={inputRef} type="file" accept="image/*,application/pdf" multiple hidden onChange={e => { fl.add(e.target.files); e.target.value = ''; }} />
+        <span style={{ flex: 1, fontSize: 12, color: fl.err ? C.redDark : C.muted }}>{fl.err || hint}</span>
+        <button onClick={send} disabled={disabled || busy || !text.trim()} title="Отправить (Enter)"
+          style={{ border: 'none', background: !text.trim() || disabled ? '#d9d6d0' : C.red, color: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 17, fontWeight: 700 }}>
+          {busy ? '…' : '↑'}
+        </button>
+      </div>
     </div>
   );
 }
 
-function Detail({ id, isOwner, onClose, onChanged }) {
-  const [d, setD] = useState(null);
-  const [text, setText] = useState('');
-  const [files, setFiles] = useState([]);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
+function Attachments({ urls }) {
+  if (!urls?.length) return null;
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+      {urls.map(u => isPdf(u)
+        ? <a key={u} href={u} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 10px', fontSize: 13, color: C.text, textDecoration: 'none', background: '#fff' }}>📄 PDF</a>
+        : <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: `1px solid ${C.line}` }} /></a>)}
+    </div>
+  );
+}
 
-  const load = useCallback(() => getSiteChange(id).then(r => setD(r.data)).catch(e => setErr(errMsg(e))), [id]);
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    if (!d || !ACTIVE.includes(d.status)) return;
-    const t = setInterval(load, 15_000);
-    return () => clearInterval(t);
-  }, [d?.status, load]);
+function Bubble({ m }) {
+  if (m.kind === 'decision') {
+    return <div style={{ textAlign: 'center', fontSize: 13, color: C.muted, margin: '14px 0' }}>{m.text} · {m.authorName} · {fmtDate(m.at)}</div>;
+  }
+  const bot = m.kind === 'bot';
+  return (
+    <div style={{ display: 'flex', justifyContent: bot ? 'flex-start' : 'flex-end', margin: '10px 0' }}>
+      <div style={{ maxWidth: '82%' }}>
+        <div style={{ fontSize: 11, color: C.muted, margin: bot ? '0 0 3px 4px' : '0 4px 3px 0', textAlign: bot ? 'left' : 'right' }}>
+          {bot ? '🤖 Claude' : m.authorName} · {fmtDate(m.at)}
+        </div>
+        <div style={{
+          background: bot ? '#fff' : '#f1efe9', border: bot ? `1px solid ${C.line}` : 'none',
+          borderRadius: bot ? '4px 16px 16px 16px' : '16px 4px 16px 16px', padding: '10px 14px',
+          fontSize: 15, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+        }}>
+          {m.text}
+          <Attachments urls={m.images} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  const act = async (fn, after) => {
-    setBusy(true); setErr('');
-    try { const r = await fn(); setD(r.data); onChanged(); after?.(); }
-    catch (e) { setErr(errMsg(e)); }
-    setBusy(false);
-  };
-
-  const send = () => {
-    const f = new FormData(); f.append('text', text); files.forEach(x => f.append('images', x));
-    act(() => commentSiteChange(id, f), () => { setText(''); setFiles([]); });
-  };
+// Карточка состояния под перепиской: что сейчас происходит и что можно сделать
+function StatusCard({ d, isOwner, busy, act }) {
+  const box = (bg, children) => <div style={{ background: bg, borderRadius: 14, padding: '12px 14px', margin: '12px 0', fontSize: 14, lineHeight: 1.55 }}>{children}</div>;
   const reject = () => {
     const reason = isOwner ? window.prompt('Причина (увидит дизайнер). Можно оставить пустым:', '') : '';
     if (reason === null) return;
     if (!isOwner && !window.confirm('Отменить эту правку?')) return;
-    act(() => rejectSiteChange(id, reason));
+    act(() => rejectSiteChange(d._id, reason));
   };
+  const closeBtn = !['merging', 'merged', 'rejected', 'cancelled'].includes(d.status) &&
+    <Button kind="danger" disabled={busy} onClick={reject}>{isOwner ? 'Отклонить' : 'Отменить правку'}</Button>;
 
-  if (!d) return <Modal title="Правка сайта" onClose={onClose}><div style={{ color: C.muted }}>{err || 'Загрузка…'}</div></Modal>;
-  const canComment = ['ready', 'failed'].includes(d.status);
-  const open = !['merging', 'merged', 'rejected', 'cancelled'].includes(d.status);
+  if (['queued', 'working'].includes(d.status)) {
+    return box(C.amberWash, <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span className="sc-dots" style={{ color: C.amber, fontWeight: 700 }}>●●●</span>
+        <span>{d.stuck ? '⚠️ Похоже, запуск завис.' : d.status === 'queued' ? 'Claude скоро возьмётся за правку…' : 'Claude делает правку — обычно 5–15 минут. Можно закрыть страницу, придёт уведомление в Telegram.'}</span>
+      </div>
+      {d.stuck && <div style={{ marginTop: 8 }}><Button disabled={busy} onClick={() => act(() => retrySiteChange(d._id))}>Повторить</Button></div>}
+    </>);
+  }
+  if (d.status === 'ready') {
+    return box('#e8efff', <>
+      {d.previewUrl && <div>👀 <a href={d.previewUrl} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>Открыть предпросмотр</a>
+        <span style={{ fontSize: 12, color: C.muted }}> — собирается 3–7 минут; данные там настоящие, только смотрите</span></div>}
+      {(d.pdfs || []).map((p, i) => <div key={i}>📄 {p.url ? <a href={p.url} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>{p.title} — пробный PDF</a> : <>{p.title}: не собрался <span style={{ fontSize: 12, color: C.muted }}>({p.error})</span></>}</div>)}
+      {!!d.reverted?.length && <div style={{ fontSize: 12, color: C.amber, marginTop: 6 }}>Отменены изменения в файлах, которые трогать нельзя: {d.reverted.join(', ')}</div>}
+      <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>Что-то не так — напишите ниже, Claude доработает эту же правку.</div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+        {isOwner && <Button kind="green" disabled={busy} onClick={() => window.confirm('Выложить правку на сайт?') && act(() => approveSiteChange(d._id))}>✅ Принять и выложить</Button>}
+        {closeBtn}
+      </div>
+    </>);
+  }
+  if (d.status === 'failed') {
+    return box(C.redWash, <>
+      <div style={{ color: C.redDark }}>❌ {d.error || 'Не получилось'}</div>
+      <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Напишите уточнение ниже или повторите.</div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+        <Button disabled={busy} onClick={() => act(() => retrySiteChange(d._id))}>Повторить</Button>
+        {closeBtn}
+      </div>
+    </>);
+  }
+  if (d.status === 'merging') return box(C.amberWash, <>⏳ Правка выкладывается на сайт…{d.stuck && <div style={{ marginTop: 8 }}><Button disabled={busy} onClick={() => act(() => retrySiteChange(d._id))}>Повторить</Button></div>}</>);
+  if (d.status === 'merged') return box(C.greenWash, <span style={{ color: C.green }}>✅ Правка на сайте (появляется через 5–10 минут после принятия). Для новой задачи начните новый чат.</span>);
+  return box(C.slateWash, <span style={{ color: C.muted }}>{d.status === 'rejected' ? '🚫 Отклонено' : '↩️ Отменено'}. Для новой задачи начните новый чат.</span>);
+}
+
+function ChatView({ id, isOwner, me, onChanged, onCreated, onOpenClaude }) {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const endRef = useRef(null);
+
+  const load = useCallback(() => {
+    if (!id) { setD(null); return; }
+    getSiteChange(id).then(r => { setD(r.data); setErr(''); }).catch(e => setErr(errMsg(e)));
+  }, [id]);
+  useEffect(() => { setD(null); load(); }, [load]);
+  useEffect(() => {
+    if (!d || !ACTIVE.includes(d.status)) return;
+    const t = setInterval(load, 12_000);
+    return () => clearInterval(t);
+  }, [d?.status, load]);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [d?.messages?.length, d?.status]);
+
+  const act = async fn => {
+    setBusy(true); setErr('');
+    try { const r = await fn(); setD(r.data); onChanged(); } catch (e) { setErr(errMsg(e)); }
+    setBusy(false);
+  };
+  const form = (text, files) => { const f = new FormData(); f.append('text', text); files.forEach(x => f.append('images', x)); return f; };
+
+  const noClaude = !me?.connected;
+  const canWrite = !id || (d && ['ready', 'failed'].includes(d.status));
+  const hint = noClaude ? '' : 'Enter — отправить, Shift+Enter — новая строка. Файлы можно перетащить или вставить ⌘V';
+
+  const sendNew = async (text, files) => { const r = await createSiteChange(form(text, files)); onChanged(); onCreated(r.data._id); };
+  const sendMore = async (text, files) => { const r = await commentSiteChange(id, form(text, files)); setD(r.data); onChanged(); };
+
+  const placeholder = noClaude ? 'Сначала подключите свой Claude' : !id ? 'Опишите, что поменять на сайте или в PDF-каталоге…'
+    : canWrite ? 'Уточнение для Claude…' : ACTIVE.includes(d?.status) ? 'Claude работает — подождите…' : 'Чат закрыт';
 
   return (
-    <Modal title={`№${d.number} · ${d.title}`} onClose={onClose} width={720}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
-        <Badge status={d.status} />
-        <span style={{ fontSize: 12, color: C.muted }}>{d.authorName} · {fmtDate(d.createdAt)}{d.runByName ? ` · делает Claude: ${d.runByName}` : ''}</span>
-        {d.runUrl && isOwner && <a href={d.runUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.muted }}>журнал запуска</a>}
-        {d.prUrl && isOwner && <a href={d.prUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.muted }}>изменения в коде</a>}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 4px' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          {!id && (
+            <div style={{ textAlign: 'center', padding: '12vh 16px 24px' }}>
+              <div style={{ fontSize: 40 }}>🎨</div>
+              <div style={{ fontSize: 24, fontWeight: 700, margin: '8px 0' }}>Что поменяем?</div>
+              <div style={{ color: C.muted, fontSize: 14, lineHeight: 1.6, maxWidth: 520, margin: '0 auto' }}>
+                Опишите своими словами, что изменить во внешнем виде сайта или в PDF-каталоге. Прикрепите скриншоты — «вот здесь так, а надо как тут».
+                Claude сделает правку, вы проверите её на предпросмотре, владелец примет — и она появится на сайте.
+              </div>
+              {noClaude && <div style={{ marginTop: 18 }}><Button kind="primary" onClick={onOpenClaude}>🔌 Подключить мой Claude</Button></div>}
+            </div>
+          )}
+          {id && !d && <div style={{ color: C.muted, padding: 24 }}>{err || 'Загрузка…'}</div>}
+          {d && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 4px 4px' }}>
+                <div style={{ fontWeight: 700, fontSize: 17, flex: 1, minWidth: 0 }}>№{d.number} · {d.title}</div>
+                <Badge status={d.status} />
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, padding: '0 4px 6px' }}>
+                {d.authorName}{d.runByName ? ` · делает Claude: ${d.runByName}` : ''}
+                {isOwner && d.runUrl && <> · <a href={d.runUrl} target="_blank" rel="noreferrer" style={{ color: C.muted }}>журнал</a></>}
+                {isOwner && d.prUrl && <> · <a href={d.prUrl} target="_blank" rel="noreferrer" style={{ color: C.muted }}>код</a></>}
+              </div>
+              {d.messages.map((m, i) => <Bubble key={i} m={m} />)}
+              <StatusCard d={d} isOwner={isOwner} busy={busy} act={act} />
+            </>
+          )}
+          {err && d && <div style={{ color: C.redDark, fontSize: 13, padding: 4 }}>{err}</div>}
+          <div ref={endRef} />
+        </div>
       </div>
-
-      {d.status === 'ready' && d.previewUrl && (
-        <div style={{ background: '#e8efff', borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 14, lineHeight: 1.5 }}>
-          👀 <a href={d.previewUrl} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>Открыть предпросмотр</a>
-          <div style={{ fontSize: 12, color: C.muted }}>Собирается 3–7 минут после того, как правка готова. Данные там <b>настоящие</b>: ничего не меняйте в товарах на предпросмотре — только смотрите.</div>
+      <div style={{ padding: '8px 4px 4px' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <Composer disabled={noClaude || !canWrite} placeholder={placeholder} hint={hint} onSend={id ? sendMore : sendNew} />
         </div>
-      )}
-      {d.status === 'ready' && !!d.pdfs?.length && (
-        <div style={{ background: C.slateWash, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 14, lineHeight: 1.6 }}>
-          {d.pdfs.map((p, i) => (
-            <div key={i}>📄 {p.url
-              ? <a href={p.url} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>{p.title} — пробный PDF</a>
-              : <span>{p.title}: не собрался <span style={{ color: C.muted, fontSize: 12 }}>({p.error})</span></span>}</div>
-          ))}
-          <div style={{ fontSize: 12, color: C.muted }}>Собран по новой вёрстке. После «Принять» боевые каталоги пересоберутся сами при следующем скачивании.</div>
-        </div>
-      )}
-      {d.status === 'failed' && d.error && (
-        <div style={{ background: C.redWash, color: C.redDark, borderRadius: 12, padding: '10px 14px', marginBottom: 14, fontSize: 14 }}>{d.error}</div>
-      )}
-      {!!d.reverted?.length && (
-        <div style={{ background: C.amberWash, color: C.amber, borderRadius: 12, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>
-          Отменены изменения в файлах, которые дизайнерам трогать нельзя: {d.reverted.join(', ')}
-        </div>
-      )}
-      {ACTIVE.includes(d.status) && (
-        <div style={{ fontSize: 13, color: C.muted, marginBottom: 14 }}>
-          {d.stuck ? '⚠️ Запуск, похоже, завис.' : d.status === 'merging' ? 'Правка выкладывается на сайт…' : 'Claude работает над правкой, обычно это 5–15 минут. Страница обновится сама.'}
-        </div>
-      )}
-
-      {d.messages.map((m, i) => <Message key={i} m={m} />)}
-
-      {canComment && (
-        <div style={{ marginTop: 12 }}>
-          <textarea style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }} value={text} onChange={e => setText(e.target.value)}
-            placeholder="Уточнение: что поправить (Claude доработает эту же правку)" />
-          <ImagePicker files={files} setFiles={setFiles} />
-        </div>
-      )}
-      {err && <div style={{ color: C.redDark, fontSize: 13, marginTop: 10 }}>{err}</div>}
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 16 }}>
-        {open && <Button kind="danger" disabled={busy} onClick={reject}>{isOwner ? 'Отклонить' : 'Отменить правку'}</Button>}
-        {(d.status === 'failed' || d.stuck) && <Button disabled={busy} onClick={() => act(() => retrySiteChange(id))}>Повторить</Button>}
-        {canComment && <Button kind="primary" disabled={busy || !text.trim()} onClick={send}>Отправить уточнение</Button>}
-        {isOwner && d.status === 'ready' && (
-          <Button kind="green" disabled={busy} onClick={() => window.confirm('Выложить правку на сайт?') && act(() => approveSiteChange(id))}>✅ Принять и выложить</Button>
-        )}
       </div>
-    </Modal>
+    </div>
   );
 }
 
@@ -311,10 +386,11 @@ export default function AdminSiteChanges() {
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
-  const [creating, setCreating] = useState(false);
   const [claudeOpen, setClaudeOpen] = useState(false);
   const [filter, setFilter] = useState('open');
   const openId = params.get('id');
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 860);
+  useEffect(() => { const f = () => setNarrow(window.innerWidth < 860); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
 
   const load = useCallback(() => getSiteChanges().then(r => setData(r.data)).catch(e => setErr(errMsg(e))), []);
   useEffect(() => { load(); }, [load]);
@@ -327,61 +403,59 @@ export default function AdminSiteChanges() {
   const setOpen = id => setParams(id ? { id } : {});
   const items = (data?.items || []).filter(x =>
     filter === 'all' ? true : filter === 'open' ? !['merged', 'rejected', 'cancelled'].includes(x.status) : x.status === 'merged');
-  const waiting = (data?.items || []).filter(x => x.status === 'ready').length;
+  const me = data?.me;
+  const isOwner = !!data?.isOwner;
+  const showList = !narrow || !openId;
+  const showChat = !narrow || !!openId || params.get('new') === '1';
 
   return (
-    <div className="admin-page" style={{ maxWidth: 960 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-        <h1 style={{ margin: 0, fontSize: 24 }}>🎨 Правки сайта</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button onClick={() => setClaudeOpen(true)}>{data?.me?.connected ? (data.me.lastError ? '⚠️ Мой Claude' : '✅ Мой Claude') : '🔌 Подключить мой Claude'}</Button>
-          <Button kind="primary" disabled={data && !data.me?.connected} title={data && !data.me?.connected ? 'Сначала подключите свой Claude' : ''} onClick={() => setCreating(true)}>+ Новая правка</Button>
-        </div>
-      </div>
-      <div style={{ color: C.muted, fontSize: 14, marginBottom: 18, lineHeight: 1.5 }}>
-        Опишите словами, что изменить во внешнем виде сайта или в PDF-каталогах. Claude сделает правку, вы проверите её на предпросмотре,
-        владелец примет — и она появится на сайте.
-        {data?.isOwner && waiting > 0 && <> Ждут вашего решения: <b>{waiting}</b>.</>}
-      </div>
-
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        {[['open', 'Открытые'], ['merged', 'На сайте'], ['all', 'Все']].map(([k, l]) => (
-          <Button key={k} kind={filter === k ? 'primary' : 'ghost'} style={{ padding: '6px 12px' }} onClick={() => setFilter(k)}>{l}</Button>
-        ))}
-      </div>
-
-      {data && !data.me?.connected && (
-        <div onClick={() => setClaudeOpen(true)} style={{ background: C.amberWash, color: C.amber, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 14, cursor: 'pointer' }}>
-          🔌 Чтобы отправлять правки, один раз подключите свой Claude — <u>как это сделать</u>
-        </div>
-      )}
-      {data?.me?.lastError && (
-        <div onClick={() => setClaudeOpen(true)} style={{ background: C.redWash, color: C.redDark, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 14, cursor: 'pointer' }}>
-          ⚠️ {data.me.lastError}
-        </div>
-      )}
-      {err && <div style={{ color: C.redDark }}>{err}</div>}
-      {!data && !err && <div style={{ color: C.muted }}>Загрузка…</div>}
-      {data && !items.length && <div style={{ color: C.muted, padding: '30px 0' }}>Пока пусто.</div>}
-
-      <div style={{ display: 'grid', gap: 8 }}>
-        {items.map(x => (
-          <div key={x._id} onClick={() => setOpen(x._id)} style={{
-            border: `1px solid ${C.line}`, borderRadius: 12, padding: '12px 14px', background: '#fff', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between',
-          }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>№{x.number} · {x.title}</div>
-              <div style={{ fontSize: 12, color: C.muted }}>{x.authorName} · {fmtDate(x.createdAt)}{x.stuck ? ' · ⚠️ завис' : ''}</div>
+    <div className="admin-page" style={{ height: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column', maxWidth: 1280 }}>
+      <style>{`@keyframes scPulse{0%,100%{opacity:.3}50%{opacity:1}} .sc-dots{animation:scPulse 1.4s ease-in-out infinite;letter-spacing:2px}`}</style>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 16 }}>
+        {showList && (
+          <aside style={{ width: narrow ? '100%' : 290, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: narrow ? 'none' : `1px solid ${C.line}`, paddingRight: narrow ? 0 : 14, minHeight: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <h1 style={{ margin: 0, fontSize: 20 }}>🎨 Правки сайта</h1>
+              <button onClick={() => setClaudeOpen(true)} title="Мой Claude" style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 9, padding: '5px 9px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                {me?.connected ? (me.lastError ? '⚠️ Claude' : '✅ Claude') : '🔌 Claude'}
+              </button>
             </div>
-            <Badge status={x.status} />
-          </div>
-        ))}
+            <Button kind="primary" style={{ width: '100%', marginBottom: 10, justifyContent: 'center' }} onClick={() => setParams(narrow ? { new: '1' } : {})}>＋ Новый чат</Button>
+            {me?.lastError && <div onClick={() => setClaudeOpen(true)} style={{ background: C.redWash, color: C.redDark, borderRadius: 10, padding: '8px 10px', marginBottom: 10, fontSize: 12, cursor: 'pointer' }}>⚠️ {me.lastError}</div>}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+              {[['open', 'Открытые'], ['merged', 'На сайте'], ['all', 'Все']].map(([k, l]) => (
+                <button key={k} onClick={() => setFilter(k)} style={{ flex: 1, border: 'none', borderRadius: 8, padding: '6px 4px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', background: filter === k ? '#1c1c1c' : 'transparent', color: filter === k ? '#fff' : C.muted, fontWeight: 600 }}>{l}</button>
+              ))}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', margin: '0 -4px' }}>
+              {err && <div style={{ color: C.redDark, fontSize: 13, padding: 6 }}>{err}</div>}
+              {data && !items.length && <div style={{ color: C.muted, fontSize: 13, padding: 6 }}>Пока пусто</div>}
+              {items.map(x => (
+                <div key={x._id} onClick={() => setOpen(x._id)} style={{
+                  padding: '9px 10px', borderRadius: 10, cursor: 'pointer', margin: '2px 4px',
+                  background: x._id === openId ? '#f1efe9' : 'transparent',
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: x._id === openId ? 600 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.title}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.muted, marginTop: 2 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 4, background: (STATUS[x.status] || STATUS.queued).color, flexShrink: 0 }} />
+                    <span>{(STATUS[x.status] || STATUS.queued).label}{x.stuck ? ' · завис' : ''}</span>
+                    <span style={{ marginLeft: 'auto' }}>{x.authorName?.split(' ')[0]} · {fmtDate(x.createdAt)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
+        )}
+        {showChat && (
+          <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {narrow && <div><Button style={{ padding: '5px 10px', marginBottom: 6 }} onClick={() => setParams({})}>← Все чаты</Button></div>}
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <ChatView id={openId} isOwner={isOwner} me={me} onChanged={load} onCreated={setOpen} onOpenClaude={() => setClaudeOpen(true)} />
+            </div>
+          </section>
+        )}
       </div>
-
-      {claudeOpen && <MyClaude me={data?.me} onClose={() => setClaudeOpen(false)} onChanged={load} />}
-      {creating && <NewChange onClose={() => setCreating(false)} onCreated={d => { setCreating(false); load(); setOpen(d._id); }} />}
-      {openId && <Detail id={openId} isOwner={!!data?.isOwner} onClose={() => setOpen(null)} onChanged={load} />}
+      {claudeOpen && <MyClaude me={me} onClose={() => setClaudeOpen(false)} onChanged={load} />}
     </div>
   );
 }
