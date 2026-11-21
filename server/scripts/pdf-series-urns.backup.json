@@ -1,0 +1,637 @@
+[
+ {
+  "_id": "69f2d85050420bce3b53b6fe",
+  "name": "G2",
+  "sku": "MKS-UT-009",
+  "set": "0-tashtandy",
+  "price": 13000,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": "69f2de4c831b7fc5c7d20e78"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4c831b7fc5c7d20e79"
+   },
+   {
+    "key": "Серия",
+    "value": "G graund",
+    "options": [],
+    "_id": "69f2de4c831b7fc5c7d20e7a"
+   },
+   {
+    "key": "Размещение",
+    "value": "напольное",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc1"
+   },
+   {
+    "key": "Предназначение",
+    "value": "улица, парк, офисное помещение, торговый центр",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc2"
+   },
+   {
+    "key": "Кол-во отделений",
+    "value": "2 (для пластика и бумаги)",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc3"
+   },
+   {
+    "key": "Вместимость отделения",
+    "value": "45 л",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc4"
+   },
+   {
+    "key": "Конструкция",
+    "value": "откидная крышка",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc5"
+   },
+   {
+    "key": "Габариты в упаковке",
+    "value": "380х645х870 мм",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc6"
+   },
+   {
+    "key": "Макс. нагрузка",
+    "value": "20 кг",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc7"
+   },
+   {
+    "key": "Вес",
+    "value": "24,8 кг",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc8"
+   },
+   {
+    "key": "Вес в упаковке",
+    "value": "25 кг",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fc9"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b6ff",
+  "name": "Эко Урна G3",
+  "sku": "MKS-UT-010",
+  "set": "0-tashtandy",
+  "price": 18000,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": "69f2de4c831b7fc5c7d20e7c"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4c831b7fc5c7d20e7d"
+   },
+   {
+    "key": "Серия",
+    "value": "G graund",
+    "options": [],
+    "_id": "69f2de4c831b7fc5c7d20e7e"
+   },
+   {
+    "key": "Размещение",
+    "value": "напольное",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fcb"
+   },
+   {
+    "key": "Предназначение",
+    "value": "Улица, парк, офисное помещение, торговый центр",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fcc"
+   },
+   {
+    "key": "Кол-во отделений",
+    "value": "3 (Пластик, бумага и стекло)",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fcd"
+   },
+   {
+    "key": "Вместимость отделения",
+    "value": "45 л",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fce"
+   },
+   {
+    "key": "Конструкция",
+    "value": "откидная крышка",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fcf"
+   },
+   {
+    "key": "Габариты в упаковке",
+    "value": "380х930х870 мм",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fd0"
+   },
+   {
+    "key": "Макс. нагрузка",
+    "value": "20 кг",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fd1"
+   },
+   {
+    "key": "Вес",
+    "value": "34,5 кг",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fd2"
+   },
+   {
+    "key": "Вес в упаковке",
+    "value": "35 кг",
+    "options": [],
+    "_id": "6a7fec944b1a2dfb9bbe9fd3"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b700",
+  "name": "Эко Урна G4",
+  "sku": "MKS-UT-011",
+  "set": "0-tashtandy",
+  "price": 19500,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e80"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e81"
+   },
+   {
+    "key": "Серия",
+    "value": "G graund",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e82"
+   },
+   {
+    "key": "Размещение",
+    "value": "напольное",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9feb"
+   },
+   {
+    "key": "Предназначение",
+    "value": "Улица, парк, офисное помещение, торговый центр",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9fec"
+   },
+   {
+    "key": "Кол-во отделений",
+    "value": "4 (Пластик, бумага, стекло и смешанный мусор)",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9fed"
+   },
+   {
+    "key": "Вместимость отделения",
+    "value": "45 л",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9fee"
+   },
+   {
+    "key": "Конструкция",
+    "value": "откидная крышка",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9fef"
+   },
+   {
+    "key": "Габариты в упаковке",
+    "value": "380х1230х870 мм",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9ff0"
+   },
+   {
+    "key": "Макс. нагрузка",
+    "value": "20 кг",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9ff1"
+   },
+   {
+    "key": "Вес",
+    "value": "47 кг",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9ff2"
+   },
+   {
+    "key": "Вес в упаковке",
+    "value": "47 кг",
+    "options": [],
+    "_id": "6a7fec954b1a2dfb9bbe9ff3"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b701",
+  "name": "GW",
+  "sku": "MKS-UT-012",
+  "set": "0-tashtandy",
+  "price": 9500,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл + дерево",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e84"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e85"
+   },
+   {
+    "key": "Серия",
+    "value": "GW graund wood",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e86"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b702",
+  "name": "GW2",
+  "sku": "MKS-UT-013",
+  "set": "0-tashtandy",
+  "price": 13000,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл + дерево",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e88"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e89"
+   },
+   {
+    "key": "Серия",
+    "value": "GW graund wood",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e8a"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b703",
+  "name": "GW3",
+  "sku": "MKS-UT-014",
+  "set": "0-tashtandy",
+  "price": 18500,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл + дерево",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e8c"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e8d"
+   },
+   {
+    "key": "Серия",
+    "value": "GW graund wood",
+    "options": [],
+    "_id": "69f2de4d831b7fc5c7d20e8e"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b704",
+  "name": "GWR",
+  "sku": "СЗ0048",
+  "set": "0-tashtandy",
+  "price": 9500,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Листовая сталь 0.9 мм (CRCA)",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e90"
+   },
+   {
+    "key": "Покрытие",
+    "value": "Порошковое покрытие",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e91"
+   },
+   {
+    "key": "Кол-во секций",
+    "value": "1",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e92"
+   },
+   {
+    "key": "Внутренние баки",
+    "value": "1 шт., съёмные, полимерные",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e93"
+   },
+   {
+    "key": "Тип крышки",
+    "value": "Единая, петлевой механизм",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e94"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e95"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b705",
+  "name": "GWR2",
+  "sku": "СЗ0048W2",
+  "set": "0-tashtandy",
+  "price": 14000,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Листовая сталь 1.0 мм (CRCA)",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e97"
+   },
+   {
+    "key": "Покрытие",
+    "value": "Порошковое покрытие",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e98"
+   },
+   {
+    "key": "Кол-во секций",
+    "value": "3",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e99"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e9a"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b706",
+  "name": "GWR3",
+  "sku": "СЗ0048W3",
+  "set": "0-tashtandy",
+  "price": 18500,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Листовая сталь 1.2 мм (CRCA)",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e9c"
+   },
+   {
+    "key": "Покрытие",
+    "value": "Порошковое, RAL 7035 (светло-серый)",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e9d"
+   },
+   {
+    "key": "Кол-во секций",
+    "value": "3",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e9e"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e9f"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b709",
+  "name": "Эко урна SW",
+  "sku": "MKS-UT-021",
+  "set": "0-tashtandy",
+  "price": 12500,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл + дерево",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20ea9"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20eaa"
+   },
+   {
+    "key": "Серия",
+    "value": "square wood",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20eab"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b70a",
+  "name": "SW2",
+  "sku": "MKS-UT-022",
+  "set": "0-tashtandy",
+  "price": 14500,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл + дерево",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20ead"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20eae"
+   },
+   {
+    "key": "Серия",
+    "value": "square wood",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20eaf"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b70b",
+  "name": "Урна «Эко SW3»",
+  "sku": "MKS-UT-023",
+  "set": "0-tashtandy",
+  "price": 18500,
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Металл + дерево",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20eb1"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20eb2"
+   },
+   {
+    "key": "Серия",
+    "value": "square wood",
+    "options": [],
+    "_id": "69f2de4f831b7fc5c7d20eb3"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b70f",
+  "name": "Karakol 2",
+  "sku": "MKS-UT-016",
+  "set": "0-tashtandy",
+  "price": 12000,
+  "specs": [
+   {
+    "key": "Серия",
+    "value": "KARAKOL",
+    "options": [],
+    "_id": "69f2de50831b7fc5c7d20ebb"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная",
+    "options": [],
+    "_id": "69f2de50831b7fc5c7d20ebc"
+   },
+   {
+    "key": "Материал",
+    "value": "",
+    "options": [],
+    "_id": "6ac35644b247c74753c8f994"
+   },
+   {
+    "key": "Объем",
+    "value": "90",
+    "options": [],
+    "_id": "6ac35644b247c74753c8f995"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b710",
+  "name": "Karakol 4",
+  "sku": "MKS-UT-025",
+  "set": "0-tashtandy",
+  "price": 18000,
+  "specs": [
+   {
+    "key": "Серия",
+    "value": "KARAKOL",
+    "options": [],
+    "_id": "69f2de50831b7fc5c7d20ebe"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная",
+    "options": [],
+    "_id": "69f2de50831b7fc5c7d20ebf"
+   },
+   {
+    "key": "Материал",
+    "value": "",
+    "options": [],
+    "_id": "6aa7c2a743f109a68902b504"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b711",
+  "name": "Karakol 4",
+  "sku": "MKS-UT-017",
+  "set": "0-tashtandy",
+  "price": 25000,
+  "specs": [
+   {
+    "key": "Серия",
+    "value": "KARAKOL",
+    "options": [],
+    "_id": "69f2de51831b7fc5c7d20ec1"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная",
+    "options": [],
+    "_id": "69f2de51831b7fc5c7d20ec2"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b712",
+  "name": "3 BURCH 3",
+  "sku": "MKS-UT-019",
+  "set": "0-tashtandy",
+  "price": 18000,
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de51831b7fc5c7d20ec4"
+   }
+  ]
+ },
+ {
+  "_id": "69f2e9ccc7006efdb3cc8a84",
+  "name": "3 BURCH 1",
+  "sku": "MKS-UT-018",
+  "set": "0-tashtandy",
+  "price": 18000,
+  "specs": [
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de51831b7fc5c7d20ec4"
+   }
+  ]
+ },
+ {
+  "_id": "6a8be785324e9dd7f498b5ba",
+  "name": "Урна «Эко SW3»",
+  "sku": "",
+  "set": "0-tashtandy",
+  "price": 0,
+  "specs": []
+ }
+]

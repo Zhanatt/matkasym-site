@@ -161,14 +161,8 @@ admin.post('/:id/approve', ownerOnly, async (req, res) => {
   try {
     const doc = await SiteChange.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Правка не найдена' });
-    if (doc.status !== 'ready' || !doc.prNumber) return res.status(409).json({ message: 'Принять можно только готовую правку' });
-    await sc.dispatch('site-change-merge', doc);
-    setStatus(doc, 'merging');
-    doc.decidedBy = req.user._id; doc.decidedAt = new Date();
-    doc.messages.push({ kind: 'decision', author: req.user._id, authorName: req.user.name, text: '✅ Утверждено' });
-    sc.status(doc, `🚀 ${req.user.name} утвердил(а). Выкладываю правку на сайт…`);
-    await doc.save();
-    res.json(view(doc));
+    await sc.approveChange(doc, req.user);
+    res.json(view(doc, await sc.approverName()));
   } catch (e) { fail(res, e); }
 });
 
@@ -180,16 +174,9 @@ admin.post('/:id/reject', async (req, res) => {
     const owner = isOwner(req.user);
     const mine = String(doc.author) === String(req.user._id);
     if (!owner && !mine) return res.status(403).json({ message: 'Отменить может только автор или владелец' });
-    if (['merging', 'merged', 'rejected', 'cancelled'].includes(doc.status)) return res.status(409).json({ message: 'Правка уже закрыта' });
     const reason = String(req.body?.reason || '').trim().slice(0, 1000);
-    const cancelled = !owner || mine && !reason;
-    setStatus(doc, cancelled ? 'cancelled' : 'rejected');
-    doc.decidedBy = req.user._id; doc.decidedAt = new Date();
-    doc.messages.push({ kind: 'decision', author: req.user._id, authorName: req.user.name, text: (cancelled ? '↩️ Отменено' : '🚫 Отклонено') + (reason ? `: ${reason}` : '') });
-    await doc.save();
-    sc.dispatch('site-change-close', doc).catch(e => console.error('[siteChanges] close:', e.message));
-    if (!cancelled) sc.notify(doc, 'rejected', { reason }).catch(() => {});
-    res.json(view(doc));
+    await sc.rejectChange(doc, req.user, reason, owner);
+    res.json(view(doc, await sc.approverName()));
   } catch (e) { fail(res, e); }
 });
 
@@ -264,6 +251,17 @@ hook.post('/:id/callback', async (req, res) => {
     if (!closed && ['ready', 'failed', 'merged'].includes(b.status)) sc.notify(doc, b.status, { summary: b.summary }).catch(() => {});
     if (b.status === 'merge_failed') sc.notify(doc, 'failed').catch(() => {});
     res.json({ ok: true, status: doc.status });
+  } catch (e) { fail(res, e); }
+});
+
+// Прислать владельцу сообщение о готовой правке ещё раз (с кнопками «Утвердить / Отклонить»)
+hook.post('/:id/resend', async (req, res) => {
+  try {
+    const doc = await SiteChange.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: 'not found' });
+    if (doc.status !== 'ready') return res.status(409).json({ message: `статус ${doc.status}` });
+    await sc.notifyOwnersReady(doc);
+    res.json({ ok: true });
   } catch (e) { fail(res, e); }
 });
 

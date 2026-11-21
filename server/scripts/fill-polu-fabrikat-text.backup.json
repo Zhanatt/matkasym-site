@@ -1,0 +1,84 @@
+[
+ {
+  "_id": "6a215f0af631426a78bea544",
+  "name": "Charchy oyuu",
+  "description": "",
+  "specs": []
+ },
+ {
+  "_id": "6a215f0df631426a78bea560",
+  "name": "Butak oyuu",
+  "description": "",
+  "specs": [
+   {
+    "key": "Профиль",
+    "value": "квадрат 10 мм",
+    "options": [],
+    "_id": "6a215f0df631426a78bea561"
+   }
+  ]
+ },
+ {
+  "_id": "6a215f16f631426a78bea5a0",
+  "name": "SANJYRA 1",
+  "description": "",
+  "specs": [
+   {
+    "key": "Профиль",
+    "value": "",
+    "options": [],
+    "_id": "6a215f16f631426a78bea5a1"
+   }
+  ]
+ },
+ {
+  "_id": "6a215f1bf631426a78bea5cc",
+  "name": "Kiyal oyuu ",
+  "description": "",
+  "specs": [
+   {
+    "key": "Профиль",
+    "value": "квадрат 10 мм",
+    "options": [],
+    "_id": "6a215f1bf631426a78bea5cd"
+   }
+  ]
+ },
+ {
+  "_id": "6a215f1df631426a78bea5dc",
+  "name": "SANJYRA 2",
+  "description": "",
+  "specs": [
+   {
+    "key": "Профиль",
+    "value": "квадрат 10 мм",
+    "options": [],
+    "_id": "6a215f1df631426a78bea5dd"
+   }
+  ]
+ },
+ {
+  "_id": "6a215f21f631426a78bea5f7",
+  "name": "KERME",
+  "description": "",
+  "specs": []
+ },
+ {
+  "_id": "6aba4585c9073963ba5c2aff",
+  "name": "SANJYRA 3",
+  "description": "",
+  "specs": []
+ },
+ {
+  "_id": "6aba4d152ad77e0d80373670",
+  "name": "SANJYRA 4",
+  "description": "",
+  "specs": []
+ },
+ {
+  "_id": "6ac357fdda2d6b220891d3aa",
+  "name": "SANJYRA 5",
+  "description": "",
+  "specs": []
+ }
+]

@@ -1,0 +1,71 @@
+[
+ {
+  "_id": "6a9a5f1455e7561311ffb391",
+  "name": "Мусорный бак «Tazalyk» (Оцинковка) Зеленый",
+  "sku": ""
+ },
+ {
+  "_id": "6a9fcbfac2d96d24df36d0cf",
+  "name": "Мусорный бак «Tazalyk» (Зеленый) - копия",
+  "sku": ""
+ },
+ {
+  "_id": "6a3cfde8623b40df11ffcbea",
+  "name": "Мусорный бак пластиковый 1100л  (на колесиках)",
+  "sku": "MKS-UT-028",
+  "pdfOrder": 37
+ },
+ {
+  "_id": "69f2d85050420bce3b53b715",
+  "name": "Tazalyk 660 L",
+  "sku": "СЗ0055",
+  "pdfOrder": 38
+ },
+ {
+  "_id": "6a599ed77ea85014c74f6e75",
+  "name": "Мусорный бак «Tazalyk» (Зеленый)",
+  "sku": "MKS-СЗ0050",
+  "pdfOrder": 39
+ },
+ {
+  "_id": "6a599ed97ea85014c74f6e85",
+  "name": "Мусорный бак «Tazalyk» (Темно-серый)",
+  "sku": "MKS-UTH-021",
+  "pdfOrder": 40
+ },
+ {
+  "_id": "6a72f6e0583b96ba593084de",
+  "name": "Мусорный бак «Tazalyk» (Синий)",
+  "sku": "",
+  "pdfOrder": 41
+ },
+ {
+  "_id": "6ab0db733c7eb676679abf85",
+  "name": "Мусорный бак «Tazalyk» без крышки  (Желтый)",
+  "sku": "",
+  "pdfOrder": 42
+ },
+ {
+  "_id": "6a9276b6b1fbdb61cb8e7915",
+  "name": "Мусорный бак «Tazalyk» с крышкой (Зеленный)",
+  "sku": "",
+  "pdfOrder": 43
+ },
+ {
+  "_id": "69f496fa028b571f055a1fc7",
+  "name": "Мусорная урна \"Ecomayak\" (Зеленая)",
+  "sku": "MKS-СЗ0058",
+  "pdfOrder": 44
+ },
+ {
+  "_id": "6ac9c1a0da2d6b22089d6aa4",
+  "name": "Мусорная урна \"Ecomayak\" (Красная)",
+  "sku": "",
+  "pdfOrder": 45
+ },
+ {
+  "_id": "69f2d85050420bce3b53b716",
+  "name": "Tazalyk R 1100 L",
+  "sku": "MKS-СЗ0239"
+ }
+]

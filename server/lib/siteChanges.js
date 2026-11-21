@@ -142,13 +142,21 @@ async function tellAuthor(change, text, buttons) {
   await sendTelegramMessage(u.telegramChatId, text, kb(buttons)).catch(() => {});
 }
 
-async function tellOwners(text, buttons) {
-  for (const o of await ownerChats()) await sendTelegramMessage(o.telegramChatId, text, kb(buttons)).catch(() => {});
+async function tellOwners(text, buttons, extraRows) {
+  for (const o of await ownerChats()) await sendTelegramMessage(o.telegramChatId, text, kb(buttons, extraRows)).catch(() => {});
 }
 
-const kb = buttons => buttons?.length
-  ? { disablePreview: true, reply_markup: { inline_keyboard: [buttons.map(([text, url]) => ({ text, url }))] } }
-  : { disablePreview: true };
+// buttons — ряд [текст, url]; extraRows — готовые ряды inline-кнопок (callback)
+const urlRow = buttons => buttons.filter(([, url]) => url).map(([text, url]) => ({ text, url }));
+const kb = (buttons, extraRows = []) => {
+  const rows = [...extraRows, ...(buttons?.length ? [urlRow(buttons)] : [])].filter(r => r.length);
+  return rows.length ? { disablePreview: true, reply_markup: { inline_keyboard: rows } } : { disablePreview: true };
+};
+// Кнопки решения владельца прямо в Telegram (обработка — handleTelegramCallback)
+const decideRow = change => [[
+  { text: '✅ Утвердить', callback_data: `sc:ok:${change._id}` },
+  { text: '🚫 Отклонить', callback_data: `sc:no:${change._id}` },
+]];
 
 async function notify(change, event, extra = {}) {
   const head = `🎨 <b>Правка сайта №${change.number}</b> · ${esc(change.title)}`;
@@ -158,14 +166,14 @@ async function notify(change, event, extra = {}) {
     const summary = extra.summary ? `\n\n${esc(extra.summary).slice(0, 1500)}` : '';
     const pdfs = (change.pdfs || []).map(p => p.url ? `\n📄 <a href="${p.url}">${esc(p.title)} — пробный PDF</a>` : `\n📄 ${esc(p.title)}: не собрался (${esc(p.error)})`).join('');
     const reverted = change.reverted?.length ? `\n\n⚠️ Отменены правки в запрещённых файлах: ${esc(change.reverted.join(', '))}` : '';
-    await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${pdfs}${reverted}\n\nПредпросмотр соберётся за 3–7 минут. Принять или отклонить — в разделе «Правки сайта».`, [preview, open]);
+    await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${pdfs}${reverted}\n\nПредпросмотр соберётся за 3–7 минут — пришлю, когда будет готов. Утвердить можно прямо здесь.`, [preview, open], decideRow(change));
     await tellAuthor(change, `${head}\nClaude закончил. Правка ждёт утверждения: ${esc(await approverName())} — без этого на сайте ничего не изменится. Предпросмотр соберётся за 3–7 минут, если нужно поправить — напишите в чат.${summary}${pdfs}`, [preview, open]);
   } else if (event === 'failed') {
     await tellAuthor(change, `${head}\n❌ Не получилось: ${esc(change.error || 'ошибка')}\nМожно уточнить задачу или повторить.`, [open]);
   } else if (event === 'preview') {
     const preview = ['👀 Предпросмотр', change.previewUrl];
     const who = await approverName();
-    await tellOwners(`${head}\n✅ Предпросмотр готов. Ждёт вашего утверждения.`, [preview, open]);
+    await tellOwners(`${head}\n✅ Предпросмотр готов. Ждёт вашего утверждения.`, [preview, open], decideRow(change));
     await tellAuthor(change, `${head}\n✅ Предпросмотр готов — можно смотреть. Правка ждёт утверждения: ${esc(who)}.`, [preview, open]);
   } else if (event === 'merged') {
     await tellAuthor(change, `${head}\n✅ Утверждена. Сайт пересобирается — сообщу, когда можно будет смотреть (обычно 5–10 минут).`, [open]);
@@ -248,4 +256,96 @@ async function checkAllDeployed() {
   for (const d of list) await checkDeployed(d).catch(e => console.error('[siteChanges] deployed check:', e.message));
 }
 
-module.exports = { approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, removeToken, setTokenError };
+// ── Решения владельца (сайт и Telegram) ─────────────────────────────────────
+
+const setStatus = (doc, s) => { doc.status = s; doc.statusAt = new Date(); };
+
+async function approveChange(doc, user) {
+  if (doc.status !== 'ready' || !doc.prNumber) { const e = new Error('Утвердить можно только готовую правку'); e.status = 409; throw e; }
+  await dispatch('site-change-merge', doc);
+  setStatus(doc, 'merging');
+  doc.decidedBy = user._id; doc.decidedAt = new Date();
+  doc.messages.push({ kind: 'decision', author: user._id, authorName: user.name, text: '✅ Утверждено' });
+  status(doc, `🚀 ${user.name} утвердил(а). Выкладываю правку на сайт…`);
+  await doc.save();
+}
+
+// owner — решает владелец (отклонить), иначе автор отменяет свою
+async function rejectChange(doc, user, reason = '', owner = true) {
+  if (['merging', 'merged', 'rejected', 'cancelled'].includes(doc.status)) { const e = new Error('Правка уже закрыта'); e.status = 409; throw e; }
+  const mine = String(doc.author) === String(user._id);
+  const cancelled = !owner || mine && !reason;
+  setStatus(doc, cancelled ? 'cancelled' : 'rejected');
+  doc.decidedBy = user._id; doc.decidedAt = new Date();
+  doc.messages.push({ kind: 'decision', author: user._id, authorName: user.name, text: (cancelled ? '↩️ Отменено' : '🚫 Отклонено') + (reason ? `: ${reason}` : '') });
+  await doc.save();
+  dispatch('site-change-close', doc).catch(e => console.error('[siteChanges] close:', e.message));
+  if (!cancelled) notify(doc, 'rejected', { reason }).catch(() => {});
+}
+
+async function tg(method, body) {
+  const r = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  return r.json().catch(() => ({}));
+}
+
+const STATUS_TEXT = { merging: 'уже выкладывается', merged: 'уже на сайте', rejected: 'уже отклонена', cancelled: 'отменена автором', working: 'Claude сейчас её дорабатывает', queued: 'Claude сейчас её дорабатывает', failed: 'не получилась — см. чат' };
+
+/** Кнопки под сообщением о правке. true — колбэк наш. Двойное нажатие: решение → подтверждение. */
+async function handleTelegramCallback(cb) {
+  const data = cb?.data || '';
+  if (!data.startsWith('sc:')) return false;
+  const [, action, id] = data.split(':');
+  const answer = (text, alert = false) => tg('answerCallbackQuery', { callback_query_id: cb.id, text, show_alert: alert });
+  const setKb = rows => cb.message && tg('editMessageReplyMarkup', { chat_id: cb.message.chat.id, message_id: cb.message.message_id, reply_markup: { inline_keyboard: rows } });
+  // URL-кнопки сообщения (предпросмотр, открыть) сохраняем при любых правках клавиатуры
+  const urlRows = (cb.message?.reply_markup?.inline_keyboard || []).filter(r => r.every(b => b.url));
+
+  const owner = await User.findOne({ role: 'owner', telegramChatId: String(cb.from?.id || '') });
+  if (!owner) { await answer('Утверждает только владелец', true); return true; }
+  const doc = await SiteChange.findById(id).catch(() => null);
+  if (!doc) { await answer('Правка не найдена', true); return true; }
+  if (doc.status !== 'ready') {
+    await answer(`Правка №${doc.number} ${STATUS_TEXT[doc.status] || doc.status}`, true);
+    await setKb(urlRows);
+    return true;
+  }
+
+  if (action === 'ok' || action === 'no') {
+    const ok = action === 'ok';
+    await answer();
+    await setKb([[
+      { text: ok ? '✅ Да, выложить на сайт' : '🚫 Да, отклонить', callback_data: `sc:${ok ? 'okc' : 'noc'}:${id}` },
+      { text: 'Отмена', callback_data: `sc:back:${id}` },
+    ], ...urlRows]);
+  } else if (action === 'back') {
+    await answer();
+    await setKb([...decideRow(doc), ...urlRows]);
+  } else if (action === 'okc') {
+    await approveChange(doc, owner);
+    await answer('Утверждено — выкладываю');
+    await setKb(urlRows);
+    if (cb.message) await tg('sendMessage', { chat_id: cb.message.chat.id, reply_to_message_id: cb.message.message_id, text: `✅ Правка №${doc.number} утверждена. Сайт пересобирается — напишу, когда можно смотреть.` });
+  } else if (action === 'noc') {
+    await rejectChange(doc, owner, '', true);
+    await answer('Отклонено');
+    await setKb(urlRows);
+    if (cb.message) await tg('sendMessage', { chat_id: cb.message.chat.id, reply_to_message_id: cb.message.message_id, text: `🚫 Правка №${doc.number} отклонена. Причину можно написать дизайнеру в чате правки на сайте.` });
+  } else {
+    await answer();
+  }
+  return true;
+}
+
+// Напоминание владельцу о правке на утверждении — то же сообщение с кнопками
+async function notifyOwnersReady(change) {
+  const head = `🎨 <b>Правка сайта №${change.number}</b> · ${esc(change.title)}`;
+  const last = [...change.messages].reverse().find(m => m.kind === 'bot');
+  const summary = last?.text ? `\n\n${esc(last.text).slice(0, 1500)}` : '';
+  const preview = change.previewReadyAt ? '✅ Предпросмотр готов.' : 'Предпросмотр ещё собирается.';
+  await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}\n\n⏳ Ждёт вашего утверждения. ${preview}`,
+    [['👀 Предпросмотр', change.previewUrl], ['Открыть', adminLink(change._id)]], decideRow(change));
+}
+
+module.exports = { notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, removeToken, setTokenError };

@@ -1,0 +1,37 @@
+[
+ {
+  "_id": "6a1d38cba7d1feff777480d6",
+  "name": "Nurjol Charchy",
+  "sku": "MKS-MS-012",
+  "category": "Остальное освещение",
+  "stock": 0
+ },
+ {
+  "_id": "6a1d3a5ba7d1feff7774843e",
+  "name": "Nurjol-Kristall",
+  "sku": "MKS-MS-014",
+  "category": "Остальное освещение",
+  "stock": 0
+ },
+ {
+  "_id": "6a1d3af4a7d1feff777485bb",
+  "name": "Nurjol Standart",
+  "sku": "MKS-MS-013",
+  "category": "Остальное освещение",
+  "stock": 0
+ },
+ {
+  "_id": "6a1d3ddea7d1feff7774904a",
+  "name": "NURJOL-mini-standart",
+  "sku": "MKS-MS-011",
+  "category": "Ландшафтное освещение",
+  "stock": 0
+ },
+ {
+  "_id": "6a1d55f1654da1cc132f5a32",
+  "name": "Bürküt",
+  "sku": "MKS-MS-003",
+  "category": "Остальное освещение",
+  "stock": 0
+ }
+]

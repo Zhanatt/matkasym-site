@@ -104,6 +104,10 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     // Кнопки «Принять / Отклонить» под заявкой конструктора
     if (update.callback_query) {
+      // «Утвердить / Отклонить» под сообщением о правке сайта (lib/siteChanges.js)
+      const handled = await require('./lib/siteChanges').handleTelegramCallback(update.callback_query)
+        .catch(e => { console.error('[siteChanges tg]', e.message); return update.callback_query.data?.startsWith('sc:'); });
+      if (handled) return res.sendStatus(200);
       const { handleDrawingCallback } = require('./lib/drawingBot');
       await handleDrawingCallback(update.callback_query).catch(e => console.error('[drawingBot]', e.message));
       return res.sendStatus(200);

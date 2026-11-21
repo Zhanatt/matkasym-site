@@ -1,0 +1,313 @@
+[
+ {
+  "_id": "69f49782028b571f055a2340",
+  "productStatus": "liquidation",
+  "liquidatedAt": "2026-06-25T10:06:54.772Z",
+  "specs": [
+   {
+    "key": "Объём",
+    "value": "120",
+    "options": [],
+    "_id": "69f835388fa395aef9a0b8f8"
+   },
+   {
+    "key": "Габариты ДxШxВ",
+    "value": "",
+    "options": [],
+    "_id": "69f835388fa395aef9a0b8f9"
+   },
+   {
+    "key": "Материал",
+    "value": "Пластик",
+    "options": [],
+    "_id": "69f835388fa395aef9a0b8fa"
+   },
+   {
+    "key": "Колёса",
+    "value": "есть",
+    "options": [],
+    "_id": "69f835388fa395aef9a0b8fb"
+   },
+   {
+    "key": "Крышка",
+    "value": "есть",
+    "options": [],
+    "_id": "69f835388fa395aef9a0b8fc"
+   },
+   {
+    "key": "Педаль",
+    "value": "нет",
+    "options": [
+     "есть",
+     "нет"
+    ],
+    "_id": "69f8368be7b3188bb6660e32"
+   },
+   {
+    "key": "Варианты цветов",
+    "value": "Зелёный, Чёрный, Красный, Синий",
+    "options": [],
+    "_id": "6a97bce6976c58fb746e4fc5"
+   }
+  ]
+ },
+ {
+  "_id": "69f49783028b571f055a2343",
+  "productStatus": "liquidation",
+  "liquidatedAt": "2026-06-25T10:06:54.772Z",
+  "specs": [
+   {
+    "key": "Объём",
+    "value": "120",
+    "options": [],
+    "_id": "69f8641a0350e29fdf5ea8fe"
+   },
+   {
+    "key": "Габариты ДxШxВ",
+    "value": "",
+    "options": [],
+    "_id": "69f8641a0350e29fdf5ea8ff"
+   },
+   {
+    "key": "Материал",
+    "value": "Пластик",
+    "options": [],
+    "_id": "69f8641a0350e29fdf5ea900"
+   },
+   {
+    "key": "Колёса",
+    "value": "есть",
+    "options": [],
+    "_id": "69f8641a0350e29fdf5ea901"
+   },
+   {
+    "key": "Крышка",
+    "value": "есть",
+    "options": [],
+    "_id": "69f8641a0350e29fdf5ea902"
+   },
+   {
+    "key": "Педаль",
+    "value": "есть",
+    "options": [
+     "есть",
+     "нет"
+    ],
+    "_id": "69f8641a0350e29fdf5ea903"
+   }
+  ]
+ },
+ {
+  "_id": "69f49783028b571f055a2346",
+  "productStatus": "liquidation",
+  "liquidatedAt": "2026-06-25T10:06:54.772Z",
+  "specs": []
+ },
+ {
+  "_id": "69f49784028b571f055a234c",
+  "productStatus": "liquidation",
+  "liquidatedAt": "2026-04-16T00:00:00.000Z",
+  "specs": [
+   {
+    "key": "Объём",
+    "value": "20",
+    "options": [],
+    "_id": "69f82fb56b86e3f7c5a00ef0"
+   },
+   {
+    "key": "Габариты ДxШxВ",
+    "value": "",
+    "options": [],
+    "_id": "69f82fb56b86e3f7c5a00ef1"
+   },
+   {
+    "key": "Материал",
+    "value": "Пластик",
+    "options": [],
+    "_id": "69f82fb56b86e3f7c5a00ef2"
+   },
+   {
+    "key": "Крышка",
+    "value": "педальная",
+    "options": [],
+    "_id": "69f82fb56b86e3f7c5a00ef3"
+   },
+   {
+    "key": "Цвет",
+    "value": "чёрный",
+    "options": [],
+    "_id": "6acce9478f3763a528337a8d"
+   }
+  ]
+ },
+ {
+  "_id": "69f49785028b571f055a234f",
+  "productStatus": "liquidation",
+  "liquidatedAt": "2026-04-16T00:00:00.000Z",
+  "specs": [
+   {
+    "key": "Объём",
+    "value": "40",
+    "options": [],
+    "_id": "69f82f126b86e3f7c5a0090c"
+   },
+   {
+    "key": "Габариты ДxШxВ",
+    "value": "",
+    "options": [],
+    "_id": "69f82f126b86e3f7c5a0090d"
+   },
+   {
+    "key": "Материал",
+    "value": "Пластик",
+    "options": [],
+    "_id": "69f82f126b86e3f7c5a0090e"
+   },
+   {
+    "key": "Крышка",
+    "value": "педальная",
+    "options": [],
+    "_id": "69f82f126b86e3f7c5a0090f"
+   },
+   {
+    "key": "Цвет",
+    "value": "чёрный",
+    "options": [],
+    "_id": "6acce7ab0dfca173cf1bd882"
+   }
+  ]
+ },
+ {
+  "_id": "69f49785028b571f055a2352",
+  "productStatus": "liquidation",
+  "liquidatedAt": "2026-06-25T10:06:54.772Z",
+  "specs": []
+ },
+ {
+  "_id": "69f49786028b571f055a2355",
+  "productStatus": "liquidation",
+  "liquidatedAt": "2026-06-25T10:06:54.772Z",
+  "specs": [
+   {
+    "key": "Объём",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3b"
+   },
+   {
+    "key": "Габариты ДxШxВ",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3c"
+   },
+   {
+    "key": "Материал",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3d"
+   },
+   {
+    "key": "Колёса",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3e"
+   },
+   {
+    "key": "Крышка",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3f"
+   },
+   {
+    "key": "Педаль",
+    "value": "",
+    "options": [
+     "есть",
+     "нет"
+    ],
+    "_id": "69f97d3095e7c5ee46694e40"
+   }
+  ]
+ },
+ {
+  "_id": "69f497a5028b571f055a241f",
+  "productStatus": "liquidation",
+  "liquidatedAt": "2026-04-16T00:00:00.000Z",
+  "specs": []
+ },
+ {
+  "_id": "6a3cfde8623b40df11ffcbea",
+  "productStatus": "liquidation",
+  "specs": [
+   {
+    "key": "Объём",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3b"
+   },
+   {
+    "key": "Габариты ДxШxВ",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3c"
+   },
+   {
+    "key": "Материал",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3d"
+   },
+   {
+    "key": "Колёса",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3e"
+   },
+   {
+    "key": "Крышка",
+    "value": "",
+    "options": [],
+    "_id": "69f97d3095e7c5ee46694e3f"
+   },
+   {
+    "key": "Педаль",
+    "value": "",
+    "options": [
+     "есть",
+     "нет"
+    ],
+    "_id": "69f97d3095e7c5ee46694e40"
+   }
+  ]
+ },
+ {
+  "_id": "69f2d85050420bce3b53b705",
+  "productStatus": "for_sale",
+  "specs": [
+   {
+    "key": "Материал",
+    "value": "Листовая сталь 1.0 мм (CRCA)",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e97"
+   },
+   {
+    "key": "Покрытие",
+    "value": "Порошковое покрытие",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e98"
+   },
+   {
+    "key": "Кол-во секций",
+    "value": "3",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e99"
+   },
+   {
+    "key": "Тип",
+    "value": "Уличная напольная",
+    "options": [],
+    "_id": "69f2de4e831b7fc5c7d20e9a"
+   }
+  ]
+ }
+]
