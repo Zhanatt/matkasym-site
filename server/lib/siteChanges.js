@@ -47,7 +47,8 @@ const tokenKey = () => {
 };
 
 async function saveToken(userId, raw) {
-  const token = String(raw || '').trim();
+  // Терминал переносит длинный токен по строкам — при копировании внутрь попадают переносы и пробелы
+  const token = String(raw || '').replace(/\s+/g, '');
   if (!TOKEN_RE.test(token)) {
     const e = new Error('Это не похоже на токен Claude: он начинается с sk-ant-oat01- (команда claude setup-token)');
     e.status = 400; throw e;

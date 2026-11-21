@@ -107,7 +107,7 @@ function CopyLine({ text }) {
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: '#1c1c1c', color: '#fff', borderRadius: 8, padding: '8px 10px', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, margin: '6px 0' }}>
       <span style={{ flex: 1, overflowX: 'auto', whiteSpace: 'nowrap' }}>{text}</span>
       <button onClick={() => navigator.clipboard?.writeText(text).then(() => { setOk(true); setTimeout(() => setOk(false), 1500); })}
-        style={{ border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>{ok ? '✓' : 'Копировать'}</button>
+        style={{ border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: '#fff', color: '#1c1c1c', fontFamily: 'inherit' }}>{ok ? '✓' : 'Копировать'}</button>
     </div>
   );
 }
@@ -118,7 +118,7 @@ function MyClaude({ me, onClose, onChanged }) {
   const [err, setErr] = useState('');
   const save = async () => {
     setBusy(true); setErr('');
-    try { await saveMyClaude(token.trim()); setToken(''); onChanged(); onClose(); }
+    try { await saveMyClaude(token.replace(/\s+/g, '')); setToken(''); onChanged(); onClose(); }
     catch (e) { setErr(errMsg(e)); }
     setBusy(false);
   };
@@ -143,7 +143,7 @@ function MyClaude({ me, onClose, onChanged }) {
       <div style={step}><b>2.</b> Затем вставьте эту команду и нажмите Enter — откроется браузер, войдите в свой аккаунт Claude и нажмите «Authorize»:
         <CopyLine text={TOKEN_CMD} /></div>
       <div style={step}><b>3.</b> В Терминале появится длинный токен, он начинается с <code>sk-ant-oat01-</code>. Скопируйте его целиком и вставьте сюда:</div>
-      <input style={{ ...inputStyle, fontFamily: 'ui-monospace, Menlo, monospace' }} placeholder="sk-ant-oat01-…" value={token} onChange={e => setToken(e.target.value)} autoComplete="off" />
+      <textarea style={{ ...inputStyle, fontFamily: 'ui-monospace, Menlo, monospace', minHeight: 70, resize: 'vertical', wordBreak: 'break-all' }} placeholder="sk-ant-oat01-…" value={token} onChange={e => setToken(e.target.value)} autoComplete="off" spellCheck={false} />
       {err && <div style={{ color: C.redDark, fontSize: 13, marginTop: 10 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
         <div>{me?.connected && <Button kind="danger" onClick={remove}>Отключить</Button>}</div>
