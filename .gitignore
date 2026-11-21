@@ -26,3 +26,6 @@ npm-debug.log*
 
 # бэкапы боевых данных перед скриптами — не в репозиторий
 server/scripts/backups/
+
+# Бэкапы боевых данных из скриптов (*.backup.json) — только локально
+server/scripts/*.backup.json
