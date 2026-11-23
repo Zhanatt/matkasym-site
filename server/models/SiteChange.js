@@ -60,7 +60,7 @@ const siteChangeSchema = new mongoose.Schema({
                  approvedBy: String, prUrl: String, mergeSha: String, ops: [String] }],
   // Изменения в каталоге, которые предложил Claude (lib/siteOps.js) — применяются при утверждении
   dataOps:    [{ _id: false, op: String, id: String, data: mongoose.Schema.Types.Mixed, label: String, note: String,
-                 changes: [{ _id: false, field: String, from: String, to: String }], error: String, applied: Boolean, applyError: String }],
+                 changes: [{ _id: false, field: String, from: String, to: String }], error: String, warn: String, applied: Boolean, applyError: String }],
   previewReadyAt: Date,         // предпросмотр Render ответил
   mergeSha:   String,           // коммит слияния в main
   mergedAt:   Date,

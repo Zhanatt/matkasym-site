@@ -120,7 +120,7 @@ function buildPrompt(change) {
     '- ТОВАРЫ И КАТАЛОГ. Товары живут в базе, в шаблоны и конфиги их НЕ вписывай. Чтобы добавить или изменить товар, создай в корне репозитория файл .site-change-ops.json — изменения внесёт сайт после утверждения владельцем. Текущий каталог: .site-change-data/products.jsonl (по строке на товар, с _id и артикулом — ищи Grep), brands.json (бренды и их сеты), suppliers.txt (поставщики); категории — client/src/config/categorySpecs.js.',
     '  Формат: {"ops":[ {"op":"create","product":{...},"note":"зачем"}, {"op":"update","id":"<_id>" или "sku":"<артикул>","set":{поле: значение},"note":"..."}, {"op":"supplier","name":"...","phone":"..."} ]}',
     '  Поля товара: name, fullName, sku, brand (matkasym-home | matkasym-shaar | matkasym-kyzmat), set (ключ сета этого бренда), category, color, price, priceUndefined, priceWholesale, priceDealer, description, specs ([{"key":"Высота","value":"120 см"}]), dimensions, unit, images (ссылки на приложенные фото), productStatus, isSupplied, supplier ({"company","sku"}), isOnOrder.',
-    '  НЕ выдумывай цены, размеры, характеристики, артикулы: только то, что дал дизайнер или что уже есть в каталоге. Нет цены — "priceUndefined": true. Привозной товар — сначала op supplier, если поставщика нет в каталоге. Остатки, себестоимость и удаление товаров недоступны.',
+    '  НЕ выдумывай цены, размеры, характеристики, артикулы, категории: только то, что дал дизайнер в переписке, или что уже есть в каталоге. Категорию бери только из существующих. Явно сказал «без цены» — "priceUndefined": true. Привозной товар — сначала op supplier, если поставщика нет в каталоге. Остатки, себестоимость и удаление товаров недоступны.',
     '  В итоге перечисли дизайнеру, какие товары добавишь или изменишь.',
     '- В конце ответь по-русски, коротко и простыми словами для дизайнера: что изменено и где это увидеть на сайте (какая страница). Без кода.',
     '- Самой последней строкой ответа обязательно напиши «Где смотреть: /адрес» — адрес страницы сайта от корня, где видно изменение (например /admin/sets/stremyanki или /shop). Адрес бери из маршрутов в client/src (AdminRoutes.jsx, App.jsx). Если изменился PDF-каталог — «Где смотреть: PDF <название каталога>».',
@@ -184,7 +184,7 @@ async function notify(change, event, extra = {}) {
     const pdfs = (change.pdfs || []).map(p => p.url ? `\n📄 <a href="${p.url}">${esc(p.title)} — пробный PDF</a>` : `\n📄 ${esc(p.title)}: не собрался (${esc(p.error)})`).join('');
     const opsTxt = (change.dataOps || []).length
       ? '\n\n<b>Изменения в каталоге</b> (внесутся после утверждения):\n' + change.dataOps.slice(0, 15).map(o =>
-          `${esc(o.label)}${o.error ? ` — ⚠️ ${esc(o.error)}` : ''}` + (o.changes || []).slice(0, 4).map(c => `\n   ${esc(c.field)}: ${c.from !== undefined ? esc(c.from) + ' → ' : ''}${esc(c.to)}`).join('')).join('\n')
+          `${esc(o.label)}${o.error ? ` — ⚠️ ${esc(o.error)}` : ''}${o.warn ? `\n   ⚠️ ${esc(o.warn)}` : ''}` + (o.changes || []).slice(0, 4).map(c => `\n   ${esc(c.field)}: ${c.from !== undefined ? esc(c.from) + ' → ' : ''}${esc(c.to)}`).join('')).join('\n')
       : '';
     const reverted = change.reverted?.length ? `\n\n⚠️ Отменены правки в запрещённых файлах: ${esc(change.reverted.join(', '))}` : '';
     await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${opsTxt}${pdfs}${reverted}\n\n${change.prNumber ? 'Предпросмотр соберётся за 3–7 минут — пришлю, когда будет готов. ' : ''}Утвердить можно прямо здесь.`, [preview, open], decideRow(change));

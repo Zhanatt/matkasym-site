@@ -41,6 +41,13 @@ async function catalogSnapshot() {
   return { products, brands, suppliers: suppliers.map(s => s.name) };
 }
 
+// Новая категория — не ошибка, но владелец должен это увидеть до утверждения
+async function categoryWarn(category, brand) {
+  if (!category) return undefined;
+  const known = await Product.exists({ category, ...(brand ? { brand } : {}) }) || await require('../models/CategorySpec').exists({ category });
+  return known ? undefined : `новая категория «${category}» — такой ещё нет`;
+}
+
 // Проверить список от Claude. Возвращает карточки для чата: что будет сделано, было → стало, ошибки.
 async function validateOps(raw) {
   const list = Array.isArray(raw?.ops) ? raw.ops : Array.isArray(raw) ? raw : [];
@@ -61,7 +68,7 @@ async function validateOps(raw) {
         if (data.isSupplied && data.isOnOrder === undefined) data.isOnOrder = true;
         if (data.sku && await Product.exists({ sku: data.sku })) throw new Error(`артикул ${data.sku} уже есть`);
         const changes = Object.entries(data).map(([k, v]) => ({ field: LABELS[k] || k, to: short(v) }));
-        out.push({ op: 'create', data, label: `➕ Новый товар «${data.fullName}»`, changes, note });
+        out.push({ op: 'create', data, label: `➕ Новый товар «${data.fullName}»`, changes, note, warn: await categoryWarn(data.category, data.brand) });
       } else if (op?.op === 'update') {
         const target = op.id && mongoose.isValidObjectId(op.id) ? await Product.findById(op.id).lean()
           : op.sku ? await Product.findOne({ sku: op.sku }).lean() : null;
@@ -73,7 +80,7 @@ async function validateOps(raw) {
           .filter(([k, v]) => JSON.stringify(target[k] ?? null) !== JSON.stringify(v ?? null))
           .map(([k, v]) => ({ field: LABELS[k] || k, from: short(target[k]), to: short(v) }));
         if (!changes.length) throw new Error('значения уже такие');
-        out.push({ op: 'update', id: String(target._id), data, label: `✏️ ${target.sku ? target.sku + ' · ' : ''}${target.fullName || target.name}`, changes, note });
+        out.push({ op: 'update', warn: data.category !== undefined ? await categoryWarn(data.category, data.brand || target.brand) : undefined, id: String(target._id), data, label: `✏️ ${target.sku ? target.sku + ' · ' : ''}${target.fullName || target.name}`, changes, note });
       } else if (op?.op === 'supplier') {
         const name = String(op.name || '').trim();
         if (!name) throw new Error('нет названия поставщика');

@@ -297,6 +297,7 @@ function OpsCard({ ops, title = 'Изменения в каталоге' }) {
             {!!o.changes?.length && <span style={{ fontSize: 12, color: C.muted }}>{open === i ? 'скрыть' : `${o.changes.length} пол${o.changes.length === 1 ? 'е' : 'я'}`}</span>}
           </div>
           {o.error && <div style={{ fontSize: 12, color: C.redDark }}>Не будет внесено: {o.error}</div>}
+          {o.warn && <div style={{ fontSize: 12, color: C.amber }}>⚠️ {o.warn}</div>}
           {o.applyError && <div style={{ fontSize: 12, color: C.redDark }}>Не внесено: {o.applyError}</div>}
           {o.note && <div style={{ fontSize: 12, color: C.muted }}>{o.note}</div>}
           {open === i && (
