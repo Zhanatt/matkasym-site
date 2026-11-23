@@ -132,11 +132,18 @@ async function applyOps(ops, user) {
   return results;
 }
 
-// Ссылка «Посмотреть на сайте» прямо на карточку товара в его сете (страница сета прокрутит и подсветит)
-async function productLink(id) {
-  const p = id && mongoose.isValidObjectId(id) ? await Product.findById(id, { brand: 1, set: 1 }).lean() : null;
-  if (!p) return null;
-  return p.set ? `/admin/sets?brand=${encodeURIComponent(p.brand)}&set=${encodeURIComponent(p.set)}&focus=${p._id}` : `/admin/products/${p._id}`;
+// Ссылка «Посмотреть на сайте» на карточки товаров в их сете (страница подсветит все и пролистает по очереди).
+// Товары из разных сетов — ссылка на сет, где их больше
+async function productLink(ids) {
+  const list = (Array.isArray(ids) ? ids : [ids]).filter(id => id && mongoose.isValidObjectId(id));
+  const prods = await Product.find({ _id: { $in: list } }, { brand: 1, set: 1 }).lean();
+  if (!prods.length) return null;
+  const bySet = {};
+  for (const p of prods) (bySet[`${p.brand}|${p.set || ''}`] ||= []).push(p);
+  const [key, group] = Object.entries(bySet).sort((a, b) => b[1].length - a[1].length)[0];
+  const [brand, set] = key.split('|');
+  if (!set) return `/admin/products/${group[0]._id}`;
+  return `/admin/sets?brand=${encodeURIComponent(brand)}&set=${encodeURIComponent(set)}&focus=${group.map(p => p._id).join(',')}`;
 }
 
 // Адрес от Claude → рабочий адрес сайта. «/admin/sets/<сет>» такого маршрута нет (уводит на дашборд):

@@ -1944,33 +1944,51 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
   const [openGroups, setOpenGroups] = useState({});
 
   // Ссылка «Посмотреть на сайте» из «Правок сайта» ведёт сразу к нужному месту:
-  // ?cat=<категория> — к разделу, ?focus=<id товара> — к карточке. Прокрутить и подсветить.
+  // ?cat=<категория>[,<ещё>] — к разделам, ?focus=<id>[,<id>…] — к карточкам товаров.
+  // Подсвечиваем все сразу и по очереди прокручиваем к каждому; плашка внизу — листать вручную.
   const [jumpParams] = useSearchParams();
   const jumpCat = jumpParams.get('cat');
   const jumpFocus = jumpParams.get('focus');
+  const [jumpEls, setJumpEls] = useState([]);
+  const [jumpIdx, setJumpIdx] = useState(0);
   const jumpedRef = useRef('');
   useEffect(() => {
     const key = `${jumpCat}|${jumpFocus}`;
     if ((!jumpCat && !jumpFocus) || jumpedRef.current === key || !products.length) return;
+    const ids = (jumpFocus || '').split(',').map(x => x.trim()).filter(Boolean);
+    const cats = (jumpCat || '').split(',').map(x => x.trim()).filter(Boolean);
+    // в списке разделы свёрнуты — раскрыть те, где нужные товары
+    const open = new Set([...cats, ...ids.map(id => products.find(p => String(p._id) === id)?.category).filter(Boolean)]);
+    if (open.size) setOpenGroups(prev => ({ ...prev, ...Object.fromEntries([...open].map(c => [c, true])) }));
     let tries = 0;
     const t = setInterval(() => {
-      const prod = jumpFocus && document.querySelector(`[data-product-ids~="${CSS.escape(jumpFocus)}"]`);
-      const owner = jumpFocus && products.find(p => String(p._id) === jumpFocus);
-      const catName = jumpCat || owner?.category;
-      if (catName) setOpenGroups(prev => ({ ...prev, [catName]: true }));   // в списке раздел свёрнут
-      const el = prod || (catName && document.querySelector(`[data-category="${CSS.escape(catName)}"]`));
-      if (el || ++tries > 25) {
+      const found = [
+        ...ids.map(id => document.querySelector(`[data-product-ids~="${CSS.escape(id)}"]`)),
+        ...cats.map(c => document.querySelector(`[data-category="${CSS.escape(c)}"]`)),
+      ].filter(Boolean);
+      const uniq = [...new Set(found)];
+      if (uniq.length >= ids.length + cats.length || ++tries > 25) {
         clearInterval(t);
         jumpedRef.current = key;
-        if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const prev = el.style.boxShadow, prevT = el.style.transition;
-        el.style.transition = 'box-shadow .3s'; el.style.boxShadow = '0 0 0 3px #e10523, 0 0 24px rgba(225,5,35,.35)';
-        setTimeout(() => { el.style.boxShadow = prev; setTimeout(() => { el.style.transition = prevT; }, 400); }, 3500);
+        if (!uniq.length) return;
+        uniq.forEach(el => { el.style.transition = 'box-shadow .3s'; el.style.boxShadow = '0 0 0 3px #e10523, 0 0 24px rgba(225,5,35,.3)'; });
+        setJumpEls(uniq); setJumpIdx(0);
       }
     }, 200);
     return () => clearInterval(t);
   }, [jumpCat, jumpFocus, products.length]);
+  // Прокрутка к текущему; автоматически по очереди, пока человек не нажал сам
+  const jumpAuto = useRef(true);
+  useEffect(() => {
+    const el = jumpEls[jumpIdx];
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!jumpAuto.current || jumpIdx >= jumpEls.length - 1) return;
+    const t = setTimeout(() => setJumpIdx(i => i + 1), 2500);
+    return () => clearTimeout(t);
+  }, [jumpEls, jumpIdx]);
+  const jumpClose = () => { jumpEls.forEach(el => { el.style.boxShadow = ''; }); setJumpEls([]); };
+  const jumpGo = d => { jumpAuto.current = false; setJumpIdx(i => (i + d + jumpEls.length) % jumpEls.length); };
 
   // Разделение на товары в наличии и без
   // "В наличии" = stock > 0 ИЛИ inStock ИЛИ isOnOrder ИЛИ inTransit
@@ -2013,6 +2031,21 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   return createPortal(
     <>
+      {/* «Правки сайта»: изменённые элементы — сколько их и листать по очереди */}
+      {jumpEls.length > 0 && (
+        <div style={{
+          position: 'fixed', left: '50%', bottom: 18, transform: 'translateX(-50%)', zIndex: 1600,
+          background: '#1c1c1c', color: '#fff', borderRadius: 999, padding: '6px 8px 6px 16px',
+          display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, boxShadow: '0 8px 24px rgba(0,0,0,.25)',
+        }}>
+          <span>Изменено: {jumpEls.length}{jumpEls.length > 1 ? ` · ${jumpIdx + 1} из ${jumpEls.length}` : ''}</span>
+          {jumpEls.length > 1 && <>
+            <button onClick={() => jumpGo(-1)} style={{ border: 'none', background: '#333', color: '#fff', borderRadius: 999, width: 28, height: 28, cursor: 'pointer' }}>◀</button>
+            <button onClick={() => jumpGo(1)} style={{ border: 'none', background: '#333', color: '#fff', borderRadius: 999, width: 28, height: 28, cursor: 'pointer' }}>▶</button>
+          </>}
+          <button onClick={jumpClose} title="Убрать подсветку" style={{ border: 'none', background: 'transparent', color: '#aaa', fontSize: 18, cursor: 'pointer', padding: '0 6px' }}>×</button>
+        </div>
+      )}
       {/* Mobile-only backdrop tap-to-close */}
       {isMobile && (
         <div onClick={onClose}
