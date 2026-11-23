@@ -49,8 +49,8 @@ export const KYZMAT_SECTIONS = {
 // именем (или поправьте путь здесь). Нет файла — позиция печатается без фото.
 // Если такой товар уже есть в базе с тем же названием, дубль не печатается.
 export const KYZMAT_EXTRA_GOODS = [
-  { name: 'Болт-гайка', image: 'images/bolt-gaika.jpg' },
-  { name: 'Вторичка (пластик краска)', image: 'images/vtorichka-kraska.jpg' },
+  { name: 'Болт-гайка', image: '/images/bolt-gaika.jpg' },
+  { name: 'Вторичка (пластик краска)', image: '/images/vtorichka-kraska.jpg' },
 ];
 
 // Цена услуги — за что именно. Раздел услуги находится по названию категории.
