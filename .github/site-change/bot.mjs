@@ -95,6 +95,7 @@ if (cmd === 'task') {
   const left = sh(`git diff --cached --name-only ${base}`).split('\n').filter(Boolean);
   out('reverted', JSON.stringify(bad));
   out('changed', String(left.length));
+  out('files', JSON.stringify(left));
   console.log('изменено:', left, '\nотменено:', bad);
 } else if (cmd === 'summary') {
   // Первый файл — основной запуск (его итог показываем), второй — починка сборки (только стоимость)

@@ -167,12 +167,13 @@ jobs:
           SUMMARY: ${{ steps.claude.outputs.text }}
           COST: ${{ steps.claude.outputs.cost }}
           REVERTED: ${{ steps.guard2.outputs.reverted || steps.guard1.outputs.reverted || '[]' }}
+          FILES: ${{ steps.guard2.outputs.files || steps.guard1.outputs.files || '[]' }}
           BUILD_OK: ${{ steps.build1.outputs.ok == 'true' || steps.build2.outputs.ok == 'true' }}
           TOKEN_ERROR: ${{ steps.claude.outputs.token_error }}
         run: |
           if [ -n "$PR" ]; then
-            BODY=$(jq -n --argjson pr "$PR" --arg url "$PR_URL" --arg s "$SUMMARY" --argjson cost "${COST:-0}" --argjson rev "$REVERTED" --argjson pdfs "$PDFS" \
-              '{status:"ready", prNumber:$pr, prUrl:$url, summary:$s, costUsd:$cost, reverted:$rev, pdfs:$pdfs}')
+            BODY=$(jq -n --argjson pr "$PR" --arg url "$PR_URL" --arg s "$SUMMARY" --argjson cost "${COST:-0}" --argjson rev "$REVERTED" --argjson pdfs "$PDFS" --argjson files "$FILES" \
+              '{status:"ready", prNumber:$pr, prUrl:$url, summary:$s, costUsd:$cost, reverted:$rev, pdfs:$pdfs, files:$files}')
           else
             if [ -n "$TOKEN_ERROR" ]; then ERR="$TOKEN_ERROR"
             elif [ "$BUILD_OK" != "true" ]; then ERR="После правки сайт не собирается — Claude не смог исправить. Попробуйте описать задачу иначе."

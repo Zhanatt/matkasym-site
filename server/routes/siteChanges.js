@@ -82,6 +82,24 @@ admin.get('/', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// История: что выложено на сайт, по дизайнерам — с итогом Claude и ссылкой «где смотреть»
+admin.get('/history', async (req, res) => {
+  try {
+    const list = await SiteChange.find({ status: 'merged' }).sort({ deployedAt: -1, statusAt: -1 }).limit(300).lean();
+    const strip = t => String(t || '').replace(/\n?\s*Где смотреть:.*$/im, '').trim();
+    res.json(list.map(d => {
+      const bot = [...d.messages].reverse().find(m => m.kind === 'bot');
+      const decided = [...d.messages].reverse().find(m => m.kind === 'decision');
+      return {
+        _id: d._id, number: d.number, title: d.title, author: d.author, authorName: d.authorName,
+        request: d.messages[0]?.text || '', summary: strip(bot?.text), viewPath: d.viewPath,
+        files: d.files || [], approvedBy: decided?.authorName, at: d.deployedAt || d.statusAt, deployed: !!d.deployedAt,
+        prUrl: d.prUrl,
+      };
+    }));
+  } catch (e) { fail(res, e); }
+});
+
 // Мой Claude: личный токен подписки (claude setup-token). Сам токен наружу не отдаётся никогда.
 admin.get('/me/claude', async (req, res) => {
   try { res.json(await sc.tokenInfo(req.user._id)); } catch (e) { fail(res, e); }
@@ -225,6 +243,9 @@ hook.post('/:id/callback', async (req, res) => {
         if (b.status === 'ready') {
           if (b.prNumber) { doc.prNumber = b.prNumber; doc.prUrl = b.prUrl; doc.previewUrl = sc.previewUrl(b.prNumber); }
           doc.reverted = Array.isArray(b.reverted) ? b.reverted.slice(0, 50) : [];
+          if (Array.isArray(b.files)) doc.files = b.files.slice(0, 100).map(String);
+          const where = String(b.summary || '').match(/Где смотреть:\s*(.+?)\s*$/im);
+          if (where) doc.viewPath = where[1].replace(/[«»"`]/g, '').trim().slice(0, 200);
           doc.pdfs = Array.isArray(b.pdfs) ? b.pdfs.slice(0, 5).map(p => ({ title: String(p.title || 'Каталог'), url: p.url ? String(p.url) : undefined, error: p.error ? String(p.error) : undefined })) : [];
           setStatus(doc, 'ready');
           const who = await sc.approverName();

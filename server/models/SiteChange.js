@@ -50,6 +50,8 @@ const siteChangeSchema = new mongoose.Schema({
   prUrl:      String,
   previewUrl: String,
   runUrl:     String,             // текущий/последний запуск в GitHub Actions
+  viewPath:   String,           // где смотреть результат: '/admin/…' или «PDF …» (последняя строка ответа Claude)
+  files:      [String],         // какие файлы изменены
   previewReadyAt: Date,         // предпросмотр Render ответил
   mergeSha:   String,           // коммит слияния в main
   mergedAt:   Date,
