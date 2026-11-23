@@ -265,7 +265,7 @@ function Bubble({ m }) {
     <div style={{ display: 'flex', justifyContent: bot ? 'flex-start' : 'flex-end', margin: '10px 0' }}>
       <div style={{ maxWidth: '82%' }}>
         <div style={{ fontSize: 11, color: C.muted, margin: bot ? '0 0 3px 4px' : '0 4px 3px 0', textAlign: bot ? 'left' : 'right' }}>
-          {bot ? '🤖 Claude' : m.authorName} · {fmtDate(m.at)}
+          {bot ? '🤖 Claude' : m.authorName} · {fmtDate(m.at)}{m.pending ? ' · ⏳ в очереди' : ''}
         </div>
         <div style={{
           background: bot ? '#fff' : '#f1efe9', border: bot ? `1px solid ${C.line}` : 'none',
@@ -333,8 +333,8 @@ function StatusCard({ d, isOwner, busy, act }) {
   }
   if (d.status === 'merging') return box(C.amberWash, <><span className="sc-dots" style={{ color: C.amber, fontWeight: 700 }}>●●●</span> Утверждено, выкладываю правку…{d.stuck && <div style={{ marginTop: 8 }}><Button disabled={busy} onClick={() => act(() => retrySiteChange(d._id))}>Повторить</Button></div>}</>);
   if (d.status === 'merged' && !d.deployedAt) return box(C.amberWash, <><span className="sc-dots" style={{ color: C.amber, fontWeight: 700 }}>●●●</span> Утверждено. Сайт пересобирается — обычно 5–10 минут. Напишу здесь, когда можно смотреть.</>);
-  if (d.status === 'merged') return box(C.greenWash, <><span style={{ color: C.green }}>🎉 Изменения на сайте — обновите страницу (⌘R), чтобы увидеть.</span> <ViewLink path={d.viewPath} /><div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Для новой задачи начните новый чат.</div></>);
-  return box(C.slateWash, <span style={{ color: C.muted }}>{d.status === 'rejected' ? '🚫 Отклонено' : '↩️ Отменено'}. Для новой задачи начните новый чат.</span>);
+  if (d.status === 'merged') return box(C.greenWash, <><span style={{ color: C.green }}>🎉 Изменения на сайте — обновите страницу (⌘R), чтобы увидеть.</span> <ViewLink path={d.viewPath} /><div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Нужно что-то ещё — просто напишите ниже, чат продолжится.</div></>);
+  return box(C.slateWash, <span style={{ color: C.muted }}>{d.status === 'rejected' ? '🚫 Отклонено' : '↩️ Отменено'}. Можно написать ниже — Claude сделает новую правку в этом чате.</span>);
 }
 
 function ChatView({ id, isOwner, me, onChanged, onCreated, onOpenClaude }) {
@@ -363,14 +363,16 @@ function ChatView({ id, isOwner, me, onChanged, onCreated, onOpenClaude }) {
   const form = (text, files) => { const f = new FormData(); f.append('text', text); files.forEach(x => f.append('images', x)); return f; };
 
   const noClaude = !me?.connected;
-  const canWrite = !id || (d && ['ready', 'failed'].includes(d.status));
+  const canWrite = !id || !!d;   // чат не закрывается: пока Claude работает — сообщение встаёт в очередь
   const hint = noClaude ? '' : 'Enter — отправить, Shift+Enter — новая строка. Файлы можно перетащить или вставить ⌘V';
 
   const sendNew = async (text, files) => { const r = await createSiteChange(form(text, files)); onChanged(); onCreated(r.data._id); };
   const sendMore = async (text, files) => { const r = await commentSiteChange(id, form(text, files)); setD(r.data); onChanged(); };
 
   const placeholder = noClaude ? 'Сначала подключите свой Claude' : !id ? 'Опишите, что поменять на сайте или в PDF-каталоге…'
-    : canWrite ? 'Уточнение для Claude…' : ACTIVE.includes(d?.status) ? 'Claude работает — подождите…' : 'Чат закрыт';
+    : ACTIVE.includes(d?.status) ? 'Можно писать — Claude возьмёт сообщение, как только закончит текущую работу…'
+    : ['merged', 'rejected', 'cancelled'].includes(d?.status) ? 'Написать ещё — Claude сделает новую правку в этом чате…'
+    : 'Уточнение для Claude…';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
@@ -458,9 +460,9 @@ function HistoryView({ isOwner, onOpen }) {
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 10 }}>👤 {g.name} <span style={{ color: C.muted, fontWeight: 500, fontSize: 13 }}>· {g.list.length}</span></div>
             <div style={{ borderLeft: `2px solid ${C.line}`, marginLeft: 8, paddingLeft: 18 }}>
               {g.list.map(x => {
-                const open = openId === x._id;
+                const open = openId === x.key;
                 return (
-                  <div key={x._id} style={{ position: 'relative', marginBottom: 14 }}>
+                  <div key={x.key} style={{ position: 'relative', marginBottom: 14 }}>
                     <span style={{ position: 'absolute', left: -25, top: 16, width: 12, height: 12, borderRadius: 6, background: x.deployed ? C.green : C.amber, border: '2px solid #f7f6f3' }} />
                     <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '12px 14px' }}>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -472,7 +474,7 @@ function HistoryView({ isOwner, onOpen }) {
                         <div style={{ fontSize: 14, lineHeight: 1.55, color: '#374151', whiteSpace: 'pre-wrap', ...(open ? {} : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }) }}>{x.summary}</div>
                       )}
                       <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 13, flexWrap: 'wrap' }}>
-                        {x.summary && <button onClick={() => setOpenId(open ? null : x._id)} style={{ border: 'none', background: 'none', padding: 0, color: C.muted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>{open ? 'Свернуть' : 'Подробнее'}</button>}
+                        {x.summary && <button onClick={() => setOpenId(open ? null : x.key)} style={{ border: 'none', background: 'none', padding: 0, color: C.muted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>{open ? 'Свернуть' : 'Подробнее'}</button>}
                         <button onClick={() => onOpen(x._id)} style={{ border: 'none', background: 'none', padding: 0, color: C.muted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>Открыть чат</button>
                         {isOwner && x.prUrl && <a href={x.prUrl} target="_blank" rel="noreferrer" style={{ color: C.muted }}>Изменения в коде</a>}
                       </div>

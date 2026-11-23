@@ -8,6 +8,7 @@
 const express = require('express');
 const multer = require('multer');
 const SiteChange = require('../models/SiteChange');
+const User = require('../models/User');
 const Counter = require('../models/Counter');
 const cloudinary = require('../lib/cloudinary');
 const { protect } = require('../middleware/auth');
@@ -61,6 +62,28 @@ async function startRun(doc, user) {
   }
 }
 
+// Продолжить чат после выложенной/отклонённой правки: новая ветка от свежего main
+function reopen(doc) {
+  if (doc.status === 'merged') doc.doneUpTo = doc.messages.length;
+  for (const f of ['prNumber', 'prUrl', 'previewUrl', 'previewReadyAt', 'mergeSha', 'mergedAt', 'deployedAt', 'error'])
+    doc[f] = undefined;
+  doc.reverted = []; doc.pdfs = [];
+  sc.status(doc, '🔄 Чат продолжается — Claude сделает новую правку.');
+}
+
+// Сообщения, пришедшие пока Claude работал: передать в новый запуск
+async function continueIfPending(doc) {
+  const pending = doc.messages.filter(m => m.pending);
+  if (!pending.length) return;
+  pending.forEach(m => { m.pending = undefined; });
+  doc.markModified('messages');
+  if (['merged', 'rejected', 'cancelled'].includes(doc.status)) reopen(doc);
+  const last = pending[pending.length - 1];
+  const user = await User.findById(last.author);
+  if (!user) return doc.save();
+  await startRun(doc, user).catch(async e => { console.error('[siteChanges] pending run:', e.message); });
+}
+
 const view = (d, approver) => {
   const o = d.toObject ? d.toObject() : d;
   o.approver = approver;
@@ -85,18 +108,14 @@ admin.get('/', async (req, res) => {
 // История: что выложено на сайт, по дизайнерам — с итогом Claude и ссылкой «где смотреть»
 admin.get('/history', async (req, res) => {
   try {
-    const list = await SiteChange.find({ status: 'merged' }).sort({ deployedAt: -1, statusAt: -1 }).limit(300).lean();
-    const strip = t => String(t || '').replace(/\n?\s*Где смотреть:.*$/im, '').trim();
-    res.json(list.map(d => {
-      const bot = [...d.messages].reverse().find(m => m.kind === 'bot');
-      const decided = [...d.messages].reverse().find(m => m.kind === 'decision');
-      return {
-        _id: d._id, number: d.number, title: d.title, author: d.author, authorName: d.authorName,
-        request: d.messages[0]?.text || '', summary: strip(bot?.text), viewPath: d.viewPath,
-        files: d.files || [], approvedBy: decided?.authorName, at: d.deployedAt || d.statusAt, deployed: !!d.deployedAt,
-        prUrl: d.prUrl,
-      };
-    }));
+    const list = await SiteChange.find({ 'releases.0': { $exists: true } }, { messages: 0 }).limit(300).lean();
+    const rows = list.flatMap(d => d.releases.map((r, i) => ({
+      _id: d._id, key: `${d._id}-${i}`, number: d.number, title: d.title + (d.releases.length > 1 ? ` (${i + 1})` : ''),
+      author: d.author, authorName: d.authorName, summary: r.summary, viewPath: r.viewPath, files: r.files || [],
+      approvedBy: r.approvedBy, at: r.deployedAt || r.at, deployed: !!r.deployedAt, prUrl: r.prUrl,
+    })));
+    rows.sort((a, b) => new Date(b.at) - new Date(a.at));
+    res.json(rows);
   } catch (e) { fail(res, e); }
 });
 
@@ -144,17 +163,29 @@ admin.post('/', upload.array('images', 10), async (req, res) => {
 // Уточнение: пишут автор или владелец. Если правка не в работе — Claude дорабатывает.
 admin.post('/:id/messages', upload.array('images', 10), async (req, res) => {
   try {
+    // Чат не закрывается никогда:
+    //   ready/failed       — уточнение, Claude дорабатывает ту же правку
+    //   queued/working/merging — сообщение ждёт, Claude возьмёт его после текущей работы
+    //   merged/rejected/cancelled — чат продолжается новой правкой (прошлое — контекст)
     const doc = await SiteChange.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Правка не найдена' });
-    if (!['ready', 'failed'].includes(doc.status)) {
-      return res.status(409).json({ message: doc.status === 'merged' ? 'Правка уже на сайте — создайте новую' : 'Сейчас уточнить нельзя: правка в работе или закрыта' });
-    }
     const text = String(req.body.text || '').trim().slice(0, 5000);
-    if (!text) return res.status(400).json({ message: 'Напишите, что поправить' });
+    if (!text) return res.status(400).json({ message: 'Напишите сообщение' });
+    await ensureToken(req.user);
     const images = await uploadAll(req.files);
-    doc.messages.push({ kind: 'comment', author: req.user._id, authorName: req.user.name, text, images });
+    const msg = { kind: 'comment', author: req.user._id, authorName: req.user.name, text, images };
+    if (['queued', 'working', 'merging'].includes(doc.status)) {
+      doc.messages.push({ ...msg, pending: true });
+      sc.status(doc, doc.status === 'merging'
+        ? '📝 Сообщение получено. Сейчас выкладывается прошлая правка — сразу после этого Claude возьмётся за новое.'
+        : '📝 Сообщение получено. Claude возьмёт его, как только закончит текущую работу.');
+      await doc.save();
+      return res.json(view(doc, await sc.approverName()));
+    }
+    if (['merged', 'rejected', 'cancelled'].includes(doc.status)) reopen(doc);
+    doc.messages.push(msg);
     await startRun(doc, req.user);
-    res.json(view(doc));
+    res.json(view(doc, await sc.approverName()));
   } catch (e) { fail(res, e); }
 });
 
@@ -260,6 +291,10 @@ hook.post('/:id/callback', async (req, res) => {
       setStatus(doc, 'merged');
       doc.mergedAt = new Date();
       if (b.mergeSha) doc.mergeSha = String(b.mergeSha).slice(0, 64);
+      const bot = [...doc.messages].reverse().find(m => m.kind === 'bot');
+      const decided = [...doc.messages].reverse().find(m => m.kind === 'decision');
+      doc.releases.push({ at: new Date(), summary: String(bot?.text || '').replace(/\n?\s*Где смотреть:.*$/im, '').trim(),
+        viewPath: doc.viewPath, files: doc.files, approvedBy: decided?.authorName, prUrl: doc.prUrl, mergeSha: doc.mergeSha });
       sc.status(doc, '📦 Правка добавлена в основной код. Сайт пересобирается — обычно 5–10 минут, напишу, когда можно будет смотреть.');
     } else if (b.status === 'merge_failed') {
       // Вернуть на решение: обычно конфликт с main — дизайнер уточняет, Claude переделывает
@@ -270,6 +305,8 @@ hook.post('/:id/callback', async (req, res) => {
     await doc.save();
 
     if (!closed && ['ready', 'failed', 'merged'].includes(b.status)) sc.notify(doc, b.status, { summary: b.summary }).catch(() => {});
+    // Пока Claude работал, в чат написали — сразу следующий круг
+    if (['ready', 'failed', 'merged', 'merge_failed'].includes(b.status)) await continueIfPending(doc);
     if (b.status === 'merge_failed') sc.notify(doc, 'failed').catch(() => {});
     res.json({ ok: true, status: doc.status });
   } catch (e) { fail(res, e); }

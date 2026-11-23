@@ -24,6 +24,7 @@ const messageSchema = new mongoose.Schema({
   authorName: String,
   text:       String,
   images:     [String],
+  pending:    Boolean,          // пришло, пока Claude работал — передать в следующий запуск
   at:         { type: Date, default: Date.now },
 }, { _id: false });
 
@@ -52,6 +53,10 @@ const siteChangeSchema = new mongoose.Schema({
   runUrl:     String,             // текущий/последний запуск в GitHub Actions
   viewPath:   String,           // где смотреть результат: '/admin/…' или «PDF …» (последняя строка ответа Claude)
   files:      [String],         // какие файлы изменены
+  doneUpTo:   { type: Number, default: 0 },  // сообщения до этого индекса уже выложены прошлыми правками чата
+  // Каждая выложенная правка чата — для «Истории» (в одном чате их может быть несколько)
+  releases:   [{ _id: false, at: Date, deployedAt: Date, summary: String, viewPath: String, files: [String],
+                 approvedBy: String, prUrl: String, mergeSha: String }],
   previewReadyAt: Date,         // предпросмотр Render ответил
   mergeSha:   String,           // коммит слияния в main
   mergedAt:   Date,

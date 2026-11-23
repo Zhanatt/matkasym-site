@@ -95,7 +95,11 @@ async function dispatch(action, change) {
 
 // Текст задачи для Claude: правила + исходная просьба + все уточнения по порядку.
 function buildPrompt(change) {
-  const [first, ...rest] = change.messages;
+  const done = change.doneUpTo || 0;
+  const userMsgs = change.messages.map((m, i) => ({ m, i })).filter(({ m }) => ['request', 'comment'].includes(m.kind));
+  const before = userMsgs.filter(x => x.i < done).map(x => x.m);
+  const now = userMsgs.filter(x => x.i >= done).map(x => x.m);
+  const [first, ...rest] = before.length ? now : change.messages;
   const imgs = [];
   const withImages = m => {
     const refs = (m.images || []).map(url => { imgs.push(url); return `.site-change-refs/${imgs.length}${extOf(url)}`; });
@@ -112,15 +116,22 @@ function buildPrompt(change) {
     '- Не добавляй npm-пакеты. Не удаляй функциональность, о которой не просили.',
     '- Делай ровно то, что просят, в стиле существующего кода. Если просьба неясна — выбери самое разумное толкование и напиши об этом в итоге.',
     '- Модалки — порталом в document.body (см. CLAUDE.md).',
+    '- Товары, цены, остатки живут в базе. Если просят добавить или изменить товар — не вписывай его в шаблоны и конфиги: ответь, что товар заводится в разделе «Каталог» админки, а после этого он сам появится на сайте и в каталогах.',
     '- В конце ответь по-русски, коротко и простыми словами для дизайнера: что изменено и где это увидеть на сайте (какая страница). Без кода.',
     '- Самой последней строкой ответа обязательно напиши «Где смотреть: /адрес» — адрес страницы сайта от корня, где видно изменение (например /admin/sets/stremyanki или /shop). Адрес бери из маршрутов в client/src (AdminRoutes.jsx, App.jsx). Если изменился PDF-каталог — «Где смотреть: PDF <название каталога>».',
     '',
-    `ЗАДАЧА №${change.number} от ${first?.authorName || change.authorName}: ${change.title}`,
-    (first?.text || '') + withImages(first || {}),
   ];
+  if (before.length) {
+    // Чат продолжили после выложенной правки: прошлое — только для контекста, оно уже на сайте
+    lines.push(`ЧАТ №${change.number} «${change.title}». Раньше в этом чате уже сделали и выложили на сайт (для контекста, повторять не нужно):`);
+    for (const m of before) lines.push(`- ${m.authorName}: ${(m.text || '').slice(0, 600)}`);
+    lines.push('', `НОВАЯ ЗАДАЧА от ${first?.authorName}:`, (first?.text || '') + withImages(first || {}));
+  } else {
+    lines.push(`ЗАДАЧА №${change.number} от ${first?.authorName || change.authorName}: ${change.title}`, (first?.text || '') + withImages(first || {}));
+  }
   const follow = rest.filter(m => m.kind === 'comment');
   if (follow.length) {
-    lines.push('', 'Правка уже делалась раньше (в этой ветке твои прошлые изменения). Уточнения, которые пришли после — выполни их:');
+    lines.push('', 'Дальше пришли уточнения (если правка уже делалась — твои прошлые изменения в этой ветке). Выполни их:');
     for (const m of follow) lines.push(`- ${m.authorName}: ${m.text || ''}${withImages(m)}`);
   }
   return { prompt: lines.join('\n'), images: imgs.map((url, i) => ({ url, name: `${i + 1}${extOf(url)}` })) };
@@ -245,6 +256,8 @@ async function checkDeployed(doc) {
   if (doc.status !== 'merged' || doc.deployedAt) return false;
   if (!(await isDeployed(doc).catch(() => false))) return false;
   doc.deployedAt = new Date();
+  const rel = doc.releases?.[doc.releases.length - 1];
+  if (rel && !rel.deployedAt) rel.deployedAt = doc.deployedAt;
   status(doc, '🎉 Готово! Изменения уже на сайте — обновите страницу (⌘R или потяните вниз на телефоне), чтобы увидеть.');
   await doc.save();
   notify(doc, 'deployed').catch(() => {});
