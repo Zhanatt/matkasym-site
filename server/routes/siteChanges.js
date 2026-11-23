@@ -291,7 +291,7 @@ hook.post('/:id/callback', async (req, res) => {
           // Изменения каталога от Claude — проверить и показать карточкой, применятся при утверждении
           doc.dataOps = b.ops ? await require('../lib/siteOps').validateOps(b.ops) : [];
           const where = String(b.summary || '').match(/Где смотреть:\s*(.+?)\s*$/im);
-          if (where) doc.viewPath = where[1].replace(/[«»"`]/g, '').trim().slice(0, 200);
+          if (where) doc.viewPath = await require('../lib/siteOps').normalizeViewPath(where[1].replace(/[«»"`]/g, '').trim().slice(0, 300));
           doc.pdfs = Array.isArray(b.pdfs) ? b.pdfs.slice(0, 5).map(p => ({ title: String(p.title || 'Каталог'), url: p.url ? String(p.url) : undefined, error: p.error ? String(p.error) : undefined })) : [];
           setStatus(doc, 'ready');
           const who = await sc.approverName();

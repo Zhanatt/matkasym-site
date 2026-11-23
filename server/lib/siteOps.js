@@ -132,4 +132,24 @@ async function applyOps(ops, user) {
   return results;
 }
 
-module.exports = { catalogSnapshot, validateOps, applyOps, FIELDS };
+// Ссылка «Посмотреть на сайте» прямо на карточку товара в его сете (страница сета прокрутит и подсветит)
+async function productLink(id) {
+  const p = id && mongoose.isValidObjectId(id) ? await Product.findById(id, { brand: 1, set: 1 }).lean() : null;
+  if (!p) return null;
+  return p.set ? `/admin/sets?brand=${encodeURIComponent(p.brand)}&set=${encodeURIComponent(p.set)}&focus=${p._id}` : `/admin/products/${p._id}`;
+}
+
+// Адрес от Claude → рабочий адрес сайта. «/admin/sets/<сет>» такого маршрута нет (уводит на дашборд):
+// переводим в /admin/sets?brand=…&set=…, бренд — по сету
+async function normalizeViewPath(path) {
+  const v = String(path || '').trim();
+  const m = v.match(/^\/admin\/sets\/([^/?#]+)\/?(?:[?#].*)?$/);
+  if (!m || m[1] === 'frontmen') return v;
+  const set = decodeURIComponent(m[1]);
+  const b = await Brand.findOne({ 'sets.key': set }, { key: 1 }).lean();
+  const p = b ? null : await Product.findOne({ set }, { brand: 1 }).lean();
+  const brand = b?.key || p?.brand;
+  return brand ? `/admin/sets?brand=${encodeURIComponent(brand)}&set=${encodeURIComponent(set)}` : '/admin/sets';
+}
+
+module.exports = { catalogSnapshot, validateOps, applyOps, productLink, normalizeViewPath, FIELDS };

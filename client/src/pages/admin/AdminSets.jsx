@@ -1943,6 +1943,35 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
 
   const [openGroups, setOpenGroups] = useState({});
 
+  // Ссылка «Посмотреть на сайте» из «Правок сайта» ведёт сразу к нужному месту:
+  // ?cat=<категория> — к разделу, ?focus=<id товара> — к карточке. Прокрутить и подсветить.
+  const [jumpParams] = useSearchParams();
+  const jumpCat = jumpParams.get('cat');
+  const jumpFocus = jumpParams.get('focus');
+  const jumpedRef = useRef('');
+  useEffect(() => {
+    const key = `${jumpCat}|${jumpFocus}`;
+    if ((!jumpCat && !jumpFocus) || jumpedRef.current === key || !products.length) return;
+    let tries = 0;
+    const t = setInterval(() => {
+      const prod = jumpFocus && document.querySelector(`[data-product-ids~="${CSS.escape(jumpFocus)}"]`);
+      const owner = jumpFocus && products.find(p => String(p._id) === jumpFocus);
+      const catName = jumpCat || owner?.category;
+      if (catName) setOpenGroups(prev => ({ ...prev, [catName]: true }));   // в списке раздел свёрнут
+      const el = prod || (catName && document.querySelector(`[data-category="${CSS.escape(catName)}"]`));
+      if (el || ++tries > 25) {
+        clearInterval(t);
+        jumpedRef.current = key;
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const prev = el.style.boxShadow, prevT = el.style.transition;
+        el.style.transition = 'box-shadow .3s'; el.style.boxShadow = '0 0 0 3px #e10523, 0 0 24px rgba(225,5,35,.35)';
+        setTimeout(() => { el.style.boxShadow = prev; setTimeout(() => { el.style.transition = prevT; }, 400); }, 3500);
+      }
+    }, 200);
+    return () => clearInterval(t);
+  }, [jumpCat, jumpFocus, products.length]);
+
   // Разделение на товары в наличии и без
   // "В наличии" = stock > 0 ИЛИ inStock ИЛИ isOnOrder ИЛИ inTransit
   const { inStockModels, outOfStockModels } = useMemo(() => {
@@ -2478,6 +2507,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                   return (
                     <div
                       key={groupName}
+                      data-category={groupName}
                       className="tube-accordion-group"
                       style={{ animation: `tubeAccordionSlideIn 0.4s ease ${groupIdx * 0.08}s both`, marginTop: isOutOfStockGroup ? 24 : 0 }}
                     >
@@ -2635,7 +2665,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                 // «Прочее» и «Нет в наличии» всегда последние — их не двигаем.
                 const catDraggable = editMode && !isOutOfStock && groupName !== 'Прочее';
                 return (
-                <div key={groupName} style={{ marginTop: isOutOfStock ? 24 : 0 }}>
+                <div key={groupName} data-category={groupName} style={{ marginTop: isOutOfStock ? 24 : 0 }}>
                   <div style={{
                     fontSize: 14,
                     fontWeight: 800,
@@ -2704,6 +2734,7 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           </div>
                         )}
                         <div
+                          data-product-ids={variants.map(v => v._id).join(' ')}
                           ref={el => cardDrag.register(groupName, idx, el)}
                           // В режиме правки карточка тащится, а не открывается:
                           // иначе каждое перетаскивание кончалось бы модалкой товара.
