@@ -1,5 +1,10 @@
 # Matkasym Site - Инструкции для Claude
 
+## Знания о проекте
+
+`docs/knowledge/` — заметки владельца о сайте (копия из Obsidian, обновляет
+`node server/scripts/sync-knowledge.js`). Их читает и Claude дизайнеров в «Правках сайта».
+
 ## Стек
 - **Frontend:** React + Vite, развёрнут на Render
 - **Backend:** Node.js + Express
