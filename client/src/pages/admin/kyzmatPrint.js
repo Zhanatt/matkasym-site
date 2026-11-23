@@ -16,7 +16,7 @@ import { adminGetPdfDetails } from '../../api/index';
 import { PRINT_COVERS, printEsc as esc, printImage, fitsCatalog } from './catalogPrint';
 import { SERVICES_CONTACTS as C, SERVICES_STEPS, servicePageFor } from '../../config/servicesCatalog';
 import { coverOf } from '../../utils/variantKey';
-import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, KYZMAT_SHEET_KINDS, KYZMAT_PAINT_STEPS, KYZMAT_GOODS_INFO, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
+import { KYZMAT_COVER, KYZMAT_INTRO, KYZMAT_SECTIONS, KYZMAT_SHEET_KINDS, KYZMAT_PAINT_STEPS, KYZMAT_GOODS_INFO, KYZMAT_EXTRA_GOODS, kyzmatServiceUnit, sanjyraUseCaption } from '../../config/kyzmatCatalog';
 
 const RED = '#E30521';
 const INK = '#14181c';
@@ -434,7 +434,9 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   const otherPaints = paints.filter(p => !paintOf(p) && p.productStatus !== 'undefined');
   const rest = products.filter(p => (!paints.includes(p) || otherPaints.includes(p)) && !rolls.includes(p) && !cartons.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
     && fitsCatalog(p));
-  if (sheets.length || rest.length) {
+  const norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const extraGoods = KYZMAT_EXTRA_GOODS.filter(g => !products.some(p => norm(p.name) === norm(g.name)));
+  if (sheets.length || rest.length || extraGoods.length) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} мм`))].sort();
     const anyPrice = sheets.some(x => x.price > 0);
     pages.push(page(`
@@ -462,10 +464,11 @@ function suppliesPages(n, setLabel, info, products, priceType) {
         </div>`;
       }).join('')}</div>` : ''}
       ${rollHtml}
-      ${rest.length ? `<h2 class="big">Ещё в наличии</h2><ul class="rest">${rest.map(p => {
+      ${rest.length || extraGoods.length ? `<h2 class="big">Ещё в наличии</h2><ul class="rest">${rest.map(p => {
         const v = priceFor(p, priceType);
         return `<li><span>${esc(p.name)}</span>${v > 0 ? `<b>${fmt(v)} сом</b>` : '<i>по запросу</i>'}</li>`;
-      }).join('')}</ul>` : ''}
+      }).join('')}${extraGoods.map(g => `<li><span class="rest-n">${g.image
+        ? `<img class="rest-ph" src="${esc(g.image)}" alt="" onerror="this.remove()">` : ''}${esc(g.name)}</span><i>по запросу</i></li>`).join('')}</ul>` : ''}
       ${foot()}`, sheets.length ? 'has-bg' : ''));
   }
   pages.push(...extraPages);
@@ -705,6 +708,8 @@ h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bo
 .rest { list-style: none; font-size: 10pt; }
 .rest li { display: flex; justify-content: space-between; padding: 4pt 0; border-bottom: .5pt solid ${LINE}; }
 .rest b { color: ${RED}; }
+.rest-n { display: flex; align-items: center; gap: 8pt; }
+.rest-ph { width: 28pt; height: 28pt; object-fit: cover; border-radius: 2pt; }
 .rest i { font-style: normal; color: ${MUTED}; font-size: 8.5pt; }
 
 /* ── О направлении ── */
