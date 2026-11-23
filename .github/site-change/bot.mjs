@@ -64,6 +64,16 @@ if (cmd === 'task') {
     if (r.ok) fs.writeFileSync(`.site-change-refs/${img.name}`, Buffer.from(await r.arrayBuffer()));
   }
   fs.writeFileSync('/tmp/task.md', t.prompt);
+  // Снимок каталога — чтобы Claude находил товары, сеты и категории, а не выдумывал
+  try {
+    const cat = await call('/catalog');
+    fs.mkdirSync('.site-change-data', { recursive: true });
+    // По строке на товар — чтобы Claude находил нужный поиском (Grep), а не читал мегабайт целиком
+    fs.writeFileSync('.site-change-data/products.jsonl', (cat.products || []).map(p => JSON.stringify(p)).join('\n'));
+    fs.writeFileSync('.site-change-data/brands.json', JSON.stringify(cat.brands || [], null, 1));
+    fs.writeFileSync('.site-change-data/suppliers.txt', (cat.suppliers || []).join('\n'));
+    console.log(`каталог: ${cat.products?.length || 0} товаров`);
+  } catch (e) { console.log('каталог не получен:', e.message); }
   out('title', t.title);
   out('number', String(t.number));
   console.log(t.prompt);
@@ -77,8 +87,22 @@ if (cmd === 'task') {
   // Итоговый отчёт уже ушёл — шаг «Сбой» не должен перебить его общей ошибкой
   if (body.status !== 'working') fs.writeFileSync('/tmp/reported', 'done');
   console.log(await call('/callback', { method: 'POST', body: JSON.stringify(body) }));
+} else if (cmd === 'ops') {
+  // Список изменений каталога от Claude → /tmp/ops.json (на сайт уйдёт с отчётом), из рабочей папки убрать
+  const f = '.site-change-ops.json';
+  let ops = null;
+  if (fs.existsSync(f)) {
+    try { ops = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { ops = { ops: [], parseError: e.message }; }
+    fs.rmSync(f);
+  }
+  const n = Array.isArray(ops?.ops) ? ops.ops.length : Array.isArray(ops) ? ops.length : 0;
+  fs.writeFileSync('/tmp/ops.json', JSON.stringify(n ? ops : null));
+  out('count', String(n));
+  console.log('изменений каталога:', n);
 } else if (cmd === 'guard') {
   fs.rmSync('.site-change-refs', { recursive: true, force: true });
+  fs.rmSync('.site-change-data', { recursive: true, force: true });
+  fs.rmSync('.site-change-ops.json', { force: true });
   sh('git add -A');
   const base = sh('git merge-base HEAD origin/main');
   const files = sh(`git diff --cached --name-only ${base}`).split('\n').filter(Boolean);

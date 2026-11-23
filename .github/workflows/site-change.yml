@@ -118,6 +118,10 @@ jobs:
             --disallowedTools "Bash,WebFetch,WebSearch" \
             --output-format json > /tmp/claude1.json || true
 
+      - id: ops
+        name: Изменения каталога (если Claude их предложил)
+        run: node .github/site-change/bot.mjs ops
+
       - id: guard1
         name: Только разрешённые файлы
         run: node .github/site-change/bot.mjs guard
@@ -215,10 +219,13 @@ jobs:
           FILES: ${{ steps.guard2.outputs.files || steps.guard1.outputs.files || '[]' }}
           BUILD_OK: ${{ steps.build1.outputs.ok == 'true' || steps.build2.outputs.ok == 'true' }}
           TOKEN_ERROR: ${{ steps.claude.outputs.token_error }}
+          OPS_COUNT: ${{ steps.ops.outputs.count }}
         run: |
-          if [ -n "$PR" ]; then
-            BODY=$(jq -n --argjson pr "$PR" --arg url "$PR_URL" --arg s "$SUMMARY" --argjson cost "${COST:-0}" --argjson rev "$REVERTED" --argjson pdfs "$PDFS" --argjson files "$FILES" \
-              '{status:"ready", prNumber:$pr, prUrl:$url, summary:$s, costUsd:$cost, reverted:$rev, pdfs:$pdfs, files:$files}')
+          # Готово, если есть правка кода (PR) или изменения каталога — каталог применится при утверждении
+          if [ -n "$PR" ] || { [ "${OPS_COUNT:-0}" != "0" ] && [ "$BUILD_OK" = "true" ]; }; then
+            BODY=$(jq -n --arg pr "$PR" --arg url "$PR_URL" --arg s "$SUMMARY" --argjson cost "${COST:-0}" --argjson rev "$REVERTED" --argjson pdfs "$PDFS" --argjson files "$FILES" \
+              --slurpfile ops /tmp/ops.json \
+              '{status:"ready", prNumber:(if $pr == "" then null else ($pr|tonumber) end), prUrl:(if $url == "" then null else $url end), summary:$s, costUsd:$cost, reverted:$rev, pdfs:$pdfs, files:$files, ops:$ops[0]}')
           else
             if [ -n "$TOKEN_ERROR" ]; then ERR="$TOKEN_ERROR"
             elif [ "$BUILD_OK" != "true" ]; then ERR="После правки сайт не собирается — Claude не смог исправить. Попробуйте описать задачу иначе."

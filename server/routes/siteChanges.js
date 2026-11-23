@@ -67,7 +67,7 @@ function reopen(doc) {
   if (doc.status === 'merged') doc.doneUpTo = doc.messages.length;
   for (const f of ['prNumber', 'prUrl', 'previewUrl', 'previewReadyAt', 'mergeSha', 'mergedAt', 'deployedAt', 'error'])
     doc[f] = undefined;
-  doc.reverted = []; doc.pdfs = [];
+  doc.reverted = []; doc.pdfs = []; doc.dataOps = []; doc.files = [];
   sc.status(doc, '🔄 Чат продолжается — Claude сделает новую правку.');
 }
 
@@ -112,7 +112,7 @@ admin.get('/history', async (req, res) => {
     const rows = list.flatMap(d => d.releases.map((r, i) => ({
       _id: d._id, key: `${d._id}-${i}`, number: d.number, title: d.title + (d.releases.length > 1 ? ` (${i + 1})` : ''),
       author: d.author, authorName: d.authorName, summary: r.summary, viewPath: r.viewPath, files: r.files || [],
-      approvedBy: r.approvedBy, at: r.deployedAt || r.at, deployed: !!r.deployedAt, prUrl: r.prUrl,
+      approvedBy: r.approvedBy, at: r.deployedAt || r.at, deployed: !!r.deployedAt, prUrl: r.prUrl, ops: r.ops || [],
     })));
     rows.sort((a, b) => new Date(b.at) - new Date(a.at));
     res.json(rows);
@@ -235,6 +235,11 @@ const hook = express.Router();
 hook.use(express.json({ limit: '200kb' }));
 hook.use((req, res, next) => sc.checkSecret(req.get('x-site-change-secret')) ? next() : res.status(401).json({ message: 'bad secret' }));
 
+// Снимок каталога для Claude: товары, бренды с сетами, поставщики (только чтение)
+hook.get('/:id/catalog', async (req, res) => {
+  try { res.json(await require('../lib/siteOps').catalogSnapshot()); } catch (e) { fail(res, e); }
+});
+
 hook.get('/:id/task', async (req, res) => {
   try {
     const d = await SiteChange.findById(req.params.id).lean();
@@ -283,12 +288,17 @@ hook.post('/:id/callback', async (req, res) => {
           if (b.prNumber) { doc.prNumber = b.prNumber; doc.prUrl = b.prUrl; doc.previewUrl = sc.previewUrl(b.prNumber); }
           doc.reverted = Array.isArray(b.reverted) ? b.reverted.slice(0, 50) : [];
           if (Array.isArray(b.files)) doc.files = b.files.slice(0, 100).map(String);
+          // Изменения каталога от Claude — проверить и показать карточкой, применятся при утверждении
+          doc.dataOps = b.ops ? await require('../lib/siteOps').validateOps(b.ops) : [];
           const where = String(b.summary || '').match(/Где смотреть:\s*(.+?)\s*$/im);
           if (where) doc.viewPath = where[1].replace(/[«»"`]/g, '').trim().slice(0, 200);
           doc.pdfs = Array.isArray(b.pdfs) ? b.pdfs.slice(0, 5).map(p => ({ title: String(p.title || 'Каталог'), url: p.url ? String(p.url) : undefined, error: p.error ? String(p.error) : undefined })) : [];
           setStatus(doc, 'ready');
           const who = await sc.approverName();
-          sc.status(doc, `⏳ Правка на утверждении. Её должен утвердить ${who} — пока ${who.includes(' или ') ? 'никто из них не утвердит' : 'не утвердит'}, на сайте ничего не изменится. Предпросмотр собирается (3–7 минут), напишу, когда будет готов.`);
+          const opsN = (doc.dataOps || []).filter(o => !o.error).length;
+          sc.status(doc, `⏳ Правка на утверждении. Её должен утвердить ${who} — пока ${who.includes(' или ') ? 'никто из них не утвердит' : 'не утвердит'}, на сайте ничего не изменится.`
+            + (opsN ? ` Изменений в каталоге: ${opsN} — внесутся в базу только после утверждения.` : '')
+            + (doc.prNumber ? ' Предпросмотр собирается (3–7 минут), напишу, когда будет готов.' : ''));
         } else {
           doc.error = String(b.error || 'Неизвестная ошибка').slice(0, 1000);
           setStatus(doc, 'failed');
@@ -299,10 +309,7 @@ hook.post('/:id/callback', async (req, res) => {
       setStatus(doc, 'merged');
       doc.mergedAt = new Date();
       if (b.mergeSha) doc.mergeSha = String(b.mergeSha).slice(0, 64);
-      const bot = [...doc.messages].reverse().find(m => m.kind === 'bot');
-      const decided = [...doc.messages].reverse().find(m => m.kind === 'decision');
-      doc.releases.push({ at: new Date(), summary: String(bot?.text || '').replace(/\n?\s*Где смотреть:.*$/im, '').trim(),
-        viewPath: doc.viewPath, files: doc.files, approvedBy: decided?.authorName, prUrl: doc.prUrl, mergeSha: doc.mergeSha });
+      sc.pushRelease(doc);
       sc.status(doc, '📦 Правка добавлена в основной код. Сайт пересобирается — обычно 5–10 минут, напишу, когда можно будет смотреть.');
     } else if (b.status === 'merge_failed') {
       // Вернуть на решение: обычно конфликт с main — дизайнер уточняет, Claude переделывает

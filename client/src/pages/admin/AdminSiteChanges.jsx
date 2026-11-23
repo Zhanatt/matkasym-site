@@ -281,6 +281,38 @@ function Bubble({ m }) {
   );
 }
 
+// Изменения каталога, которые предложил Claude: что будет добавлено/изменено, было → стало
+function OpsCard({ ops, title = 'Изменения в каталоге' }) {
+  const [open, setOpen] = useState(null);
+  if (!ops?.length) return null;
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 12, padding: '10px 12px', margin: '10px 0' }}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>🗂 {title}</div>
+      {ops.map((o, i) => (
+        <div key={i} style={{ borderTop: i ? `1px solid ${C.line}` : 'none', padding: '6px 0' }}>
+          <div onClick={() => setOpen(open === i ? null : i)} style={{ display: 'flex', gap: 8, alignItems: 'baseline', cursor: o.changes?.length ? 'pointer' : 'default' }}>
+            <span style={{ flex: 1, fontSize: 14, color: o.error || o.applyError ? C.redDark : C.text }}>
+              {o.applied ? '✅ ' : ''}{o.label}
+            </span>
+            {!!o.changes?.length && <span style={{ fontSize: 12, color: C.muted }}>{open === i ? 'скрыть' : `${o.changes.length} пол${o.changes.length === 1 ? 'е' : 'я'}`}</span>}
+          </div>
+          {o.error && <div style={{ fontSize: 12, color: C.redDark }}>Не будет внесено: {o.error}</div>}
+          {o.applyError && <div style={{ fontSize: 12, color: C.redDark }}>Не внесено: {o.applyError}</div>}
+          {o.note && <div style={{ fontSize: 12, color: C.muted }}>{o.note}</div>}
+          {open === i && (
+            <div style={{ marginTop: 6, fontSize: 13, display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '3px 12px' }}>
+              {o.changes.map((c, j) => [
+                <span key={j + 'f'} style={{ color: C.muted }}>{c.field}</span>,
+                <span key={j + 'v'} style={{ wordBreak: 'break-word' }}>{c.from !== undefined && c.from !== null ? <><s style={{ color: C.muted }}>{c.from}</s> → </> : ''}<b style={{ fontWeight: 600 }}>{c.to}</b></span>,
+              ])}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Карточка состояния под перепиской: что сейчас происходит и что можно сделать
 function StatusCard({ d, isOwner, busy, act }) {
   const box = (bg, children) => <div style={{ background: bg, borderRadius: 14, padding: '12px 14px', margin: '12px 0', fontSize: 14, lineHeight: 1.55 }}>{children}</div>;
@@ -321,6 +353,7 @@ function StatusCard({ d, isOwner, busy, act }) {
             <span style={{ fontSize: 12, color: C.muted }}> — данные там настоящие, только смотрите</span></div>
         : <div style={{ color: C.muted }}><span className="sc-dots">●●●</span> Предпросмотр собирается (3–7 минут)… <a href={d.previewUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.muted }}>попробовать открыть</a></div>)}
       {(d.pdfs || []).map((p, i) => <div key={i}>📄 {p.url ? <a href={p.url} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>{p.title} — пробный PDF</a> : <>{p.title}: не собрался <span style={{ fontSize: 12, color: C.muted }}>({p.error})</span></>}</div>)}
+      <OpsCard ops={d.dataOps} title="Изменения в каталоге — внесутся только после утверждения" />
       {!!d.reverted?.length && <div style={{ fontSize: 12, color: C.amber, marginTop: 6 }}>Отменены изменения в файлах, которые трогать нельзя: {d.reverted.join(', ')}</div>}
       <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>Что-то не так — напишите ниже, Claude доработает эту же правку.</div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -332,6 +365,7 @@ function StatusCard({ d, isOwner, busy, act }) {
   if (d.status === 'failed') {
     return box(C.redWash, <>
       <div style={{ color: C.redDark }}>❌ {d.error || 'Не получилось'}</div>
+      <OpsCard ops={d.dataOps} />
       <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Напишите уточнение ниже или повторите.</div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
         <Button disabled={busy} onClick={() => act(() => retrySiteChange(d._id))}>Повторить</Button>
@@ -486,6 +520,7 @@ function HistoryView({ isOwner, onOpen }) {
                         <button onClick={() => onOpen(x._id)} style={{ border: 'none', background: 'none', padding: 0, color: C.muted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>Открыть чат</button>
                         {isOwner && x.prUrl && <a href={x.prUrl} target="_blank" rel="noreferrer" style={{ color: C.muted }}>Изменения в коде</a>}
                       </div>
+                      {!!x.ops?.length && <div style={{ fontSize: 13, marginTop: 6, color: '#374151' }}>{x.ops.map((l, i) => <div key={i}>{l}</div>)}</div>}
                       {open && isOwner && !!x.files.length && (
                         <div style={{ marginTop: 8, fontSize: 12, color: C.muted, fontFamily: 'ui-monospace, Menlo, monospace' }}>{x.files.join(' · ')}</div>
                       )}

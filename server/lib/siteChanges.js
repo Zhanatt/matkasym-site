@@ -102,8 +102,8 @@ function buildPrompt(change) {
   const [first, ...rest] = before.length ? now : change.messages;
   const imgs = [];
   const withImages = m => {
-    const refs = (m.images || []).map(url => { imgs.push(url); return `.site-change-refs/${imgs.length}${extOf(url)}`; });
-    return refs.length ? `\n(Приложены файлы: ${refs.join(', ')} — открой их инструментом Read.)` : '';
+    const refs = (m.images || []).map(url => { imgs.push(url); return `.site-change-refs/${imgs.length}${extOf(url)} (ссылка для фото товара: ${url})`; });
+    return refs.length ? `\n(Приложены файлы: ${refs.join('; ')} — открой их инструментом Read.)` : '';
   };
   const lines = [
     'Ты вносишь правку во внешний вид сайта MATKASYM («Продакт матрица», React 18 + Vite, папка client/).',
@@ -117,7 +117,11 @@ function buildPrompt(change) {
     '- Не добавляй npm-пакеты. Не удаляй функциональность, о которой не просили.',
     '- Делай ровно то, что просят, в стиле существующего кода. Если просьба неясна — выбери самое разумное толкование и напиши об этом в итоге.',
     '- Модалки — порталом в document.body (см. CLAUDE.md).',
-    '- Товары, цены, остатки живут в базе. Если просят добавить или изменить товар — не вписывай его в шаблоны и конфиги: ответь, что товар заводится в разделе «Каталог» админки, а после этого он сам появится на сайте и в каталогах.',
+    '- ТОВАРЫ И КАТАЛОГ. Товары живут в базе, в шаблоны и конфиги их НЕ вписывай. Чтобы добавить или изменить товар, создай в корне репозитория файл .site-change-ops.json — изменения внесёт сайт после утверждения владельцем. Текущий каталог: .site-change-data/products.jsonl (по строке на товар, с _id и артикулом — ищи Grep), brands.json (бренды и их сеты), suppliers.txt (поставщики); категории — client/src/config/categorySpecs.js.',
+    '  Формат: {"ops":[ {"op":"create","product":{...},"note":"зачем"}, {"op":"update","id":"<_id>" или "sku":"<артикул>","set":{поле: значение},"note":"..."}, {"op":"supplier","name":"...","phone":"..."} ]}',
+    '  Поля товара: name, fullName, sku, brand (matkasym-home | matkasym-shaar | matkasym-kyzmat), set (ключ сета этого бренда), category, color, price, priceUndefined, priceWholesale, priceDealer, description, specs ([{"key":"Высота","value":"120 см"}]), dimensions, unit, images (ссылки на приложенные фото), productStatus, isSupplied, supplier ({"company","sku"}), isOnOrder.',
+    '  НЕ выдумывай цены, размеры, характеристики, артикулы: только то, что дал дизайнер или что уже есть в каталоге. Нет цены — "priceUndefined": true. Привозной товар — сначала op supplier, если поставщика нет в каталоге. Остатки, себестоимость и удаление товаров недоступны.',
+    '  В итоге перечисли дизайнеру, какие товары добавишь или изменишь.',
     '- В конце ответь по-русски, коротко и простыми словами для дизайнера: что изменено и где это увидеть на сайте (какая страница). Без кода.',
     '- Самой последней строкой ответа обязательно напиши «Где смотреть: /адрес» — адрес страницы сайта от корня, где видно изменение (например /admin/sets/stremyanki или /shop). Адрес бери из маршрутов в client/src (AdminRoutes.jsx, App.jsx). Если изменился PDF-каталог — «Где смотреть: PDF <название каталога>».',
     '',
@@ -176,10 +180,14 @@ async function notify(change, event, extra = {}) {
   const open = ['Открыть', adminLink(change._id)];
   if (event === 'ready') {
     const preview = ['👀 Предпросмотр', change.previewUrl];
-    const summary = extra.summary ? `\n\n${esc(extra.summary).slice(0, 1500)}` : '';
+    const summary = extra.summary ? `\n\n${esc(String(extra.summary).replace(/\n?\s*Где смотреть:.*$/im, '')).slice(0, 1500)}` : '';
     const pdfs = (change.pdfs || []).map(p => p.url ? `\n📄 <a href="${p.url}">${esc(p.title)} — пробный PDF</a>` : `\n📄 ${esc(p.title)}: не собрался (${esc(p.error)})`).join('');
+    const opsTxt = (change.dataOps || []).length
+      ? '\n\n<b>Изменения в каталоге</b> (внесутся после утверждения):\n' + change.dataOps.slice(0, 15).map(o =>
+          `${esc(o.label)}${o.error ? ` — ⚠️ ${esc(o.error)}` : ''}` + (o.changes || []).slice(0, 4).map(c => `\n   ${esc(c.field)}: ${c.from !== undefined ? esc(c.from) + ' → ' : ''}${esc(c.to)}`).join('')).join('\n')
+      : '';
     const reverted = change.reverted?.length ? `\n\n⚠️ Отменены правки в запрещённых файлах: ${esc(change.reverted.join(', '))}` : '';
-    await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${pdfs}${reverted}\n\nПредпросмотр соберётся за 3–7 минут — пришлю, когда будет готов. Утвердить можно прямо здесь.`, [preview, open], decideRow(change));
+    await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${opsTxt}${pdfs}${reverted}\n\n${change.prNumber ? 'Предпросмотр соберётся за 3–7 минут — пришлю, когда будет готов. ' : ''}Утвердить можно прямо здесь.`, [preview, open], decideRow(change));
     await tellAuthor(change, `${head}\nClaude закончил. Правка ждёт утверждения: ${esc(await approverName())} — без этого на сайте ничего не изменится. Предпросмотр соберётся за 3–7 минут, если нужно поправить — напишите в чат.${summary}${pdfs}`, [preview, open]);
   } else if (event === 'failed') {
     await tellAuthor(change, `${head}\n❌ Не получилось: ${esc(change.error || 'ошибка')}\nМожно уточнить задачу или повторить.`, [open]);
@@ -278,13 +286,50 @@ async function checkAllDeployed() {
 
 const setStatus = (doc, s) => { doc.status = s; doc.statusAt = new Date(); };
 
+// Запись в «Историю» — каждая выложенная правка чата отдельно
+function pushRelease(doc, extra = {}) {
+  const bot = [...doc.messages].reverse().find(m => m.kind === 'bot');
+  const decided = [...doc.messages].reverse().find(m => m.kind === 'decision');
+  doc.releases.push({ at: new Date(), summary: String(bot?.text || '').replace(/\n?\s*Где смотреть:.*$/im, '').trim(),
+    viewPath: doc.viewPath, files: doc.files, approvedBy: decided?.authorName, prUrl: doc.prUrl, mergeSha: doc.mergeSha,
+    ops: (doc.dataOps || []).filter(o => o.applied).map(o => o.label), ...extra });
+}
+
 async function approveChange(doc, user) {
-  if (doc.status !== 'ready' || !doc.prNumber) { const e = new Error('Утвердить можно только готовую правку'); e.status = 409; throw e; }
-  await dispatch('site-change-merge', doc);
-  setStatus(doc, 'merging');
+  const ops = (doc.dataOps || []).filter(o => !o.error && !o.applied);
+  if (doc.status !== 'ready' || (!doc.prNumber && !ops.length)) { const e = new Error('Утвердить можно только готовую правку'); e.status = 409; throw e; }
   doc.decidedBy = user._id; doc.decidedAt = new Date();
   doc.messages.push({ kind: 'decision', author: user._id, authorName: user.name, text: '✅ Утверждено' });
-  status(doc, `🚀 ${user.name} утвердил(а). Выкладываю правку на сайт…`);
+
+  // Сначала каталог: товары вносятся от имени утвердившего, обычными маршрутами админки
+  if (ops.length) {
+    status(doc, `🗂 ${user.name} утвердил(а). Вношу изменения в каталог…`);
+    await doc.save();
+    const results = await require('./siteOps').applyOps(doc.dataOps, user);
+    doc.markModified('dataOps');
+    const bad = results.filter(r => !r.ok);
+    status(doc, results.map(r => `${r.ok ? '✅' : '❌'} ${r.label}${r.ok ? '' : ` — ${r.error}`}`).join('\n'));
+    if (bad.length) {
+      setStatus(doc, 'failed');
+      doc.error = `Не все изменения каталога внесены (${bad.length} из ${results.length}) — подробности в чате. Код сайта не выкладывался.`;
+      await doc.save();
+      notify(doc, 'failed').catch(() => {});
+      return;
+    }
+  }
+
+  if (doc.prNumber) {
+    await dispatch('site-change-merge', doc);
+    setStatus(doc, 'merging');
+    status(doc, `🚀 ${user.name} утвердил(а). Выкладываю правку на сайт…`);
+  } else {
+    // Только каталог, кода нет — изменения уже на сайте
+    setStatus(doc, 'merged');
+    doc.mergedAt = doc.deployedAt = new Date();
+    pushRelease(doc, { deployedAt: doc.deployedAt });
+    status(doc, '🎉 Готово! Изменения в каталоге внесены и уже на сайте — обновите страницу, чтобы увидеть.');
+    notify(doc, 'deployed').catch(() => {});
+  }
   await doc.save();
 }
 
@@ -366,4 +411,4 @@ async function notifyOwnersReady(change) {
     [['👀 Предпросмотр', change.previewUrl], ['Открыть', adminLink(change._id)]], decideRow(change));
 }
 
-module.exports = { notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, removeToken, setTokenError };
+module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, removeToken, setTokenError };
