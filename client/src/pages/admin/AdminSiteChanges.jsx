@@ -19,6 +19,7 @@ const C = {
 const STATUS = {
   queued:    { label: 'В очереди',          color: C.muted,  bg: C.slateWash },
   working:   { label: 'Claude делает…',     color: C.amber,  bg: C.amberWash },
+  question:  { label: 'Ждёт вашего ответа', color: '#7c3aed', bg: '#f3e8ff' },
   ready:     { label: 'На утверждении',     color: '#1d4ed8', bg: '#e8efff' },
   failed:    { label: 'Не получилось',      color: C.redDark, bg: C.redWash },
   merging:   { label: 'Выкладывается…',     color: C.amber,  bg: C.amberWash },
@@ -301,6 +302,13 @@ function StatusCard({ d, isOwner, busy, act }) {
       {d.stuck && <div style={{ marginTop: 8 }}><Button disabled={busy} onClick={() => act(() => retrySiteChange(d._id))}>Повторить</Button></div>}
     </>);
   }
+  if (d.status === 'question') {
+    return box('#f3e8ff', <>
+      <div style={{ fontWeight: 700 }}>❓ Claude ждёт ответа</div>
+      <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Ответьте ниже — после этого Claude возьмётся за правку. Код пока не тронут.</div>
+      <div style={{ marginTop: 10 }}>{closeBtn}</div>
+    </>);
+  }
   if (d.status === 'ready') {
     const who = d.approver || 'владелец сайта';
     return box('#e8efff', <>
@@ -372,7 +380,7 @@ function ChatView({ id, isOwner, me, onChanged, onCreated, onOpenClaude }) {
   const placeholder = noClaude ? 'Сначала подключите свой Claude' : !id ? 'Опишите, что поменять на сайте или в PDF-каталоге…'
     : ACTIVE.includes(d?.status) ? 'Можно писать — Claude возьмёт сообщение, как только закончит текущую работу…'
     : ['merged', 'rejected', 'cancelled'].includes(d?.status) ? 'Написать ещё — Claude сделает новую правку в этом чате…'
-    : 'Уточнение для Claude…';
+    : d?.status === 'question' ? 'Ответ для Claude…' : 'Уточнение для Claude…';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>

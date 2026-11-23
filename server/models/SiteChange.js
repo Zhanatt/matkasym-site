@@ -14,7 +14,8 @@ const mongoose = require('mongoose');
 //   merged   — на сайте
 //   rejected — владелец отклонил
 //   cancelled — автор передумал
-const STATUSES = ['queued', 'working', 'ready', 'failed', 'merging', 'merged', 'rejected', 'cancelled'];
+//   question — Claude уточняет задачу у дизайнера (или ответил, что это не правка), ждёт ответа
+const STATUSES = ['queued', 'working', 'question', 'ready', 'failed', 'merging', 'merged', 'rejected', 'cancelled'];
 const ACTIVE = ['queued', 'working', 'merging'];
 
 const messageSchema = new mongoose.Schema({

@@ -25,8 +25,53 @@ env:
   CLAUDE_TOOLS: Read,Edit,MultiEdit,Write,Glob,Grep
 
 jobs:
-  change:
+  # Шаг 1 — понять задачу (быстро, без зависимостей сайта): Claude читает задачу, заметки
+  # проекта (docs/knowledge) и нужный код. Ясно → «Понял так: …» и шаг 2. Неясно → вопрос
+  # дизайнеру, код не трогается, пока он не ответит.
+  understand:
     if: github.event.action == 'site-change'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      go: ${{ steps.u.outputs.go }}
+      understanding: ${{ steps.u.outputs.text }}
+      cost: ${{ steps.u.outputs.cost }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Сообщить сайту — читаю задачу
+        run: |
+          node .github/site-change/bot.mjs report '{"status":"working"}'
+          node .github/site-change/bot.mjs stage "🧐 Claude читает задачу"
+      - name: Прошлые правки этого чата (если ветка есть)
+        run: git fetch -q --depth 1 origin "$BRANCH" && git checkout -q FETCH_HEAD || echo "ветки нет — смотрим main"
+      - name: Задача с сайта
+        run: node .github/site-change/bot.mjs task
+      - name: Установить Claude Code
+        run: npm i -g @anthropic-ai/claude-code
+      - name: Claude разбирается
+        run: |
+          { cat .github/site-change/understand.md; echo; echo "=================="; cat /tmp/task.md; } > /tmp/understand.md
+          claude -p "$(cat /tmp/understand.md)" --model "$MODEL" --max-turns 25 \
+            --allowedTools "Read,Glob,Grep" --disallowedTools "Edit,MultiEdit,Write,Bash,WebFetch,WebSearch" \
+            --output-format json > /tmp/u.json || true
+      - id: u
+        name: Понял или спрашивает
+        run: node .github/site-change/bot.mjs understand /tmp/u.json
+      - name: Сбой — сообщить сайту
+        if: failure()
+        run: |
+          if grep -q done /tmp/reported 2>/dev/null; then exit 0; fi
+          node .github/site-change/bot.mjs report '{"status":"failed","error":"Сбой на шаге разбора задачи — можно нажать «Повторить»"}'
+
+  # Шаг 2 — правка (только когда задача понятна)
+  change:
+    needs: understand
+    if: github.event.action == 'site-change' && needs.understand.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
@@ -38,9 +83,6 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: client/package-lock.json
-
-      - name: Сообщить сайту — в работе
-        run: node .github/site-change/bot.mjs report '{"status":"working"}'
 
       - name: Ветка правки
         run: |
@@ -66,8 +108,11 @@ jobs:
         run: npm i -g @anthropic-ai/claude-code
 
       - name: Claude правит
+        env:
+          UNDERSTANDING: ${{ needs.understand.outputs.understanding }}
         run: |
-          node .github/site-change/bot.mjs stage "🔍 Claude изучает задачу и код сайта, вносит правку"
+          node .github/site-change/bot.mjs stage "✏️ Claude вносит правку"
+          printf '\n\nТЫ УЖЕ РАЗОБРАЛСЯ В ЗАДАЧЕ И СООБЩИЛ ДИЗАЙНЕРУ:\n%s\nСделай ровно это — не больше и не меньше.\n' "$UNDERSTANDING" >> /tmp/task.md
           claude -p "$(cat /tmp/task.md)" --model "$MODEL" --max-turns 60 \
             --permission-mode acceptEdits --allowedTools "$CLAUDE_TOOLS" \
             --disallowedTools "Bash,WebFetch,WebSearch" \

@@ -97,6 +97,36 @@ if (cmd === 'task') {
   out('changed', String(left.length));
   out('files', JSON.stringify(left));
   console.log('изменено:', left, '\nотменено:', bad);
+} else if (cmd === 'understand') {
+  // Итог шага понимания: ПОНЯЛ → дальше правка; ВОПРОС/ОТВЕТ → в чат, ждём дизайнера
+  let j = {};
+  try { j = JSON.parse(fs.readFileSync(process.argv[3], 'utf8')); } catch {}
+  const raw = String(j.result || '').trim();
+  const cost = Math.round((j.total_cost_usd || 0) * 10000) / 10000;
+  const m = raw.match(/^\**\s*(ПОНЯЛ|ВОПРОС|ОТВЕТ)\s*\**[:\s]*/);
+  const kind = m?.[1];
+  const text = (m ? raw.slice(m[0].length) : raw).trim().slice(0, 3000);
+  let tokenError = '';
+  if (j.is_error || !raw) {
+    if (/usage limit|rate.?limit|limit reached|out of (extra )?usage|5-hour limit|weekly limit/i.test(raw)) tokenError = 'Кончился лимит подписки Claude — попробуйте через несколько часов';
+    else if (/invalid.*(api key|token)|oauth|authenticat|401|unauthori[sz]ed|expired/i.test(raw)) tokenError = 'Токен Claude недействителен или истёк — подключите заново в «Мой Claude»';
+  }
+  if (tokenError) {
+    await call('/callback', { method: 'POST', body: JSON.stringify({ status: 'failed', error: tokenError, tokenError, costUsd: cost, runUrl: RUN_URL }) });
+    fs.writeFileSync('/tmp/reported', 'done');
+    out('go', 'false');
+  } else if (kind === 'ВОПРОС' || kind === 'ОТВЕТ') {
+    await call('/callback', { method: 'POST', body: JSON.stringify({ status: 'question', text, answer: kind === 'ОТВЕТ', costUsd: cost, runUrl: RUN_URL }) });
+    fs.writeFileSync('/tmp/reported', 'done');
+    out('go', 'false');
+  } else {
+    // ПОНЯЛ (или формат не распознан — считаем, что понял, и показываем как есть)
+    await call('/callback', { method: 'POST', body: JSON.stringify({ status: 'working', say: `💡 Понял задачу так:\n${text}\n\nПриступаю.`, costUsd: cost, runUrl: RUN_URL }) }).catch(() => {});
+    out('go', 'true');
+  }
+  out('text', text);
+  out('cost', String(cost));
+  console.log(kind, cost, '\n' + text);
 } else if (cmd === 'summary') {
   // Первый файл — основной запуск (его итог показываем), второй — починка сборки (только стоимость)
   let text = '', cost = 0;

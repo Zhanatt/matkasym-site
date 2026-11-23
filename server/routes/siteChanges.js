@@ -264,7 +264,15 @@ hook.post('/:id/callback', async (req, res) => {
       if (!closed) {
         setStatus(doc, 'working');
         if (b.stage) sc.status(doc, String(b.stage).slice(0, 300));
+        if (b.say) doc.messages.push({ kind: 'bot', authorName: 'Claude', text: String(b.say).slice(0, 4000) });
+        if (b.costUsd) doc.costUsd = Math.round(((doc.costUsd || 0) + Number(b.costUsd)) * 10000) / 10000;
       }
+    } else if (b.status === 'question') {
+      // Claude не стал править: уточняет задачу или объясняет, что это не правка внешнего вида
+      doc.runs.push({ ok: true, costUsd: Number(b.costUsd) || 0, summary: 'вопрос', runUrl: b.runUrl });
+      doc.costUsd = Math.round(((doc.costUsd || 0) + (Number(b.costUsd) || 0)) * 10000) / 10000;
+      doc.messages.push({ kind: 'bot', authorName: 'Claude', text: String(b.text || '').slice(0, 4000) });
+      if (!closed) setStatus(doc, 'question');
     } else if (b.status === 'ready' || b.status === 'failed') {
       const cost = Number(b.costUsd) || 0;
       doc.runs.push({ ok: b.status === 'ready', costUsd: cost, summary: b.summary, runUrl: b.runUrl });
@@ -306,7 +314,8 @@ hook.post('/:id/callback', async (req, res) => {
 
     if (!closed && ['ready', 'failed', 'merged'].includes(b.status)) sc.notify(doc, b.status, { summary: b.summary }).catch(() => {});
     // Пока Claude работал, в чат написали — сразу следующий круг
-    if (['ready', 'failed', 'merged', 'merge_failed'].includes(b.status)) await continueIfPending(doc);
+    if (!closed && b.status === 'question') sc.notify(doc, 'question', { text: b.text, answer: b.answer }).catch(() => {});
+    if (['ready', 'failed', 'merged', 'merge_failed', 'question'].includes(b.status)) await continueIfPending(doc);
     if (b.status === 'merge_failed') sc.notify(doc, 'failed').catch(() => {});
     res.json({ ok: true, status: doc.status });
   } catch (e) { fail(res, e); }

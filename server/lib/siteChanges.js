@@ -110,6 +110,7 @@ function buildPrompt(change) {
     'Задачу поставил дизайнер компании, правку потом проверит и примет владелец сайта.',
     '',
     'ПРАВИЛА:',
+    '- Если есть папка docs/knowledge/ — там знания о проекте (начни с README.md): договорённости, устройство данных, прошлые ошибки. Сверяйся с ними.',
     '- Меняй только файлы в client/src/ и client/public/. Сервер (server/), базу, цены, права доступа, роли, авторизацию и API не трогай.',
     '- Исключение — вёрстка PDF-каталогов. Каталоги брендов: client/src/pages/admin/catalogPrint.js, kyzmatPrint.js, brandPdfGroups.js. Каталоги сетов SHAAR: server/scripts/build-<сет>-catalog.js (сеты: uzak-koldon, mazza-seyil, onoy-sakta, 0-tastandy, bilim-kelechek, bekem-fasad, kooz-koopsuzduk, bekem-tosmo), общая вёрстка — server/lib/catalogLayout.js и catalogFonts.js. В этих серверных файлах меняй только HTML/CSS и оформление: никаких новых запросов и записи в базу, process.env, запуска программ, удаления файлов — иначе правка в файле будет отменена. Новые файлы на сервере не создавай.',
     '- Нельзя менять client/src/api/, client/src/context/, client/src/constants/roles.js, package.json, конфиги сборки — такие правки будут автоматически отменены.',
@@ -182,6 +183,9 @@ async function notify(change, event, extra = {}) {
     await tellAuthor(change, `${head}\nClaude закончил. Правка ждёт утверждения: ${esc(await approverName())} — без этого на сайте ничего не изменится. Предпросмотр соберётся за 3–7 минут, если нужно поправить — напишите в чат.${summary}${pdfs}`, [preview, open]);
   } else if (event === 'failed') {
     await tellAuthor(change, `${head}\n❌ Не получилось: ${esc(change.error || 'ошибка')}\nМожно уточнить задачу или повторить.`, [open]);
+  } else if (event === 'question') {
+    const text = esc(String(extra.text || '')).slice(0, 1500);
+    await tellAuthor(change, `${head}\n${extra.answer ? '💬 Claude ответил' : '❓ Claude уточняет задачу — ответьте в чате'}:\n\n${text}`, [open]);
   } else if (event === 'preview') {
     const preview = ['👀 Предпросмотр', change.previewUrl];
     const who = await approverName();
