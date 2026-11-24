@@ -17,6 +17,7 @@
 const router = require('express').Router();
 const multer = require('multer');
 const axios  = require('axios');
+const { approveUrl } = require('../lib/rndBitrix');
 
 const PORTAL         = 'https://matkasymov.bitrix24.kz';
 const GROUP_ID       = process.env.TECHLIST_GROUP_ID       || '31';
@@ -194,6 +195,12 @@ router.post('/', upload.any(), async (req, res) => {
         task = await call(client, 'tasks.task.add', { fields });
       }
       const id = task.task.id;
+      // Ссылка на оформление утверждения — в описание (id задачи известен только после создания)
+      try {
+        await call(client, 'tasks.task.update', { taskId: id, fields: {
+          DESCRIPTION: `${fields.DESCRIPTION}\n\n[b]Готов техлист?[/b] [url=${approveUrl(id)}]Оформить на утверждение[/url]`,
+        } });
+      } catch (e) { warnings.push(`ссылка на утверждение не добавилась: ${e.message}`); }
       created.push({ id, title: item.name, url: `${PORTAL}/workgroups/group/${GROUP_ID}/tasks/task/view/${id}/` });
 
       for (const f of filesFor(i)) {

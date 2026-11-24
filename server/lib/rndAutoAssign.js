@@ -19,6 +19,7 @@
  * задачи за двое суток, а пока сервер не спит — ещё и каждую минуту.
  */
 const axios = require('axios');
+const { STAGES, APPROVAL_STAGE_TITLE, BEFORE_APPROVAL_TITLES, approveUrl, reworkUrl } = require('./rndBitrix');
 
 const GROUP_ID = process.env.TECHLIST_GROUP_ID || '31';
 // Этапы после «Завершённых техлистов»: Техлисты с подписью, 3D, Чертёж, Норма расхода,
@@ -42,10 +43,62 @@ async function call(c, method, params) {
   return data;
 }
 
+// «Завершённые техлисты» = этап утверждения. Попасть туда можно только через страницу
+// «Оформить на утверждение» (она пишет TechlistApproval перед переносом). Перетащили
+// вручную — возвращаем в «Обработку техлиста» и пишем в чат, как оформить.
+async function checkApproval(c, task, list) {
+  const moves = list.filter(h => h.field === 'STAGE').sort((a, b) => b.id - a.id);
+  const move = moves.find(h => h.value?.to === APPROVAL_STAGE_TITLE) || moves[0];
+  if (!move) return null;
+  const at = new Date(move.createdDate).getTime();
+  const TechlistApproval = require('../models/TechlistApproval');
+  const ok = await TechlistApproval.exists({
+    taskId: String(task.id), kind: { $in: ['approval', 'restore'] },
+    createdAt: { $gte: new Date(at - 15 * 60 * 1000), $lte: new Date(at + 2 * 60 * 1000) },
+  });
+  if (ok) return null;
+  await TechlistApproval.create({ taskId: String(task.id), kind: 'bounce' }); // чтобы checkRework не вернул её обратно
+  await call(c, 'tasks.task.update', { taskId: task.id, fields: { STAGE_ID: STAGES.processing } });
+  await call(c, 'task.commentitem.add', { TASKID: task.id, fields: { POST_MESSAGE:
+    `⚠️ Задача возвращена в «Обработку техлиста». В «${APPROVAL_STAGE_TITLE}» её переводит только оформление на утверждение — `
+    + `заполните параметры и приложите PDF техлиста: [url=${approveUrl(task.id)}]Оформить на утверждение[/url]` } });
+  status.lastChange = { at: new Date().toISOString(), task: task.id, bounced: true };
+  console.log(`[rnd-auto-assign] задача ${task.id} «${task.title}»: перенесли в утверждение без оформления — вернули`);
+  return 'bounced';
+}
+
+// Из «Завершённых техлистов» назад (в «Заявку» или «Обработку») — только через
+// «Вернуть на доработку» с комментарием, что изменить. Утащили вручную — возвращаем
+// в «Завершённые» (с записью restore, чтобы проверка утверждения её не выкинула).
+async function checkRework(c, task, list) {
+  const move = list.filter(h => h.field === 'STAGE').sort((a, b) => b.id - a.id)[0];
+  if (!move || move.value?.from !== APPROVAL_STAGE_TITLE || !BEFORE_APPROVAL_TITLES.includes(move.value?.to)) return null;
+  const at = new Date(move.createdDate).getTime();
+  const TechlistApproval = require('../models/TechlistApproval');
+  const ok = await TechlistApproval.exists({
+    taskId: String(task.id), kind: { $in: ['rework', 'bounce'] },
+    createdAt: { $gte: new Date(at - 15 * 60 * 1000), $lte: new Date(at + 2 * 60 * 1000) },
+  });
+  if (ok) return null;
+  await TechlistApproval.create({ taskId: String(task.id), kind: 'restore' });
+  await call(c, 'tasks.task.update', { taskId: task.id, fields: { STAGE_ID: STAGES.approval } });
+  await call(c, 'task.commentitem.add', { TASKID: task.id, fields: { POST_MESSAGE:
+    `⚠️ Задача возвращена в «${APPROVAL_STAGE_TITLE}». Если клиент просит изменения, верните её через `
+    + `[url=${reworkUrl(task.id)}]Вернуть на доработку[/url] и напишите, что изменить.` } });
+  status.lastChange = { at: new Date().toISOString(), task: task.id, restored: true };
+  console.log(`[rnd-auto-assign] задача ${task.id} «${task.title}»: утащили из утверждения без комментария — вернули`);
+  return 'restored';
+}
+
 async function checkTask(c, task) {
-  if (!AUTO_STAGES.has(String(task.stageId))) return null;
+  const stage = String(task.stageId);
+  const isApproval = stage === STAGES.approval;
+  const isEarly = stage === STAGES.request || stage === STAGES.processing;
+  if (!isApproval && !isEarly && !AUTO_STAGES.has(stage)) return null;
   const { result } = await call(c, 'tasks.task.history.list', { taskId: task.id });
   const list = result.list || [];
+  if (isApproval) return checkApproval(c, task, list);
+  if (isEarly) return checkRework(c, task, list);
   const lastOf = field => list.filter(h => h.field === field).sort((a, b) => b.id - a.id)[0];
   const move = lastOf('STAGE');
   if (!move) return null;

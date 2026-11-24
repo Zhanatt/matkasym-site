@@ -8,6 +8,10 @@ const ShopApp     = lazy(() => import('./pages/shop/ShopApp'));
 const AdminRoutes = lazy(() => import('./AdminRoutes'));
 // /techlist — публичная заявка на техлист для менеджеров по продажам (без входа)
 const TechlistForm = lazy(() => import('./pages/techlist/TechlistForm'));
+// /techlist/approve/:taskId — оформление «Техлист на утверждение» (ссылка из задачи в Битриксе)
+const TechlistApprove = lazy(() => import('./pages/techlist/TechlistApprove'));
+// /techlist/rework/:taskId — клиент просит изменить техлист: назад в «Заявку на техлист» с комментарием
+const TechlistRework = lazy(() => import('./pages/techlist/TechlistRework'));
 
 // Плашка на предпросмотре «Правок сайта»: там боевая база, менять данные нельзя
 function PreviewBanner() {
@@ -28,6 +32,8 @@ export default function App() {
       <Routes>
         <Route path="/shop/*" element={<ShopApp />} />
         <Route path="/techlist" element={<TechlistForm />} />
+        <Route path="/techlist/approve/:taskId" element={<TechlistApprove />} />
+        <Route path="/techlist/rework/:taskId" element={<TechlistRework />} />
         <Route path="/*"      element={<AdminRoutes />} />
       </Routes>
     </Suspense>
