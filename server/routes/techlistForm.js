@@ -101,6 +101,13 @@ function describe({ order, item, index, total, others }) {
   return d;
 }
 
+// Исходящий вебхук Битрикса (ONTASKUPDATE): тело не читаем — это только сигнал «что-то
+// изменилось», сама проверка берёт данные из Битрикса. См. lib/rndAutoAssign.js.
+router.post('/b24-event', (req, res) => {
+  res.json({ ok: true });
+  require('../lib/rndAutoAssign').sweep();
+});
+
 router.get('/config', (req, res) => res.json({ managers: managers(), makers: MAKERS.map(m => ({ id: m.id, name: m.name })), maxFile: MAX_FILE, maxFiles: MAX_FILES, maxTotal: MAX_TOTAL }));
 
 router.post('/', upload.any(), async (req, res) => {

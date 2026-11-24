@@ -32,6 +32,7 @@ app.use('/api/orders',   require('./routes/orders'));
 app.use('/api/catalog',  require('./routes/catalog'));  // AI-bot context API
 app.use('/api/shop',     require('./routes/shop'));     // Telegram Mini App — магазин в канале
 app.use('/api/techlist-form', require('./routes/techlistForm')); // публичная заявка на техлист → задачи R&D в Битриксе
+require('./lib/rndAutoAssign').start(); // R&D-канбан: кто перевёл задачу дальше «Завершённых техлистов» — тот ответственный
 app.use('/api/admin/social', require('./routes/social')); // автопубликации по площадкам
 
 // Короткая ссылка на заказ для стикера-ссылки в историях Instagram.
