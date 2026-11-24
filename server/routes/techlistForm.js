@@ -7,7 +7,7 @@
  * по этапам канбана (техлист → 3D → чертёж → образец…) изделия идут независимо.
  *
  * Задачи ставятся в проект Product Management (группа 31), колонка «Заявка на техлист»,
- * ответственный — Жанат: техлисты делает только он. Дальше конструкторы сами переносят
+ * ответственный — тот, кого менеджер выбрал в «Кто делает техлист» (Жанат или Абдил). Дальше конструкторы сами переносят
  * задачу на «3D моделирование», назначают себя и ставят срок.
  *
  * Вебхук с правами task + sonet_group живёт только в env B24_TASKS_WEBHOOK
@@ -21,13 +21,18 @@ const axios  = require('axios');
 const PORTAL         = 'https://matkasymov.bitrix24.kz';
 const GROUP_ID       = process.env.TECHLIST_GROUP_ID       || '31';
 const STAGE_ID       = process.env.TECHLIST_STAGE_ID       || '1169'; // «Заявка на техлист»
-const RESPONSIBLE_ID = process.env.TECHLIST_RESPONSIBLE_ID || '153247'; // Жанат
+
+// Кто делает техлист — менеджер выбирает в форме, задача ставится на этого человека.
+const MAKERS = [
+  { id: '153247', name: 'Жанат' },
+  { id: '88257',  name: 'Абдил' },
+];
 
 // Менеджеры по продажам из реестра техлистов. Список можно переопределить в env
 // TECHLIST_MANAGERS через запятую, не трогая код. В форме есть и «Другой — вписать».
 const DEFAULT_MANAGERS = [
   'Медербеков Абдил', 'Бейшеналиева Айзат', 'Мустапакул кызы Айчүрөк', 'Жаныбек уулу Муктарали',
-  'Эркинбек кызы Нуржаз', 'Арген', 'Кубатбеков Саламат', 'Жакшылыков Абай', 'Орозобек уулу Нургазы',
+  'Кубатбеков Саламат',
 ];
 const managers = () => (process.env.TECHLIST_MANAGERS
   ? process.env.TECHLIST_MANAGERS.split(',').map(s => s.trim()).filter(Boolean)
@@ -96,7 +101,7 @@ function describe({ order, item, index, total, others }) {
   return d;
 }
 
-router.get('/config', (req, res) => res.json({ managers: managers(), maxFile: MAX_FILE, maxFiles: MAX_FILES, maxTotal: MAX_TOTAL }));
+router.get('/config', (req, res) => res.json({ managers: managers(), makers: MAKERS.map(m => ({ id: m.id, name: m.name })), maxFile: MAX_FILE, maxFiles: MAX_FILES, maxTotal: MAX_TOTAL }));
 
 router.post('/', upload.any(), async (req, res) => {
   try {
@@ -124,6 +129,8 @@ router.post('/', upload.any(), async (req, res) => {
     const problems = [];
     if (!order.client)  problems.push('заказчик');
     if (!order.manager) problems.push('менеджер');
+    const maker = MAKERS.find(m => m.id === String(req.body.maker));
+    if (!maker) problems.push('кто делает техлист');
     items = items.map((it, i) => {
       const item = {
         name: clean(it.name, 200), dimensions: clean(it.dimensions, 200), material: clean(it.material, 200),
@@ -154,7 +161,7 @@ router.post('/', upload.any(), async (req, res) => {
         fields: {
           TITLE: `Техлист: ${item.name} — ${order.client}`.slice(0, 250),
           DESCRIPTION: describe({ order, item, index: i, total: items.length, others }),
-          GROUP_ID, STAGE_ID, RESPONSIBLE_ID,
+          GROUP_ID, STAGE_ID, RESPONSIBLE_ID: maker.id,
           TAGS: [order.code],
         },
       });

@@ -53,10 +53,11 @@ function FilePicker({ files, onChange, invalid }) {
 }
 
 export default function TechlistForm() {
-  const [cfg, setCfg] = useState({ managers: [], maxFile: 10 << 20, maxFiles: 15, maxTotal: 40 << 20 });
+  const [cfg, setCfg] = useState({ managers: [], makers: [], maxFile: 10 << 20, maxFiles: 15, maxTotal: 40 << 20 });
   const [client, setClient] = useState('');
   const [managerSel, setManagerSel] = useState(() => localStorage.getItem('techlist_manager_sel') || '');
   const [managerOther, setManagerOther] = useState(() => localStorage.getItem('techlist_manager_other') || '');
+  const [maker, setMaker] = useState('');
   const [deadline, setDeadline] = useState('');
   const [items, setItems] = useState([emptyItem()]);
   const [tried, setTried] = useState(false);
@@ -84,7 +85,7 @@ export default function TechlistForm() {
     : allFiles.length > cfg.maxFiles ? `Слишком много файлов (не больше ${cfg.maxFiles})`
     : allFiles.reduce((s, f) => s + f.size, 0) > cfg.maxTotal ? `Файлы вместе больше ${cfg.maxTotal >> 20} МБ`
     : '';
-  const valid = client.trim() && manager && !fileProblem &&
+  const valid = client.trim() && manager && maker && !fileProblem &&
     items.every(it => !Object.values(itemBad(it)).some(Boolean));
 
   const setItem = (i, patch) => setItems(list => list.map((it, j) => (j === i ? { ...it, ...patch } : it)));
@@ -100,6 +101,7 @@ export default function TechlistForm() {
       const fd = new FormData();
       fd.append('client', client);
       fd.append('manager', manager);
+      fd.append('maker', maker);
       fd.append('deadline', deadline ? deadline.split('-').reverse().join('.') : '');
       fd.append('website', website);
       fd.append('items', JSON.stringify(items.map(({ files, ...rest }) => rest)));
@@ -117,7 +119,7 @@ export default function TechlistForm() {
   }
 
   function reset() {
-    setClient(''); setDeadline(''); setItems([emptyItem()]);
+    setClient(''); setMaker(''); setDeadline(''); setItems([emptyItem()]);
     setTried(false); setResult(null); setError('');
   }
 
@@ -156,6 +158,17 @@ export default function TechlistForm() {
           {managerSel === OTHER && (
             <input style={{ ...S.input, marginTop: 8, ...bad(!manager) }} placeholder="Ваше имя" value={managerOther} onChange={e => setManagerOther(e.target.value)} />
           )}
+        </Field>
+        <Field label="Кто делает техлист" required>
+          <div style={S.row}>
+            {cfg.makers.map(m => (
+              <button key={m.id} type="button" onClick={() => setMaker(m.id)} style={{
+                ...S.input, fontWeight: 700, cursor: 'pointer',
+                ...(maker === m.id ? { background: '#1f3fae', color: '#fff', borderColor: '#1f3fae' } : {}),
+                ...(tried && !maker ? S.bad : {}),
+              }}>{m.name}</button>
+            ))}
+          </div>
         </Field>
         <Field label="Когда нужен техлист">
           <input type="date" style={S.input} value={deadline} onChange={e => setDeadline(e.target.value)} />
