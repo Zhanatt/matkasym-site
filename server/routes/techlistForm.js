@@ -28,15 +28,21 @@ const MAKERS = [
   { id: '88257',  name: 'Абдил' },
 ];
 
-// Менеджеры по продажам из реестра техлистов. Список можно переопределить в env
-// TECHLIST_MANAGERS через запятую, не трогая код. В форме есть и «Другой — вписать».
+// Менеджеры по продажам и их id в Битриксе. Менеджер становится постановщиком задачи:
+// так он сразу в чате задачи и видит, как идёт его заявка, а ответственному (Жанату
+// или Абдилу) приходит уведомление о новой задаче — «сам себе» Битрикс не уведомляет.
+// Список можно переопределить в env TECHLIST_MANAGERS: «Имя:id,Имя:id».
 const DEFAULT_MANAGERS = [
-  'Медербеков Абдил', 'Бейшеналиева Айзат', 'Мустапакул кызы Айчүрөк', 'Жаныбек уулу Муктарали',
-  'Кубатбеков Саламат',
+  { name: 'Медербеков Абдил',        id: '88257' },
+  { name: 'Бейшеналиева Айзат',      id: '80535' },
+  { name: 'Мустапакул кызы Айчүрөк', id: '4431' },
+  { name: 'Жаныбек уулу Муктарали',  id: '16799' },
+  { name: 'Кубатбеков Саламат',      id: '6539' },
 ];
-const managers = () => (process.env.TECHLIST_MANAGERS
-  ? process.env.TECHLIST_MANAGERS.split(',').map(s => s.trim()).filter(Boolean)
+const managerList = () => (process.env.TECHLIST_MANAGERS
+  ? process.env.TECHLIST_MANAGERS.split(',').map(s => { const [name, id] = s.split(':'); return { name: name.trim(), id: (id || '').trim() }; }).filter(m => m.name)
   : DEFAULT_MANAGERS);
+const managers = () => managerList().map(m => m.name);
 
 // Render free — 512 МБ памяти, файлы держим в памяти и ещё кодируем в base64.
 const MAX_FILE  = 10 * 1024 * 1024;
@@ -150,6 +156,7 @@ router.post('/', upload.any(), async (req, res) => {
       return item;
     });
 
+    const managerId = managerList().find(m => m.name === order.manager)?.id || '';
     const files = req.files || [];
     if (!files.length) problems.push('файлы: приложите чертёж, фото или заявку клиента');
     if (problems.length) return res.status(400).json({ message: `Не заполнено: ${problems.join(', ')}` });
@@ -164,14 +171,24 @@ router.post('/', upload.any(), async (req, res) => {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const others = items.filter((_, j) => j !== i).map(x => x.name);
-      const task = await call(client, 'tasks.task.add', {
-        fields: {
-          TITLE: `Техлист: ${item.name} — ${order.client}`.slice(0, 250),
-          DESCRIPTION: describe({ order, item, index: i, total: items.length, others }),
-          GROUP_ID, STAGE_ID, RESPONSIBLE_ID: maker.id,
-          TAGS: [order.code],
-        },
-      });
+      const fields = {
+        TITLE: `Техлист: ${item.name} — ${order.client}`.slice(0, 250),
+        DESCRIPTION: describe({ order, item, index: i, total: items.length, others }),
+        GROUP_ID, STAGE_ID, RESPONSIBLE_ID: maker.id,
+        TAGS: [order.code],
+      };
+      let task;
+      if (managerId) {
+        try {
+          task = await call(client, 'tasks.task.add', { fields: { ...fields, CREATED_BY: managerId } });
+        } catch (e) {
+          // Не дали поставить менеджера постановщиком — пусть хотя бы наблюдает (он тоже в чате задачи)
+          console.error('[techlist-form] постановщик', managerId, e.message);
+          task = await call(client, 'tasks.task.add', { fields: { ...fields, AUDITORS: [managerId] } });
+        }
+      } else {
+        task = await call(client, 'tasks.task.add', { fields });
+      }
       const id = task.task.id;
       created.push({ id, title: item.name, url: `${PORTAL}/workgroups/group/${GROUP_ID}/tasks/task/view/${id}/` });
 
