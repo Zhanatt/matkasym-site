@@ -6,7 +6,8 @@ import axios from 'axios';
 // Форма нарочно короткая: менеджеры длинные формы не читают.
 
 const OTHER = '__other__';
-const emptyItem = () => ({ name: '', qty: '', price: '', dimensions: '', note: '', files: [] });
+const emptyItem = () => ({ name: '', params: '', qty: '', price: '', note: '', files: [] });
+const CATEGORIES = ['Щиты', 'Урны', 'Скамейки', 'Ограждения', 'Двери', 'Велопарковки', 'Лазерная резка', 'Металлоконструкции'];
 const num = v => Number(String(v).replace(/\s/g, '').replace(',', '.'));
 
 const S = {
@@ -54,6 +55,7 @@ function FilePicker({ files, onChange, invalid }) {
 
 export default function TechlistForm() {
   const [cfg, setCfg] = useState({ managers: [], makers: [], maxFile: 10 << 20, maxFiles: 15, maxTotal: 40 << 20 });
+  const [category, setCategory] = useState('');
   const [client, setClient] = useState('');
   const [managerSel, setManagerSel] = useState(() => localStorage.getItem('techlist_manager_sel') || '');
   const [managerOther, setManagerOther] = useState(() => localStorage.getItem('techlist_manager_other') || '');
@@ -76,8 +78,9 @@ export default function TechlistForm() {
 
   const itemBad = it => ({
     name: !it.name.trim(),
+    params: !it.params.trim(),
     qty: !(num(it.qty) > 0),
-    price: String(it.price).trim() === '' || !(num(it.price) >= 0),
+    price: !(num(it.price) > 0),
     files: !it.files.length,
   });
   const fileProblem =
@@ -85,7 +88,7 @@ export default function TechlistForm() {
     : allFiles.length > cfg.maxFiles ? `Слишком много файлов (не больше ${cfg.maxFiles})`
     : allFiles.reduce((s, f) => s + f.size, 0) > cfg.maxTotal ? `Файлы вместе больше ${cfg.maxTotal >> 20} МБ`
     : '';
-  const valid = client.trim() && manager && maker && !fileProblem &&
+  const valid = category.trim() && client.trim() && manager && maker && !fileProblem &&
     items.every(it => !Object.values(itemBad(it)).some(Boolean));
 
   const setItem = (i, patch) => setItems(list => list.map((it, j) => (j === i ? { ...it, ...patch } : it)));
@@ -99,6 +102,7 @@ export default function TechlistForm() {
     setSending(true);
     try {
       const fd = new FormData();
+      fd.append('category', category);
       fd.append('client', client);
       fd.append('manager', manager);
       fd.append('maker', maker);
@@ -119,7 +123,7 @@ export default function TechlistForm() {
   }
 
   function reset() {
-    setClient(''); setMaker(''); setDeadline(''); setItems([emptyItem()]);
+    setCategory(''); setClient(''); setMaker(''); setDeadline(''); setItems([emptyItem()]);
     setTried(false); setResult(null); setError('');
   }
 
@@ -146,6 +150,10 @@ export default function TechlistForm() {
       <h1 style={{ fontSize: 24, margin: '4px 4px 16px', color: '#1f3fae' }}>Заявка на техлист</h1>
 
       <div style={S.card}>
+        <Field label="Категория" required>
+          <input list="techlist-categories" style={{ ...S.input, ...bad(!category.trim()) }} value={category} onChange={e => setCategory(e.target.value)} placeholder="Щиты" />
+          <datalist id="techlist-categories">{CATEGORIES.map(c => <option key={c} value={c} />)}</datalist>
+        </Field>
         <Field label="Заказчик" required>
           <input style={{ ...S.input, ...bad(!client.trim()) }} value={client} onChange={e => setClient(e.target.value)} placeholder="Компания или ФИО" />
         </Field>
@@ -187,7 +195,7 @@ export default function TechlistForm() {
               </div>
             )}
             <Field label="Что делаем" required>
-              <input style={{ ...S.input, ...bad(b.name) }} value={it.name} onChange={e => setItem(i, { name: e.target.value })} placeholder="Например: сантехщит" />
+              <input style={{ ...S.input, ...bad(b.name) }} value={it.name} onChange={e => setItem(i, { name: e.target.value })} placeholder="Электрощит этажный" />
             </Field>
             <div style={S.row}>
               <Field label="Сколько штук" required>
@@ -197,14 +205,15 @@ export default function TechlistForm() {
                 <input inputMode="decimal" style={{ ...S.input, ...bad(b.price) }} value={it.price} onChange={e => setItem(i, { price: e.target.value })} />
               </Field>
             </div>
-            <Field label="Размеры">
-              <input style={S.input} value={it.dimensions} onChange={e => setItem(i, { dimensions: e.target.value })} placeholder="1000×800×200 мм" />
+            <Field label="Размеры и комплектация" required>
+              <textarea style={{ ...S.input, minHeight: 64, resize: 'vertical', ...bad(b.params) }} value={it.params} onChange={e => setItem(i, { params: e.target.value })}
+                placeholder="900×900×150 (рамка 1000×1000), 3 двери, 5 окошек, замок треугольник, RAL 7035" />
             </Field>
             <Field label="Фото или чертёж" required>
               <FilePicker files={it.files} onChange={files => setItem(i, { files })} invalid={tried && b.files} />
             </Field>
             <Field label="Комментарий">
-              <textarea style={{ ...S.input, minHeight: 64, resize: 'vertical' }} value={it.note} onChange={e => setItem(i, { note: e.target.value })} placeholder="Цвет, материал, объект — если знаете" />
+              <textarea style={{ ...S.input, minHeight: 64, resize: 'vertical' }} value={it.note} onChange={e => setItem(i, { note: e.target.value })} placeholder="Объект, пожелания — если есть" />
             </Field>
           </div>
         );

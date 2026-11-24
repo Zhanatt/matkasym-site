@@ -19,7 +19,8 @@
  * задачи за двое суток, а пока сервер не спит — ещё и каждую минуту.
  */
 const axios = require('axios');
-const { STAGES, APPROVAL_STAGE_TITLE, BEFORE_APPROVAL_TITLES, approveUrl, reworkUrl } = require('./rndBitrix');
+const { STAGES, APPROVAL_STAGE_TITLE, BEFORE_APPROVAL_TITLES, reworkUrl } = require('./rndBitrix');
+const { buildFromTasks } = require('./techlistMessage');
 
 const GROUP_ID = process.env.TECHLIST_GROUP_ID || '31';
 // Этапы после «Завершённых техлистов»: Техлисты с подписью, 3D, Чертёж, Норма расхода,
@@ -43,28 +44,67 @@ async function call(c, method, params) {
   return data;
 }
 
-// «Завершённые техлисты» = этап утверждения. Попасть туда можно только через страницу
-// «Оформить на утверждение» (она пишет TechlistApproval перед переносом). Перетащили
-// вручную — возвращаем в «Обработку техлиста» и пишем в чат, как оформить.
+// «Завершённые техлисты» = этап утверждения. Перенесли туда задачу — собираем сообщение
+// «Техлист на утверждение» из данных задач заказа (описание + PDF техлиста) и пишем его
+// в чат каждой задачи заказа. Чего-то не хватает — возвращаем в «Обработку техлиста»
+// и пишем, чего именно. Изделия одного заказа (общая метка ТЛ-…) идут одним сообщением
+// и переходят в «Завершённые» вместе.
+const orderTag = t => Object.values(t.tags || {}).map(x => x.title).find(x => /^ТЛ-/.test(x)) || '';
+const PRE_APPROVAL = new Set([STAGES.request, STAGES.processing, STAGES.approval]);
+
+async function loadFull(c, id) {
+  const { result } = await call(c, 'tasks.task.get', { taskId: id, select: ['ID', 'TITLE', 'DESCRIPTION', 'TAGS', 'STAGE_ID', 'GROUP_ID'] });
+  const files = (await call(c, 'task.item.getfiles', { TASKID: id })).result || [];
+  return { ...result.task, files };
+}
+
 async function checkApproval(c, task, list) {
   const moves = list.filter(h => h.field === 'STAGE').sort((a, b) => b.id - a.id);
   const move = moves.find(h => h.value?.to === APPROVAL_STAGE_TITLE) || moves[0];
   if (!move) return null;
   const at = new Date(move.createdDate).getTime();
   const TechlistApproval = require('../models/TechlistApproval');
-  const ok = await TechlistApproval.exists({
+  const done = await TechlistApproval.exists({
     taskId: String(task.id), kind: { $in: ['approval', 'restore'] },
-    createdAt: { $gte: new Date(at - 15 * 60 * 1000), $lte: new Date(at + 2 * 60 * 1000) },
+    $or: [{ moveId: String(move.id) }, { createdAt: { $gte: new Date(at - 15 * 60 * 1000), $lte: new Date(at + 2 * 60 * 1000) } }],
   });
-  if (ok) return null;
-  await TechlistApproval.create({ taskId: String(task.id), kind: 'bounce' }); // чтобы checkRework не вернул её обратно
-  await call(c, 'tasks.task.update', { taskId: task.id, fields: { STAGE_ID: STAGES.processing } });
-  await call(c, 'task.commentitem.add', { TASKID: task.id, fields: { POST_MESSAGE:
-    `⚠️ Задача возвращена в «Обработку техлиста». В «${APPROVAL_STAGE_TITLE}» её переводит только оформление на утверждение — `
-    + `заполните параметры и приложите PDF техлиста: [url=${approveUrl(task.id)}]Оформить на утверждение[/url]` } });
-  status.lastChange = { at: new Date().toISOString(), task: task.id, bounced: true };
-  console.log(`[rnd-auto-assign] задача ${task.id} «${task.title}»: перенесли в утверждение без оформления — вернули`);
-  return 'bounced';
+  if (done) return null;
+
+  const moved = await loadFull(c, task.id);
+  let order = [moved];
+  const tag = orderTag(moved);
+  if (tag) {
+    const r = await call(c, 'tasks.task.list', { filter: { GROUP_ID, TAG: tag }, select: ['ID', 'STAGE_ID', 'TAGS'] });
+    const ids = (r.result.tasks || []).filter(t => orderTag(t) === tag && PRE_APPROVAL.has(String(t.stageId))).map(t => String(t.id));
+    order = [];
+    for (const id of [...new Set([String(task.id), ...ids])].sort((a, b) => a - b)) {
+      order.push(id === String(task.id) ? moved : await loadFull(c, id));
+    }
+  }
+
+  const { problems, message } = buildFromTasks(order, moved);
+  if (problems.length) {
+    await TechlistApproval.create({ taskId: String(task.id), kind: 'bounce', moveId: String(move.id), message: problems.join('; ') });
+    await call(c, 'tasks.task.update', { taskId: task.id, fields: { STAGE_ID: STAGES.processing } });
+    await call(c, 'task.commentitem.add', { TASKID: task.id, fields: { POST_MESSAGE:
+      `⚠️ Не отправлено на утверждение — задача возвращена в «Обработку техлиста». Не хватает:\n`
+      + problems.map(p => `• ${p}`).join('\n')
+      + `\n\nДопишите в описание задачи строки вида «Категория: Щиты», приложите PDF и снова перенесите в «${APPROVAL_STAGE_TITLE}».` } });
+    status.lastChange = { at: new Date().toISOString(), task: task.id, bounced: problems };
+    console.log(`[rnd-auto-assign] задача ${task.id}: на утверждение не хватает — ${problems.join('; ')}`);
+    return 'bounced';
+  }
+
+  for (const t of order) {
+    const id = String(t.id);
+    await TechlistApproval.create({ taskId: id, kind: 'approval', moveId: id === String(task.id) ? String(move.id) : '', message });
+    await call(c, 'task.commentitem.add', { TASKID: id, fields: { POST_MESSAGE:
+      `${message}\n\nКлиент просит изменения? [url=${reworkUrl(id)}]Вернуть на доработку[/url]` } });
+    if (String(t.stageId) !== STAGES.approval) await call(c, 'tasks.task.update', { taskId: id, fields: { STAGE_ID: STAGES.approval } });
+  }
+  status.lastChange = { at: new Date().toISOString(), task: task.id, approval: order.map(t => t.id) };
+  console.log(`[rnd-auto-assign] на утверждение: задачи ${order.map(t => t.id).join(', ')}`);
+  return 'approval';
 }
 
 // Из «Завершённых техлистов» назад (в «Заявку» или «Обработку») — только через

@@ -31,7 +31,7 @@ app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/orders',   require('./routes/orders'));
 app.use('/api/catalog',  require('./routes/catalog'));  // AI-bot context API
 app.use('/api/shop',     require('./routes/shop'));     // Telegram Mini App — магазин в канале
-app.use('/api/techlist-approve', require('./routes/techlistApprove')); // оформление «Техлист на утверждение»
+app.use('/api/techlist-approve', require('./routes/techlistApprove')); // «Вернуть на доработку» с комментарием
 app.use('/api/techlist-form', require('./routes/techlistForm')); // публичная заявка на техлист → задачи R&D в Битриксе
 require('./lib/rndAutoAssign').start(); // R&D-канбан: кто перевёл задачу дальше «Завершённых техлистов» — тот ответственный
 app.use('/api/admin/social', require('./routes/social')); // автопубликации по площадкам

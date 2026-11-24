@@ -17,7 +17,6 @@
 const router = require('express').Router();
 const multer = require('multer');
 const axios  = require('axios');
-const { approveUrl } = require('../lib/rndBitrix');
 
 const PORTAL         = 'https://matkasymov.bitrix24.kz';
 const GROUP_ID       = process.env.TECHLIST_GROUP_ID       || '31';
@@ -89,6 +88,7 @@ const fmtNum = n => Number(n).toLocaleString('ru-RU');
 function describe({ order, item, index, total, others }) {
   const line = (label, value) => (value ? `[b]${label}:[/b] ${value}\n` : '');
   let d = '';
+  d += line('Категория', order.category);
   d += line('Заказчик', order.client);
   d += line('Менеджер', order.manager);
   d += line('Объект', order.object);
@@ -96,7 +96,7 @@ function describe({ order, item, index, total, others }) {
   d += line('Изделие', item.name);
   d += line('Количество', `${fmtNum(item.qty)} шт`);
   d += line('Цена за ед.', `${fmtNum(item.price)} сом`);
-  d += line('Размеры', item.dimensions);
+  d += line('Параметры', item.params);
   d += line('Материал / толщина', item.material);
   d += line('Покрытие / RAL', item.coating);
   d += line('Комментарий к изделию', item.note);
@@ -135,6 +135,7 @@ router.post('/', upload.any(), async (req, res) => {
 
     const now = new Date(Date.now() + 6 * 3600 * 1000); // Бишкек, UTC+6
     const order = {
+      category: clean(req.body.category, 100),
       client:   clean(req.body.client, 200),
       manager:  clean(req.body.manager, 100),
       object:   clean(req.body.object, 200),
@@ -145,19 +146,21 @@ router.post('/', upload.any(), async (req, res) => {
     };
 
     const problems = [];
+    if (!order.category) problems.push('категория');
     if (!order.client)  problems.push('заказчик');
     if (!order.manager) problems.push('менеджер');
     const maker = MAKERS.find(m => m.id === String(req.body.maker));
     if (!maker) problems.push('кто делает техлист');
     items = items.map((it, i) => {
       const item = {
-        name: clean(it.name, 200), dimensions: clean(it.dimensions, 200), material: clean(it.material, 200),
+        name: clean(it.name, 200), params: clean(it.params, 600), material: clean(it.material, 200),
         coating: clean(it.coating, 200), note: clean(it.note, 2000),
         qty: Number(String(it.qty).replace(',', '.')), price: Number(String(it.price).replace(/\s/g, '').replace(',', '.')),
       };
       if (!item.name) problems.push(`изделие ${i + 1}: название`);
+      if (!item.params) problems.push(`изделие ${i + 1}: размеры и комплектация`);
       if (!(item.qty > 0)) problems.push(`изделие ${i + 1}: количество`);
-      if (!(item.price >= 0) || String(it.price).trim() === '') problems.push(`изделие ${i + 1}: цена за ед.`);
+      if (!(item.price > 0)) problems.push(`изделие ${i + 1}: цена за ед.`);
       return item;
     });
 
@@ -195,12 +198,6 @@ router.post('/', upload.any(), async (req, res) => {
         task = await call(client, 'tasks.task.add', { fields });
       }
       const id = task.task.id;
-      // Ссылка на оформление утверждения — в описание (id задачи известен только после создания)
-      try {
-        await call(client, 'tasks.task.update', { taskId: id, fields: {
-          DESCRIPTION: `${fields.DESCRIPTION}\n\n[b]Готов техлист?[/b] [url=${approveUrl(id)}]Оформить на утверждение[/url]`,
-        } });
-      } catch (e) { warnings.push(`ссылка на утверждение не добавилась: ${e.message}`); }
       created.push({ id, title: item.name, url: `${PORTAL}/workgroups/group/${GROUP_ID}/tasks/task/view/${id}/` });
 
       for (const f of filesFor(i)) {
