@@ -5,13 +5,15 @@
  * Файл кладём как raw: картинкой Cloudinary не отдаёт PDF по ссылке без
  * отдельной настройки аккаунта, а raw открывается в браузере как есть.
  *
- * Ссылка постоянная — без номера версии (…/raw/upload/matkasym/drawings/X.pdf).
- * Замена: текущий файл переименовываем в архивное имя (…_v1.pdf), новый кладём
- * под прежним publicId с invalidate — через несколько секунд та же ссылка
- * отдаёт новый файл (проверено 10.11.2026).
+ * Ссылка постоянная — без номера версии. С 24.11.2026 файлы в Cloudflare R2
+ * (lib/storage.js): https://media.matkasym.com/drawings/X.pdf. Старые чертежи
+ * в Cloudinary работают по-прежнему, пока их не перенёс scripts/migrate-drawings-r2.js.
+ * Замена: текущий файл копируем в архивное имя (…_v1.pdf), новый кладём под
+ * прежним ключом (no-cache) — та же ссылка отдаёт новый файл.
  */
 const Drawing    = require('../models/Drawing');
 const cloudinary = require('./cloudinary');
+const storage    = require('./storage');
 
 const FOLDER = 'matkasym/drawings';
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -57,13 +59,23 @@ function checkFile(buffer) {
 }
 
 /** Новый чертёж. fields: title, code, caption, author, source, chatId, user */
+// Ключ в R2: drawings/<имя>_<время>.pdf (то же имя, что было в Cloudinary, без matkasym/)
+const r2Key = publicId => publicId.replace(/^matkasym\//, '');
+const inR2 = d => storage.isOurUrl(d.url);
+
 async function createDrawing(buffer, fileName, fields) {
   checkFile(buffer);
   const publicId = newPublicId(fileName);
-  await uploadRaw(buffer, publicId);
+  let url;
+  if (storage.isConfigured()) {
+    url = await storage.put(r2Key(publicId), buffer, 'application/pdf', { noCache: true, fileName: fileName || 'drawing.pdf' });
+  } else {
+    await uploadRaw(buffer, publicId);
+    url = stableUrl(publicId);
+  }
   return Drawing.create({
     ...fields, fileName: fileName || 'drawing.pdf', size: buffer.length,
-    publicId, url: stableUrl(publicId), fileUpdatedAt: new Date(),
+    publicId: storage.isConfigured() ? r2Key(publicId) : publicId, url, fileUpdatedAt: new Date(),
   });
 }
 
@@ -72,6 +84,21 @@ async function replaceDrawingFile(drawing, buffer, fileName, author) {
   checkFile(buffer);
   const n = (drawing.versions?.length || 0) + 1;
   const archiveId = drawing.publicId.replace(/\.pdf$/i, '') + `_v${n}.pdf`;
+  if (inR2(drawing)) {
+    // R2: прежний файл копией в архив, новый — под тем же ключом (та же ссылка)
+    const archUrl = await storage.copy(drawing.publicId, archiveId);
+    drawing.versions.push({
+      url: archUrl, publicId: archiveId, fileName: drawing.fileName, size: drawing.size,
+      author: drawing.lastAuthor || drawing.author, uploadedAt: drawing.fileUpdatedAt || drawing.createdAt,
+    });
+    await storage.put(drawing.publicId, buffer, 'application/pdf', { noCache: true, fileName: fileName || drawing.fileName });
+    drawing.fileName = fileName || drawing.fileName;
+    drawing.size = buffer.length;
+    drawing.fileUpdatedAt = new Date();
+    drawing.lastAuthor = author;
+    await drawing.save();
+    return drawing;
+  }
   const arch = await cloudinary.uploader.rename(drawing.publicId, archiveId,
     { resource_type: 'raw', overwrite: true, invalidate: true });
   drawing.versions.push({
@@ -94,9 +121,14 @@ async function replaceDrawingFile(drawing, buffer, fileName, author) {
   return drawing;
 }
 
-/** Удаляет чертёж со всеми версиями. Восстановить нельзя — бэкап в Cloudinary выключен. */
+/** Удаляет чертёж со всеми версиями. Восстановить нельзя (бэкапа нет ни в Cloudinary, ни в R2). */
 async function deleteDrawing(drawing) {
   const ids = [drawing.publicId, ...(drawing.versions || []).map(v => v.publicId)];
+  if (inR2(drawing)) {
+    for (const id of ids) await storage.remove(id);
+    await drawing.deleteOne();
+    return;
+  }
   for (const id of ids) {
     const r = await cloudinary.uploader.destroy(id, { resource_type: 'raw', invalidate: true });
     if (r.result !== 'ok' && r.result !== 'not found') throw new Error(`Cloudinary: ${r.result}`);
