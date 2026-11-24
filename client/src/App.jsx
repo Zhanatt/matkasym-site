@@ -6,6 +6,8 @@ import { Routes, Route } from 'react-router-dom';
 //   всё остальное — Продакт матрица (админка), публичная витрина отключена.
 const ShopApp     = lazy(() => import('./pages/shop/ShopApp'));
 const AdminRoutes = lazy(() => import('./AdminRoutes'));
+// /techlist — публичная заявка на техлист для менеджеров по продажам (без входа)
+const TechlistForm = lazy(() => import('./pages/techlist/TechlistForm'));
 
 // Плашка на предпросмотре «Правок сайта»: там боевая база, менять данные нельзя
 function PreviewBanner() {
@@ -25,6 +27,7 @@ export default function App() {
       <PreviewBanner />
       <Routes>
         <Route path="/shop/*" element={<ShopApp />} />
+        <Route path="/techlist" element={<TechlistForm />} />
         <Route path="/*"      element={<AdminRoutes />} />
       </Routes>
     </Suspense>
