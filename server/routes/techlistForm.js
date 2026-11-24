@@ -111,8 +111,12 @@ function describe({ order, item, index, total, others }) {
 // изменилось», сама проверка берёт данные из Битрикса. См. lib/rndAutoAssign.js.
 router.post('/b24-event', (req, res) => {
   res.json({ ok: true });
-  require('../lib/rndAutoAssign').sweep();
+  const auto = require('../lib/rndAutoAssign');
+  auto.status.lastEventAt = new Date().toISOString();
+  auto.sweep();
 });
+// Проверить, доходят ли события: время последнего события, проверки и смены ответственного
+router.get('/b24-event', (req, res) => res.json(require('../lib/rndAutoAssign').status));
 
 router.get('/config', (req, res) => res.json({ managers: managers(), makers: MAKERS.map(m => ({ id: m.id, name: m.name })), maxFile: MAX_FILE, maxFiles: MAX_FILES, maxTotal: MAX_TOTAL }));
 

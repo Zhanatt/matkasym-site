@@ -26,6 +26,7 @@ const GROUP_ID = process.env.TECHLIST_GROUP_ID || '31';
 const AUTO_STAGES = new Set((process.env.RND_AUTO_STAGES || '2285,2287,2289,2291,2293,2295').split(','));
 
 let lastSweep = Date.now() - 48 * 3600 * 1000;
+const status = { lastEventAt: null, lastSweepAt: null, lastChange: null };
 let running = null;
 let again = false;
 
@@ -53,6 +54,7 @@ async function checkTask(c, task) {
   const mover = String(move.user?.id || '');
   if (!mover || mover === String(task.responsibleId)) return null;
   await call(c, 'tasks.task.update', { taskId: task.id, fields: { RESPONSIBLE_ID: mover } });
+  status.lastChange = { at: new Date().toISOString(), task: task.id, to: mover };
   console.log(`[rnd-auto-assign] задача ${task.id} «${task.title}»: ${move.value?.to} → ответственный ${move.user.name} ${move.user.lastName || ''}`);
   return mover;
 }
@@ -76,6 +78,7 @@ async function sweepOnce() {
     start = data.next;
   }
   lastSweep = startedAt;
+  status.lastSweepAt = new Date(startedAt).toISOString();
 }
 
 // События приходят пачками (перенос карточки = несколько обновлений) — проверки не
@@ -100,4 +103,4 @@ function start() {
   setInterval(sweep, 60 * 1000).unref();
 }
 
-module.exports = { sweep, start, checkTask };
+module.exports = { sweep, start, checkTask, status };
