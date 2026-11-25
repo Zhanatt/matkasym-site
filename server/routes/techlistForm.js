@@ -184,6 +184,9 @@ router.post('/', upload.any(), async (req, res) => {
         DESCRIPTION: describe({ order, item, index: i, total: items.length, others }),
         GROUP_ID, STAGE_ID, RESPONSIBLE_ID: maker.id,
         TAGS: [order.code],
+        // Поля карточки (блок «Пользовательские поля»): из них собирается сообщение на утверждение
+        UF_TL_CATEGORY: order.category, UF_TL_CLIENT: order.client, UF_TL_MANAGER: order.manager,
+        UF_TL_PRODUCT: item.name, UF_TL_PARAMS: item.params, UF_TL_QTY: item.qty, UF_TL_PRICE: item.price,
       };
       let task;
       if (managerId) {

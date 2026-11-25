@@ -53,7 +53,7 @@ const orderTag = t => Object.values(t.tags || {}).map(x => x.title).find(x => /^
 const PRE_APPROVAL = new Set([STAGES.request, STAGES.processing, STAGES.approval]);
 
 async function loadFull(c, id) {
-  const { result } = await call(c, 'tasks.task.get', { taskId: id, select: ['ID', 'TITLE', 'DESCRIPTION', 'TAGS', 'STAGE_ID', 'GROUP_ID'] });
+  const { result } = await call(c, 'tasks.task.get', { taskId: id, select: ['ID', 'TITLE', 'DESCRIPTION', 'TAGS', 'STAGE_ID', 'GROUP_ID', 'UF_TL_CATEGORY', 'UF_TL_CLIENT', 'UF_TL_MANAGER', 'UF_TL_PRODUCT', 'UF_TL_PARAMS', 'UF_TL_QTY', 'UF_TL_PRICE'] });
   const files = (await call(c, 'task.item.getfiles', { TASKID: id })).result || [];
   return { ...result.task, files };
 }
@@ -89,7 +89,7 @@ async function checkApproval(c, task, list) {
     await call(c, 'task.commentitem.add', { TASKID: task.id, fields: { POST_MESSAGE:
       `⚠️ Не отправлено на утверждение — задача возвращена в «Обработку техлиста». Не хватает:\n`
       + problems.map(p => `• ${p}`).join('\n')
-      + `\n\nДопишите в описание задачи строки вида «Категория: Щиты», приложите PDF и снова перенесите в «${APPROVAL_STAGE_TITLE}».` } });
+      + `\n\nЗаполните поля в блоке «Пользовательские поля» карточки задачи (кнопка внизу карточки), приложите PDF и снова перенесите в «${APPROVAL_STAGE_TITLE}».` } });
     status.lastChange = { at: new Date().toISOString(), task: task.id, bounced: problems };
     console.log(`[rnd-auto-assign] задача ${task.id}: на утверждение не хватает — ${problems.join('; ')}`);
     return 'bounced';
