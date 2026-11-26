@@ -411,6 +411,11 @@ function pushRelease(doc, extra = {}) {
 async function approveChange(doc, user) {
   const ops = (doc.dataOps || []).filter(o => !o.error && !o.applied);
   if (doc.status !== 'ready' || (!doc.prNumber && !ops.length)) { const e = new Error('Утвердить можно только готовую правку'); e.status = 409; throw e; }
+  // Атомарно «занять» правку: второе нажатие (Telegram + сайт, двойной клик) не пройдёт.
+  // Без этого 26.11.2026 правка №8 внесла 21 товар дважды — каталог применяется ~25 с, статус всё это время был ready
+  const claimed = await SiteChange.updateOne({ _id: doc._id, status: 'ready' }, { $set: { status: 'merging', statusAt: new Date() } });
+  if (!claimed.modifiedCount) { const e = new Error('Правку уже утверждают — обновите страницу'); e.status = 409; throw e; }
+  doc.status = 'merging'; doc.statusAt = new Date();
   doc.decidedBy = user._id; doc.decidedAt = new Date();
   doc.messages.push({ kind: 'decision', author: user._id, authorName: user.name, text: '✅ Утверждено' });
 
@@ -418,7 +423,9 @@ async function approveChange(doc, user) {
   if (ops.length) {
     status(doc, `🗂 ${user.name} утвердил(а). Вношу изменения в каталог…`);
     await doc.save();
-    const results = await require('./siteOps').applyOps(doc.dataOps, user);
+    let results;
+    try { results = await require('./siteOps').applyOps(doc.dataOps, user); }
+    catch (e) { setStatus(doc, 'failed'); doc.error = `Сбой при внесении изменений каталога: ${e.message}`; await doc.save(); throw e; }
     doc.markModified('dataOps');
     const bad = results.filter(r => !r.ok);
     // Ссылка — на карточки всех внесённых товаров (точнее, чем страница от Claude)

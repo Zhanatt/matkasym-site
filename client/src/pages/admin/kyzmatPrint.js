@@ -78,11 +78,17 @@ function tubeSize(p) {
   return size.length && wall ? { size, wall } : null;
 }
 
+// Какие товары реально попали на страницы. Всё остальное из продаваемого печатается на листе
+// «Другие товары» — новый товар без своего раздела больше не пропадает молча (правило 26.11.2026)
+let SHOWN = new Set();
+const mark = list => { (list || []).forEach(p => p?._id && SHOWN.add(String(p._id))); return list; };
+
 function tubesPage(n, setLabel, info, products, priceType) {
   const cuts = products.filter(p => /резк/i.test(p.category || ''));
   const blocks = TUBE_KINDS.map(kind => {
     const items = products.filter(p => !cuts.includes(p) && tubeKind(p) === kind)
       .map(p => ({ p, ...tubeSize(p), price: priceFor(p, priceType) })).filter(x => x.size);
+    mark(items.map(x => x.p));
     if (!items.length) return null;
     // Простой список: строка = одна труба. Сетка «стенка × сечение» читалась
     // плохо — было непонятно, где сечение, где стенка, где цена (26.10.2026).
@@ -115,6 +121,7 @@ function tubesPage(n, setLabel, info, products, priceType) {
   });
   const shortCol = h[0] <= h[1] ? 0 : 1;
 
+  mark(cuts);
   const cutRows = cuts.map(p => ({
     label: specOf(p, /толщина/i) || String(p.name || '').match(/\(([^)]+)\)/)?.[1] || p.name,
     price: priceFor(p, priceType),
@@ -162,6 +169,7 @@ function serviceData(cat, items, priceType) {
     : servicePageFor(cat) || { title: cat, tagline: '' };
   // Фото — то же, что обложка карточки на сайте (самое новое из вариантов)
   const pick = (unit.photoFrom && items.find(p => unit.photoFrom.test(p.name || '') && p.images?.[0])) || coverOf(items);
+  mark(items);
   const rows = items.map(p => {
     const th = specOf(p, unit.rowSpec || /толщин/i);
     return {
@@ -264,7 +272,7 @@ const noSizes = s => String(s || '')
 
 const PER_GRID = 16;
 function gridPages(n, setLabel, info, products, priceType, { prices = true } = {}) {
-  const items = products.filter(p => p.images?.[0]);
+  const items = mark(products.filter(p => p.images?.[0]));
   const out = [];
   for (let i = 0; i < Math.max(items.length, 1); i += PER_GRID) {
     const chunk = items.slice(i, i + PER_GRID);
@@ -329,6 +337,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     if (!x) return;
     const hex = HEX.test(String(p.color || '').trim()) ? p.color.trim() : hexByCode.get(x.code);
     if (!hex) return;
+    mark([p]);
     const key = `${x.enamel ? 'e' : 'k'}|${x.code}|${x.finish}`;
     const prev = swatches.get(key);
     const price = Math.max(prev?.price || 0, priceFor(p, priceType));
@@ -381,6 +390,11 @@ function suppliesPages(n, setLabel, info, products, priceType) {
       mass: specOf(p, /масса/i) || '',
       price: priceFor(p, priceType),
     })).filter(x => x.t && x.fmt);
+  mark(sheets.map(x => x.p));
+  // Оцинкованный и нержавеющий лист показаны карточкой «вид листа»; г/к в каталог не печатаем намеренно
+  // (b402c31, 30.10.2026) — всё это не «потерянные» товары для листа «Другие товары»
+  mark(products.filter(p => /лист/i.test(p.category || '') && (KYZMAT_SHEET_KINDS.some(k => k.card?.test(p.name || ''))
+    || /г\/к|горяче/i.test(`${p.name} ${specOf(p, /^сталь/i) || ''}`))));
   // Рулон: строки — ширина (из «Ширина рулона»), длина разная, цена — из карточки или «по запросу»
   const rolls = products.filter(p => /рулон/i.test(p.category || '') && !isExample(p) && !p.hideInPdf);
   const rollRows = rolls.flatMap(p => {
@@ -388,10 +402,10 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     const length = specOf(p, /^длина/i) || 'разная';
     return (widths.length ? widths : ['—']).map(w => ({ w, length, price: priceFor(p, priceType), p }));
   });
-  const rollPhoto = printImage(rolls.find(p => p.images?.[0])?.images[0]);
+  mark(rolls); const rollPhoto = printImage(rolls.find(p => p.images?.[0])?.images[0]);
   // Картон: формат и слойность из характеристик
   const cartons = products.filter(p => /^картон/i.test(p.category || '') && !isExample(p) && !p.hideInPdf);
-  const cartonPhoto = printImage(cartons.find(p => p.images?.[0])?.images[0]);
+  mark(cartons); const cartonPhoto = printImage(cartons.find(p => p.images?.[0])?.images[0]);
   const priceCell = v => (v > 0 ? `<b>${fmt(v)}</b> сом` : '<i>по запросу</i>');
   // Рулон и картон — каждый на своём листе: крупное фото, описание, таблица
   const goodPage = (title, photo, desc, thead, rows, lead = '', info = null) => page(`
@@ -428,15 +442,45 @@ function suppliesPages(n, setLabel, info, products, priceType) {
         esc(String(specOf(p, /слой/i) || '—').replace(/\s*сло[её]в?/i, ''))}</td><td>${priceCell(priceFor(p, priceType))}</td></tr>`),
       'Гофрокартон для упаковки и защиты', KYZMAT_GOODS_INFO.carton));
   }
+  // Крепёж (болты, винты, саморезы…) — свой лист: таблицы по типу, цена за штуку или «по запросу».
+  // Без него категория «Крепёж» в каталог не попадала вовсе (26.11.2026)
+  const fasteners = products.filter(p => /креп|метиз/i.test(p.category || '') && !isExample(p) && !p.hideInPdf && p.productStatus !== 'undefined');
+  const seenF = new Set();   // одинаковые карточки (дубли) печатаем один раз
+  mark(fasteners);
+  const fastenersU = fasteners.filter(p => { const k = String(p.name || '').toLowerCase().replace(/\s+/g, ' ').trim(); return !seenF.has(k) && seenF.add(k); });
+  if (fasteners.length) {
+    const kindOf = p => (String(p.name || '').match(/^(болт|винт|саморез|гайк|шайб|заклёп|заклеп|шуруп|анкер|дюбел|шпильк)/i)?.[1] || 'Прочее')
+      .replace(/^гайк$/i, 'Гайки').replace(/^шайб$/i, 'Шайбы').replace(/^заклеп|^заклёп/i, 'Заклёпки').replace(/^дюбел$/i, 'Дюбели').replace(/^шпильк$/i, 'Шпильки')
+      .replace(/^болт$/i, 'Болты').replace(/^винт$/i, 'Винты').replace(/^саморез$/i, 'Саморезы').replace(/^шуруп$/i, 'Шурупы').replace(/^анкер$/i, 'Анкеры');
+    const kinds = [...fastenersU.reduce((m, p) => m.set(kindOf(p), [...(m.get(kindOf(p)) || []), p]), new Map())]
+      .sort((a, b) => (a[0] === 'Прочее') - (b[0] === 'Прочее') || b[1].length - a[1].length);
+    const anyPrice = fasteners.some(p => priceFor(p, priceType) > 0);
+    extraPages.push(page(`
+      ${head(setLabel)}
+      <div class="svc-head"><div class="kicker">Расходные материалы</div><h1 class="svc-h1">Крепёж</h1>
+        <p class="svc-lead">Болты, винты и саморезы по DIN и ГОСТ</p></div>
+      <div class="note-bar">${anyPrice ? 'Цена — за 1 шт.' : 'Цену уточняйте у менеджера.'}</div>
+      <div class="sheet-tables fast-tables">${kinds.map(([k, list]) => `
+        <div>
+          <h3 class="fmt">${esc(k)}</h3>
+          <table class="tlist fast-t${anyPrice ? '' : ' no-price'}">
+            <thead><tr><th>Наименование</th>${anyPrice ? '<th>Цена</th>' : ''}</tr></thead>
+            <tbody>${list.sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru', { numeric: true })).map(p => `<tr><td>${esc(p.name)}</td>${anyPrice
+              ? `<td>${priceCell(priceFor(p, priceType))}</td>` : ''}</tr>`).join('')}</tbody>
+          </table>
+        </div>`).join('')}</div>
+      ${foot()}`));
+  }
   const rollHtml = '';
   // Краска без кода RAL (например, пластиковая краска) в палитру не попадает —
   // печатаем её в «Ещё в наличии», чтобы новая позиция не пропадала из каталога
   const otherPaints = paints.filter(p => !paintOf(p) && p.productStatus !== 'undefined');
-  const rest = products.filter(p => (!paints.includes(p) || otherPaints.includes(p)) && !rolls.includes(p) && !cartons.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
-    && fitsCatalog(p));
+  const rest = products.filter(p => (!paints.includes(p) || otherPaints.includes(p)) && !rolls.includes(p) && !cartons.includes(p) && !fasteners.includes(p) && !/лист/i.test(p.category || '') && !isExample(p)
+    && fitsCatalog({ ...p, images: ['-'] }));
+  mark(rest);
   const norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const extraGoods = KYZMAT_EXTRA_GOODS.filter(g => !products.some(p => norm(p.name) === norm(g.name)));
-  if (sheets.length || rest.length || extraGoods.length) {
+  if (sheets.length) {
     const colsK = [...new Set(sheets.map(x => `${x.fmt} мм`))].sort();
     const anyPrice = sheets.some(x => x.price > 0);
     pages.push(page(`
@@ -464,14 +508,19 @@ function suppliesPages(n, setLabel, info, products, priceType) {
         </div>`;
       }).join('')}</div>` : ''}
       ${rollHtml}
-      ${rest.length || extraGoods.length ? `<h2 class="big">Ещё в наличии</h2><ul class="rest">${rest.map(p => {
-        const v = priceFor(p, priceType);
-        return `<li><span>${esc(p.name)}</span>${v > 0 ? `<b>${fmt(v)} сом</b>` : '<i>по запросу</i>'}</li>`;
-      }).join('')}${extraGoods.map(g => `<li><span class="rest-n">${g.image
-        ? `<img class="rest-ph" src="${esc(g.image)}" alt="" onerror="this.remove()">` : ''}${esc(g.name)}</span><i>по запросу</i></li>`).join('')}</ul>` : ''}
       ${foot()}`, sheets.length ? 'has-bg' : ''));
   }
   pages.push(...extraPages);
+  // «Ещё в наличии» — своим листом (на листе металла фон-картинка наезжала на строки с фото)
+  if (rest.length || extraGoods.length) pages.push(page(`
+      ${head(setLabel)}
+      ${rest.length || extraGoods.length ? `<h2 class="big">Ещё в наличии</h2><ul class="rest">${rest.map(p => {
+        const v = priceFor(p, priceType);
+        const ph = p.images?.[0] ? `<img class="rest-ph" src="${esc(printImage(p.images[0]))}" alt="" onerror="this.remove()">` : '';
+        return `<li><span class="rest-n">${ph}${esc(p.name)}</span>${v > 0 ? `<b>${fmt(v)} сом</b>` : '<i>по запросу</i>'}</li>`;
+      }).join('')}${extraGoods.map(g => `<li><span class="rest-n">${g.image
+        ? `<img class="rest-ph" src="${esc(g.image)}" alt="" onerror="this.remove()">` : ''}${esc(g.name)}</span><i>по запросу</i></li>`).join('')}</ul>` : ''}
+      ${foot()}`));
   return pages;
 }
 
@@ -561,6 +610,12 @@ h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 .tlist th:last-child, .tlist td:last-child { text-align: right; padding-right: 0; }
 .tlist td:first-child { font-weight: 700; }
 .tlist td b { color: ${RED}; font-size: 10pt; }
+.fast-tables { grid-template-columns: 1fr 1fr; }
+.fast-t { font-size: 8pt; }
+.fast-t td { padding: 1.6pt 4pt 1.6pt 0; }
+.fast-t td:first-child { font-weight: 500; }
+.fast-t.no-price th, .fast-t.no-price td { text-align: left !important; }
+.other-set { display: block; font-size: 7pt; color: ${MUTED}; font-weight: 400; }
 .tlist td i { font-style: normal; color: ${MUTED}; font-size: 8.5pt; }
 .grid { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
 .grid th, .grid td { padding: 4.6pt 3pt; text-align: center; border-bottom: .5pt solid ${LINE}; }
@@ -706,10 +761,10 @@ h3.fmt { font-size: 10pt; letter-spacing: .04em; text-transform: none; margin-bo
 .sheets td b { font-weight: 700; color: ${RED}; font-size: 10.5pt; margin-right: 6pt; }
 .sheets td small { font-size: 7.5pt; color: ${MUTED}; }
 .rest { list-style: none; font-size: 10pt; }
-.rest li { display: flex; justify-content: space-between; padding: 4pt 0; border-bottom: .5pt solid ${LINE}; }
+.rest li { display: flex; justify-content: space-between; align-items: center; padding: 4pt 0; border-bottom: .5pt solid ${LINE}; }
 .rest b { color: ${RED}; }
 .rest-n { display: flex; align-items: center; gap: 8pt; }
-.rest-ph { width: 28pt; height: 28pt; object-fit: cover; border-radius: 2pt; }
+.rest-ph { width: 42pt; height: 42pt; object-fit: cover; border-radius: 2pt; }
 .rest i { font-style: normal; color: ${MUTED}; font-size: 8.5pt; }
 
 /* ── О направлении ── */
@@ -771,13 +826,30 @@ function sanjyraPage(setLabel, items) {
     ${foot()}`);
 }
 
+// Лист «Другие товары»: фото (если есть), название, сет, цена. По 14 строк на лист
+function otherGoodsPages(missed, priceType) {
+  const out = [];
+  for (let i = 0; i < missed.length; i += 14) {
+    out.push(page(`
+      ${head('KYZMAT')}
+      <h2 class="big">Другие товары</h2>
+      <ul class="rest other">${missed.slice(i, i + 14).map(({ p, set }) => {
+        const v = priceFor(p, priceType);
+        const ph = p.images?.[0] ? `<img class="rest-ph" src="${esc(printImage(p.images[0]))}" alt="" onerror="this.remove()">` : '';
+        return `<li><span class="rest-n">${ph}<span>${esc(p.name)}<small class="other-set">${esc(set)}</small></span></span>${v > 0 ? `<b>${fmt(v)} сом</b>` : '<i>по запросу</i>'}</li>`;
+      }).join('')}</ul>
+      ${foot()}`));
+  }
+  return out;
+}
+
 const LAYOUTS = {
   'dayar-tutuk': tubesPage,
   'onuguu-set': servicesPage,
   'poly-fabrikat': (n, l, i, ps, pt) => {
     const sj = ps.filter(p => /^SANJYRA/i.test(p.name || ''));
     const pages = gridPages(n, l, i, ps.filter(p => !sj.includes(p)), pt, { prices: false });
-    if (sj.length) pages.push(sanjyraPage(l, sj));
+    if (sj.length) pages.push(sanjyraPage(l, mark(sj)));
     return pages;
   },
   'yntymak-zakup': suppliesPages,
@@ -787,6 +859,7 @@ const LAYOUTS = {
 // сета (без фильтра fitsCatalog): палитре нужны и краски без остатка, а листам —
 // позиции без фото. Каждый раздел отбирает своё сам.
 export function kyzmatHtml(groups, priceType = 'price', { base = '' } = {}) {
+  SHOWN = new Set();
   const sections = [];
   let pageNo = 3;                                   // 1 — титул, 2 — о направлении
   groups.forEach((g, i) => {
@@ -794,13 +867,22 @@ export function kyzmatHtml(groups, priceType = 'price', { base = '' } = {}) {
     const layout = LAYOUTS[g.setKey];
     const products = layout === suppliesPages ? (g.products || []).filter(p => !p.hideInPdf)
       // Услуге фото не обязательно: строка «Ткань» печатается и без снимка
-      : layout === servicesPage ? (g.products || []).filter(p => fitsCatalog({ ...p, images: ['-'] }) && !isExample(p))
+      // Услуге и трубам (таблица) фото не обязательно: строка печатается и без снимка
+      : layout === servicesPage || layout === tubesPage ? (g.products || []).filter(p => fitsCatalog({ ...p, images: ['-'] }) && !isExample(p))
       : (g.products || []).filter(p => fitsCatalog(p) && !isExample(p));
     const pages = layout ? layout(i + 1, g.groupName, info, products, priceType)
       : gridPages(i + 1, g.groupName, info, products, priceType);
     sections.push({ n: i + 1, label: g.groupName, info, page: pageNo, pages });
     pageNo += pages.length;
   });
+  // Страховка: продаваемое, что ни один раздел не напечатал (нет своего раздела, нет размера, нет кода цвета…)
+  const missed = groups.flatMap(g => (g.products || []).map(p => ({ p, set: g.groupName })))
+    .filter(({ p }) => !SHOWN.has(String(p._id)) && !isExample(p) && p.productStatus !== 'undefined' && fitsCatalog({ ...p, images: ['-'] }));
+  if (missed.length) {
+    const pages = otherGoodsPages(missed, priceType);
+    sections.push({ n: sections.length + 1, label: 'Другие товары', info: { title: 'Другие товары' }, page: pageNo, pages });
+    pageNo += pages.length;
+  }
   const cover = PRINT_COVERS.kyzmat;
   return `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="color-scheme" content="only light">
