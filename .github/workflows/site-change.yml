@@ -56,7 +56,7 @@ jobs:
       - name: Claude разбирается
         run: |
           { cat .github/site-change/understand.md; echo; echo "=================="; cat /tmp/task.md; } > /tmp/understand.md
-          claude -p "$(cat /tmp/understand.md)" --model "$MODEL" --max-turns 25 \
+          claude -p "$(cat /tmp/understand.md)" --model "${CLAUDE_MODEL:-$MODEL}" --max-turns 25 \
             --allowedTools "Read,Glob,Grep" --disallowedTools "Edit,MultiEdit,Write,Bash,WebFetch,WebSearch" \
             --output-format json > /tmp/u.json || true
       - id: u
@@ -113,7 +113,7 @@ jobs:
         run: |
           node .github/site-change/bot.mjs stage "✏️ Claude вносит правку"
           printf '\n\nТЫ УЖЕ РАЗОБРАЛСЯ В ЗАДАЧЕ И СООБЩИЛ ДИЗАЙНЕРУ:\n%s\nСделай ровно это — не больше и не меньше.\n' "$UNDERSTANDING" >> /tmp/task.md
-          claude -p "$(cat /tmp/task.md)" --model "$MODEL" --max-turns 60 \
+          claude -p "$(cat /tmp/task.md)" --model "${CLAUDE_MODEL:-$MODEL}" --max-turns 60 \
             --permission-mode acceptEdits --allowedTools "$CLAUDE_TOOLS" \
             --disallowedTools "Bash,WebFetch,WebSearch" \
             --output-format json > /tmp/claude1.json || true
@@ -143,7 +143,7 @@ jobs:
             tail -80 /tmp/build.log
             echo; echo "Исходная задача:"; cat /tmp/task.md
           } > /tmp/fix.md
-          claude -p "$(cat /tmp/fix.md)" --model "$MODEL" --max-turns 30 \
+          claude -p "$(cat /tmp/fix.md)" --model "${CLAUDE_MODEL:-$MODEL}" --max-turns 30 \
             --permission-mode acceptEdits --allowedTools "$CLAUDE_TOOLS" \
             --disallowedTools "Bash,WebFetch,WebSearch" \
             --output-format json > /tmp/claude2.json || true

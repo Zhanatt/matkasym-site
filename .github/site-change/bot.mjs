@@ -58,6 +58,7 @@ if (cmd === 'task') {
   console.log(`::add-mask::${t.claudeToken}`);
   fs.appendFileSync(process.env.GITHUB_ENV, `CLAUDE_CODE_OAUTH_TOKEN=${t.claudeToken}\n`);
   delete t.claudeToken;
+  if (t.model && /^[a-z0-9.-]+$/i.test(t.model)) fs.appendFileSync(process.env.GITHUB_ENV, `CLAUDE_MODEL=${t.model}\n`);
   fs.mkdirSync('.site-change-refs', { recursive: true });
   for (const img of t.images || []) {
     const r = await fetch(img.url);

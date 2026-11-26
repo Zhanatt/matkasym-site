@@ -54,7 +54,7 @@ async function ensureToken(user) {
 // Отправить задачу (или доработку) в GitHub. user — чей Claude будет работать
 async function startRun(doc, user) {
   await ensureToken(user);
-  doc.runBy = user._id; doc.runByName = user.name;
+  doc.runBy = user._id; doc.runByName = user.name; doc.model = sc.MODEL;
   setStatus(doc, 'queued');
   doc.previewReadyAt = undefined;
   sc.status(doc, doc.runs?.length ? '📨 Уточнение передано Claude — он доработает правку' : '📨 Задача передана Claude');
@@ -93,6 +93,7 @@ async function continueIfPending(doc) {
 const view = (d, approver) => {
   const o = d.toObject ? d.toObject() : d;
   o.approver = approver;
+  o.modelLabel = sc.modelLabel(o.model || sc.MODEL);
   o.stuck = ['queued', 'working', 'merging'].includes(o.status) && Date.now() - new Date(o.statusAt).getTime() > STUCK_MS;
   return o;
 };
@@ -257,7 +258,7 @@ hook.get('/:id/task', async (req, res) => {
     if (!d) return res.status(404).json({ message: 'not found' });
     const claudeToken = await sc.readToken(d.runBy || d.author);
     if (!claudeToken) return res.status(412).json({ message: 'У того, кто запустил правку, не подключён Claude' });
-    res.json({ number: d.number, title: d.title, status: d.status, claudeToken, ...sc.buildPrompt(d) });
+    res.json({ number: d.number, title: d.title, status: d.status, claudeToken, model: sc.MODEL, ...sc.buildPrompt(d) });
   } catch (e) { fail(res, e); }
 });
 

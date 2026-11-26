@@ -40,6 +40,9 @@ function checkSecret(given) {
 // ── Личные токены Claude ────────────────────────────────────────────────────
 
 const TOKEN_RE = /^sk-ant-oat01-[A-Za-z0-9_-]{20,}$/;
+// Модель, которой работает Claude дизайнеров. Источник один — сервер: воркфлоу берёт её из задачи
+const MODEL = process.env.SITE_CHANGE_MODEL || 'claude-sonnet-5-5';
+const modelLabel = id => { const m = String(id).match(/^claude-([a-z]+)-(\d+)-(\d+)/); return m ? `Claude ${m[1][0].toUpperCase() + m[1].slice(1)} ${m[2]}.${m[3]}` : id; };
 const TOKEN_TTL_DAYS = 365;   // setup-token живёт год
 const tokenKey = () => {
   if (!process.env.SITE_CHANGE_SECRET) throw new Error('На сервере не задан SITE_CHANGE_SECRET');
@@ -106,7 +109,7 @@ async function readToken(userId) {
 
 async function tokenInfo(userId) {
   let t = await ClaudeToken.findOne({ user: userId }, 'last4 addedAt lastError account accountAuto profileTried').lean();
-  if (!t) return { connected: false };
+  if (!t) return { connected: false, model: modelLabel(MODEL) };
   // Токены, подключённые до этой функции: один раз спрашиваем Anthropic, чей он
   if (!t.profileTried) {
     const acc = await readToken(userId).then(fetchClaudeAccount).catch(() => null);
@@ -114,7 +117,7 @@ async function tokenInfo(userId) {
     if (acc) t = { ...t, account: acc, accountAuto: true };
   }
   const expiresAt = new Date(new Date(t.addedAt).getTime() + TOKEN_TTL_DAYS * 864e5);
-  return { connected: true, last4: t.last4, addedAt: t.addedAt, expiresAt, lastError: t.lastError || null, account: t.account || null, accountAuto: !!t.accountAuto };
+  return { connected: true, last4: t.last4, addedAt: t.addedAt, expiresAt, lastError: t.lastError || null, account: t.account || null, accountAuto: !!t.accountAuto, model: modelLabel(MODEL) };
 }
 
 const removeToken = userId => ClaudeToken.deleteOne({ user: userId });
@@ -525,4 +528,4 @@ async function notifyOwnersReady(change) {
     [['👀 Предпросмотр', change.previewUrl], ['Открыть', adminLink(change._id)]], decideRow(change));
 }
 
-module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, setTokenAccount, fileToText, opsSummary, tgText, removeToken, setTokenError };
+module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, setTokenAccount, fileToText, opsSummary, MODEL, modelLabel, tgText, removeToken, setTokenError };

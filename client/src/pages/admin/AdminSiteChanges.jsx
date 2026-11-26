@@ -120,11 +120,11 @@ function MyClaude({ me, onClose, onChanged }) {
         <div style={{ background: me.lastError ? C.redWash : C.greenWash, color: me.lastError ? C.redDark : C.green, borderRadius: 12, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
           {me.lastError ? `⚠️ ${me.lastError}` : '✅ Подключён'}
           {me.account ? <> — аккаунт <b>{me.account}</b></> : <> — <span style={{ opacity: .8 }}>аккаунт не определён, впишите почту ниже</span></>}
-          <div style={{ fontSize: 12, opacity: .85, marginTop: 3 }}>токен …{me.last4} · подключён {new Date(me.addedAt).toLocaleDateString('ru')} · действует до {new Date(me.expiresAt).toLocaleDateString('ru')}</div>
+          <div style={{ fontSize: 12, opacity: .85, marginTop: 3 }}>модель {me.model} · токен …{me.last4} · подключён {new Date(me.addedAt).toLocaleDateString('ru')} · действует до {new Date(me.expiresAt).toLocaleDateString('ru')}</div>
         </div>
       )}
       <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>
-        Правки, которые вы отправляете, делает <b>ваш</b> Claude — по вашей подписке. Подключить нужно один раз (токен действует год).
+        Правки, которые вы отправляете, делает <b>ваш</b> Claude ({me?.model || 'Claude'}) — по вашей подписке. Подключить нужно один раз (токен действует год).
         Токен хранится на сайте зашифрованным, его никто не видит.
       </div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 14, background: C.slateWash, borderRadius: 10, padding: 3, width: 'fit-content' }}>
@@ -454,7 +454,7 @@ function ChatView({ id, isOwner, me, onChanged, onCreated, onOpenClaude }) {
                 <Badge status={d.status} />
               </div>
               <div style={{ fontSize: 12, color: C.muted, padding: '0 4px 6px' }}>
-                {d.authorName}{d.runByName ? ` · делает Claude: ${d.runByName}` : ''}
+                {d.authorName}{d.runByName ? ` · делает ${d.modelLabel || 'Claude'} (подписка: ${d.runByName})` : d.modelLabel ? ` · ${d.modelLabel}` : ''}
                 {isOwner && d.runUrl && <> · <a href={d.runUrl} target="_blank" rel="noreferrer" style={{ color: C.muted }}>журнал</a></>}
                 {isOwner && d.prUrl && <> · <a href={d.prUrl} target="_blank" rel="noreferrer" style={{ color: C.muted }}>код</a></>}
               </div>
