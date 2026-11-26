@@ -81,6 +81,7 @@ export async function downloadReady(ready, onUpdating) {
   const url = info.url || ready.url;
   if (!url) return false;
   await saveFile({ url, filename: info.filename || ready.filename });
-  if (info.status !== 'ready') alert('В каталоге есть изменения, новый файл ещё собирается. Сейчас скачана последняя готовая версия.');
+  if (info.status === 'building') alert('Скачана прошлая версия каталога — в нём ещё нет последних изменений.\n\nНовый файл собирается, обычно 10–15 минут. Нажмите «PDF» ещё раз позже: когда новый будет готов, скачается сразу, без этого сообщения.');
+  else if (info.status !== 'ready') alert('Скачана прошлая версия каталога — новый файл собрать не удалось. Сообщите Жанату.');
   return true;
 }

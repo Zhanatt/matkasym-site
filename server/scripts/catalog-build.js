@@ -10,30 +10,37 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const mongoose = require('mongoose');
 const MONGO_URI = require('../lib/atlas');
-const cloudinary = require('cloudinary').v2;
+const storage = require('../lib/storage');
 const { parseKey, allKeys, fingerprint, getFile, col, SETS } = require('../lib/catalogFiles');
 
-cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET });
 
 const WORK = fs.mkdtempSync(path.join(os.tmpdir(), 'catalogs-'));
 const force = process.argv.includes('--force');
 
 async function publish(key, k, file, fp) {
   // Связь на больших файлах рвётся (EPIPE): без повтора в реестре остался бы прошлый файл
-  let up;
-  for (let i = 0; !up; i++) {
+  // Хранилище — Cloudflare R2 (Cloudinary отключён 11.2026). Имя с версией: ссылка неизменна,
+  // браузер и CDN кэшируют её навсегда, а новая сборка — новая ссылка
+  const buf = fs.readFileSync(file);
+  const objKey = `catalogs/${k.name}-${Date.now().toString(36)}.pdf`;
+  const prev = (await getFile(key))?.url;
+  let url;
+  for (let i = 0; !url; i++) {
     try {
-      up = await cloudinary.uploader.upload(file, { resource_type: 'raw', public_id: `matkasym/catalogs/${k.name}.pdf`, overwrite: true, invalidate: true, timeout: 300000 });
+      url = await storage.put(objKey, buf, 'application/pdf', { fileName: k.filename });
     } catch (e) {
       if (i >= 3) throw e;
-      console.error('  заливка не удалась, повтор:', e.message || e.error?.message);
+      console.error('  заливка не удалась, повтор:', e.message);
       await new Promise(z => setTimeout(z, 5000 * (i + 1)));
     }
   }
-  await col().updateOne({ _id: key }, { $set: { url: up.secure_url, fingerprint: fp, filename: k.filename, bytes: up.bytes, builtAt: new Date(), requested: false },
+  await col().updateOne({ _id: key }, { $set: { url, fingerprint: fp, filename: k.filename, bytes: buf.length, builtAt: new Date(), requested: false },
     $unset: { buildError: '', errorFingerprint: '' } }, { upsert: true });
-  console.log(`  ✓ ${key}: ${(up.bytes / 1048576).toFixed(1)} МБ`);
-  return up.secure_url;
+  // прошлую версию из R2 убрать (из Cloudinary — не трогаем)
+  const prevKey = storage.keyFromUrl(prev);
+  if (prevKey && prevKey !== objKey) await storage.remove(prevKey).catch(() => {});
+  console.log(`  ✓ ${key}: ${(buf.length / 1048576).toFixed(1)} МБ`);
+  return url;
 }
 
 // Каталог уже свежий — ничего не делаем: сборка стоит сотни обращений к Cloudinary за фото
