@@ -557,6 +557,27 @@ export default function AdminSiteChanges() {
   const [narrow, setNarrow] = useState(() => window.innerWidth < 860);
   useEffect(() => { const f = () => setNarrow(window.innerWidth < 860); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
 
+  // Чат занимает ровно остаток экрана под всем, что выше (плашка Telegram и т.п.) —
+  // поле ввода всегда видно, листается только переписка
+  const pageRef = useRef(null);
+  useEffect(() => {
+    const el = pageRef.current; if (!el) return;
+    const main = el.closest('.admin-main');
+    const fit = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY + (main?.scrollTop || 0);
+      const pad = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0;
+      el.style.height = Math.max(360, Math.floor(window.innerHeight - top - pad)) + 'px';
+    };
+    fit();
+    el.addEventListener('animationend', fit);   // появление страницы сдвигает её — пересчитать после
+    window.addEventListener('resize', fit);
+    const mo = new MutationObserver(() => requestAnimationFrame(fit));   // плашку закрыли/показали
+    if (main) mo.observe(main, { childList: true, subtree: true, attributes: false });
+    const ro = new ResizeObserver(() => fit());
+    if (el.previousElementSibling) ro.observe(el.previousElementSibling);
+    return () => { el.removeEventListener('animationend', fit); window.removeEventListener('resize', fit); mo.disconnect(); ro.disconnect(); };
+  }, []);
+
   const load = useCallback(() => getSiteChanges().then(r => setData(r.data)).catch(e => setErr(errMsg(e))), []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -575,7 +596,7 @@ export default function AdminSiteChanges() {
   const showChat = !narrow || !!openId || params.get('new') === '1' || filter === 'merged';
 
   return (
-    <div className="admin-page sc-page" style={{ display: 'flex', flexDirection: 'column', maxWidth: 1280 }}>
+    <div ref={pageRef} className="admin-page sc-page" style={{ display: 'flex', flexDirection: 'column', maxWidth: 1280 }}>
       <style>{`@keyframes scPulse{0%,100%{opacity:.3}50%{opacity:1}} .sc-dots{animation:scPulse 1.4s ease-in-out infinite;letter-spacing:2px}
         .sc-page{height:calc(100vh - 40px)}
         @media (max-width:900px){
