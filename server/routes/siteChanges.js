@@ -282,20 +282,20 @@ hook.post('/:id/callback', async (req, res) => {
       if (!closed) {
         setStatus(doc, 'working');
         if (b.stage) sc.status(doc, String(b.stage).slice(0, 300));
-        if (b.say) doc.messages.push({ kind: 'bot', authorName: 'Claude', text: String(b.say).slice(0, 4000) });
+        if (b.say) doc.messages.push({ kind: 'bot', authorName: sc.modelLabel(doc.model || sc.MODEL), text: String(b.say).slice(0, 4000) });
         if (b.costUsd) doc.costUsd = Math.round(((doc.costUsd || 0) + Number(b.costUsd)) * 10000) / 10000;
       }
     } else if (b.status === 'question') {
       // Claude не стал править: уточняет задачу или объясняет, что это не правка внешнего вида
       doc.runs.push({ ok: true, costUsd: Number(b.costUsd) || 0, summary: 'вопрос', runUrl: b.runUrl });
       doc.costUsd = Math.round(((doc.costUsd || 0) + (Number(b.costUsd) || 0)) * 10000) / 10000;
-      doc.messages.push({ kind: 'bot', authorName: 'Claude', text: String(b.text || '').slice(0, 4000) });
+      doc.messages.push({ kind: 'bot', authorName: sc.modelLabel(doc.model || sc.MODEL), text: String(b.text || '').slice(0, 4000) });
       if (!closed) setStatus(doc, 'question');
     } else if (b.status === 'ready' || b.status === 'failed') {
       const cost = Number(b.costUsd) || 0;
       doc.runs.push({ ok: b.status === 'ready', costUsd: cost, summary: b.summary, runUrl: b.runUrl });
       doc.costUsd = Math.round(((doc.costUsd || 0) + cost) * 10000) / 10000;
-      if (b.summary) doc.messages.push({ kind: 'bot', authorName: 'Claude', text: String(b.summary).slice(0, 4000) });
+      if (b.summary) doc.messages.push({ kind: 'bot', authorName: sc.modelLabel(doc.model || sc.MODEL), text: String(b.summary).slice(0, 4000) });
       if (!closed) {
         if (b.status === 'ready') {
           if (b.prNumber) { doc.prNumber = b.prNumber; doc.prUrl = b.prUrl; doc.previewUrl = sc.previewUrl(b.prNumber); }

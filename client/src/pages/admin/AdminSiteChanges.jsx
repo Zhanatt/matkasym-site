@@ -280,7 +280,7 @@ function Bubble({ m }) {
     <div style={{ display: 'flex', justifyContent: bot ? 'flex-start' : 'flex-end', margin: '10px 0' }}>
       <div style={{ maxWidth: '82%' }}>
         <div style={{ fontSize: 11, color: C.muted, margin: bot ? '0 0 3px 4px' : '0 4px 3px 0', textAlign: bot ? 'left' : 'right' }}>
-          {bot ? '🤖 Claude' : m.authorName} · {fmtDate(m.at)}{m.pending ? ' · ⏳ в очереди' : ''}
+          {bot ? `🤖 ${m.authorName || 'Claude'}` : m.authorName} · {fmtDate(m.at)}{m.pending ? ' · ⏳ в очереди' : ''}
         </div>
         <div style={{
           background: bot ? '#fff' : '#f1efe9', border: bot ? `1px solid ${C.line}` : 'none',
