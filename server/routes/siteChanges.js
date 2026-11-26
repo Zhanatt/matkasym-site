@@ -265,7 +265,8 @@ hook.post('/:id/callback', async (req, res) => {
     // Лимит подписки / недействительный токен — отметить у владельца токена
     const tokenUser = doc.runBy || doc.author;
     if (b.tokenError) sc.setTokenError(tokenUser, String(b.tokenError).slice(0, 300)).catch(() => {});
-    else if (b.status === 'ready') sc.setTokenError(tokenUser, null).catch(() => {});
+    // Claude ответил (готово, вопрос или «понял») — токен рабочий, старое предупреждение снять
+    else if (b.status === 'ready' || b.status === 'question' || Number(b.costUsd) > 0) sc.setTokenError(tokenUser, null).catch(() => {});
 
     if (b.status === 'working') {
       if (!closed) {
