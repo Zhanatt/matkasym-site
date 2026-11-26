@@ -164,14 +164,17 @@ function MyClaude({ me, onClose, onChanged }) {
 // или скрепкой. Первое сообщение создаёт правку, следующие — уточнения к ней.
 
 const isPdf = u => /\.pdf(\?|$)/i.test(u);
+// Картинка: по расширению; старые вложения Cloudinary без расширения — тоже картинки
+const isImg = u => { const p = String(u).split('?')[0]; return /\.(png|jpe?g|webp|gif|svg|heic|avif|bmp)$/i.test(p) || (/cloudinary\.com/.test(p) && !/\.[a-z0-9]{1,6}$/i.test(p)); };
+const fileName = u => { try { return decodeURIComponent(String(u).split('?')[0].split('/').pop()); } catch { return 'файл'; } };
+const fileIcon = n => /\.(xlsx?|xlsm|ods|csv)$/i.test(n) ? '📊' : /\.pdf$/i.test(n) ? '📄' : /\.(docx?|rtf|txt|md)$/i.test(n) ? '📝' : /\.(zip|rar|7z)$/i.test(n) ? '🗜' : '📎';
 const MAX_FILES = 10, MAX_MB = 15;
 
 function useFiles() {
   const [files, setFiles] = useState([]);
   const [err, setErr] = useState('');
   const add = list => {
-    const ok = [...list].filter(f => /^image\//.test(f.type) || f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
-    if (ok.length < list.length) setErr('Можно прикладывать картинки и PDF');
+    const ok = [...list];
     const big = ok.find(f => f.size > MAX_MB * 1024 * 1024);
     if (big) { setErr(`«${big.name}» больше ${MAX_MB} МБ`); return; }
     setFiles(prev => [...prev, ...ok.map(f => ({ f, url: /^image\//.test(f.type) ? URL.createObjectURL(f) : null }))].slice(0, MAX_FILES));
@@ -216,7 +219,7 @@ function Composer({ disabled, placeholder, onSend, hint }) {
             <div key={i} style={{ position: 'relative' }}>
               {x.url
                 ? <img src={x.url} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, border: `1px solid ${C.line}` }} />
-                : <div style={{ width: 64, height: 64, borderRadius: 10, border: `1px solid ${C.line}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: C.muted, padding: 4, boxSizing: 'border-box', textAlign: 'center', overflow: 'hidden' }}>📄<span style={{ wordBreak: 'break-all', lineHeight: 1.1 }}>{x.f.name.slice(0, 18)}</span></div>}
+                : <div style={{ width: 64, height: 64, borderRadius: 10, border: `1px solid ${C.line}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: C.muted, padding: 4, boxSizing: 'border-box', textAlign: 'center', overflow: 'hidden' }}>{fileIcon(x.f.name)}<span style={{ wordBreak: 'break-all', lineHeight: 1.1 }}>{x.f.name.slice(0, 18)}</span></div>}
               <button onClick={() => fl.remove(i)} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, border: 'none', background: '#1c1c1c', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1 }}>×</button>
             </div>
           ))}
@@ -229,9 +232,9 @@ function Composer({ disabled, placeholder, onSend, hint }) {
         placeholder={placeholder}
         className="sc-ta" style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', fontSize: 15, lineHeight: 1.5, fontFamily: 'inherit', background: 'transparent', boxSizing: 'border-box', maxHeight: 240 }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
-        <button onClick={() => inputRef.current?.click()} disabled={disabled} title="Прикрепить картинку или PDF"
+        <button onClick={() => inputRef.current?.click()} disabled={disabled} title="Прикрепить файлы: картинки, PDF, Excel, Word…"
           className="sc-icon" style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>📎</button>
-        <input ref={inputRef} type="file" accept="image/*,application/pdf" multiple hidden onChange={e => { fl.add(e.target.files); e.target.value = ''; }} />
+        <input ref={inputRef} type="file" multiple hidden onChange={e => { fl.add(e.target.files); e.target.value = ''; }} />
         <span className={fl.err ? '' : 'sc-hint'} style={{ flex: 1, fontSize: 12, color: fl.err ? C.redDark : C.muted }}>{fl.err || hint}</span>
         <button onClick={send} disabled={disabled || busy || !text.trim()} title="Отправить (Enter)"
           className="sc-icon" style={{ border: 'none', background: !text.trim() || disabled ? '#d9d6d0' : C.red, color: '#fff', borderRadius: 10, width: 34, height: 34, flexShrink: 0, cursor: 'pointer', fontSize: 17, fontWeight: 700 }}>
@@ -246,8 +249,9 @@ function Attachments({ urls }) {
   if (!urls?.length) return null;
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-      {urls.map(u => isPdf(u)
-        ? <a key={u} href={u} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 10px', fontSize: 13, color: C.text, textDecoration: 'none', background: '#fff' }}>📄 PDF</a>
+      {urls.map(u => !isImg(u)
+        ? <a key={u} href={u} target="_blank" rel="noreferrer" title={fileName(u)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${C.line}`, borderRadius: 10, padding: '8px 10px', fontSize: 13, color: C.text, textDecoration: 'none', background: '#fff', maxWidth: 260 }}>
+            {fileIcon(fileName(u))} <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{/^\d+-\w+\.pdf$/.test(fileName(u)) ? 'PDF' : fileName(u)}</span></a>
         : <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: `1px solid ${C.line}` }} /></a>)}
     </div>
   );

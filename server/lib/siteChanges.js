@@ -142,7 +142,16 @@ function buildPrompt(change) {
   const [first, ...rest] = before.length ? now : change.messages;
   const imgs = [];
   const withImages = m => {
-    const refs = (m.images || []).map(url => { imgs.push(url); return `.site-change-refs/${imgs.length}${extOf(url)} (ссылка для фото товара: ${url})`; });
+    const refs = (m.images || []).map(url => {
+      imgs.push(url);
+      const local = `.site-change-refs/${imgs.length}${extOf(url)}`;
+      if (isImageUrl(url)) return `${local} (ссылка для фото товара: ${url})`;
+      if (extOf(url) === '.pdf') return local;
+      const fname = decodeURIComponent(String(url).split('?')[0].split('/').pop());
+      return TEXT_EXT.test(extOf(url))
+        ? `«${fname}» — его содержимое текстом: ${local}.txt (оригинал: ${local})`
+        : `«${fname}» — ${local} (этот формат прочитать нельзя; если без него не обойтись — спроси дизайнера)`;
+    });
     return refs.length ? `\n(Приложены файлы: ${refs.join('; ')} — открой их инструментом Read.)` : '';
   };
   const lines = [
@@ -179,12 +188,39 @@ function buildPrompt(change) {
     lines.push('', 'Дальше пришли уточнения (если правка уже делалась — твои прошлые изменения в этой ветке). Выполни их:');
     for (const m of follow) lines.push(`- ${m.authorName}: ${m.text || ''}${withImages(m)}`);
   }
-  return { prompt: lines.join('\n'), images: imgs.map((url, i) => ({ url, name: `${i + 1}${extOf(url)}` })) };
+  return {
+    prompt: lines.join('\n'),
+    images: imgs.flatMap((url, i) => {
+      const f = { url, name: `${i + 1}${extOf(url)}` };
+      // текстовая копия Excel/Word лежит рядом с оригиналом (routes/siteChanges.js uploadImage)
+      return TEXT_EXT.test(extOf(url)) ? [f, { url: url + '.txt', name: f.name + '.txt' }] : [f];
+    }),
+  };
 }
 
+// Старые вложения из Cloudinary без расширения — это картинки
 function extOf(url) {
-  const m = String(url).split('?')[0].match(/\.(png|jpe?g|webp|gif|pdf)$/i);
+  const m = String(url).split('?')[0].match(/\.([a-z0-9]{1,6})$/i);
   return m ? `.${m[1].toLowerCase()}` : '.jpg';
+}
+const isImageUrl = url => /^\.(png|jpe?g|webp|gif|svg|heic|avif|bmp)$/.test(extOf(url));
+const TEXT_EXT = /^\.(xlsx|xlsm|xls|ods|csv|docx|txt|md|json|xml|html?|tsv|rtf)$/;
+
+// Текст файла для Claude (он читает только текст, картинки и PDF). null — формат не текстовый
+async function fileToText(buf, ext) {
+  const MAX = 400_000;
+  let out = null;
+  if (/^(xlsx|xlsm|xls|ods|csv|tsv)$/.test(ext)) {
+    const XLSX = require('xlsx');
+    const wb = XLSX.read(buf, { type: 'buffer' });
+    out = wb.SheetNames.map(n => `=== Лист «${n}» ===\n` + XLSX.utils.sheet_to_csv(wb.Sheets[n], { blankrows: false })).join('\n\n');
+  } else if (ext === 'docx') {
+    out = (await require('mammoth').extractRawText({ buffer: buf })).value;
+  } else if (/^(txt|md|json|xml|html?|rtf)$/.test(ext)) {
+    out = buf.toString('utf8');
+  }
+  if (!out) return null;
+  return out.length > MAX ? out.slice(0, MAX) + '\n…(обрезано, файл слишком большой)' : out;
 }
 
 // ── Уведомления в Telegram ──────────────────────────────────────────────────
@@ -455,4 +491,4 @@ async function notifyOwnersReady(change) {
     [['👀 Предпросмотр', change.previewUrl], ['Открыть', adminLink(change._id)]], decideRow(change));
 }
 
-module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, setTokenAccount, removeToken, setTokenError };
+module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, setTokenAccount, fileToText, removeToken, setTokenError };

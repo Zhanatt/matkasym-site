@@ -23,13 +23,20 @@ const canAccess = (req, res, next) =>
 const ownerOnly = (req, res, next) =>
   isOwner(req.user) ? next() : res.status(403).json({ message: 'Принимает и отклоняет правки только владелец' });
 
-// Вложения чата: картинки и PDF (Claude читает и то и другое)
-function uploadImage(file) {
-  const pdf = file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname || '');
-  if (!/^image\//.test(file.mimetype) && !pdf) return Promise.reject(new Error('Можно прикладывать картинки и PDF'));
-  const ext = pdf ? 'pdf' : ((file.mimetype.split('/')[1] || 'png').replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '') || 'png');
-  const key = `site-changes/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  return storage.put(key, file.buffer, pdf ? 'application/pdf' : file.mimetype, { fileName: file.originalname || undefined });
+// Вложения чата: любые файлы. Картинки и PDF Claude читает сам; для Excel/Word/текста
+// рядом кладём текстовую копию <файл>.txt — её воркфлоу скачивает вместе с оригиналом.
+async function uploadImage(file) {
+  // multer отдаёт имя в latin1 — кириллица превращается в кракозябры
+  let name = file.originalname || 'file';
+  try { const u = Buffer.from(name, 'latin1').toString('utf8'); if (!u.includes('\uFFFD')) name = u; } catch {}
+  let ext = (name.match(/\.([a-z0-9]{1,6})$/i)?.[1] || '').toLowerCase();
+  if (!ext && /^image\//.test(file.mimetype)) ext = (file.mimetype.split('/')[1] || 'png').replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '');
+  const base = name.replace(/\.[^.]*$/, '').replace(/[\\/?#%*:|"<>\x00-\x1f]+/g, ' ').trim().slice(0, 80) || 'file';
+  const key = `site-changes/${Date.now()}-${Math.random().toString(36).slice(2, 8)}/${base}${ext ? '.' + ext : ''}`;
+  const url = await storage.put(key, file.buffer, file.mimetype || 'application/octet-stream', { fileName: name });
+  const text = await sc.fileToText(file.buffer, ext).catch(() => null);
+  if (text) await storage.put(key + '.txt', Buffer.from(text, 'utf8'), 'text/plain; charset=utf-8');
+  return url;
 }
 const uploadAll = files => Promise.all((files || []).map(uploadImage));
 
