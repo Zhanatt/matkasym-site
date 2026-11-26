@@ -133,7 +133,7 @@ const EMPTY = {
   currency: 'KGS',
   description: '',
   images: [],
-  inStock: true, isNew: false, stock: 50, stockStatus: 'in_stock', inTransit: false, inTransitQty: 0, isOnOrder: false, productStatus: 'for_sale', developmentStage: '',
+  inStock: true, isNew: false, stock: 0, stockStatus: 'in_stock', inTransit: false, inTransitQty: 0, isOnOrder: false, productStatus: 'for_sale', developmentStage: '',
   pauseNote: '',
   developmentTZ: { description: '', files: [] },
   improvementTZ: { problem: '', solution: '', files: [] },
