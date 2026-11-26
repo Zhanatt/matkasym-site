@@ -10,7 +10,7 @@ const multer = require('multer');
 const SiteChange = require('../models/SiteChange');
 const User = require('../models/User');
 const Counter = require('../models/Counter');
-const cloudinary = require('../lib/cloudinary');
+const storage = require('../lib/storage');
 const { protect } = require('../middleware/auth');
 const sc = require('../lib/siteChanges');
 
@@ -27,10 +27,9 @@ const ownerOnly = (req, res, next) =>
 function uploadImage(file) {
   const pdf = file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname || '');
   if (!/^image\//.test(file.mimetype) && !pdf) return Promise.reject(new Error('Можно прикладывать картинки и PDF'));
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream({ folder: 'matkasym/site-changes', resource_type: pdf ? 'raw' : 'image', ...(pdf ? { public_id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf` } : {}) },
-      (err, r) => (err ? reject(err) : resolve(r.secure_url))).end(file.buffer);
-  });
+  const ext = pdf ? 'pdf' : ((file.mimetype.split('/')[1] || 'png').replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '') || 'png');
+  const key = `site-changes/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  return storage.put(key, file.buffer, pdf ? 'application/pdf' : file.mimetype, { fileName: file.originalname || undefined });
 }
 const uploadAll = files => Promise.all((files || []).map(uploadImage));
 
