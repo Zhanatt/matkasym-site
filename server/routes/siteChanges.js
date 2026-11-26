@@ -154,8 +154,10 @@ admin.post('/', upload.array('images', 10), async (req, res) => {
   try {
     // Чат: отдельного заголовка нет — название берём из первого сообщения
     const text = String(req.body.text || '').trim().slice(0, 5000);
-    if (!text) return res.status(400).json({ message: 'Напишите, что нужно сделать' });
-    const firstLine = text.split('\n').find(l => l.trim()) || text;
+    if (!text && !req.files?.length) return res.status(400).json({ message: 'Напишите, что нужно сделать' });
+    // только файл без текста — название чата по имени файла
+    const fname = req.files?.[0] ? Buffer.from(req.files[0].originalname || 'Файл', 'latin1').toString('utf8') : '';
+    const firstLine = text.split('\n').find(l => l.trim()) || text || `Файл: ${fname}`;
     const title = String(req.body.title || '').trim().slice(0, 140) || (firstLine.length > 70 ? firstLine.slice(0, 67).trimEnd() + '…' : firstLine);
     await ensureToken(req.user);
     const images = await uploadAll(req.files);
@@ -179,7 +181,7 @@ admin.post('/:id/messages', upload.array('images', 10), async (req, res) => {
     const doc = await SiteChange.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Правка не найдена' });
     const text = String(req.body.text || '').trim().slice(0, 5000);
-    if (!text) return res.status(400).json({ message: 'Напишите сообщение' });
+    if (!text && !req.files?.length) return res.status(400).json({ message: 'Напишите сообщение или приложите файл' });
     await ensureToken(req.user);
     const images = await uploadAll(req.files);
     const msg = { kind: 'comment', author: req.user._id, authorName: req.user.name, text, images };

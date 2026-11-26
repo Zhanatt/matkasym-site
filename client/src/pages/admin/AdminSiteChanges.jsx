@@ -196,7 +196,7 @@ function Composer({ disabled, placeholder, onSend, hint }) {
   }, [text]);
 
   const send = async () => {
-    if (!text.trim() || busy || disabled) return;
+    if ((!text.trim() && !fl.files.length) || busy || disabled) return;
     setBusy(true); fl.setErr('');
     try { await onSend(text.trim(), fl.files.map(x => x.f)); setText(''); fl.clear(); }
     catch (e) { fl.setErr(errMsg(e)); }
@@ -236,8 +236,8 @@ function Composer({ disabled, placeholder, onSend, hint }) {
           className="sc-icon" style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>📎</button>
         <input ref={inputRef} type="file" multiple hidden onChange={e => { fl.add(e.target.files); e.target.value = ''; }} />
         <span className={fl.err ? '' : 'sc-hint'} style={{ flex: 1, fontSize: 12, color: fl.err ? C.redDark : C.muted }}>{fl.err || hint}</span>
-        <button onClick={send} disabled={disabled || busy || !text.trim()} title="Отправить (Enter)"
-          className="sc-icon" style={{ border: 'none', background: !text.trim() || disabled ? '#d9d6d0' : C.red, color: '#fff', borderRadius: 10, width: 34, height: 34, flexShrink: 0, cursor: 'pointer', fontSize: 17, fontWeight: 700 }}>
+        <button onClick={send} disabled={disabled || busy || (!text.trim() && !fl.files.length)} title="Отправить (Enter)"
+          className="sc-icon" style={{ border: 'none', background: (!text.trim() && !fl.files.length) || disabled ? '#d9d6d0' : C.red, color: '#fff', borderRadius: 10, width: 34, height: 34, flexShrink: 0, cursor: 'pointer', fontSize: 17, fontWeight: 700 }}>
           {busy ? '…' : '↑'}
         </button>
       </div>
