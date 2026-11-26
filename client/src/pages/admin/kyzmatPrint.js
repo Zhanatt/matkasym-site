@@ -326,7 +326,8 @@ function paintOf(p) {
 }
 
 function suppliesPages(n, setLabel, info, products, priceType) {
-  const paints = products.filter(p => /краск/i.test(p.category || ''));
+  // Краски и эмали: после разбивки по категориям (правка №7, 26.11.2026) у эмалей категория «Эмаль по металлу»
+  const paints = products.filter(p => /краск|эмал/i.test(p.category || ''));
   // Код цвета берём и у соседей с тем же RAL: у части позиций из 1С поле пустое
   const hexByCode = new Map();
   paints.forEach(p => { const x = paintOf(p); if (x && HEX.test(String(p.color || '').trim())) hexByCode.set(x.code, p.color.trim()); });
@@ -335,8 +336,8 @@ function suppliesPages(n, setLabel, info, products, priceType) {
     if (p.productStatus === 'undefined') return;     // не продаём — в палитру не берём
     const x = paintOf(p);
     if (!x) return;
-    const hex = HEX.test(String(p.color || '').trim()) ? p.color.trim() : hexByCode.get(x.code);
-    if (!hex) return;
+    // Цвета нет ни у товара, ни у соседей с тем же RAL — всё равно в палитру, образец штриховкой
+    const hex = (HEX.test(String(p.color || '').trim()) ? p.color.trim() : hexByCode.get(x.code)) || null;
     mark([p]);
     const key = `${x.enamel ? 'e' : 'k'}|${x.code}|${x.finish}`;
     const prev = swatches.get(key);
@@ -355,7 +356,7 @@ function suppliesPages(n, setLabel, info, products, priceType) {
   let groupPrice = 0;
   const swatchHtml = s => `
     <div class="sw">
-      <div class="sw-c" style="background:${esc(s.hex)}"></div>
+      <div class="sw-c${s.hex ? '' : ' sw-none'}" style="${s.hex ? `background:${esc(s.hex)}` : ''}"></div>
       <div class="sw-h"><b>${esc(s.code)}</b>${PAINT_PRICES && s.price > 0 && s.price !== groupPrice ? `<em>${fmt(s.price)} сом</em>` : ''}</div>
       <span>${esc([s.name, s.finish].filter(Boolean).join(' · '))}</span>
     </div>`;
@@ -615,6 +616,7 @@ h2 { font-size: 12.5pt; font-weight: 700; line-height: 1.15; }
 .fast-t td { padding: 1.6pt 4pt 1.6pt 0; }
 .fast-t td:first-child { font-weight: 500; }
 .fast-t.no-price th, .fast-t.no-price td { text-align: left !important; }
+.sw-none { background: repeating-linear-gradient(45deg, #eee 0 4pt, #fff 4pt 8pt); }
 .other-set { display: block; font-size: 7pt; color: ${MUTED}; font-weight: 400; }
 .tlist td i { font-style: normal; color: ${MUTED}; font-size: 8.5pt; }
 .grid { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
