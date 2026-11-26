@@ -21,7 +21,7 @@ env:
   ID: ${{ github.event.client_payload.id }}
   BRANCH: design/${{ github.event.client_payload.id }}
   GH_TOKEN: ${{ github.token }}
-  MODEL: claude-sonnet-5-5
+  MODEL: claude-opus-5-5
   CLAUDE_TOOLS: Read,Edit,MultiEdit,Write,Glob,Grep
 
 jobs:

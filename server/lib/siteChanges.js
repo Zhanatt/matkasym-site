@@ -41,7 +41,7 @@ function checkSecret(given) {
 
 const TOKEN_RE = /^sk-ant-oat01-[A-Za-z0-9_-]{20,}$/;
 // Модель, которой работает Claude дизайнеров. Источник один — сервер: воркфлоу берёт её из задачи
-const MODEL = process.env.SITE_CHANGE_MODEL || 'claude-sonnet-5-5';
+const MODEL = process.env.SITE_CHANGE_MODEL || 'claude-opus-5-5';
 const modelLabel = id => { const m = String(id).match(/^claude-([a-z]+)-(\d+)-(\d+)/); return m ? `Claude ${m[1][0].toUpperCase() + m[1].slice(1)} ${m[2]}.${m[3]}` : id; };
 const TOKEN_TTL_DAYS = 365;   // setup-token живёт год
 const tokenKey = () => {
