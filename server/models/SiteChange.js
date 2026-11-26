@@ -68,6 +68,7 @@ const siteChangeSchema = new mongoose.Schema({
   pdfs:       [{ _id: false, title: String, url: String, error: String }],  // пробные PDF-каталоги из ветки
   reverted:   [String],           // файлы, которые трогать нельзя — правка в них отменена
   error:      String,
+  model:      String,                             // какой моделью Claude делалась правка
   statusAt:   { type: Date, default: Date.now },  // когда статус менялся — для «зависших»
   decidedBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   decidedAt:  Date,

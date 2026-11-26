@@ -54,7 +54,7 @@ async function ensureToken(user) {
 // Отправить задачу (или доработку) в GitHub. user — чей Claude будет работать
 async function startRun(doc, user) {
   await ensureToken(user);
-  doc.runBy = user._id; doc.runByName = user.name;
+  doc.runBy = user._id; doc.runByName = user.name; doc.model = sc.MODEL;
   setStatus(doc, 'queued');
   doc.previewReadyAt = undefined;
   sc.status(doc, doc.runs?.length ? '📨 Уточнение передано Claude — он доработает правку' : '📨 Задача передана Claude');
@@ -93,6 +93,7 @@ async function continueIfPending(doc) {
 const view = (d, approver) => {
   const o = d.toObject ? d.toObject() : d;
   o.approver = approver;
+  o.modelLabel = o.model ? sc.modelLabel(o.model) : null;   // старые правки — модель не записывалась
   o.stuck = ['queued', 'working', 'merging'].includes(o.status) && Date.now() - new Date(o.statusAt).getTime() > STUCK_MS;
   return o;
 };
@@ -106,7 +107,7 @@ admin.use(protect, canAccess);
 
 admin.get('/', async (req, res) => {
   try {
-    const list = await SiteChange.find({}, { messages: { $slice: 1 } }).sort({ createdAt: -1 }).limit(200).lean();
+    const list = await SiteChange.find({}, { messages: { $slice: 1 } }).sort({ updatedAt: -1 }).limit(200).lean();
     res.json({ items: list.map(d => view(d)), me: await sc.tokenInfo(req.user._id), isOwner: isOwner(req.user) });
   } catch (e) { fail(res, e); }
 });
@@ -257,7 +258,7 @@ hook.get('/:id/task', async (req, res) => {
     if (!d) return res.status(404).json({ message: 'not found' });
     const claudeToken = await sc.readToken(d.runBy || d.author);
     if (!claudeToken) return res.status(412).json({ message: 'У того, кто запустил правку, не подключён Claude' });
-    res.json({ number: d.number, title: d.title, status: d.status, claudeToken, ...sc.buildPrompt(d) });
+    res.json({ number: d.number, title: d.title, status: d.status, claudeToken, model: sc.MODEL, ...sc.buildPrompt(d) });
   } catch (e) { fail(res, e); }
 });
 
@@ -281,20 +282,20 @@ hook.post('/:id/callback', async (req, res) => {
       if (!closed) {
         setStatus(doc, 'working');
         if (b.stage) sc.status(doc, String(b.stage).slice(0, 300));
-        if (b.say) doc.messages.push({ kind: 'bot', authorName: 'Claude', text: String(b.say).slice(0, 4000) });
+        if (b.say) doc.messages.push({ kind: 'bot', authorName: sc.modelLabel(doc.model || sc.MODEL), text: String(b.say).slice(0, 4000) });
         if (b.costUsd) doc.costUsd = Math.round(((doc.costUsd || 0) + Number(b.costUsd)) * 10000) / 10000;
       }
     } else if (b.status === 'question') {
       // Claude не стал править: уточняет задачу или объясняет, что это не правка внешнего вида
       doc.runs.push({ ok: true, costUsd: Number(b.costUsd) || 0, summary: 'вопрос', runUrl: b.runUrl });
       doc.costUsd = Math.round(((doc.costUsd || 0) + (Number(b.costUsd) || 0)) * 10000) / 10000;
-      doc.messages.push({ kind: 'bot', authorName: 'Claude', text: String(b.text || '').slice(0, 4000) });
+      doc.messages.push({ kind: 'bot', authorName: sc.modelLabel(doc.model || sc.MODEL), text: String(b.text || '').slice(0, 4000) });
       if (!closed) setStatus(doc, 'question');
     } else if (b.status === 'ready' || b.status === 'failed') {
       const cost = Number(b.costUsd) || 0;
       doc.runs.push({ ok: b.status === 'ready', costUsd: cost, summary: b.summary, runUrl: b.runUrl });
       doc.costUsd = Math.round(((doc.costUsd || 0) + cost) * 10000) / 10000;
-      if (b.summary) doc.messages.push({ kind: 'bot', authorName: 'Claude', text: String(b.summary).slice(0, 4000) });
+      if (b.summary) doc.messages.push({ kind: 'bot', authorName: sc.modelLabel(doc.model || sc.MODEL), text: String(b.summary).slice(0, 4000) });
       if (!closed) {
         if (b.status === 'ready') {
           if (b.prNumber) { doc.prNumber = b.prNumber; doc.prUrl = b.prUrl; doc.previewUrl = sc.previewUrl(b.prNumber); }
