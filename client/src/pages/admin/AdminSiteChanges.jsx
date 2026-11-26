@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   getSiteChanges, getSiteChange, createSiteChange, commentSiteChange,
-  retrySiteChange, approveSiteChange, rejectSiteChange, saveMyClaude, removeMyClaude, getSiteChangeHistory,
+  retrySiteChange, approveSiteChange, rejectSiteChange, saveMyClaude, removeMyClaude,
 } from '../../api/index';
 
 const C = {
@@ -484,79 +484,11 @@ function ViewLink({ path }) {
   return <span style={{ color: C.muted, fontSize: 13 }}>📄 {path}</span>;
 }
 
-function HistoryView({ isOwner, onOpen }) {
-  const [items, setItems] = useState(null);
-  const [err, setErr] = useState('');
-  const [who, setWho] = useState('all');
-  const [openId, setOpenId] = useState(null);
-  useEffect(() => { getSiteChangeHistory().then(r => setItems(r.data)).catch(e => setErr(errMsg(e))); }, []);
-
-  if (err) return <div style={{ color: C.redDark, padding: 24 }}>{err}</div>;
-  if (!items) return <div style={{ color: C.muted, padding: 24 }}>Загрузка…</div>;
-  const people = [...new Map(items.map(x => [String(x.author), x.authorName])).entries()];
-  const shown = items.filter(x => who === 'all' || String(x.author) === who);
-  const groups = [...new Map(shown.map(x => [String(x.author), { name: x.authorName, list: [] }])).entries()];
-  shown.forEach(x => groups.find(([k]) => k === String(x.author))[1].list.push(x));
-  const fmtDay = d => d ? new Date(d).toLocaleString('ru', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
-
-  return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '4px 4px 24px' }}>
-      <div style={{ maxWidth: 820, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-          <h2 style={{ margin: 0, fontSize: 22 }}>История изменений</h2>
-          <span style={{ color: C.muted, fontSize: 13 }}>{items.length} {items.length === 1 ? 'правка' : 'правок'} выложено на сайт</span>
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '12px 0 18px' }}>
-          {[['all', 'Все дизайнеры'], ...people].map(([k, n]) => (
-            <button key={k} onClick={() => setWho(k)} style={{ border: `1px solid ${who === k ? '#1c1c1c' : C.line}`, background: who === k ? '#1c1c1c' : '#fff', color: who === k ? '#fff' : C.text, borderRadius: 999, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{n}</button>
-          ))}
-        </div>
-        {!shown.length && <div style={{ color: C.muted }}>Пока ничего не выложено.</div>}
-        {groups.map(([k, g]) => (
-          <div key={k} style={{ marginBottom: 26 }}>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 10 }}>👤 {g.name} <span style={{ color: C.muted, fontWeight: 500, fontSize: 13 }}>· {g.list.length}</span></div>
-            <div style={{ borderLeft: `2px solid ${C.line}`, marginLeft: 8, paddingLeft: 18 }}>
-              {g.list.map(x => {
-                const open = openId === x.key;
-                return (
-                  <div key={x.key} style={{ position: 'relative', marginBottom: 14 }}>
-                    <span style={{ position: 'absolute', left: -25, top: 16, width: 12, height: 12, borderRadius: 6, background: x.deployed ? C.green : C.amber, border: '2px solid #f7f6f3' }} />
-                    <div style={{ background: '#fff', border: `1px solid ${C.line}`, borderRadius: 14, padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12, color: C.muted }}>{fmtDay(x.at)}{x.approvedBy ? ` · утвердил ${x.approvedBy}` : ''}</span>
-                        <span style={{ marginLeft: 'auto' }}><ViewLink path={x.viewPath} /></span>
-                      </div>
-                      <div style={{ fontWeight: 600, fontSize: 15, margin: '4px 0' }}>№{x.number} · {x.title}</div>
-                      {x.summary && (
-                        <div style={{ fontSize: 14, lineHeight: 1.55, color: '#374151', whiteSpace: 'pre-wrap', ...(open ? {} : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }) }}>{x.summary}</div>
-                      )}
-                      <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 13, flexWrap: 'wrap' }}>
-                        {x.summary && <button onClick={() => setOpenId(open ? null : x.key)} style={{ border: 'none', background: 'none', padding: 0, color: C.muted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>{open ? 'Свернуть' : 'Подробнее'}</button>}
-                        <button onClick={() => onOpen(x._id)} style={{ border: 'none', background: 'none', padding: 0, color: C.muted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>Открыть чат</button>
-                        {isOwner && x.prUrl && <a href={x.prUrl} target="_blank" rel="noreferrer" style={{ color: C.muted }}>Изменения в коде</a>}
-                      </div>
-                      {!!x.ops?.length && <div style={{ fontSize: 13, marginTop: 6, color: '#374151' }}>{x.ops.map((l, i) => <div key={i}>{l}</div>)}</div>}
-                      {open && isOwner && !!x.files.length && (
-                        <div style={{ marginTop: 8, fontSize: 12, color: C.muted, fontFamily: 'ui-monospace, Menlo, monospace' }}>{x.files.join(' · ')}</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function AdminSiteChanges() {
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [claudeOpen, setClaudeOpen] = useState(false);
-  const [filter, setFilter] = useState('open');
   const openId = params.get('id');
   const [narrow, setNarrow] = useState(() => window.innerWidth < 860);
   useEffect(() => { const f = () => setNarrow(window.innerWidth < 860); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
@@ -592,12 +524,12 @@ export default function AdminSiteChanges() {
 
   const setOpen = id => setParams(id ? { id } : {});
   const items = (data?.items || []).filter(x =>
-    filter === 'all' ? true : filter === 'open' ? !['merged', 'rejected', 'cancelled'].includes(x.status) : x.status === 'merged');
+    true);   // один список всех чатов, как в Claude: свежая активность сверху, чаты не закрываются
   const me = data?.me;
   const isOwner = !!data?.isOwner;
   // На телефоне по очереди: список → чат или история
-  const showList = !narrow || (!openId && filter !== 'merged');
-  const showChat = !narrow || !!openId || params.get('new') === '1' || filter === 'merged';
+  const showList = !narrow || !openId;
+  const showChat = !narrow || !!openId || params.get('new') === '1';
 
   return (
     <div ref={pageRef} className="admin-page sc-page" style={{ display: 'flex', flexDirection: 'column', maxWidth: 1280 }}>
@@ -616,18 +548,13 @@ export default function AdminSiteChanges() {
         {showList && (
           <aside style={{ width: narrow ? '100%' : 290, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: narrow ? 'none' : `1px solid ${C.line}`, paddingRight: narrow ? 0 : 14, minHeight: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <h1 style={{ margin: 0, fontSize: 20 }}>🎨 Правки сайта</h1>
-              <button onClick={() => setClaudeOpen(true)} title={me?.account ? `Мой Claude: ${me.account}` : 'Мой Claude'} style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 9, padding: '5px 9px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <h1 style={{ margin: 0, fontSize: 20, whiteSpace: 'nowrap' }}>🎨 Чаты</h1>
+              <button onClick={() => setClaudeOpen(true)} title={me?.account ? `Мой Claude: ${me.account}` : 'Мой Claude'} style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 9, padding: '5px 9px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', maxWidth: 150, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {me?.connected ? (me.lastError ? '⚠️ ' : '✅ ') + (me.account || 'Claude') : '🔌 Claude'}
               </button>
             </div>
-            <Button kind="primary" style={{ width: '100%', marginBottom: 10, justifyContent: 'center' }} onClick={() => { if (filter === 'merged') setFilter('open'); setParams(narrow ? { new: '1' } : {}); }}>＋ Новый чат</Button>
+            <Button kind="primary" style={{ width: '100%', marginBottom: 10, justifyContent: 'center' }} onClick={() => setParams(narrow ? { new: '1' } : {})}>＋ Новый чат</Button>
             {me?.lastError && <div onClick={() => setClaudeOpen(true)} style={{ background: C.redWash, color: C.redDark, borderRadius: 10, padding: '8px 10px', marginBottom: 10, fontSize: 12, cursor: 'pointer' }}>⚠️ {me.lastError}</div>}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-              {[['open', 'Открытые'], ['merged', 'История'], ['all', 'Все']].map(([k, l]) => (
-                <button key={k} onClick={() => setFilter(k)} style={{ flex: 1, border: 'none', borderRadius: 8, padding: '6px 4px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', background: filter === k ? '#1c1c1c' : 'transparent', color: filter === k ? '#fff' : C.muted, fontWeight: 600 }}>{l}</button>
-              ))}
-            </div>
             <div style={{ flex: 1, overflowY: 'auto', margin: '0 -4px' }}>
               {err && <div style={{ color: C.redDark, fontSize: 13, padding: 6 }}>{err}</div>}
               {data && !items.length && <div style={{ color: C.muted, fontSize: 13, padding: 6 }}>Пока пусто</div>}
@@ -649,11 +576,9 @@ export default function AdminSiteChanges() {
         )}
         {showChat && (
           <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {narrow && <div><Button style={{ padding: '5px 10px', marginBottom: 8 }} onClick={() => { if (!openId) setFilter('open'); setParams({}); }}>← Все чаты</Button></div>}
+            {narrow && <div><Button style={{ padding: '5px 10px', marginBottom: 8 }} onClick={() => setParams({})}>← Все чаты</Button></div>}
             <div style={{ flex: 1, minHeight: 0 }}>
-              {filter === 'merged' && !openId
-                ? <HistoryView isOwner={isOwner} onOpen={setOpen} />
-                : <ChatView id={openId} isOwner={isOwner} me={me} onChanged={load} onCreated={setOpen} onOpenClaude={() => setClaudeOpen(true)} />}
+              <ChatView id={openId} isOwner={isOwner} me={me} onChanged={load} onCreated={setOpen} onOpenClaude={() => setClaudeOpen(true)} />
             </div>
           </section>
         )}

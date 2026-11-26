@@ -106,7 +106,7 @@ admin.use(protect, canAccess);
 
 admin.get('/', async (req, res) => {
   try {
-    const list = await SiteChange.find({}, { messages: { $slice: 1 } }).sort({ createdAt: -1 }).limit(200).lean();
+    const list = await SiteChange.find({}, { messages: { $slice: 1 } }).sort({ updatedAt: -1 }).limit(200).lean();
     res.json({ items: list.map(d => view(d)), me: await sc.tokenInfo(req.user._id), isOwner: isOwner(req.user) });
   } catch (e) { fail(res, e); }
 });
