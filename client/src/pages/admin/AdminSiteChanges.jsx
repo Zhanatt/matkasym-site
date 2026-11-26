@@ -45,7 +45,7 @@ function Button({ kind = 'ghost', children, style, ...p }) {
     danger:  { background: '#fff', color: C.redDark, border: '1px solid #f5c2c9' },
   }[kind];
   return (
-    <button {...p} style={{
+    <button {...p} className="sc-btn" style={{
       ...k, borderRadius: 9, padding: '8px 14px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
       cursor: p.disabled ? 'default' : 'pointer', opacity: p.disabled ? .55 : 1, whiteSpace: 'nowrap', ...style,
     }}>{children}</button>
@@ -227,14 +227,14 @@ function Composer({ disabled, placeholder, onSend, hint }) {
         onPaste={e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); fl.add(fs); } }}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
         placeholder={placeholder}
-        style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', fontSize: 15, lineHeight: 1.5, fontFamily: 'inherit', background: 'transparent', boxSizing: 'border-box', maxHeight: 240 }} />
+        className="sc-ta" style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', fontSize: 15, lineHeight: 1.5, fontFamily: 'inherit', background: 'transparent', boxSizing: 'border-box', maxHeight: 240 }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
         <button onClick={() => inputRef.current?.click()} disabled={disabled} title="Прикрепить картинку или PDF"
-          style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16 }}>📎</button>
+          className="sc-icon" style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>📎</button>
         <input ref={inputRef} type="file" accept="image/*,application/pdf" multiple hidden onChange={e => { fl.add(e.target.files); e.target.value = ''; }} />
-        <span style={{ flex: 1, fontSize: 12, color: fl.err ? C.redDark : C.muted }}>{fl.err || hint}</span>
+        <span className={fl.err ? '' : 'sc-hint'} style={{ flex: 1, fontSize: 12, color: fl.err ? C.redDark : C.muted }}>{fl.err || hint}</span>
         <button onClick={send} disabled={disabled || busy || !text.trim()} title="Отправить (Enter)"
-          style={{ border: 'none', background: !text.trim() || disabled ? '#d9d6d0' : C.red, color: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 17, fontWeight: 700 }}>
+          className="sc-icon" style={{ border: 'none', background: !text.trim() || disabled ? '#d9d6d0' : C.red, color: '#fff', borderRadius: 10, width: 34, height: 34, flexShrink: 0, cursor: 'pointer', fontSize: 17, fontWeight: 700 }}>
           {busy ? '…' : '↑'}
         </button>
       </div>
@@ -462,7 +462,7 @@ function ChatView({ id, isOwner, me, onChanged, onCreated, onOpenClaude }) {
           <div ref={endRef} />
         </div>
       </div>
-      <div style={{ padding: '8px 4px 4px' }}>
+      <div className="sc-composer" style={{ padding: '8px 4px 4px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <Composer disabled={noClaude || !canWrite} placeholder={placeholder} hint={hint} onSend={id ? sendMore : sendNew} />
         </div>
@@ -575,8 +575,18 @@ export default function AdminSiteChanges() {
   const showChat = !narrow || !!openId || params.get('new') === '1' || filter === 'merged';
 
   return (
-    <div className="admin-page" style={{ height: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column', maxWidth: 1280 }}>
-      <style>{`@keyframes scPulse{0%,100%{opacity:.3}50%{opacity:1}} .sc-dots{animation:scPulse 1.4s ease-in-out infinite;letter-spacing:2px}`}</style>
+    <div className="admin-page sc-page" style={{ display: 'flex', flexDirection: 'column', maxWidth: 1280 }}>
+      <style>{`@keyframes scPulse{0%,100%{opacity:.3}50%{opacity:1}} .sc-dots{animation:scPulse 1.4s ease-in-out infinite;letter-spacing:2px}
+        .sc-page{height:calc(100vh - 40px)}
+        @media (max-width:900px){
+          .sc-page{height:calc(100vh - 96px);height:calc(100dvh - 96px)}
+          .sc-btn{min-height:44px;padding:10px 16px!important;font-size:15px!important}
+          .sc-icon{width:44px!important;height:44px!important;font-size:20px!important;border-radius:12px!important}
+          .sc-ta{font-size:16px!important}
+          .sc-hint{display:none}
+          .sc-composer{padding:10px 0 calc(4px + env(safe-area-inset-bottom))!important;border-top:1px solid ${C.line};background:var(--admin-canvas)}
+        }
+        @media (max-width:480px){.sc-page{height:calc(100vh - 88px);height:calc(100dvh - 88px)}}`}</style>
       <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 16 }}>
         {showList && (
           <aside style={{ width: narrow ? '100%' : 290, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: narrow ? 'none' : `1px solid ${C.line}`, paddingRight: narrow ? 0 : 14, minHeight: 0 }}>
@@ -614,7 +624,7 @@ export default function AdminSiteChanges() {
         )}
         {showChat && (
           <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {narrow && <div><Button style={{ padding: '5px 10px', marginBottom: 6 }} onClick={() => { if (!openId) setFilter('open'); setParams({}); }}>← Все чаты</Button></div>}
+            {narrow && <div><Button style={{ padding: '5px 10px', marginBottom: 8 }} onClick={() => { if (!openId) setFilter('open'); setParams({}); }}>← Все чаты</Button></div>}
             <div style={{ flex: 1, minHeight: 0 }}>
               {filter === 'merged' && !openId
                 ? <HistoryView isOwner={isOwner} onOpen={setOpen} />
