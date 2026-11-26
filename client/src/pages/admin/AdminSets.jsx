@@ -21,7 +21,7 @@ import AdminPdfButton from './AdminPdfButton';
 
 import { readyPdfFor } from '../../config/readyCatalogs';
 import BrandPdfButton from './BrandPdfButton';
-import { SET_CATEGORY_ORDER } from '../../config/setCategoryOrder';
+import { SET_CATEGORY_ORDER, pinnedRank } from '../../config/setCategoryOrder';
 import BrandAboutButton from './BrandAboutButton';
 import TubesPdfButton from './TubesPdfButton';
 import './AdminSets.css';
@@ -667,7 +667,7 @@ function BrandSection({ brandKey, sets, accent, subItems = {}, autoOpenSet, onOp
     return [...cats].sort((a, b) => {
       if (a === 'Прочее') return 1;
       if (b === 'Прочее') return -1;
-      const d = (rank[a] ?? 999) - (rank[b] ?? 999);
+      const d = (pinnedRank(slug, a) ?? rank[a] ?? 999) - (pinnedRank(slug, b) ?? rank[b] ?? 999);
       return d || a.localeCompare(b, 'ru');
     });
   };
@@ -1773,8 +1773,8 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
         if (b[0] === 'Нет в наличии') return -1;
         if (a[0] === 'Прочее') return 1;
         if (b[0] === 'Прочее') return -1;
-        const orderA = customOrder[a[0]] ?? 999;
-        const orderB = customOrder[b[0]] ?? 999;
+        const orderA = pinnedRank(setSlug, a[0]) ?? customOrder[a[0]] ?? 999;
+        const orderB = pinnedRank(setSlug, b[0]) ?? customOrder[b[0]] ?? 999;
         if (orderA !== orderB) return orderA - orderB;
         return a[0].localeCompare(b[0], 'ru');
       })

@@ -318,7 +318,8 @@ function paintOf(p) {
 }
 
 function suppliesPages(n, setLabel, info, products, priceType) {
-  const paints = products.filter(p => /краск/i.test(p.category || ''));
+  // Эмаль теперь в своей категории «Эмаль по металлу» — без «краск» в названии
+  const paints = products.filter(p => /краск|эмал/i.test(p.category || ''));
   // Код цвета берём и у соседей с тем же RAL: у части позиций из 1С поле пустое
   const hexByCode = new Map();
   paints.forEach(p => { const x = paintOf(p); if (x && HEX.test(String(p.color || '').trim())) hexByCode.set(x.code, p.color.trim()); });
