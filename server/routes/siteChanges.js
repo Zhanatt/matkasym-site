@@ -93,7 +93,7 @@ async function continueIfPending(doc) {
 const view = (d, approver) => {
   const o = d.toObject ? d.toObject() : d;
   o.approver = approver;
-  o.modelLabel = sc.modelLabel(o.model || sc.MODEL);
+  o.modelLabel = o.model ? sc.modelLabel(o.model) : null;   // старые правки — модель не записывалась
   o.stuck = ['queued', 'working', 'merging'].includes(o.status) && Date.now() - new Date(o.statusAt).getTime() > STUCK_MS;
   return o;
 };
