@@ -1786,8 +1786,30 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
           prodOrder[groupName],
         ),
       ]);
-    return result;
+    // «Нет в наличии» делим по категориям — в том же порядке, что и «В наличии»;
+    // категории, которых там нет, идут следом по алфавиту, «Прочее» — последним.
+    const rank = new Map();
+    result.forEach(([g], i) => { if (g !== 'Нет в наличии') rank.set(g, i); });
+    const rankOf = it => {
+      const c = it[1][0]?.category || 'Прочее';
+      return c === 'Прочее' ? 100000 : (rank.get(c) ?? 50000);
+    };
+    return result.map(([g, items]) => g !== 'Нет в наличии' ? [g, items] : [g, items
+      .map((it, i) => ({ it, i }))
+      .sort((a, b) => rankOf(a.it) - rankOf(b.it)
+        || (rankOf(a.it) === 50000 ? (a.it[1][0]?.category || '').localeCompare(b.it[1][0]?.category || '', 'ru') : 0)
+        || a.i - b.i)
+      .map(x => x.it)]);
   }, [models, setSlug, country, catOrder, prodOrder]);
+
+  // Подзаголовок категории внутри «Нет в наличии»: нужен, когда категория сменилась.
+  const outCatHead = (items, idx) => {
+    const cat = items[idx]?.[1]?.[0]?.category || 'Прочее';
+    const prev = idx > 0 ? (items[idx - 1]?.[1]?.[0]?.category || 'Прочее') : null;
+    if (cat === prev) return null;
+    const count = items.filter(it => (it[1][0]?.category || 'Прочее') === cat).length;
+    return { cat, count };
+  };
 
   // Общая переменная для групп — теперь только categoryGroups
   const accordionGroups = categoryGroups;
@@ -2579,8 +2601,20 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                           const stockInfo = getStockInfo(primary, country);
                           const hasStock = stockInfo.hasStock;
                           const stockLabel = stockInfo.label;
+                          const catHead = isOutOfStockGroup ? outCatHead(items, itemIdx) : null;
                           return (
                             <Fragment key={name}>
+                            {catHead && (
+                              <div style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '12px 14px 6px', fontSize: 12, fontWeight: 800,
+                                color: '#777', textTransform: 'uppercase', letterSpacing: 0.4,
+                              }}>
+                                {catHead.cat}
+                                <span style={{ fontWeight: 500, color: '#aaa' }}>{catHead.count} тов.</span>
+                                <span style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+                              </div>
+                            )}
                             {sizeHead && (
                               <div style={{
                                 display: 'flex', alignItems: 'center', gap: 10,
@@ -2754,8 +2788,20 @@ function SetCatalogPanel({ brandKey, setSlug, onClose, accentOverride, titleOver
                       const variantRows = mergesVariants && inStockVariants.length > 1;
                       const prices = variantRows ? inStockVariants.map(v => getPrice(v, priceMode) || 0) : [];
                       const samePrice = !variantRows || prices.every(x => x === prices[0]);
+                      const catHead = isOutOfStock ? outCatHead(items, idx) : null;
                       return (
                         <Fragment key={name}>
+                        {catHead && (
+                          <div style={{
+                            gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10,
+                            marginTop: idx ? 8 : 0, fontSize: 12, fontWeight: 800,
+                            color: '#777', textTransform: 'uppercase', letterSpacing: 0.4,
+                          }}>
+                            {catHead.cat}
+                            <span style={{ fontWeight: 500, color: '#aaa' }}>{catHead.count} тов.</span>
+                            <span style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+                          </div>
+                        )}
                         {sizeHead && (
                           <div style={{
                             gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10,

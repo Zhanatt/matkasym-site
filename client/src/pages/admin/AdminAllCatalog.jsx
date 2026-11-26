@@ -547,18 +547,39 @@ export default function AdminAllCatalog() {
                 </span>
                 <span style={{ fontSize: 12, color: '#bbb' }}>{outOfStockFiltered.length} тов.</span>
               </div>
-              <div style={{
-                display: viewMode === 'grid' ? 'grid' : 'flex',
-                gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(170px, 1fr))' : undefined,
-                flexDirection: viewMode === 'list' ? 'column' : undefined,
-                gap: 12,
-              }}>
-                {outOfStockFiltered.map(p => (
-                  <div key={p._id} style={{ opacity: 0.5 }}>
-                    <AdminProductCard product={p} priceMode={priceMode} accent="#888" onOpen={setDetailProduct} viewMode={viewMode} />
+              {(() => {
+                const byCat = {};
+                outOfStockFiltered.forEach(p => { const c = p.category || 'Прочее'; (byCat[c] = byCat[c] || []).push(p); });
+                const cats = Object.keys(byCat).sort((a, b) => {
+                  if (a === 'Прочее') return 1;
+                  if (b === 'Прочее') return -1;
+                  return a.localeCompare(b, 'ru');
+                });
+                return cats.map((cat, ci) => (
+                  <div key={cat} style={{ marginTop: ci ? 20 : 0 }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+                      fontSize: 12, fontWeight: 800, color: '#777', textTransform: 'uppercase', letterSpacing: 0.4,
+                    }}>
+                      {cat}
+                      <span style={{ fontWeight: 500, color: '#aaa' }}>{byCat[cat].length} тов.</span>
+                      <span style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+                    </div>
+                    <div style={{
+                      display: viewMode === 'grid' ? 'grid' : 'flex',
+                      gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(170px, 1fr))' : undefined,
+                      flexDirection: viewMode === 'list' ? 'column' : undefined,
+                      gap: 12,
+                    }}>
+                      {byCat[cat].map(p => (
+                        <div key={p._id} style={{ opacity: 0.5 }}>
+                          <AdminProductCard product={p} priceMode={priceMode} accent="#888" onOpen={setDetailProduct} viewMode={viewMode} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                ));
+              })()}
             </>
           )}
         </div>
