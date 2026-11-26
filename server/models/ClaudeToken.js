@@ -11,6 +11,9 @@ const claudeTokenSchema = new mongoose.Schema({
   tag:     { type: String, required: true },
   last4:   String,
   addedAt: { type: Date, default: Date.now },
+  account: String,            // чей это аккаунт Claude (почта) — узнаём у Anthropic или человек вписывает сам
+  accountAuto: Boolean,       // true — узнали автоматически, false — вписан вручную
+  profileTried: Boolean,      // уже спрашивали Anthropic (чтобы не дёргать при каждом открытии)
   lastError: String,          // «лимит», «токен недействителен» — с последнего запуска
 }, { versionKey: false });
 

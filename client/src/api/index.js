@@ -303,6 +303,6 @@ export const retrySiteChange    = (id)         => api.post(`/admin/site-changes/
 export const approveSiteChange  = (id)         => api.post(`/admin/site-changes/${id}/approve`);
 export const rejectSiteChange   = (id, reason) => api.post(`/admin/site-changes/${id}/reject`, { reason });
 export const getMyClaude        = ()           => api.get('/admin/site-changes/me/claude');
-export const saveMyClaude       = (token)      => api.put('/admin/site-changes/me/claude', { token });
+export const saveMyClaude       = (token, account) => api.put('/admin/site-changes/me/claude', { token, account });
 export const removeMyClaude     = ()           => api.delete('/admin/site-changes/me/claude');
 export const getSiteChangeHistory = ()           => api.get('/admin/site-changes/history');

@@ -46,7 +46,24 @@ const tokenKey = () => {
   return crypto.createHash('sha256').update('claude-token:' + process.env.SITE_CHANGE_SECRET).digest();
 };
 
-async function saveToken(userId, raw) {
+// Чей это токен: спрашиваем у Anthropic профиль аккаунта. Токены setup-token могут не иметь
+// права читать профиль — тогда null, и человек вписывает почту сам.
+async function fetchClaudeAccount(token) {
+  try {
+    const r = await fetch('https://api.anthropic.com/api/oauth/profile', {
+      headers: { Authorization: `Bearer ${token}`, 'anthropic-beta': 'oauth-2025-04-20' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const a = j.account || {};
+    return a.email_address || a.email || a.display_name || a.full_name || null;
+  } catch { return null; }
+}
+
+const cleanAccount = v => String(v || '').trim().slice(0, 120) || null;
+
+async function saveToken(userId, raw, account) {
   // Терминал переносит длинный токен по строкам — при копировании внутрь попадают переносы и пробелы
   const token = String(raw || '').replace(/\s+/g, '');
   if (!TOKEN_RE.test(token)) {
@@ -59,7 +76,24 @@ async function saveToken(userId, raw) {
   await ClaudeToken.findOneAndUpdate({ user: userId }, {
     enc: enc.toString('base64'), iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'),
     last4: token.slice(-4), addedAt: new Date(), $unset: { lastError: '' },
+    ...(await accountFields(token, account)),
   }, { upsert: true });
+}
+
+async function accountFields(token, manual) {
+  const auto = await fetchClaudeAccount(token);
+  if (auto) return { account: auto, accountAuto: true, profileTried: true };
+  const m = cleanAccount(manual);
+  return m ? { account: m, accountAuto: false, profileTried: true } : { profileTried: true, $unset: { lastError: '', account: '', accountAuto: '' } };
+}
+
+// Вписать почту аккаунта вручную, не меняя токен (если Anthropic не сказал, чей он)
+async function setTokenAccount(userId, account) {
+  const t = await ClaudeToken.findOne({ user: userId }, 'accountAuto').lean();
+  if (!t) { const e = new Error('Claude ещё не подключён'); e.status = 400; throw e; }
+  if (t.accountAuto) return;   // узнанное у Anthropic вручную не перебиваем
+  const m = cleanAccount(account);
+  await ClaudeToken.updateOne({ user: userId }, m ? { account: m, accountAuto: false } : { $unset: { account: '', accountAuto: '' } });
 }
 
 async function readToken(userId) {
@@ -71,10 +105,16 @@ async function readToken(userId) {
 }
 
 async function tokenInfo(userId) {
-  const t = await ClaudeToken.findOne({ user: userId }, 'last4 addedAt lastError').lean();
+  let t = await ClaudeToken.findOne({ user: userId }, 'last4 addedAt lastError account accountAuto profileTried').lean();
   if (!t) return { connected: false };
+  // Токены, подключённые до этой функции: один раз спрашиваем Anthropic, чей он
+  if (!t.profileTried) {
+    const acc = await readToken(userId).then(fetchClaudeAccount).catch(() => null);
+    await ClaudeToken.updateOne({ user: userId }, acc ? { account: acc, accountAuto: true, profileTried: true } : { profileTried: true });
+    if (acc) t = { ...t, account: acc, accountAuto: true };
+  }
   const expiresAt = new Date(new Date(t.addedAt).getTime() + TOKEN_TTL_DAYS * 864e5);
-  return { connected: true, last4: t.last4, addedAt: t.addedAt, expiresAt, lastError: t.lastError || null };
+  return { connected: true, last4: t.last4, addedAt: t.addedAt, expiresAt, lastError: t.lastError || null, account: t.account || null, accountAuto: !!t.accountAuto };
 }
 
 const removeToken = userId => ClaudeToken.deleteOne({ user: userId });
@@ -415,4 +455,4 @@ async function notifyOwnersReady(change) {
     [['👀 Предпросмотр', change.previewUrl], ['Открыть', adminLink(change._id)]], decideRow(change));
 }
 
-module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, removeToken, setTokenError };
+module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, setTokenAccount, removeToken, setTokenError };

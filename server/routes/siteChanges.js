@@ -123,7 +123,10 @@ admin.get('/me/claude', async (req, res) => {
   try { res.json(await sc.tokenInfo(req.user._id)); } catch (e) { fail(res, e); }
 });
 admin.put('/me/claude', async (req, res) => {
-  try { await sc.saveToken(req.user._id, req.body?.token); res.json(await sc.tokenInfo(req.user._id)); } catch (e) { fail(res, e); }
+  try {
+    if (req.body?.token) await sc.saveToken(req.user._id, req.body.token, req.body.account);
+    else await sc.setTokenAccount(req.user._id, req.body?.account);
+    res.json(await sc.tokenInfo(req.user._id)); } catch (e) { fail(res, e); }
 });
 admin.delete('/me/claude', async (req, res) => {
   try { await sc.removeToken(req.user._id); res.json({ connected: false }); } catch (e) { fail(res, e); }

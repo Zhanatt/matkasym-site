@@ -98,13 +98,14 @@ function CopyLine({ text }) {
 
 function MyClaude({ me, onClose, onChanged }) {
   const [token, setToken] = useState('');
+  const [account, setAccount] = useState(me?.accountAuto ? '' : (me?.account || ''));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [os, setOs] = useState(detectOs);
   const I = INSTALL[os];
   const save = async () => {
     setBusy(true); setErr('');
-    try { await saveMyClaude(token.replace(/\s+/g, '')); setToken(''); onChanged(); onClose(); }
+    try { await saveMyClaude(token.replace(/\s+/g, '') || undefined, account.trim()); setToken(''); onChanged(); onClose(); }
     catch (e) { setErr(errMsg(e)); }
     setBusy(false);
   };
@@ -117,7 +118,9 @@ function MyClaude({ me, onClose, onChanged }) {
     <Modal title="Мой Claude" onClose={onClose}>
       {me?.connected && (
         <div style={{ background: me.lastError ? C.redWash : C.greenWash, color: me.lastError ? C.redDark : C.green, borderRadius: 12, padding: '10px 14px', marginBottom: 16, fontSize: 14 }}>
-          {me.lastError ? `⚠️ ${me.lastError}` : '✅ Подключён'} · токен …{me.last4} · действует до {new Date(me.expiresAt).toLocaleDateString('ru')}
+          {me.lastError ? `⚠️ ${me.lastError}` : '✅ Подключён'}
+          {me.account ? <> — аккаунт <b>{me.account}</b></> : <> — <span style={{ opacity: .8 }}>аккаунт не определён, впишите почту ниже</span></>}
+          <div style={{ fontSize: 12, opacity: .85, marginTop: 3 }}>токен …{me.last4} · подключён {new Date(me.addedAt).toLocaleDateString('ru')} · действует до {new Date(me.expiresAt).toLocaleDateString('ru')}</div>
         </div>
       )}
       <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>
@@ -136,12 +139,19 @@ function MyClaude({ me, onClose, onChanged }) {
         <CopyLine text={I.token} /></div>
       <div style={step}><b>3.</b> В {I.term} появится длинный токен, он начинается с <code>sk-ant-oat01-</code>. Выделите его целиком{os === 'win' ? ' (в PowerShell выделенное копируется правым кликом или Ctrl+C)' : ''} и вставьте сюда:</div>
       <textarea style={{ ...inputStyle, fontFamily: 'ui-monospace, Menlo, monospace', minHeight: 70, resize: 'vertical', wordBreak: 'break-all' }} placeholder="sk-ant-oat01-…" value={token} onChange={e => setToken(e.target.value)} autoComplete="off" spellCheck={false} />
+      {!me?.accountAuto && (
+        <div style={{ ...step, marginTop: 12, marginBottom: 0 }}>
+          <b>4.</b> Почта аккаунта Claude, в который вы вошли (если сайт не определит её сам):
+          <input style={{ ...inputStyle, marginTop: 6 }} type="email" placeholder="name@gmail.com" value={account} onChange={e => setAccount(e.target.value)} autoComplete="off" />
+        </div>
+      )}
       {err && <div style={{ color: C.redDark, fontSize: 13, marginTop: 10 }}>{err}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
         <div>{me?.connected && <Button kind="danger" onClick={remove}>Отключить</Button>}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button onClick={onClose}>Закрыть</Button>
-          <Button kind="primary" disabled={busy || !token.trim()} onClick={save}>{busy ? 'Сохраняю…' : me?.connected ? 'Заменить токен' : 'Подключить'}</Button>
+          <Button kind="primary" disabled={busy || (!token.trim() && !(me?.connected && !me.accountAuto && account.trim() !== (me.account || '')))} onClick={save}>
+            {busy ? 'Сохраняю…' : token.trim() ? (me?.connected ? 'Заменить токен' : 'Подключить') : me?.connected ? 'Сохранить почту' : 'Подключить'}</Button>
         </div>
       </div>
     </Modal>
@@ -572,8 +582,8 @@ export default function AdminSiteChanges() {
           <aside style={{ width: narrow ? '100%' : 290, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: narrow ? 'none' : `1px solid ${C.line}`, paddingRight: narrow ? 0 : 14, minHeight: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <h1 style={{ margin: 0, fontSize: 20 }}>🎨 Правки сайта</h1>
-              <button onClick={() => setClaudeOpen(true)} title="Мой Claude" style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 9, padding: '5px 9px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                {me?.connected ? (me.lastError ? '⚠️ Claude' : '✅ Claude') : '🔌 Claude'}
+              <button onClick={() => setClaudeOpen(true)} title={me?.account ? `Мой Claude: ${me.account}` : 'Мой Claude'} style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 9, padding: '5px 9px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {me?.connected ? (me.lastError ? '⚠️ ' : '✅ ') + (me.account || 'Claude') : '🔌 Claude'}
               </button>
             </div>
             <Button kind="primary" style={{ width: '100%', marginBottom: 10, justifyContent: 'center' }} onClick={() => { if (filter === 'merged') setFilter('open'); setParams(narrow ? { new: '1' } : {}); }}>＋ Новый чат</Button>
