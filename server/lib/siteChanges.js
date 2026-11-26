@@ -171,7 +171,7 @@ function buildPrompt(change) {
     '  Поля товара: name, fullName, sku, brand (matkasym-home | matkasym-shaar | matkasym-kyzmat), set (ключ сета этого бренда), category, color, price, priceUndefined, priceWholesale, priceDealer, description, specs ([{"key":"Высота","value":"120 см"}]), dimensions, unit, images (ссылки на приложенные фото), productStatus, isSupplied, supplier ({"company","sku"}), isOnOrder.',
     '  НЕ выдумывай цены, размеры, характеристики, артикулы, категории: только то, что дал дизайнер в переписке, или что уже есть в каталоге. Категорию бери только из существующих. Явно сказал «без цены» — "priceUndefined": true. Привозной товар — сначала op supplier, если поставщика нет в каталоге. Остатки, себестоимость и удаление товаров недоступны.',
     '  В итоге перечисли дизайнеру, какие товары добавишь или изменишь.',
-    '- В конце ответь по-русски, коротко и простыми словами для дизайнера: что изменено и где это увидеть на сайте (какая страница). Без кода.',
+    '- В конце ответь по-русски, коротко (3–6 строк) и простыми словами для дизайнера: что изменено и где это увидеть на сайте (какая страница). Без кода, имён файлов, markdown-разметки (**, `, #) и рассуждений о сборке/проверке. Список товаров не повторяй — его покажут отдельно.',
     '- Самой последней строкой ответа обязательно напиши «Где смотреть: /адрес» — точный адрес, где видно изменение, с нужным разделом. Форматы: сет — /admin/sets?brand=<бренд>&set=<ключ сета>, к разделу-категории добавь &cat=<категория>, к товарам — &focus=<_id>,<_id>… (все изменённые); карточка товара — /admin/products/<_id>; другие страницы — по маршрутам client/src/AdminRoutes.jsx (адреса вида /admin/sets/<сет> НЕ существуют). Если изменился PDF-каталог — «Где смотреть: PDF <название каталога>».',
     '',
   ];
@@ -251,24 +251,58 @@ const decideRow = change => [[
   { text: '🚫 Отклонить', callback_data: `sc:no:${change._id}` },
 ]];
 
+// Ответ Claude в Telegram: его markdown (**жирный**, `код`, «- » списки) → HTML, без длинных хвостов
+function tgText(raw, max = 1200) {
+  let t = String(raw || '').replace(/\n?\s*Где смотреть:.*$/im, '').trim();
+  if (t.length > max) t = t.slice(0, max).replace(/\s+\S*$/, '') + '…\n(полностью — в чате на сайте)';
+  return esc(t)
+    .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+    .replace(/`([^`\n]+)`/g, '$1')
+    .replace(/^#{1,4}\s*(.+)$/gm, '<b>$1</b>')
+    .replace(/^\s*[-*]\s+/gm, '• ');
+}
+
+// Изменения каталога одним блоком: одинаковые правки у многих товаров — одной строкой со списком артикулов
+function opsSummary(ops) {
+  if (!ops?.length) return '';
+  const warns = [...new Set(ops.map(o => o.warn).filter(Boolean))];
+  const groups = new Map();
+  for (const o of ops) {
+    const what = o.error ? `❌ не получится: ${o.error}`
+      : (o.changes || []).map(c => `${c.field}: ${c.from !== undefined && c.from !== '' ? c.from + ' → ' : ''}${c.to}`).join('; ');
+    const key = `${o.op}|${what}`;
+    if (!groups.has(key)) groups.set(key, { op: o.op, what, items: [] });
+    groups.get(key).items.push(o);
+  }
+  const who = o => o.data?.sku || String(o.label || '').replace(/^\S+\s*/, '').split(' · ')[0];
+  const verb = { create: '➕ Новые товары', update: '✏️ Изменить', supplier: '🏭 Новый поставщик' };
+  const lines = [...groups.values()].slice(0, 12).map(g => {
+    if (g.items.length === 1) return `${esc(g.items[0].label)}${g.what ? `\n   ${esc(g.what)}` : ''}`;
+    const names = g.items.map(who);
+    const list = names.slice(0, 8).join(', ') + (names.length > 8 ? ` и ещё ${names.length - 8}` : '');
+    return `${verb[g.op] || '•'} — <b>${g.items.length} шт.</b>${g.what ? `\n   ${esc(g.what)}` : ''}\n   <i>${esc(list)}</i>`;
+  });
+  if (groups.size > 12) lines.push(`…и ещё ${groups.size - 12} видов изменений — в чате на сайте`);
+  return `\n\n<b>📦 Каталог — изменится после утверждения (${ops.length}):</b>\n` +
+    (warns.length ? warns.map(w => `⚠️ ${esc(w.replace(/^новая категория (.+?) — такой ещё нет$/, 'будет создана новая категория $1'))}`).join('\n') + '\n' : '') +
+    lines.join('\n');
+}
+
 async function notify(change, event, extra = {}) {
   const head = `🎨 <b>Правка сайта №${change.number}</b> · ${esc(change.title)}`;
   const open = ['Открыть', adminLink(change._id)];
   if (event === 'ready') {
     const preview = ['👀 Предпросмотр', change.previewUrl];
-    const summary = extra.summary ? `\n\n${esc(String(extra.summary).replace(/\n?\s*Где смотреть:.*$/im, '')).slice(0, 1500)}` : '';
+    const summary = extra.summary ? `\n\n${tgText(extra.summary)}` : '';
     const pdfs = (change.pdfs || []).map(p => p.url ? `\n📄 <a href="${p.url}">${esc(p.title)} — пробный PDF</a>` : `\n📄 ${esc(p.title)}: не собрался (${esc(p.error)})`).join('');
-    const opsTxt = (change.dataOps || []).length
-      ? '\n\n<b>Изменения в каталоге</b> (внесутся после утверждения):\n' + change.dataOps.slice(0, 15).map(o =>
-          `${esc(o.label)}${o.error ? ` — ⚠️ ${esc(o.error)}` : ''}${o.warn ? `\n   ⚠️ ${esc(o.warn)}` : ''}` + (o.changes || []).slice(0, 4).map(c => `\n   ${esc(c.field)}: ${c.from !== undefined ? esc(c.from) + ' → ' : ''}${esc(c.to)}`).join('')).join('\n')
-      : '';
+    const opsTxt = opsSummary(change.dataOps);
     const reverted = change.reverted?.length ? `\n\n⚠️ Отменены правки в запрещённых файлах: ${esc(change.reverted.join(', '))}` : '';
-    await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${opsTxt}${pdfs}${reverted}\n\n${change.prNumber ? 'Предпросмотр соберётся за 3–7 минут — пришлю, когда будет готов. ' : ''}Утвердить можно прямо здесь.`, [preview, open], decideRow(change));
+    await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${opsTxt}${pdfs}${reverted}\n\n${change.prNumber ? '👀 Предпросмотр будет через 3–7 минут — пришлю.\n' : ''}👇 Утвердить или отклонить — кнопками ниже.`, [preview, open], decideRow(change));
     await tellAuthor(change, `${head}\nClaude закончил. Правка ждёт утверждения: ${esc(await approverName())} — без этого на сайте ничего не изменится. Предпросмотр соберётся за 3–7 минут, если нужно поправить — напишите в чат.${summary}${pdfs}`, [preview, open]);
   } else if (event === 'failed') {
     await tellAuthor(change, `${head}\n❌ Не получилось: ${esc(change.error || 'ошибка')}\nМожно уточнить задачу или повторить.`, [open]);
   } else if (event === 'question') {
-    const text = esc(String(extra.text || '')).slice(0, 1500);
+    const text = tgText(extra.text, 1500);
     await tellAuthor(change, `${head}\n${extra.answer ? '💬 Claude ответил' : '❓ Claude уточняет задачу — ответьте в чате'}:\n\n${text}`, [open]);
   } else if (event === 'preview') {
     const preview = ['👀 Предпросмотр', change.previewUrl];
@@ -485,10 +519,10 @@ async function handleTelegramCallback(cb) {
 async function notifyOwnersReady(change) {
   const head = `🎨 <b>Правка сайта №${change.number}</b> · ${esc(change.title)}`;
   const last = [...change.messages].reverse().find(m => m.kind === 'bot');
-  const summary = last?.text ? `\n\n${esc(last.text).slice(0, 1500)}` : '';
+  const summary = last?.text ? `\n\n${tgText(last.text)}` : '';
   const preview = change.previewReadyAt ? '✅ Предпросмотр готов.' : 'Предпросмотр ещё собирается.';
-  await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}\n\n⏳ Ждёт вашего утверждения. ${preview}`,
+  await tellOwners(`${head}\nОт: ${esc(change.authorName)}${summary}${opsSummary(change.dataOps)}\n\n⏳ Ждёт вашего утверждения. ${preview}`,
     [['👀 Предпросмотр', change.previewUrl], ['Открыть', adminLink(change._id)]], decideRow(change));
 }
 
-module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, setTokenAccount, fileToText, removeToken, setTokenError };
+module.exports = { pushRelease, notifyOwnersReady, approveChange, rejectChange, handleTelegramCallback, approverName, status, checkPreview, checkDeployed, checkAllDeployed, SITE_CHANGE_ROLES, checkSecret, dispatch, buildPrompt, notify, previewUrl, saveToken, readToken, tokenInfo, setTokenAccount, fileToText, opsSummary, tgText, removeToken, setTokenError };
