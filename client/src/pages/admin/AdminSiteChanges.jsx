@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   getSiteChanges, getSiteChange, createSiteChange, commentSiteChange,
-  retrySiteChange, approveSiteChange, rejectSiteChange, saveMyClaude, removeMyClaude,
+  retrySiteChange, approveSiteChange, siteChangeUploadUrl, putToStorage, rejectSiteChange, saveMyClaude, removeMyClaude,
 } from '../../api/index';
 
 const C = {
@@ -168,7 +168,30 @@ const isPdf = u => /\.pdf(\?|$)/i.test(u);
 const isImg = u => { const p = String(u).split('?')[0]; return /\.(png|jpe?g|webp|gif|svg|heic|avif|bmp)$/i.test(p) || (/cloudinary\.com/.test(p) && !/\.[a-z0-9]{1,6}$/i.test(p)); };
 const fileName = u => { try { return decodeURIComponent(String(u).split('?')[0].split('/').pop()); } catch { return 'файл'; } };
 const fileIcon = n => /\.(xlsx?|xlsm|ods|csv)$/i.test(n) ? '📊' : /\.pdf$/i.test(n) ? '📄' : /\.(docx?|rtf|txt|md)$/i.test(n) ? '📝' : /\.(zip|rar|7z)$/i.test(n) ? '🗜' : '📎';
-const MAX_FILES = 10, MAX_MB = 15;
+const MAX_FILES = 10, MAX_MB = 500;
+const SMALL = 15 * 1024 * 1024;   // такие можно и по-старому, через сервер
+
+// Файлы грузим прямо в R2 по подписанной ссылке — так проходят и 500 МБ.
+// Если прямая загрузка не удалась (нет сети, CORS), маленькие файлы уходят через сервер.
+async function uploadFiles(files, onProgress) {
+  const total = files.reduce((s, f) => s + f.size, 0) || 1;
+  const done = new Array(files.length).fill(0);
+  const tick = () => onProgress?.(Math.round(done.reduce((a, b) => a + b, 0) / total * 100));
+  const uploaded = [], rest = [];
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    try {
+      const { data } = await siteChangeUploadUrl(f);
+      await putToStorage(data.uploadUrl, f, data.type, n => { done[i] = n; tick(); });
+      uploaded.push(data.url);
+    } catch (e) {
+      if (f.size > SMALL) throw new Error(e.response?.data?.message || `Не удалось загрузить «${f.name}». Проверьте интернет и попробуйте ещё раз`);
+      rest.push(f);
+    }
+    done[i] = f.size; tick();
+  }
+  return { uploaded, rest };
+}
 
 function useFiles() {
   const [files, setFiles] = useState([]);
@@ -186,6 +209,7 @@ function Composer({ disabled, placeholder, onSend, hint }) {
   const [text, setText] = useState('');
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(null);
   const fl = useFiles();
   const inputRef = useRef(null);
   const taRef = useRef(null);
@@ -198,9 +222,15 @@ function Composer({ disabled, placeholder, onSend, hint }) {
   const send = async () => {
     if ((!text.trim() && !fl.files.length) || busy || disabled) return;
     setBusy(true); fl.setErr('');
-    try { await onSend(text.trim(), fl.files.map(x => x.f)); setText(''); fl.clear(); }
-    catch (e) { fl.setErr(errMsg(e)); }
-    setBusy(false);
+    try {
+      const all = fl.files.map(x => x.f);
+      const up = all.length ? await uploadFiles(all, p => setProgress(p)) : { uploaded: [], rest: [] };
+      setProgress(null);
+      await onSend(text.trim(), up.rest, up.uploaded, all[0]?.name);
+      setText(''); fl.clear();
+    }
+    catch (e) { fl.setErr(e.response ? errMsg(e) : e.message); }
+    setProgress(null); setBusy(false);
   };
 
   return (
@@ -235,7 +265,7 @@ function Composer({ disabled, placeholder, onSend, hint }) {
         <button onClick={() => inputRef.current?.click()} disabled={disabled} title="Прикрепить файлы: картинки, PDF, Excel, Word…"
           className="sc-icon" style={{ border: `1px solid ${C.line}`, background: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>📎</button>
         <input ref={inputRef} type="file" multiple hidden onChange={e => { fl.add(e.target.files); e.target.value = ''; }} />
-        <span className={fl.err ? '' : 'sc-hint'} style={{ flex: 1, fontSize: 12, color: fl.err ? C.redDark : C.muted }}>{fl.err || hint}</span>
+        <span className={fl.err ? '' : 'sc-hint'} style={{ flex: 1, fontSize: 12, color: fl.err ? C.redDark : C.muted }}>{progress != null ? `Загружаю файлы… ${progress}%` : fl.err || hint}</span>
         <button onClick={send} disabled={disabled || busy || (!text.trim() && !fl.files.length)} title="Отправить (Enter)"
           className="sc-icon" style={{ border: 'none', background: (!text.trim() && !fl.files.length) || disabled ? '#d9d6d0' : C.red, color: '#fff', borderRadius: 10, width: 34, height: 34, flexShrink: 0, cursor: 'pointer', fontSize: 17, fontWeight: 700 }}>
           {busy ? '…' : '↑'}
@@ -417,14 +447,18 @@ function ChatView({ id, isOwner, me, onChanged, onCreated, onOpenClaude }) {
     try { const r = await fn(); setD(r.data); onChanged(); } catch (e) { setErr(errMsg(e)); }
     setBusy(false);
   };
-  const form = (text, files) => { const f = new FormData(); f.append('text', text); files.forEach(x => f.append('images', x)); return f; };
+  const form = (text, files, uploaded = [], firstName) => {
+    const f = new FormData(); f.append('text', text); files.forEach(x => f.append('images', x));
+    if (uploaded.length) { f.append('uploaded', JSON.stringify(uploaded)); f.append('firstName', firstName || ''); }
+    return f;
+  };
 
   const noClaude = !me?.connected;
   const canWrite = !id || !!d;   // чат не закрывается: пока Claude работает — сообщение встаёт в очередь
   const hint = noClaude ? '' : 'Enter — отправить, Shift+Enter — новая строка. Файлы можно перетащить или вставить ⌘V';
 
-  const sendNew = async (text, files) => { const r = await createSiteChange(form(text, files)); onChanged(); onCreated(r.data._id); };
-  const sendMore = async (text, files) => { const r = await commentSiteChange(id, form(text, files)); setD(r.data); onChanged(); };
+  const sendNew = async (text, files, up, fn) => { const r = await createSiteChange(form(text, files, up, fn)); onChanged(); onCreated(r.data._id); };
+  const sendMore = async (text, files, up, fn) => { const r = await commentSiteChange(id, form(text, files, up, fn)); setD(r.data); onChanged(); };
 
   const placeholder = noClaude ? 'Сначала подключите свой Claude' : !id ? 'Опишите, что поменять на сайте или в PDF-каталоге…'
     : ACTIVE.includes(d?.status) ? 'Можно писать — Claude возьмёт сообщение, как только закончит текущую работу…'

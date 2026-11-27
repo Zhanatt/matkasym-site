@@ -25,20 +25,53 @@ const ownerOnly = (req, res, next) =>
 
 // Вложения чата: любые файлы. Картинки и PDF Claude читает сам; для Excel/Word/текста
 // рядом кладём текстовую копию <файл>.txt — её воркфлоу скачивает вместе с оригиналом.
+const MAX_UPLOAD = 500 * 1024 * 1024;   // прямая загрузка в R2 из браузера
+const MAX_TEXT_SRC = 30 * 1024 * 1024;  // больше — текстовую копию не делаем (память Render)
+
+function fileKey(name, mime) {
+  let ext = (name.match(/\.([a-z0-9]{1,6})$/i)?.[1] || '').toLowerCase();
+  if (!ext && /^image\//.test(mime)) ext = (mime.split('/')[1] || 'png').replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '');
+  const base = name.replace(/\.[^.]*$/, '').replace(/[\\/?#%*:|"<>\x00-\x1f]+/g, ' ').trim().slice(0, 80) || 'file';
+  return { ext, key: `site-changes/${Date.now()}-${Math.random().toString(36).slice(2, 8)}/${base}${ext ? '.' + ext : ''}` };
+}
+
 async function uploadImage(file) {
   // multer отдаёт имя в latin1 — кириллица превращается в кракозябры
   let name = file.originalname || 'file';
   try { const u = Buffer.from(name, 'latin1').toString('utf8'); if (!u.includes('\uFFFD')) name = u; } catch {}
-  let ext = (name.match(/\.([a-z0-9]{1,6})$/i)?.[1] || '').toLowerCase();
-  if (!ext && /^image\//.test(file.mimetype)) ext = (file.mimetype.split('/')[1] || 'png').replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '');
-  const base = name.replace(/\.[^.]*$/, '').replace(/[\\/?#%*:|"<>\x00-\x1f]+/g, ' ').trim().slice(0, 80) || 'file';
-  const key = `site-changes/${Date.now()}-${Math.random().toString(36).slice(2, 8)}/${base}${ext ? '.' + ext : ''}`;
+  const { key, ext } = fileKey(name, file.mimetype || '');
   const url = await storage.put(key, file.buffer, file.mimetype || 'application/octet-stream', { fileName: name });
   const text = await sc.fileToText(file.buffer, ext).catch(() => null);
   if (text) await storage.put(key + '.txt', Buffer.from(text, 'utf8'), 'text/plain; charset=utf-8');
   return url;
 }
-const uploadAll = files => Promise.all((files || []).map(uploadImage));
+
+// Файлы, которые браузер уже залил в R2 по подписанной ссылке: проверяем, что они наши
+// и действительно лежат в хранилище, и для Excel/Word делаем текстовую копию.
+async function takeUploaded(raw) {
+  let list = [];
+  try { list = JSON.parse(raw || '[]'); } catch {}
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const url of list.slice(0, 10)) {
+    const key = storage.keyFromUrl(url);
+    if (!key || !key.startsWith('site-changes/')) continue;
+    const h = await storage.head(key).catch(() => null);
+    if (!h) continue;
+    const ext = (key.match(/\.([a-z0-9]{1,6})$/i)?.[1] || '').toLowerCase();
+    if (/^(xlsx|xlsm|xls|ods|csv|tsv|docx|txt|md|json|xml|html?|rtf)$/.test(ext) && h.ContentLength <= MAX_TEXT_SRC) {
+      try {
+        const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
+        const text = await sc.fileToText(buf, ext);
+        if (text) await storage.put(key + '.txt', Buffer.from(text, 'utf8'), 'text/plain; charset=utf-8');
+      } catch {}
+    }
+    out.push(url);
+  }
+  return out;
+}
+
+const uploadAll = async (files, uploaded) => [...await takeUploaded(uploaded), ...await Promise.all((files || []).map(uploadImage))];
 
 function setStatus(doc, status) { doc.status = status; doc.statusAt = new Date(); }
 
@@ -151,17 +184,31 @@ admin.get('/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// Подписанная ссылка: браузер кладёт файл (до 500 МБ) прямо в R2, минуя сервер
+admin.post('/upload-url', async (req, res) => {
+  try {
+    const name = String(req.body.name || 'file').slice(0, 200);
+    const type = String(req.body.type || '') || 'application/octet-stream';
+    const size = Number(req.body.size) || 0;
+    if (size > MAX_UPLOAD) return res.status(400).json({ message: `«${name}» больше 500 МБ` });
+    const { key } = fileKey(name, type);
+    res.json({ ...(await storage.signPut(key, type)), type });
+  } catch (e) { fail(res, e); }
+});
+
 admin.post('/', upload.array('images', 10), async (req, res) => {
   try {
     // Чат: отдельного заголовка нет — название берём из первого сообщения
     const text = String(req.body.text || '').trim().slice(0, 5000);
-    if (!text && !req.files?.length) return res.status(400).json({ message: 'Напишите, что нужно сделать' });
+    const hasUp = /site-changes\//.test(req.body.uploaded || '');
+    if (!text && !req.files?.length && !hasUp) return res.status(400).json({ message: 'Напишите, что нужно сделать' });
     // только файл без текста — название чата по имени файла
-    const fname = req.files?.[0] ? Buffer.from(req.files[0].originalname || 'Файл', 'latin1').toString('utf8') : '';
+    const fname = req.files?.[0] ? Buffer.from(req.files[0].originalname || 'Файл', 'latin1').toString('utf8')
+      : hasUp ? String(req.body.firstName || 'Файл').slice(0, 100) : '';
     const firstLine = text.split('\n').find(l => l.trim()) || text || `Файл: ${fname}`;
     const title = String(req.body.title || '').trim().slice(0, 140) || (firstLine.length > 70 ? firstLine.slice(0, 67).trimEnd() + '…' : firstLine);
     await ensureToken(req.user);
-    const images = await uploadAll(req.files);
+    const images = await uploadAll(req.files, req.body.uploaded);
     const doc = await SiteChange.create({
       number: await Counter.next('siteChange'),
       author: req.user._id, authorName: req.user.name, title,
@@ -182,9 +229,9 @@ admin.post('/:id/messages', upload.array('images', 10), async (req, res) => {
     const doc = await SiteChange.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Правка не найдена' });
     const text = String(req.body.text || '').trim().slice(0, 5000);
-    if (!text && !req.files?.length) return res.status(400).json({ message: 'Напишите сообщение или приложите файл' });
+    if (!text && !req.files?.length && !/site-changes\//.test(req.body.uploaded || '')) return res.status(400).json({ message: 'Напишите сообщение или приложите файл' });
     await ensureToken(req.user);
-    const images = await uploadAll(req.files);
+    const images = await uploadAll(req.files, req.body.uploaded);
     const msg = { kind: 'comment', author: req.user._id, authorName: req.user.name, text, images };
     if (['queued', 'working', 'merging'].includes(doc.status)) {
       doc.messages.push({ ...msg, pending: true });

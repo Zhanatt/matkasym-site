@@ -42,7 +42,16 @@ async function copy(fromKey, toKey) {
   return publicUrl(toKey);
 }
 
+// Ссылка для загрузки прямо из браузера (PUT) — большие файлы не идут через сервер:
+// на Render всего 512 МБ памяти. Нужен CORS у бакета (PUT с домена сайта).
+async function signPut(key, contentType, expiresIn = 3600) {
+  const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+  const uploadUrl = await getSignedUrl(s3(), new PutObjectCommand({ Bucket: env().bucket, Key: key, ContentType: contentType }), { expiresIn });
+  return { uploadUrl, url: publicUrl(key) };
+}
+
+const head = key => s3().send(new HeadObjectCommand({ Bucket: env().bucket, Key: key }));
 const remove = key => s3().send(new DeleteObjectCommand({ Bucket: env().bucket, Key: key }));
 const exists = key => s3().send(new HeadObjectCommand({ Bucket: env().bucket, Key: key })).then(() => true, () => false);
 
-module.exports = { isConfigured, put, copy, remove, exists, publicUrl, isOurUrl, keyFromUrl };
+module.exports = { isConfigured, put, signPut, head, copy, remove, exists, publicUrl, isOurUrl, keyFromUrl };

@@ -299,6 +299,10 @@ export const getSiteChanges     = ()           => api.get('/admin/site-changes')
 export const getSiteChange      = (id)         => api.get(`/admin/site-changes/${id}`);
 export const createSiteChange   = (form)       => api.post('/admin/site-changes', form);
 export const commentSiteChange  = (id, form)   => api.post(`/admin/site-changes/${id}/messages`, form);
+// Большие вложения: подписанная ссылка → PUT прямо в R2 (сервер файл не трогает)
+export const siteChangeUploadUrl = (f)          => api.post('/admin/site-changes/upload-url', { name: f.name, type: f.type, size: f.size });
+export const putToStorage = (uploadUrl, file, type, onProgress) =>
+  axios.put(uploadUrl, file, { headers: { 'Content-Type': type }, onUploadProgress: e => onProgress?.(e.loaded) });
 export const retrySiteChange    = (id)         => api.post(`/admin/site-changes/${id}/retry`);
 export const approveSiteChange  = (id)         => api.post(`/admin/site-changes/${id}/approve`);
 export const rejectSiteChange   = (id, reason) => api.post(`/admin/site-changes/${id}/reject`, { reason });
