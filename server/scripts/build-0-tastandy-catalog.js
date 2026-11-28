@@ -194,9 +194,19 @@ const BIN_SVG = (() => {
   body.push(add(['sw', 'sw2', 'sw3', 'gw', 'gw2', 'gw3'], `${S('02')}
     ${series('Металл и дерево', 'Серия SW', 'Строгая прямоугольная форма с деревянными вставками.', pick('sw', 'sw2', 'sw3'), 0.85)}
     ${series('Металл и дерево', 'Серия GW', 'Овальный корпус и вертикальные деревянные рейки.', pick('gw', 'gw2', 'gw3'), 1.15)}`));
-  body.push(add(['gwr', 'gwr2', 'gwr3', 'g2', 'g3', 'g4'], `
+  // У GWR теперь свой лист — снизу фото урн на улице (из карточек GWR2 и GWR3, кадр 7), ужаты локально
+  const gwrRoom = [await localImg(M.gwr2.doc.images[7], 1400, 8), await localImg(M.gwr3.doc.images[7], 1400, 8)];
+  body.push(add(['gwr', 'gwr2', 'gwr3'], `
     ${series('Сталь и дерево', 'Серия GWR', 'Козырёк от дождя, порошковое покрытие.', pick('gwr', 'gwr2', 'gwr3'), 1.2)}
-    ${series('Металл', 'Серия G', 'Цвет секции или таблички подсказывает вид отходов. Откидная крышка, отделение на 45 л.', pick('g2', 'g3', 'g4'), 0.8)}`));
+    <div class="band" style="grid-template-columns:1fr 1fr;height:100mm">${gwrRoom.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>`));
+  // Серия G — свой лист (28.11.2026): G2, G3, G4 крупно и снизу кадры с рендеров G3/G4
+  const gShots = [];
+  for (const u of ['https://media.matkasym.com/products/g3-3d/1795855613036-05.png', 'https://media.matkasym.com/products/g4-3d/1795855643794-05.png',
+    'https://media.matkasym.com/products/g4-3d/1795855643794-07.png', 'https://media.matkasym.com/products/g4-3d/1795855643794-08.png']) gShots.push(await localImg(u, 1200, 60));
+  body.push(add(['g2', 'g3', 'g4'], `
+    ${series('Металл', 'Серия G', 'Цвет секции или таблички подсказывает вид отходов. Откидная крышка, внутри съёмные оцинкованные вёдра.', pick('g2', 'g3', 'g4'), 1.4)}
+    <style>.sw-big img{height:72mm}</style>
+    <div class="swatches sw-big" style="--n:4">${gShots.map((u, i) => `<figure><img src="${u}" alt=""><figcaption>${['G3: крышка открыта', 'G4: крышка открыта', 'Ведро вынимается', 'Таблички секций'][i]}</figcaption></figure>`).join('')}</div>`));
   body.push(add(['karakol2', 'karakol3', 'karakol4', 'burch1', 'burch3'], `
     ${series('Металл', 'Серия Karakol', 'Яркие секции под единым козырьком.', pick('karakol2', 'karakol3', 'karakol4'), 0.75)}
     <article class="series" style="flex-grow:1.25"><div class="s-head"><div><div class="s-kind">Металл</div><h2>Серия 3 BURCH</h2></div><p class="s-lead">Сортировочная урна из треугольных секций: одна или три вместе.</p></div>
