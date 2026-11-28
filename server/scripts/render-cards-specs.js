@@ -1,7 +1,7 @@
 /**
  * Характеристики трёх карточек, получивших 3D-рендеры 28.11.2026.
  * Габариты и вес (сталь 7850 кг/м³) посчитаны по STEP-моделям; цвета — со слов пользователя;
- * объём Tazalyk — как у соседних карточек Tazalyk 1100 л.
+ * объём Tazalyk — как у соседних карточек Tazalyk 1100 л; объём Ecomayak — сечение корпуса 0,50 м² × 1,40 м по модели.
  * Без --apply только печатает. С --apply — бэкап в JSON и запись.
  */
 const mongoose=require('mongoose'); const fs=require('fs'); const path=require('path');
@@ -19,7 +19,7 @@ const CARDS={
   category:'Уличные урны',
   dimensions:'98 × 87 × 187 см',
   description:'Уличная урна-сетка Ecomayak для сбора пластиковых бутылок. Каркас из стального листа и сварной сетки, крыша с кронштейном для фонаря, круглая горловина для бутылок. Для выгрузки — сетчатая дверца на петлях с ушком под замок. Накладки «Желим Plastic». Порошковая окраска.',
-  specs:[S('Тип','Урна для пластиковых бутылок'),S('Материал','Металл: лист и сварная сетка, порошковая окраска'),
+  specs:[S('Объём','≈ 700 л'),S('Тип','Урна для пластиковых бутылок'),S('Материал','Металл: лист и сварная сетка, порошковая окраска'),
    S('Габариты ДxШxВ','984 × 868 × 1872 мм (с фонарём)'),S('Крышка','крыша'),S('Дверца для выгрузки','есть, с ушком под замок'),
    S('Колёса','нет'),S('Педаль','нет',['есть','нет']),S('Цвет','красный RAL 3020, накладки жёлтые RAL 1026'),S('Вес','≈ 32 кг')]},
  '6af1781453924e6aa16a4763':{ // TAZA KUBAT 570×350
@@ -32,6 +32,8 @@ const CARDS={
 };
 const APPLY=process.argv.includes('--apply');
 (async()=>{await mongoose.connect(uri);
+ const only=process.argv.find(a=>a.startsWith('--only='))?.slice(7);
+ if(only) for(const k of Object.keys(CARDS)) if(k!==only) delete CARDS[k];
  const docs=await Product.find({_id:{$in:Object.keys(CARDS)}}).lean();
  for(const d of docs){const c=CARDS[d._id];
   console.log(`\n■ ${d.fullName}\n  категория: ${d.category} → ${c.category}\n  габариты: «${d.dimensions}» → «${c.dimensions}»\n  было характеристик: ${(d.specs||[]).length}`);
