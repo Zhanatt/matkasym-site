@@ -119,10 +119,22 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:2
 (async () => {
   await mongoose.connect(MONGO_URI);
   const col = mongoose.connection.db.collection('products');
-  const ala = await col.findOne({ set: 'bilim-kelechek', name: 'ALA-TOO парта, стул' });
+  // 28.11.2026: карточку «ALA-TOO парта, стул» удалили 20.11 — лист 02 теперь «Парта двухместная» (MKS-SD-202),
+  // решение пользователя. Её фото новые: Cloudinary отключён и новых ресайзов не делает (401),
+  // поэтому качаем оригиналы и ужимаем локально (sharp) рядом с HTML.
+  const duo = await col.findOne({ set: 'bilim-kelechek', sku: 'MKS-SD-202' });
   const i1r = await col.findOne({ set: 'bilim-kelechek', sku: 'MKS-BK-004' });
-  if (!ala || !i1r) throw new Error('нет ALA-TOO или MKS-BK-004');
-  const alaRoom = (ala.images || []).filter(u => !u.includes('/matkasym/bilim-kelechek/'))[1]; // класс с учениками
+  if (!duo || !i1r) throw new Error('нет MKS-SD-202 или MKS-BK-004');
+  const sharp = require('sharp');
+  const localJpg = async (url, name, w, h) => {
+    const r = await fetch(url); if (!r.ok) throw new Error(`не скачать ${url}: ${r.status}`);
+    const file = path.join(OUT, name);
+    await sharp(Buffer.from(await r.arrayBuffer())).resize(w, h, h ? { fit: 'cover', position: 'attention' } : { fit: 'inside' })
+      .flatten({ background: '#fff' }).jpeg({ quality: 86 }).toFile(file);
+    return file;
+  };
+  const duoHero = await localJpg(duo.images[1], 'duo-hero.jpg', 2000);    // парта спереди в классе
+  const duoRoom = await localJpg(duo.images[0], 'duo-room.jpg', 1200, 900); // класс с учениками, 4:3
   const dims = s => String(s || '').split(/[x×*]/i).map(v => v.trim()).join(' × ');
 
   const pages = [];
@@ -140,14 +152,13 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:700; font-size:2
     rows: [['Форма', 'треугольная'], ['Опоры', 'на колёсах'], ['Столешница', 'оранжевая / белая'], ['Стул', 'оранжевый / белый'], ['Группа', '6 парт — шестиугольник']],
   }));
 
-  // 3. ALA-TOO
+  // 3. Парта двухместная (вместо удалённой ALA-TOO)
   pages.push(productPage({
-    n: '02', kind: 'Школьная парта', title: 'ALA-TOO',
-    lead: 'Двухместная парта и два стула. На передней панели — силуэт гор Ала-Тоо, по бокам — крючки для рюкзаков.',
-    hero: fromUrl(ala.images[0], 2000).replace('/upload/', '/upload/e_trim:10/'),
-    second: alaRoom ? fromUrl(alaRoom, 1200).replace('c_limit', 'c_fill,ar_4:3,g_auto') : '',
-    price: ala.price || ala.priceWholesale, priceLabel: ala.price ? 'розничная цена' : 'оптовая цена',
-    rows: [['Комплект', 'парта + 2 стула'], ['Столешница', '120 × 45 см'], ['Каркас', 'металлический, оранжевый'], ['Сиденье', 'пластиковое, белое']],
+    n: '02', kind: 'Школьная парта', title: 'Парта двухместная',
+    lead: 'Двухместная парта и два стула для классов. Металлический каркас, перфорированная передняя панель и полка под столешницей.',
+    hero: duoHero, second: duoRoom,
+    price: duo.price || duo.priceWholesale, priceLabel: duo.price ? 'розничная цена' : 'оптовая цена',
+    rows: [['Комплект', 'парта + 2 стула'], ['Каркас', 'металлический, серый'], ['Столешница', 'голубая'], ['Сиденье', 'пластиковое, голубое']],
   }).replace('<div class="second">', '<div class="second second--photo">'));
 
   // 4. Стол I 1 R + как заказать
