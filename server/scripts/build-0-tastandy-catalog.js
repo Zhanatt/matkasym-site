@@ -135,15 +135,15 @@ const BIN_SVG = (() => {
     const { data, info } = await sharp(Buffer.from(await r.arrayBuffer())).flatten({ background: '#fff' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
     for (let i = 0; i < data.length; i += 3) {
       const m = Math.min(data[i], data[i + 1], data[i + 2]);
-      if (m >= 236) { data[i] = data[i + 1] = data[i + 2] = 255; }
-      else if (m >= 200) { const k = (m - 200) / 36; for (let c = 0; c < 3; c++) data[i + c] = Math.round(data[i + c] + (255 - data[i + c]) * k * k); }
+      if (m >= 240) { data[i] = data[i + 1] = data[i + 2] = 255; }
+      else if (m >= 228) { const k = (m - 228) / 12; for (let c = 0; c < 3; c++) data[i + c] = Math.round(data[i + c] + (255 - data[i + c]) * k * k); }
     }
     const buf = await sharp(data, { raw: info }).png().toBuffer();
     const file = path.join(IMG, `${require('crypto').createHash('md5').update(key).digest('hex').slice(0, 10)}.jpg`);
     await sharp(buf).flatten({ background: '#fff' }).trim({ background: '#fff', threshold: thr })
       .extend({ top: 12, bottom: 12, left: 12, right: 12, background: '#fff' })
       .resize({ width: w, withoutEnlargement: true })  // как c_limit у Cloudinary: ограничена только ширина
-      .jpeg({ quality: 88 }).toFile(file);
+      .jpeg({ quality: 92, chromaSubsampling: '4:4:4', mozjpeg: true }).toFile(file);  // без прореживания цвета: зелёный и жёлтый не «плывут»
     return (local[key] = file);
   }
   const isCloud = u => u.includes('res.cloudinary.com');
@@ -155,13 +155,13 @@ const BIN_SVG = (() => {
     if (!imgDoc) throw new Error('нет карточки с фото ' + p.v);
     const u = p.imgs?.[0] || imgDoc.images?.[p.img || 0];
     if (!u) throw new Error('нет фото ' + p.v);
-    const src = async w => !isCloud(u) ? localImg(u, w, p.trim) : p.cutout ? nobg(u, w) : studio(u, w);
+    const src = async w => !isCloud(u) ? localImg(u, w === 1000 ? 1600 : w, p.trim) : p.cutout ? nobg(u, w) : studio(u, w);
     M[k] = { ...p, key: k, doc: imgDoc, price: p.price ?? (d.price || 0), src: await src(1000), thumb: await src(240) };
   }
   const f1Shots = [];
-  for (const u of M.f1.imgs.slice(1)) f1Shots.push(await localImg(u, 700, 60));
+  for (const u of M.f1.imgs.slice(1)) f1Shots.push(await localImg(u, 900, 60));
   const kubatShots = [];  // по очереди: имя файла берётся из счётчика
-  for (const i of [2, 5, 7, 3]) kubatShots.push(await localImg(M.kubat.doc.images[i], 700));
+  for (const i of [2, 5, 7, 3]) kubatShots.push(await localImg(M.kubat.doc.images[i], 900, 60));
   await L.warm(Object.values(M).filter(m => m.cutout).flatMap(m => [m.src, m.thumb]));
   const pic = (k, i, w = 1400) => { const u = M[k].doc.images?.[i]; if (!u) throw new Error(`нет кадра ${k} #${i}`); return room(u, w); };
   const pick = (...keys) => keys.map(k => M[k]);
