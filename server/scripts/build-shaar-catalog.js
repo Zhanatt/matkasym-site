@@ -23,7 +23,8 @@ const { shaarSetOrder } = require('../lib/catalogFiles');
 const [SRC, OUT] = process.argv.slice(2).filter(a => !a.startsWith('--'));
 // 28.11.2026: было 130 dpi и QFactor 0.7 с прореживанием цвета — рендеры в скачанном PDF «мылились» и шли квадратами.
 // Стало 150 dpi, QFactor 0.4, без прореживания: файл ~13 МБ вместо ~7.
-const LIGHT_DPI = 150;
+// 28.11.2026 (вторая правка): пользователь просил ещё лучше — 200 dpi, QFactor 0.25, файл ~22 МБ.
+const LIGHT_DPI = 200;
 if (require.main === module) {
   if (!SRC || !OUT) { console.error('Укажите папку каталогов и рабочую папку'); process.exit(1); }
   fs.mkdirSync(OUT, { recursive: true });
@@ -179,7 +180,7 @@ html, body { background:transparent; }</style></head><body>${stamps.map(n => `<s
 
   // Лёгкая версия: сжимаются только картинки, текст и шрифты остаются
   const gsPdf = path.join(OUT, 'gs.pdf');
-  compressPdf(basePdf, gsPdf, LIGHT_DPI, { q: 0.4, sub: false });
+  compressPdf(basePdf, gsPdf, LIGHT_DPI, { q: 0.25, sub: false });
   const light = path.join(OUT, 'Каталог MATKASYM SHAAR (лёгкий).pdf');
   fs.writeFileSync(light, await withNav(fs.readFileSync(gsPdf)));
 

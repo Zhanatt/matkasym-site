@@ -143,7 +143,7 @@ const BIN_SVG = (() => {
     await sharp(buf).flatten({ background: '#fff' }).trim({ background: '#fff', threshold: thr })
       .extend({ top: 12, bottom: 12, left: 12, right: 12, background: '#fff' })
       .resize({ width: w, withoutEnlargement: true })  // как c_limit у Cloudinary: ограничена только ширина
-      .jpeg({ quality: 92, chromaSubsampling: '4:4:4', mozjpeg: true }).toFile(file);  // без прореживания цвета: зелёный и жёлтый не «плывут»
+      .jpeg({ quality: 95, chromaSubsampling: '4:4:4', mozjpeg: true }).toFile(file);  // без прореживания цвета: зелёный и жёлтый не «плывут»
     return (local[key] = file);
   }
   const isCloud = u => u.includes('res.cloudinary.com');
@@ -155,13 +155,13 @@ const BIN_SVG = (() => {
     if (!imgDoc) throw new Error('нет карточки с фото ' + p.v);
     const u = p.imgs?.[0] || imgDoc.images?.[p.img || 0];
     if (!u) throw new Error('нет фото ' + p.v);
-    const src = async w => !isCloud(u) ? localImg(u, w === 1000 ? 1600 : w, p.trim) : p.cutout ? nobg(u, w) : studio(u, w);
+    const src = async w => !isCloud(u) ? localImg(u, w === 1000 ? 2000 : w, p.trim) : p.cutout ? nobg(u, w) : studio(u, w);
     M[k] = { ...p, key: k, doc: imgDoc, price: p.price ?? (d.price || 0), src: await src(1000), thumb: await src(240) };
   }
   const f1Shots = [];
-  for (const u of M.f1.imgs.slice(1)) f1Shots.push(await localImg(u, 900, 60));
+  for (const u of M.f1.imgs.slice(1)) f1Shots.push(await localImg(u, 1200, 60));
   const kubatShots = [];  // по очереди: имя файла берётся из счётчика
-  for (const i of [2, 5, 7, 3]) kubatShots.push(await localImg(M.kubat.doc.images[i], 900, 60));
+  for (const i of [2, 5, 7, 3]) kubatShots.push(await localImg(M.kubat.doc.images[i], 1200, 60));
   await L.warm(Object.values(M).filter(m => m.cutout).flatMap(m => [m.src, m.thumb]));
   const pic = (k, i, w = 1400) => { const u = M[k].doc.images?.[i]; if (!u) throw new Error(`нет кадра ${k} #${i}`); return room(u, w); };
   const pick = (...keys) => keys.map(k => M[k]);
@@ -221,7 +221,7 @@ const BIN_SVG = (() => {
     </div>
     ${shots.length ? `<div class="swatches" style="--n:${shots.length}">${shots.map((u, i) => `<figure><img src="${u}" alt=""><figcaption>${esc(caps[i] || '')}</figcaption></figure>`).join('')}</div>` : ''}`);
   };
-  const shotsOf = async (key, idx) => { const out = []; for (const i of idx) out.push(await localImg(M[key].doc.images[i], 900, 60)); return out; };
+  const shotsOf = async (key, idx) => { const out = []; for (const i of idx) out.push(await localImg(M[key].doc.images[i], 1200, 60)); return out; };
 
   body.push(featurePage('tazLid', 'Металл · 1100 литров', 'Tazalyk с крышкой',
     'Контейнер 1100 л с крышкой: мусор не разлетается и не мокнет. Мелкий мусор бросают в откидной клапан, не поднимая крышку.',
