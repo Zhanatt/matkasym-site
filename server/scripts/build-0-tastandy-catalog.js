@@ -199,14 +199,41 @@ const BIN_SVG = (() => {
   body.push(add(['gwr', 'gwr2', 'gwr3'], `
     ${series('Сталь и дерево', 'Серия GWR', 'Козырёк от дождя, порошковое покрытие.', pick('gwr', 'gwr2', 'gwr3'), 1.2)}
     <div class="band" style="grid-template-columns:1fr 1fr;height:100mm">${gwrRoom.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>`));
-  // Серия G — свой лист (28.11.2026): G2, G3, G4 крупно и снизу кадры с рендеров G3/G4
-  const gShots = [];
-  for (const u of ['https://media.matkasym.com/products/g3-3d/1795855613036-05.png', 'https://media.matkasym.com/products/g4-3d/1795855643794-05.png',
-    'https://media.matkasym.com/products/g4-3d/1795855643794-07.png', 'https://media.matkasym.com/products/g4-3d/1795855643794-08.png']) gShots.push(await localImg(u, 1200, 60));
-  body.push(add(['g2', 'g3', 'g4'], `
-    ${series('Металл', 'Серия G', 'Цвет секции или таблички подсказывает вид отходов. Откидная крышка, внутри съёмные оцинкованные вёдра.', pick('g2', 'g3', 'g4'), 1.4)}
-    <style>.sw-big img{height:72mm}</style>
-    <div class="swatches sw-big" style="--n:4">${gShots.map((u, i) => `<figure><img src="${u}" alt=""><figcaption>${['G3: крышка открыта', 'G4: крышка открыта', 'Ведро вынимается', 'Таблички секций'][i]}</figcaption></figure>`).join('')}</div>`));
+  // Серия G — свой лист, урны строками сверху вниз (28.11.2026): слева крупное фото с размерами,
+  // справа подпись и цена, у G3/G4 ещё кадр рендера с открытой крышкой. Урны широкие и низкие — в строку на всю ширину
+  const gLid = { g3: await localImg('https://media.matkasym.com/products/g3-3d/1795855613036-05.png', 1200, 60),
+                 g4: await localImg('https://media.matkasym.com/products/g4-3d/1795855643794-05.png', 1200, 60) };
+  // Только ведро: правая треть кадра «ведро вынуто» G4, белое вокруг обрезается
+  const bucketOnly = await (async () => {
+    const r = await fetch('https://media.matkasym.com/products/g4-3d/1795855643794-07.png'); const buf = Buffer.from(await r.arrayBuffer());
+    const { width: W, height: H } = await sharp(buf).metadata();
+    const file = path.join(IMG, 'g-bucket.jpg');
+    const part = await sharp(buf).extract({ left: Math.round(W * 0.74), top: 0, width: Math.round(W * 0.26), height: H }).flatten({ background: '#fff' }).png().toBuffer();
+    await sharp(part).trim({ background: '#fff', threshold: 60 }).extend({ top: 12, bottom: 12, left: 12, right: 12, background: '#fff' })
+      .jpeg({ quality: 95, chromaSubsampling: '4:4:4' }).toFile(file);
+    return file;
+  })();
+  const gRow = k => { const m = M[k], d = m.dims || [];
+    return `<div class="grow">
+      <div class="s-photo dim" data-w="${d[0] || ''}" data-d="${d[1] || ''}" data-h="${d[2] || ''}"><img src="${m.src}" alt=""></div>
+      <div class="ginfo"><div class="m-name">${esc(m.v)}</div><div class="m-desc">${esc(m.desc || '')}</div>
+        <div class="gdim">${d.filter(Boolean).join(' × ')} см</div><div class="m-price">${tag(m.price)}</div></div>
+      <div class="gx">${gLid[k] ? `<img src="${gLid[k]}" alt=""><span>Крышка открыта</span>` : `<img src="${bucketOnly}" alt=""><span>Съёмное оцинкованное ведро</span>`}</div>
+    </div>`; };
+  body.push(add(['g2', 'g3', 'g4'], `${head('Металл', 'Серия G', 'Цвет секции или таблички подсказывает вид отходов. Откидная крышка, внутри съёмные оцинкованные вёдра.')}
+    <style>
+      .grows { display:flex; flex-direction:column; flex:1 1 0; min-height:0; }
+      .grow { display:grid; grid-template-columns:52% 1fr 25%; gap:6mm; align-items:center; flex:1 1 0; min-height:0; overflow:hidden; border-top:1px solid var(--line); padding:4mm 0; }
+      .grow:first-child { border-top:0; }
+      .grow .s-photo { height:100%; min-height:0; }
+      .grow .s-photo img { max-height:100%; max-width:100%; }
+      .ginfo { display:flex; flex-direction:column; gap:2mm; }
+      .gdim { color:var(--mute); font-size:8pt; }
+      .gx { display:flex; flex-direction:column; align-items:center; gap:2mm; height:100%; justify-content:center; }
+      .gx img { height:52mm; width:auto; max-width:100%; object-fit:contain; }
+      .gx span { font-size:7.4pt; color:var(--mute); }
+    </style>
+    <div class="grows">${['g2', 'g3', 'g4'].map(gRow).join('')}</div>`));
   body.push(add(['karakol2', 'karakol3', 'karakol4', 'burch1', 'burch3'], `
     ${series('Металл', 'Серия Karakol', 'Яркие секции под единым козырьком.', pick('karakol2', 'karakol3', 'karakol4'), 0.75)}
     <article class="series" style="flex-grow:1.25"><div class="s-head"><div><div class="s-kind">Металл</div><h2>Серия 3 BURCH</h2></div><p class="s-lead">Сортировочная урна из треугольных секций: одна или три вместе.</p></div>
