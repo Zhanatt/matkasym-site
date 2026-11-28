@@ -269,9 +269,20 @@ const FAMILIES = {
   // Список берём из API, а не HEAD-запросом: CDN кэширует 404, и только что залитый рендер выглядел бы отсутствующим.
   require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
   const RENDER_PREFIX = 'matkasym/kooz/render-';
-  const { resources } = await require('../lib/cloudinary').api.resources({ type: 'upload', prefix: RENDER_PREFIX, max_results: 100 });
-  const RENDER = new Set(resources.map(r => r.public_id.slice(RENDER_PREFIX.length)));
   const rnd = (k, w) => `${CLOUD}/e_trim:10/f_jpg,q_auto:good,w_${w},c_limit/matkasym/kooz/render-${k}`;
+  let RENDER;
+  try {
+    const { resources } = await require('../lib/cloudinary').api.resources({ type: 'upload', prefix: RENDER_PREFIX, max_results: 100 });
+    RENDER = new Set(resources.map(r => r.public_id.slice(RENDER_PREFIX.length)));
+  } catch (e) {
+    // 28.11.2026: аккаунт Cloudinary отключён — API отвечает 401 «disabled account». CDN ещё отдаёт ресайзы,
+    // которые уже собирались раньше, поэтому проверяем ровно те ссылки, что попадут в каталог.
+    const PROBE = [['ip31', 900], ['ip54', 900], ['gas', 900], ['vru', 500], ['box2', 900], ['luk', 900], ['ip31-false', 900], ['gasq', 900],
+      ['vru-1800x800', 700], ['vru-1800x800-rev', 700], ['vru-1800x600', 700], ['vru-1500x1400', 700]];
+    RENDER = new Set();
+    for (const [k, w] of PROBE) { const r = await fetch(rnd(k, w), { method: 'HEAD' }).catch(() => null); if (r?.ok) RENDER.add(k); }
+    console.log('Cloudinary API недоступен (' + (e.error?.message || e.message) + '), рендеры по CDN:', [...RENDER].join(', ') || 'нет');
+  }
   const ph = (k, w = 1200) => { if (RENDER.has(k)) return rnd(k, w); const p = byId[PHOTO[k]]; if (!p?.images?.[0]) throw new Error('нет фото ' + k); return cut(p.images[0], w); };
 
   // Строки таблицы семейства: одна на размер+исполнение, цена — максимальная из найденных (>0)
