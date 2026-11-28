@@ -26,7 +26,7 @@ const SITE = 'https://matkasym-site.onrender.com';
 const CLOUD = 'https://res.cloudinary.com/dnbg21ef8/image/upload';
 // FLIP — кадры, где изделие развёрнуто ближним краем вправо: зеркалим, чтобы все смотрели одинаково
 // (проверка — нижняя точка силуэта слева или справа). Koopsuzbike не зеркалим: на панели надпись.
-const FLIP_IDS = ['6a23a1b5a94b9094a84fa23e', '6a23c2629c5e3c48479dacff', '6a643e57228fc37217d7a34e', '6a05bddc7f2c7b50e4597c9d'];
+const FLIP_IDS = ['6a23a1b5a94b9094a84fa23e', '6a23c2629c5e3c48479dacff', '6a05bddc7f2c7b50e4597c9d'];
 const FLIP = new Set();
 // NOBG — кадры на сером фоне (Koopsuzbike, стойка): фон убирает Cloudinary e_background_removal
 const NOBG_IDS = ['6a7ef66da47d9fa5e219000b', '6a7efa52ff1030c8b93e9e22'];
@@ -58,13 +58,9 @@ const P = {
   jyluu:      { id: '6a1d49b2393874d4c353b447', v: 'JYLUU',       desc: 'Изогнутые боковины, деревянные ламели', dims: ['200', '65', '80'] },
   yngai:      { id: '6a646a5356c79e863c5a72bd', v: 'Yngai',       desc: 'Подлокотники, порошковая покраска каркаса', dims: ['200', '46', '85'] },
   kichine:    { id: '6a643e54228fc37217d7a32c', v: 'Kichine',     desc: 'Компактная, с подлокотниками', dims: ['120', '45', '80'] },
-  kalyn:      { id: '6a643e56228fc37217d7a342', v: 'Kalyn',       desc: 'Термообработанная лиственница или дуб', dims: ['180', '50', '85'] },
-  demAluu:    { id: '6a643e57228fc37217d7a34e', v: 'Dem Aluu',    desc: 'Массив ясеня или лиственницы', dims: ['180', '45', '80'] },
   salttyk:    { id: '6a643e5b228fc37217d7a370', v: 'Salttyk',     desc: 'Классическая, с подлокотниками', dims: ['150–170', '40–45', '85–90'] },
   ailana:     { id: '6a1d373ea7d1feff77747b47', v: 'Ailana',      desc: 'Круглая скамейка вокруг дерева', dims: ['300', '300', '80'] },
   esAluu:     { id: '6a05bddc7f2c7b50e4597c9d', v: 'ES ALUU',     desc: 'Изогнутый деревянный навес', dims: ['200', '140', '230'] },
-  bakyt:      { id: '6a23c5a162432d59269b0287', v: 'Bakyt',       desc: '6–8 мест, обшивка из термодревесины', dims: ['160', '50', '220'] },
-  koloko:     { id: '6a05c3217f2c7b50e45989ec', v: 'KÖLÖKÖ',      desc: 'Навес-тень для скамейки', dims: ['200', '120', '240'] },
   nurjolMini: { id: '6a1d3ddea7d1feff7774904a', v: 'NURJOL mini', desc: 'Ландшафтный светильник-столбик', dims: ['20', '20', '80'], scaleH: 100 },
   nurjol:     { id: '6a1d3af4a7d1feff777485bb', v: 'Nurjol Standart', desc: 'Парковый фонарь', dims: ['40', '20', '300'] },
   burkut:     { id: '6a1d55f1654da1cc132f5a32', v: 'Bürküt',      desc: 'Фонарь с двумя светильниками', dims: ['250', '30', '600'], scaleH: 600 },
@@ -78,9 +74,8 @@ const P = {
 const BLOCKS = {
   noBack:  { fixed: true, sec: '01', name: 'Без спинки', kind: 'Скамейки без спинки', lead: 'Длинные скамейки для набережных, скверов и зон ожидания: садятся с обеих сторон.', keys: ['jyrgalDem', 'jyrgalPark'] },
   back1:   { fixed: true, sec: '02', name: 'Со спинкой', kind: 'Парковые скамейки', lead: 'Металлический каркас с порошковой покраской и деревянные ламели.', keys: ['seyil', 'jyluu', 'yngai'] },
-  back2:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Классические скамейки длиной от 120 до 180 см для дворов, школ и офисов. У Kichine и Dem Aluu — подлокотники.', keys: ['kichine', 'kalyn', 'demAluu'] },
-  back3:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Подлокотники с двух сторон — удобно вставать пожилым людям.', keys: ['demAluu', 'salttyk'] },
-  roof:    { fixed: true, photoH: 100, sec: '03', name: 'С навесом', kind: 'Скамейки с навесом', lead: 'Навес даёт тень летом и укрывает от дождя — для дворов, парков и остановок.', keys: ['esAluu', 'bakyt', 'koloko'] },
+  back2:   { fixed: true, sec: '02', name: 'Серия Skameyka', kind: 'Скамейки со спинкой', lead: 'Классические скамейки длиной от 120 до 170 см для дворов, школ и офисов, с подлокотниками — удобно вставать пожилым людям.', keys: ['kichine', 'salttyk'] },
+  roof:    { fixed: true, photoH: 100, sec: '03', name: 'С навесом', kind: 'Скамейки с навесом', lead: 'Навес даёт тень летом и укрывает от дождя — для дворов, парков и остановок.', keys: ['esAluu'] },
   light:   { sec: '04', name: 'Освещение', kind: 'Уличные светильники', lead: 'Парковые фонари в одном стиле со скамейками — от 3 до 8 метров.', keys: ['nurjol', 'burkut', 'skeitPark'] },
   bike1:   { sec: '05', name: 'Велопарковки', kind: 'Открытые', lead: 'Крепятся анкерами к бетону или асфальту, порошковая покраска в любой цвет RAL.', keys: ['velo5', 'velo7'] },
   bike2:   { sec: '05', name: 'Модульные и одиночные', kind: 'Велопарковки', lead: 'Модульная BP velopark под заказ и одиночная стойка KOOPSUZBIKE — та же, что стоит в велостанции, продаётся отдельно.', keys: ['bp', 'stoika'] },
@@ -376,7 +371,16 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   const pages = [];
   // 1. Обложка: интерьеры без людей и надписей с карточек сайта
-  const COVER = [pic('esAluu', 2), pic('jyluu', 1), pic('nurjol', 1), pic('bakyt', 1)].map(u => room(u, 1300));
+  // 28.11.2026: Kalyn, Dem Aluu, Bakyt и Kölökö удалены (решение пользователя). Новые ресайзы Cloudinary не отдаёт
+  // (аккаунт отключён) — новые кадры обложки и полосы ужимаем локально рядом с HTML
+  const sharpL = require('sharp');
+  const localRoom = async (url, name, w, cropWest = 1) => {
+    const r = await fetch(url); if (!r.ok) throw new Error(`не скачать ${url}: ${r.status}`);
+    let img = sharpL(Buffer.from(await r.arrayBuffer()));
+    if (cropWest < 1) { const { width, height } = await img.metadata(); img = sharpL(await img.extract({ left: 0, top: 0, width: Math.round(width * cropWest), height }).toBuffer()); }
+    const file = path.join(OUT, name); await img.resize({ width: w, withoutEnlargement: true }).flatten({ background: '#fff' }).jpeg({ quality: 90 }).toFile(file); return file;
+  };
+  const COVER = [room(pic('esAluu', 2), 1300), room(pic('jyluu', 1), 1300), room(pic('nurjol', 1), 1300), await localRoom(pic('salttyk', 2), 'cover-salttyk.jpg', 1300)];
   pages.push(page(`
     <div class="cover-grid">${COVER.map(u => `<div><img src="${u}" alt=""></div>`).join('')}</div>
     <div class="cover-tab"><img src="${CLOUD}/f_jpg,q_90,w_600,c_limit/matkasym/catalog-assets/logo-tab" alt="MATKASYM"></div>
@@ -403,11 +407,11 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   IDX.custom = { n: 'По проекту', svg: BENCH_SVG, price: money(0), page: TOC_PAGES['06'] };
   const PLACES = [
     ['Парк и сквер', 'Длинные скамейки и круглая вокруг дерева', ['seyil', 'jyrgalPark', 'ailana']],
-    ['Двор жилого комплекса', 'Для мам с колясками и пожилых жильцов', ['jyluu', 'kalyn', 'bakyt']],
+    ['Двор жилого комплекса', 'Для мам с колясками и пожилых жильцов', ['jyluu']],
     ['Набережная и зоны отдыха', 'Скамейки без спинки и с навесом от солнца', ['jyrgalDem', 'yngai', 'esAluu']],
-    ['Школа, вуз, офис', 'Компактные скамейки у входа и во дворе', ['kichine', 'demAluu', 'salttyk']],
+    ['Школа, вуз, офис', 'Компактные скамейки у входа и во дворе', ['kichine', 'salttyk']],
     ['Аллеи и дорожки', 'Свет в одном стиле со скамейками', ['nurjolMini', 'nurjol', 'burkut']],
-    ['Площадка и скейт-парк', 'Навес-тень и фонарь со спортивным силуэтом', ['koloko', 'skeitPark']],
+    ['Площадка и скейт-парк', 'Фонарь со спортивным силуэтом', ['skeitPark']],
     ['Подъезд и детская площадка', 'Компактные велопарковки и станция ремонта', ['velo5', 'velo7', 'velosto']],
     ['ТЦ, АЗС, бизнес-центр', 'Велопарковки с фирменным видом и велостанция', ['bp', 'stoika', 'kbike']],
     ['Большой объект', 'Своя форма, размер и цвет — по вашему проекту', ['custom']],
@@ -426,7 +430,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
 
   // 4. Без спинки + где ставят
   pages.push(page(`${secHead('01')}${block(B.noBack)}
-    <div class="room-band room-band--fill"><img src="${pic('kalyn', 1).replace('/upload/', '/upload/c_crop,g_west,w_0.9/f_jpg,q_auto:good,w_1800,c_limit/')}" alt=""></div>
+    <div class="room-band room-band--fill"><img src="${await localRoom(pic('jyluu', 1), 'band-jyluu.jpg', 1800, 0.9)}" alt=""></div>
     <div class="uses">
       <div><div class="s-kind">Где ставят</div>
         <ul class="list"><li>Набережные и бульвары</li><li>Скверы и площади</li><li>Зоны ожидания у ТЦ и вокзалов</li><li>Санатории и зоны отдыха</li></ul></div>
@@ -447,7 +451,7 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
   pages.push(page(`${headOf(B.back2)}${rowsHtml(B.back2.items)}`));
   // 7. Salttyk + Ailana на всю ширину
   const ail = M.ailana;
-  pages.push(page(`${rowsHtml([M.salttyk], 1)}
+  pages.push(page(`
     <article class="ail">
       <div class="ail-photo"><img src="${cut(ail.photo, 2000)}" alt=""></div>
       <div class="ail-text">
@@ -457,7 +461,17 @@ h2 { font-family:Montserrat, Helvetica, sans-serif; font-weight:600; font-size:1
       </div>
     </article>`));
   // 8. С навесом — строками
-  pages.push(page(`${secHead('03')}${headOf(B.roof)}${rowsHtml(B.roof.items)}`));
+  // С навесом остался один ES ALUU (Bakyt и Kölökö удалены 28.11.2026) — крупно, как Ailana
+  const es = M.esAluu;
+  pages.push(page(`${secHead('03')}${headOf(B.roof)}
+    <article class="ail">
+      <div class="ail-photo"><img src="${cut(es.photo, 1400)}" alt=""></div>
+      <div class="ail-text">
+        <div><div class="s-kind">Скамейка с навесом</div><h2>ES ALUU</h2></div>
+        <p class="s-lead">${esc(es.desc)}: тень летом и укрытие от дождя.</p>
+        <dl class="dl">${dimText(es.dims)}<dt>Цена</dt><dd>${tag(es.price)}</dd></dl>
+      </div>
+    </article>`));
   // 8. Освещение: три высоких фонаря, каждый во всю высоту колонки (просил пользователь 31.10.2026;
   // общий масштаб по высоте делал их мелкими). Высота — подписью-стрелкой.
   // Фото без фона и обрезаны по силуэту; ширина каждой колонки = ширине фонаря при общей высоте h,
