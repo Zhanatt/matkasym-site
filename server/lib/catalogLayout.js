@@ -250,13 +250,14 @@ const renderPdf = (htmlFile, pdf) => execFileSync(CHROME, [...(process.env.CI ? 
 
 // Сжатие фото для телефона. Без перевода в RGB Ghostscript пишет пустой ICC-профиль: на iPhone (PDFKit)
 // фото пропадают («invalid image ColorSpace»). Ссылки и закладки ставить ПОСЛЕ сжатия.
-const compressPdf = (input, output, dpi = 130) => execFileSync('gs', ['-q', '-dNOPAUSE', '-dBATCH', '-dSAFER', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.6',
+// q — QFactor JPEG (меньше — лучше), sub — прореживание цвета 2×2 (true) или без него (false)
+const compressPdf = (input, output, dpi = 130, { q = 0.7, sub = true } = {}) => execFileSync('gs', ['-q', '-dNOPAUSE', '-dBATCH', '-dSAFER', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.6',
   '-sColorConversionStrategy=RGB', '-dProcessColorModel=/DeviceRGB',
   '-dEmbedAllFonts=true', '-dSubsetFonts=true', '-dPassThroughJPEGImages=false', '-dDetectDuplicateImages=true',
   '-dDownsampleColorImages=true', '-dColorImageDownsampleType=/Bicubic', `-dColorImageResolution=${dpi}`, '-dColorImageDownsampleThreshold=1.0',
   '-dDownsampleGrayImages=true', '-dGrayImageDownsampleType=/Bicubic', `-dGrayImageResolution=${dpi}`, '-dGrayImageDownsampleThreshold=1.0',
   '-dAutoFilterColorImages=false', '-dColorImageFilter=/DCTEncode', '-dAutoFilterGrayImages=false', '-dGrayImageFilter=/DCTEncode',
-  `-sOutputFile=${output}`, '-c', '<</ColorImageDict <</QFactor 0.7 /HSamples [2 1 1 2] /VSamples [2 1 1 2]>> /GrayImageDict <</QFactor 0.7 /HSamples [2 1 1 2] /VSamples [2 1 1 2]>>>> setdistillerparams', '-f', input], { stdio: 'inherit', timeout: 900000 });
+  `-sOutputFile=${output}`, '-c', (S => `<</ColorImageDict <</QFactor ${q} ${S}>> /GrayImageDict <</QFactor ${q} ${S}>>>> setdistillerparams`)(sub ? '/HSamples [2 1 1 2] /VSamples [2 1 1 2]' : '/HSamples [1 1 1 1] /VSamples [1 1 1 1]'), '-f', input], { stdio: 'inherit', timeout: 900000 });
 
 module.exports = { compressPdf, SITE, CLOUD, esc, money, tag, fromTag, studio, nobg, room, warm, makePage, secHead, head,
   modelCell, cols, grid2, series, orderPage, coverPage, wrapHtml, renderPdf };
