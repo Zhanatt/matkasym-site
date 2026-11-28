@@ -76,6 +76,10 @@ const P = {
   tazLid:   { id: '8e7915', imgId: '6a4761', trim: 60, v: 'Tazalyk 1100 л с крышкой', desc: 'Металл, колёса, откидной люк в крышке', dims: ['110', '97', '126'] },
   taz660:   { id: '53b715', v: 'Tazalyk 660 л', desc: 'Металл, колёса', dims: ['102', '127', '127'] },
   eco2:     { id: '5a1fc7', imgId: '9d6aa4', trim: 60, v: 'Ecomayak', desc: 'Сетчатая, для бутылок, ≈ 700 л. Цвет красный или зелёный', dims: ['98', '87', '187'] },
+  f1:       { id: '7e8f3b', v: 'F1', desc: 'Урна-шкаф с окном и дверцей, на ножках', trim: 60, dims: ['66', '69', '153'],
+              imgs: ['https://media.matkasym.com/products/f1-3d/1795849089140-01.png', 'https://media.matkasym.com/products/f1-3d/1795849089140-02.png',
+                     'https://media.matkasym.com/products/f1-3d/1795849089140-05.png', 'https://media.matkasym.com/products/f1-3d/1795849089140-06.png',
+                     'https://media.matkasym.com/products/f1-3d/1795849089140-08.png'] },  // рендеры 28.11.2026, без кадров с ведром
   kubat:    { id: '6a4763', trim: 60, v: 'TAZA KUBAT', desc: 'Урна для батареек, съёмное ведро 30 л', dims: ['Ø 37', '', '57'] },
 
   pl20: { id: '5a234c', v: '20 л + 20 л', desc: '2 секции, педаль', dims: [] },
@@ -95,9 +99,9 @@ const P = {
 const PURPOSES = [
   { t: 'Парк и сквер', p: 'Деревянная отделка рядом со скамейками и зеленью', lines: [['ECO', ['eco']], ['KÖRK', ['kork']], ['ARNUR 1', ['arnur1']], ['ARNUR 2', ['arnur2']]] },
   { t: 'Улица и АЗС', p: 'Тротуары, остановки, заправки', lines: [['G Tegerek', ['gTegerek']], ['A1', ['a1']], ['AW', ['aw']], ['BP', ['bp']], ['BP Pro', ['bpPro']]] },
-  { t: 'Набережная и пляж', p: 'Открытые места, где много пластиковых бутылок', lines: [['Ecomayak', ['eco2']], ['Jashyl', ['jashyl']]] },
-  { t: 'Офис и бизнес-центр', p: 'Спокойный вид у входа и в холле', lines: [['TAZA KUBAT для батареек', ['kubat']], ['Plaza', ['plaza']], ['Серия GW', ['gw', 'gw2', 'gw3']], ['Серия 3 BURCH', ['burch1', 'burch3']]] },
-  { t: 'Торговый центр и вокзал', p: 'Яркие секции, которые видно издалека', lines: [['Серия G', ['g2', 'g3', 'g4']], ['Серия Karakol', ['karakol2', 'karakol3', 'karakol4']]] },
+  { t: 'Набережная и пляж', p: 'Открытые места, где много пластиковых бутылок', lines: [['Ecomayak', ['eco2']], ['Jashyl', ['jashyl']], ['F1', ['f1']]] },
+  { t: 'Офис и бизнес-центр', p: 'Спокойный вид у входа и в холле', lines: [['Plaza', ['plaza']], ['Серия GW', ['gw', 'gw2', 'gw3']], ['Серия 3 BURCH', ['burch1', 'burch3']]] },
+  { t: 'Торговый центр и вокзал', p: 'Яркие секции, которые видно издалека', lines: [['Серия G', ['g2', 'g3', 'g4']], ['Серия Karakol', ['karakol2', 'karakol3', 'karakol4']], ['TAZA KUBAT', ['kubat']]] },
   { t: 'Школа и вуз', p: 'Раздельный сбор в корпусах и на территории', lines: [['Серия GWR', ['gwr', 'gwr2', 'gwr3']], ['Серия SW', ['sw', 'sw2', 'sw3']]] },
   { t: 'Двор и контейнерная площадка', p: 'Большой объём, колёса для вывоза', wide: true, lines: [['Tazalyk 1100 л', ['taz1100']], ['Tazalyk с крышкой', ['tazLid']], ['Tazalyk 660 л', ['taz660']], ['Пластиковый 660 л', ['b660']], ['Пластиковый 1100 л', ['b1100']]] },
   { t: 'Дом, кафе, подсобка', p: 'Пластик: кухня, склад, частный двор', lines: [['Урны 20 и 40 л', ['pl20', 'pl40']], ['Урны 50 и 80 л', ['pl50', 'pl80']], ['Баки 120 и 240 л', ['b120', 'b120p', 'b240', 'b240p']], ['Бак 360 л', ['b360']]] },
@@ -149,11 +153,13 @@ const BIN_SVG = (() => {
     if (!d) throw new Error('нет товара ' + p.v);
     const imgDoc = p.imgId ? rows.find(r => String(r._id).endsWith(p.imgId)) : d;
     if (!imgDoc) throw new Error('нет карточки с фото ' + p.v);
-    const u = imgDoc.images?.[p.img || 0];
+    const u = p.imgs?.[0] || imgDoc.images?.[p.img || 0];
     if (!u) throw new Error('нет фото ' + p.v);
     const src = async w => !isCloud(u) ? localImg(u, w, p.trim) : p.cutout ? nobg(u, w) : studio(u, w);
     M[k] = { ...p, key: k, doc: imgDoc, price: p.price ?? (d.price || 0), src: await src(1000), thumb: await src(240) };
   }
+  const f1Shots = [];
+  for (const u of M.f1.imgs.slice(1)) f1Shots.push(await localImg(u, 700, 60));
   const kubatShots = [];  // по очереди: имя файла берётся из счётчика
   for (const i of [2, 5, 7, 3]) kubatShots.push(await localImg(M.kubat.doc.images[i], 700));
   await L.warm(Object.values(M).filter(m => m.cutout).flatMap(m => [m.src, m.thumb]));
@@ -173,6 +179,15 @@ const BIN_SVG = (() => {
     ${cols(pick('jashyl', 'a1', 'aw'))}
     <div class="band" style="grid-template-columns:1fr 1fr;height:112mm"><div><img src="${pic('a1', 8)}" alt=""></div><div><img src="${pic('aw', 8)}" alt=""></div></div>`));
   body.push(add(['eco', 'kork', 'arnur1', 'arnur2'], `${head('Металл и дерево', 'С деревянной отделкой', 'Каркас из металла и натуральное дерево: для парков, скверов и аллей.')}${grid2(pick('eco', 'kork', 'arnur1', 'arnur2'))}`));
+
+  // Урна F1 — шкаф с окном и дверцей (рендеры 28.11.2026)
+  const f1 = M.f1;
+  body.push(add(['f1'], `${head('Металл', 'Урна F1', 'Урна-шкаф для улиц, дворов и АЗС. Мусор бросают в окно под козырьком, а выгружают через дверцу. Внутри помещается пластиковый бак.')}
+    <div class="split">
+      <div class="s-photo dim" data-w="66" data-d="69" data-h="153"><img src="${f1.src}" alt=""></div>
+      <div><dl class="dl"><dt>Материал</dt><dd>металл</dd><dt>Цвет</dt><dd>RAL 7036, листок зелёный</dd><dt>Ширина</dt><dd>66 см</dd><dt>Глубина</dt><dd>69 см</dd><dt>Высота</dt><dd>153 см</dd><dt>Выгрузка</dt><dd>дверца на петлях</dd><dt>Вес</dt><dd>≈ 45 кг</dd><dt>Цена</dt><dd>${tag(f1.price)}</dd></dl></div>
+    </div>
+    <div class="swatches" style="--n:4">${f1Shots.map((u, i) => `<figure><img src="${u}" alt=""><figcaption>${['Анфас', 'Дверца для выгрузки', 'Окно под козырьком', 'Листок «Таштанды Organic»'][i]}</figcaption></figure>`).join('')}</div>`));
 
   // 02. Сортировочные
   body.push(add(['sw', 'sw2', 'sw3', 'gw', 'gw2', 'gw3'], `${S('02')}
