@@ -12,6 +12,7 @@ const Supplier = require('../models/Supplier');
 
 // Что Claude может задавать товару. Остаток (stock) приходит из 1С, себестоимость видит
 // только владелец, комплекты и значок производителя — отдельная логика: их нет в списке.
+// Удаление товара — op 'delete', как и всё остальное, только после «Утвердить» владельцем.
 const FIELDS = ['name', 'fullName', 'sku', 'brand', 'set', 'category', 'color', 'price', 'priceUndefined',
   'priceWholesale', 'priceDealer', 'description', 'specs', 'dimensions', 'unit', 'images', 'productStatus',
   'isSupplied', 'supplier', 'isOnOrder', 'hideInPdf'];
@@ -19,7 +20,7 @@ const LABELS = { name: 'Название', fullName: 'Полное назван�
   category: 'Категория', color: 'Цвет', price: 'Цена', priceUndefined: 'Цена не определена', priceWholesale: 'Оптовая цена',
   priceDealer: 'Дилерская цена', description: 'Описание', specs: 'Характеристики', dimensions: 'Размеры', unit: 'Ед. изм.',
   images: 'Фото', productStatus: 'Статус', isSupplied: 'Привозной', supplier: 'Поставщик', isOnOrder: 'Под заказ', hideInPdf: 'Скрыть в PDF' };
-const MAX_OPS = 30;
+const MAX_OPS = 100;
 
 const pick = obj => Object.fromEntries(Object.entries(obj || {}).filter(([k]) => FIELDS.includes(k)));
 const short = v => {
@@ -81,6 +82,15 @@ async function validateOps(raw) {
           .map(([k, v]) => ({ field: LABELS[k] || k, from: short(target[k]), to: short(v) }));
         if (!changes.length) throw new Error('значения уже такие');
         out.push({ op: 'update', warn: data.category !== undefined ? await categoryWarn(data.category, data.brand || target.brand) : undefined, id: String(target._id), data, label: `✏️ ${target.sku ? target.sku + ' · ' : ''}${target.fullName || target.name}`, changes, note });
+      } else if (op?.op === 'delete') {
+        // Удаление — по _id или артикулу; товар-деталь комплекта не удаляем, иначе комплект сломается
+        const target = op.id && mongoose.isValidObjectId(op.id) ? await Product.findById(op.id, { sku: 1, name: 1, fullName: 1, productStatus: 1 }).lean()
+          : op.sku ? await Product.findOne({ sku: op.sku }, { sku: 1, name: 1, fullName: 1, productStatus: 1 }).lean() : null;
+        if (!target) throw new Error(`товар не найден (${op.id || op.sku || '?'})`);
+        const kit = await Product.findOne({ 'kitParts.product': target._id }, { sku: 1, fullName: 1, name: 1 }).lean();
+        if (kit) throw new Error(`входит в комплект «${kit.fullName || kit.name}» — сначала убрать из комплекта`);
+        if (out.some(o => o.op === 'delete' && o.id === String(target._id))) throw new Error('уже в списке на удаление');
+        out.push({ op: 'delete', id: String(target._id), data: { sku: target.sku }, label: `🗑 ${target.sku ? target.sku + ' · ' : ''}${target.fullName || target.name}`, changes: [{ field: 'Товар', to: 'удалить навсегда' }], note });
       } else if (op?.op === 'supplier') {
         const name = String(op.name || '').trim();
         if (!name) throw new Error('нет названия поставщика');
@@ -102,7 +112,7 @@ async function applyOps(ops, user) {
   const token = jwt.sign({ id: String(user._id) }, process.env.JWT_SECRET, { expiresIn: '10m' });
   const base = `http://127.0.0.1:${process.env.PORT}/api/admin`;
   const call = async (method, path, body) => {
-    const r = await fetch(base + path, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await fetch(base + path, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || j.message || `ошибка ${r.status}`);
     return j;
@@ -122,6 +132,7 @@ async function applyOps(ops, user) {
           await Supplier.updateOne({ name: o.data.supplier.company }, { $addToSet: { products: p._id } }).catch(() => {});
         }
       } else if (o.op === 'update') await call('PATCH', `/products/${o.id}`, o.data);
+      else if (o.op === 'delete') await call('DELETE', `/products/${o.id}`);
       o.applied = true;
       results.push({ label: o.label, ok: true });
     } catch (e) {
