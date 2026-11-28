@@ -73,10 +73,10 @@ const P = {
   tazGray:  { id: '4f6e85', v: 'Тёмно-серый' },
   tazBlue:  { id: '3084de', v: 'Синий' },
   tazYellow:{ id: '9abf85', v: 'Жёлтый' },
-  tazLid:   { id: '8e7915', imgId: '6a4761', v: 'Tazalyk 1100 л с крышкой', desc: 'Металл, колёса, откидной люк в крышке', dims: ['110', '97', '126'] },
+  tazLid:   { id: '8e7915', imgId: '6a4761', trim: 60, v: 'Tazalyk 1100 л с крышкой', desc: 'Металл, колёса, откидной люк в крышке', dims: ['110', '97', '126'] },
   taz660:   { id: '53b715', v: 'Tazalyk 660 л', desc: 'Металл, колёса', dims: ['102', '127', '127'] },
-  eco2:     { id: '5a1fc7', imgId: '9d6aa4', v: 'Ecomayak', desc: 'Сетчатая, для бутылок, ≈ 700 л. Цвет красный или зелёный', dims: ['98', '87', '187'] },
-  kubat:    { id: '6a4763', v: 'TAZA KUBAT', desc: 'Урна для батареек, съёмное ведро 30 л', dims: ['Ø 37', '', '57'] },
+  eco2:     { id: '5a1fc7', imgId: '9d6aa4', trim: 60, v: 'Ecomayak', desc: 'Сетчатая, для бутылок, ≈ 700 л. Цвет красный или зелёный', dims: ['98', '87', '187'] },
+  kubat:    { id: '6a4763', trim: 60, v: 'TAZA KUBAT', desc: 'Урна для батареек, съёмное ведро 30 л', dims: ['Ø 37', '', '57'] },
 
   pl20: { id: '5a234c', v: '20 л + 20 л', desc: '2 секции, педаль', dims: [] },
   pl40: { id: '5a234f', v: '40 л', desc: '2 секции, педаль', dims: [] },
@@ -123,14 +123,23 @@ const BIN_SVG = (() => {
   const sharp = require('sharp');
   const IMG = path.join(OUT, 'img'); fs.mkdirSync(IMG, { recursive: true });
   const local = {};
-  async function localImg(url, w) {
-    const key = `${url}|${w}`; if (local[key]) return local[key];
+  async function localImg(url, w, thr = 8) {
+    const key = `${url}|${w}|${thr}`; if (local[key]) return local[key];
     const r = await fetch(url); if (!r.ok) throw new Error('не скачать ' + url);
-    const buf = Buffer.from(await r.arrayBuffer());
+    // Фон рендера не чисто белый (мягкая тень и виньетка): почти белое доводим до белого,
+    // иначе на странице виден серый прямоугольник вокруг фото
+    const { data, info } = await sharp(Buffer.from(await r.arrayBuffer())).flatten({ background: '#fff' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    for (let i = 0; i < data.length; i += 3) {
+      const m = Math.min(data[i], data[i + 1], data[i + 2]);
+      if (m >= 236) { data[i] = data[i + 1] = data[i + 2] = 255; }
+      else if (m >= 200) { const k = (m - 200) / 36; for (let c = 0; c < 3; c++) data[i + c] = Math.round(data[i + c] + (255 - data[i + c]) * k * k); }
+    }
+    const buf = await sharp(data, { raw: info }).png().toBuffer();
     const file = path.join(IMG, `${require('crypto').createHash('md5').update(key).digest('hex').slice(0, 10)}.jpg`);
-    await sharp(buf).flatten({ background: '#fff' }).trim({ background: '#fff', threshold: 8 })
+    await sharp(buf).flatten({ background: '#fff' }).trim({ background: '#fff', threshold: thr })
       .extend({ top: 12, bottom: 12, left: 12, right: 12, background: '#fff' })
-      .resize(w, w, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 88 }).toFile(file);
+      .resize({ width: w, withoutEnlargement: true })  // как c_limit у Cloudinary: ограничена только ширина
+      .jpeg({ quality: 88 }).toFile(file);
     return (local[key] = file);
   }
   const isCloud = u => u.includes('res.cloudinary.com');
@@ -142,11 +151,11 @@ const BIN_SVG = (() => {
     if (!imgDoc) throw new Error('нет карточки с фото ' + p.v);
     const u = imgDoc.images?.[p.img || 0];
     if (!u) throw new Error('нет фото ' + p.v);
-    const src = async w => !isCloud(u) ? localImg(u, w) : p.cutout ? nobg(u, w) : studio(u, w);
+    const src = async w => !isCloud(u) ? localImg(u, w, p.trim) : p.cutout ? nobg(u, w) : studio(u, w);
     M[k] = { ...p, key: k, doc: imgDoc, price: p.price ?? (d.price || 0), src: await src(1000), thumb: await src(240) };
   }
   const kubatShots = [];  // по очереди: имя файла берётся из счётчика
-  for (const i of [2, 5, 7, 8]) kubatShots.push(await localImg(M.kubat.doc.images[i], 700));
+  for (const i of [2, 5, 7, 3]) kubatShots.push(await localImg(M.kubat.doc.images[i], 700));
   await L.warm(Object.values(M).filter(m => m.cutout).flatMap(m => [m.src, m.thumb]));
   const pic = (k, i, w = 1400) => { const u = M[k].doc.images?.[i]; if (!u) throw new Error(`нет кадра ${k} #${i}`); return room(u, w); };
   const pick = (...keys) => keys.map(k => M[k]);
@@ -195,8 +204,8 @@ const BIN_SVG = (() => {
       <div class="s-photo dim" data-w="Ø 37" data-d="" data-h="57"><img src="${kb.src}" alt=""><span class="new-badge">Новинка</span></div>
       <div><dl class="dl"><dt>Объём</dt><dd>30 л, съёмное ведро</dd><dt>Материал</dt><dd>металл</dd><dt>Диаметр</dt><dd>37 см</dd><dt>Высота</dt><dd>57 см</dd><dt>Крышка</dt><dd>клапан-качелька</dd><dt>Цвет</dt><dd>жёлтый и чёрный</dd><dt>Вес</dt><dd>≈ 8 кг</dd><dt>Цена</dt><dd>${tag(kb.price)}</dd></dl></div>
     </div>
-    <div class="swatches" style="--n:4">${kubatShots.map((u, i) => `<figure><img src="${u}" alt=""><figcaption>${['Надпись «Для батареек»', 'Клапан-качелька закрывается сам', 'Ведро вынимается', 'Съёмное ведро 30 л'][i]}</figcaption></figure>`).join('')}</div>
-    <style>.s-photo{position:relative}.new-badge{position:absolute;top:2mm;left:2mm;background:#e10523;color:#fff;font-weight:700;font-size:9pt;letter-spacing:.12em;text-transform:uppercase;padding:1.6mm 3.2mm;border-radius:1.5mm}</style>`));
+    <div class="swatches" style="--n:4">${kubatShots.map((u, i) => `<figure><img src="${u}" alt=""><figcaption>${['Надпись «Для батареек»', 'Клапан-качелька закрывается сам', 'Съёмное ведро 30 л', 'Ручки для переноски'][i]}</figcaption></figure>`).join('')}</div>
+    <style>.s-photo{position:relative}.new-badge{position:absolute;top:2mm;right:2mm;background:#e10523;color:#fff;font-weight:700;font-size:9pt;letter-spacing:.12em;text-transform:uppercase;padding:1.6mm 3.2mm;border-radius:1.5mm}</style>`));
 
   // 05. Пластик
   body.push(add(['pl20', 'pl40', 'pl50', 'pl80', 'b120', 'b120p', 'b240', 'b240p'], `${S('05')}
