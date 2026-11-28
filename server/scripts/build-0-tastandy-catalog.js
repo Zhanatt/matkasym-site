@@ -7,6 +7,10 @@
 // Уточнено 02.11.2026 по техлистам и NAS: KÖRK 500×500×800 (цена индивидуальная, сказал пользователь), SW3 1043×414×735,
 // 3 BURCH = СЗ0026 Novatel: секция 302×265×620, комплект из трёх шириной 2×302 (расчёт). База не меняется.
 //
+// 28.11.2026: Tazalyk с крышкой и Ecomayak — фото с 3D-рендеров (карточки тёмно-серая и красная, imgId),
+// цена и подпись остаются от зелёных; новый раздел 04 «Урна для батареек» (TAZA KUBAT, новинка).
+// Фото из R2 (media.matkasym.com) Cloudinary не трансформирует — их режем и ужимаем локально (localImg).
+//
 //   node scripts/build-0-tastandy-catalog.js <папка> [--upload]
 //
 // --upload — залить в Cloudinary raw matkasym/catalogs/0-tastandy.pdf. Только после согласования
@@ -28,8 +32,9 @@ const SECTIONS = [
   { n: '01', title: 'Уличные урны', note: 'Одна секция: металл и дерево' },
   { n: '02', title: 'Сортировочные урны', note: 'Раздельный сбор, от 2 до 4 секций' },
   { n: '03', title: 'Металлические контейнеры', note: 'Дворы и контейнерные площадки' },
-  { n: '04', title: 'Пластиковые урны и баки', note: 'От 20 до 1100 литров' },
-  { n: '05', title: 'Индивидуальные заказы', note: 'Партии в цвете и стиле заказчика' },
+  { n: '04', title: 'Урна для батареек', note: 'Новинка · сбор использованных батареек' },
+  { n: '05', title: 'Пластиковые урны и баки', note: 'От 20 до 1100 литров' },
+  { n: '06', title: 'Индивидуальные заказы', note: 'Партии в цвете и стиле заказчика' },
 ];
 
 // key → конец _id, подпись, описание, [ширина, глубина, высота] см; img — номер кадра (по умолчанию 0)
@@ -68,9 +73,10 @@ const P = {
   tazGray:  { id: '4f6e85', v: 'Тёмно-серый' },
   tazBlue:  { id: '3084de', v: 'Синий' },
   tazYellow:{ id: '9abf85', v: 'Жёлтый' },
-  tazLid:   { id: '8e7915', v: 'Tazalyk 1100 л с крышкой', desc: 'Металл, колёса, откидной люк в крышке', dims: ['110', '97', '126'] },
+  tazLid:   { id: '8e7915', imgId: '6a4761', v: 'Tazalyk 1100 л с крышкой', desc: 'Металл, колёса, откидной люк в крышке', dims: ['110', '97', '126'] },
   taz660:   { id: '53b715', v: 'Tazalyk 660 л', desc: 'Металл, колёса', dims: ['102', '127', '127'] },
-  eco2:     { id: '5a1fc7', v: 'Ecomayak', desc: 'Сетчатая, для бутылок. Цвет зелёный или красный', cutout: true, dims: [] },
+  eco2:     { id: '5a1fc7', imgId: '9d6aa4', v: 'Ecomayak', desc: 'Сетчатая, для бутылок, ≈ 700 л. Цвет красный или зелёный', dims: ['98', '87', '187'] },
+  kubat:    { id: '6a4763', v: 'TAZA KUBAT', desc: 'Урна для батареек, съёмное ведро 30 л', dims: ['Ø 37', '', '57'] },
 
   pl20: { id: '5a234c', v: '20 л + 20 л', desc: '2 секции, педаль', dims: [] },
   pl40: { id: '5a234f', v: '40 л', desc: '2 секции, педаль', dims: [] },
@@ -90,7 +96,7 @@ const PURPOSES = [
   { t: 'Парк и сквер', p: 'Деревянная отделка рядом со скамейками и зеленью', lines: [['ECO', ['eco']], ['KÖRK', ['kork']], ['ARNUR 1', ['arnur1']], ['ARNUR 2', ['arnur2']]] },
   { t: 'Улица и АЗС', p: 'Тротуары, остановки, заправки', lines: [['G Tegerek', ['gTegerek']], ['A1', ['a1']], ['AW', ['aw']], ['BP', ['bp']], ['BP Pro', ['bpPro']]] },
   { t: 'Набережная и пляж', p: 'Открытые места, где много пластиковых бутылок', lines: [['Ecomayak', ['eco2']], ['Jashyl', ['jashyl']]] },
-  { t: 'Офис и бизнес-центр', p: 'Спокойный вид у входа и в холле', lines: [['Plaza', ['plaza']], ['Серия GW', ['gw', 'gw2', 'gw3']], ['Серия 3 BURCH', ['burch1', 'burch3']]] },
+  { t: 'Офис и бизнес-центр', p: 'Спокойный вид у входа и в холле', lines: [['TAZA KUBAT для батареек', ['kubat']], ['Plaza', ['plaza']], ['Серия GW', ['gw', 'gw2', 'gw3']], ['Серия 3 BURCH', ['burch1', 'burch3']]] },
   { t: 'Торговый центр и вокзал', p: 'Яркие секции, которые видно издалека', lines: [['Серия G', ['g2', 'g3', 'g4']], ['Серия Karakol', ['karakol2', 'karakol3', 'karakol4']]] },
   { t: 'Школа и вуз', p: 'Раздельный сбор в корпусах и на территории', lines: [['Серия GWR', ['gwr', 'gwr2', 'gwr3']], ['Серия SW', ['sw', 'sw2', 'sw3']]] },
   { t: 'Двор и контейнерная площадка', p: 'Большой объём, колёса для вывоза', wide: true, lines: [['Tazalyk 1100 л', ['taz1100']], ['Tazalyk с крышкой', ['tazLid']], ['Tazalyk 660 л', ['taz660']], ['Пластиковый 660 л', ['b660']], ['Пластиковый 1100 л', ['b1100']]] },
@@ -113,15 +119,34 @@ const BIN_SVG = (() => {
 (async () => {
   await mongoose.connect(MONGO_URI);
   const rows = await mongoose.connection.db.collection('products').find({ set: '0-tashtandy' }).toArray();
+  // Фото не из Cloudinary (R2): обрезать белые поля и ужать — локальным файлом рядом с HTML
+  const sharp = require('sharp');
+  const IMG = path.join(OUT, 'img'); fs.mkdirSync(IMG, { recursive: true });
+  const local = {};
+  async function localImg(url, w) {
+    const key = `${url}|${w}`; if (local[key]) return local[key];
+    const r = await fetch(url); if (!r.ok) throw new Error('не скачать ' + url);
+    const buf = Buffer.from(await r.arrayBuffer());
+    const file = path.join(IMG, `${require('crypto').createHash('md5').update(key).digest('hex').slice(0, 10)}.jpg`);
+    await sharp(buf).flatten({ background: '#fff' }).trim({ background: '#fff', threshold: 8 })
+      .extend({ top: 12, bottom: 12, left: 12, right: 12, background: '#fff' })
+      .resize(w, w, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 88 }).toFile(file);
+    return (local[key] = file);
+  }
+  const isCloud = u => u.includes('res.cloudinary.com');
   const M = {};
   for (const [k, p] of Object.entries(P)) {
     const d = rows.find(r => String(r._id).endsWith(p.id));
     if (!d) throw new Error('нет товара ' + p.v);
-    const u = d.images?.[p.img || 0];
+    const imgDoc = p.imgId ? rows.find(r => String(r._id).endsWith(p.imgId)) : d;
+    if (!imgDoc) throw new Error('нет карточки с фото ' + p.v);
+    const u = imgDoc.images?.[p.img || 0];
     if (!u) throw new Error('нет фото ' + p.v);
-    const src = w => p.cutout ? nobg(u, w) : studio(u, w);
-    M[k] = { ...p, key: k, doc: d, price: p.price ?? (d.price || 0), src: src(1000), thumb: src(240) };
+    const src = async w => !isCloud(u) ? localImg(u, w) : p.cutout ? nobg(u, w) : studio(u, w);
+    M[k] = { ...p, key: k, doc: imgDoc, price: p.price ?? (d.price || 0), src: await src(1000), thumb: await src(240) };
   }
+  const kubatShots = [];  // по очереди: имя файла берётся из счётчика
+  for (const i of [2, 5, 7, 8]) kubatShots.push(await localImg(M.kubat.doc.images[i], 700));
   await L.warm(Object.values(M).filter(m => m.cutout).flatMap(m => [m.src, m.thumb]));
   const pic = (k, i, w = 1400) => { const u = M[k].doc.images?.[i]; if (!u) throw new Error(`нет кадра ${k} #${i}`); return room(u, w); };
   const pick = (...keys) => keys.map(k => M[k]);
@@ -163,16 +188,26 @@ const BIN_SVG = (() => {
   body.push(add(['tazLid', 'taz660', 'eco2'], `${head('Металл', 'С крышкой, 660 литров и для бутылок', 'Другие размеры и исполнения для дворов и открытых пространств.')}
     <div class="g2 g2--side">${[M.tazLid, M.taz660, { ...M.eco2, tall: true }].map(L.modelCell).join('')}</div>`));
 
-  // 04. Пластик
-  body.push(add(['pl20', 'pl40', 'pl50', 'pl80', 'b120', 'b120p', 'b240', 'b240p'], `${S('04')}
+  // 04. Урна для батареек — новинка
+  const kb = M.kubat;
+  body.push(add(['kubat'], `${S('04')}${head('Металл · Новинка', 'Урна для батареек TAZA KUBAT', 'Отдельный сбор использованных батареек: в офисах, школах, магазинах и на АЗС. Батарейки уходят на утилизацию, а не на свалку.')}
+    <div class="split">
+      <div class="s-photo dim" data-w="Ø 37" data-d="" data-h="57"><img src="${kb.src}" alt=""><span class="new-badge">Новинка</span></div>
+      <div><dl class="dl"><dt>Объём</dt><dd>30 л, съёмное ведро</dd><dt>Материал</dt><dd>металл</dd><dt>Диаметр</dt><dd>37 см</dd><dt>Высота</dt><dd>57 см</dd><dt>Крышка</dt><dd>клапан-качелька</dd><dt>Цвет</dt><dd>жёлтый и чёрный</dd><dt>Вес</dt><dd>≈ 8 кг</dd><dt>Цена</dt><dd>${tag(kb.price)}</dd></dl></div>
+    </div>
+    <div class="swatches" style="--n:4">${kubatShots.map((u, i) => `<figure><img src="${u}" alt=""><figcaption>${['Надпись «Для батареек»', 'Клапан-качелька закрывается сам', 'Ведро вынимается', 'Съёмное ведро 30 л'][i]}</figcaption></figure>`).join('')}</div>
+    <style>.s-photo{position:relative}.new-badge{position:absolute;top:2mm;left:2mm;background:#e10523;color:#fff;font-weight:700;font-size:9pt;letter-spacing:.12em;text-transform:uppercase;padding:1.6mm 3.2mm;border-radius:1.5mm}</style>`));
+
+  // 05. Пластик
+  body.push(add(['pl20', 'pl40', 'pl50', 'pl80', 'b120', 'b120p', 'b240', 'b240p'], `${S('05')}
     ${series('Для помещений', 'Урны с педалью', 'Кухни, цеха, подсобки. Сортировочные 2-секционные и обычные.', pick('pl20', 'pl40', 'pl50', 'pl80'))}
     ${series('Для двора', 'Баки на колёсах', 'Зелёный, чёрный, красный и синий цвета уточняйте при заказе.', pick('b120', 'b120p', 'b240', 'b240p'))}`));
   body.push(add(['b360', 'b660', 'b1100'], `${head('Для площадок', 'Большие баки на колёсах', 'Для дворов, рынков и предприятий с регулярным вывозом.')}
     ${cols(pick('b360', 'b660', 'b1100'))}
     <div class="band" style="grid-template-columns:1fr 1fr;height:88mm"><div><img src="${pic('b660', 7)}" alt=""></div><div><img src="${pic('b660', 8)}" alt=""></div></div>`));
 
-  // 05. Индивидуальные заказы
-  body.push(page(`${S('05')}
+  // 06. Индивидуальные заказы
+  body.push(page(`${S('06')}
     <div class="cust-top">
       <div><div class="s-kind">Производство под заказ</div>
         <h2 class="cust-h">Урны в цвете и стиле вашего объекта</h2>
